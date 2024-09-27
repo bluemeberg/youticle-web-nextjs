@@ -27,6 +27,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const [toastVisible, setToastVisible] = useState(false);
   const [logoutBtnVisible, setLogoutBtnVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isClientDesktop, setIsClientDesktop] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -51,25 +52,12 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     }
   };
 
-  const togglePlayerVisible = () => {
-    setPlayer(!player);
-  };
-
+  const togglePlayerVisible = () => setPlayer(!player);
   const goHome = () => {
-    if (pathname.startsWith("/editor/")) {
-      router.push("/editor");
-    } else {
-      router.push("/");
-    }
+    if (pathname.startsWith("/editor/")) router.push("/editor");
+    else router.push("/");
   };
-
-  const goToYouTubeArticle = () => {
-    router.push("/");
-  };
-
-  const goToEditorArticle = () => {
-    router.push("/editor");
-  };
+  const goToPage = (url: string) => router.push(url);
 
   const logOut = async () => {
     try {
@@ -84,17 +72,14 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
       console.error("Error logging out:", e);
     }
   };
-  const handleClickProfile = () => {
-    setMenuOpen((prev) => !prev);
-  };
-  const handleMenuClick = () => {
-    setMenuOpen((prev) => !prev);
-  };
-  const [isClientDesktop, setIsClientDesktop] = useState(false);
+
+  const handleClickProfile = () => setMenuOpen((prev) => !prev);
+  const handleMenuClick = () => setMenuOpen((prev) => !prev);
+
   useEffect(() => {
-    // 클라이언트에서만 isDesktop 값을 설정
     setIsClientDesktop(isDesktop);
   }, []);
+
   return (
     <>
       <Container $isDetailPage={isDetailPage} $isDesktop={isClientDesktop}>
@@ -127,10 +112,15 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
               )}
             {menuOpen && (
               <MenuDropdown>
-                <MenuItem1 onClick={goToYouTubeArticle}>
+                <MenuItem onClick={() => goToPage("/")}>
                   오늘의 유튜브 아티클
-                </MenuItem1>
-                <MenuItem2 onClick={goToEditorArticle}>에디터 아티클</MenuItem2>
+                </MenuItem>
+                <MenuItem onClick={() => goToPage("/editor")}>
+                  에디터 아티클
+                </MenuItem>
+                <MenuItem onClick={() => goToPage("/my")}>
+                  나만의 아티클
+                </MenuItem>
                 {user.picture !== "" && (
                   <LogoutBtn onClick={logOut}>로그아웃</LogoutBtn>
                 )}
@@ -139,9 +129,6 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
             {user.picture !== "" && (
               <ProfileImage onClick={handleClickProfile}>
                 <img src={user.picture} alt="User profile" />
-                {/* {logoutBtnVisible && (
-                  <LogoutBtn onClick={logOut}>로그아웃</LogoutBtn>
-                )} */}
               </ProfileImage>
             )}
           </>
@@ -244,33 +231,27 @@ const LogoutBtn = styled.div`
 const MenuDropdown = styled.div`
   display: flex;
   flex-direction: column;
+  font-family: var(--font-Pretendard);
+
+  div:nth-child(1) {
+    bottom: -60px;
+  }
+  div:nth-child(2) {
+    bottom: -120px;
+  }
+  div:nth-child(3) {
+    bottom: -180px;
+  }
 `;
-const MenuItem1 = styled.div`
+
+const MenuItem = styled.div`
   width: 100%;
   padding: 20px;
   background: #ffffff;
-
-  font-family: var(--font-Pretendard);
   font-size: 16px;
   font-weight: 700;
   line-height: 120%;
   border-bottom: 1px solid black;
   position: absolute;
-  bottom: -60px;
-  right: 0px;
-`;
-
-const MenuItem2 = styled.div`
-  width: 100%;
-  padding: 20px;
-  background: #ffffff;
-
-  font-family: var(--font-Pretendard);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 120%;
-  border-bottom: 1px solid black;
-  position: absolute;
-  bottom: -120px;
   right: 0px;
 `;
