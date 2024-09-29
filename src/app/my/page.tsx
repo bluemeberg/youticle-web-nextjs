@@ -16,7 +16,7 @@ const SERVICE_DESCRIPTION =
 
 const My = () => {
   const [value, setValue] = useState("");
-  const [isServiceVaild, setIsServiceVaild] = useState(true);
+  const [isServiceVaild, setIsServiceVaild] = useState(false);
   const [currentTab, setCurrentTab] = useState("데일리");
 
   const handleChange = (e: any) => setValue(e.target.value);
@@ -266,6 +266,7 @@ const NoServiceContents = styled.div`
   padding: 0 20px;
   display: flex;
   flex-direction: column;
+  margin-bottom: 50px;
 `;
 
 const ServiceTitle = styled.span`
