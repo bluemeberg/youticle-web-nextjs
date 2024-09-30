@@ -32,7 +32,9 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const isDetailPage =
-    pathname.includes("/detail") || pathname.startsWith("/editor/");
+    pathname.includes("/detail") ||
+    pathname.startsWith("/editor/") ||
+    pathname.startsWith("/samplePage");
 
   const copyUrlToClipboard = () => {
     const currentUrl = window.location.href;
@@ -53,11 +55,14 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   };
 
   const togglePlayerVisible = () => setPlayer(!player);
-  const goHome = () => {
-    if (pathname.startsWith("/editor/")) router.push("/editor");
-    else router.push("/");
-  };
+
   const goToPage = (url: string) => router.push(url);
+
+  const goHome = () => {
+    if (pathname.startsWith("/editor/")) goToPage("/editor");
+    else if (pathname.startsWith("/samplePage")) goToPage("/my");
+    else goToPage("/");
+  };
 
   const logOut = async () => {
     try {
