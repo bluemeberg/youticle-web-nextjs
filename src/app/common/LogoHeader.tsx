@@ -14,6 +14,7 @@ import MenuIcon from "@/assets/menu_icon.svg";
 import ShareIcon from "@/assets/share.svg";
 import Toast from "./Toast";
 import { isDesktop } from "react-device-detect";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 interface LogoHeaderProps {
   title?: string;
@@ -64,7 +65,22 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     else goToPage("/");
   };
 
-  const logOut = async () => {
+  const provider = new GoogleAuthProvider();
+
+  const GoogleLogin = async () => {
+    try {
+      const { user } = await signInWithPopup(auth, provider);
+      setUser({
+        name: user.displayName,
+        email: user.email,
+        picture: user.photoURL,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const GoogleLogOut = async () => {
     try {
       await signOut(auth);
       setUser({
@@ -76,6 +92,11 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     } catch (e) {
       console.error("Error logging out:", e);
     }
+  };
+
+  const handleAuth = async (isLoggedIn: boolean) => {
+    if (!isLoggedIn) await GoogleLogin();
+    else await GoogleLogOut();
   };
 
   const handleClickProfile = () => setMenuOpen((prev) => !prev);
@@ -126,9 +147,12 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
                 <MenuItem onClick={() => goToPage("/my")}>
                   나만의 아티클
                 </MenuItem>
-                {user.picture !== "" && (
+                <MenuItem onClick={() => handleAuth(user.picture !== "")}>
+                  {user.picture !== "" ? "로그아웃" : "로그인하기"}
+                </MenuItem>
+                {/* {user.picture !== "" && (
                   <LogoutBtn onClick={logOut}>로그아웃</LogoutBtn>
-                )}
+                )} */}
               </MenuDropdown>
             )}
             {user.picture !== "" && (
@@ -246,6 +270,9 @@ const MenuDropdown = styled.div`
   }
   div:nth-child(3) {
     bottom: -180px;
+  }
+  div:nth-child(4) {
+    bottom: -240px;
   }
 `;
 
