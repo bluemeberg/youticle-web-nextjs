@@ -3,29 +3,32 @@ import styled from "styled-components";
 import ArrowIcon from "@/assets/arrowBottom.svg";
 import { TOPIC_TAGS } from "@/constants/topic";
 
-const Dropdown = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState("");
+interface DropdownProps {
+  topic: string;
+  handleChangeTopic: (option: string) => void;
+}
 
-  const handleToggleDropdown = () => {
-    setIsOpen(!isOpen);
-  };
+const Dropdown = ({ topic, handleChangeTopic }: DropdownProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleToggleDropdown = () => setIsOpen(!isOpen);
 
   const handleSelectOption = (option: any) => {
-    setSelectedValue(option);
+    handleChangeTopic(option);
     setIsOpen(false);
   };
 
   return (
     <Container>
       <InputStyledDiv onClick={handleToggleDropdown}>
-        <span>{selectedValue || "키워드 주제 선택"}</span>
+        <TopicValue $isValid={topic !== ""}>
+          {topic || "키워드 주제 선택"}
+        </TopicValue>
         <ArrowIcon />
       </InputStyledDiv>
-
       {isOpen && (
         <DropdownList>
-          {TOPIC_TAGS.map((option, index) => (
+          {[...TOPIC_TAGS, "기타"].map((option, index) => (
             <DropdownListItem
               key={index}
               onClick={() => handleSelectOption(option)}
@@ -56,14 +59,14 @@ const InputStyledDiv = styled.div`
   border-radius: 4px;
   background-color: #f3f3f3;
   cursor: pointer;
+`;
 
-  span {
-    color: #939393;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 19.09px;
-    text-align: left;
-  }
+const TopicValue = styled.span<{ $isValid: boolean }>`
+  color: ${({ $isValid }) => ($isValid ? "rgba(0, 0, 0, 1)" : "#939393")};
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 19.09px;
+  text-align: left;
 `;
 
 const DropdownList = styled.ul`
