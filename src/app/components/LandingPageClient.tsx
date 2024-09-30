@@ -4,13 +4,12 @@
 import { useEffect } from "react";
 import { useSetRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import ServiceIntroduce from "./ServiceIntroduce";
 import LogoHeader from "@/common/LogoHeader";
 import YoutubeToday from "./YoutubeToday";
 import Footer from "./Footer";
 import { dataState } from "@/store/data";
 import { userState } from "@/store/user";
-import GoogleLogin from "@/common/GoogleLogin";
+import ServiceIntro from "./ServiceIntro";
 
 interface LandingPageClientProps {
   apiData: any; // 서버에서 전달된 데이터
@@ -21,22 +20,13 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   const user = useRecoilValue(userState);
 
   useEffect(() => {
-    // 클라이언트에서 받은 데이터를 Recoil 상태에 설정
     setApiData(apiData);
   }, [apiData, setApiData]);
 
   return (
     <Container $isLogin={user.name !== ""}>
       <LogoHeader />
-      {user.name === "" && (
-        <>
-          <ServiceIntroduce />
-          <GoogleLogin
-            variant="button"
-            text="구글 계정 연동해서 무료 구독하기"
-          />
-        </>
-      )}
+      <ServiceIntro />
       <YoutubeToday data={apiData} />
       <Footer />
     </Container>
