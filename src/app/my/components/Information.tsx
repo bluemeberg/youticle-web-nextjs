@@ -21,7 +21,7 @@ const Information: React.FC<NewComponentProps> = ({ keyword }) => {
       <TitleContainer>
         안녕하세요, 유티클을 만들고 있는 John입니다.<br></br> 먼저 구독해주셔서
         감사합니다. <br></br>
-        <br></br>신청주신 키워드 '{keyword}'와 관련된 유튜브 아티클들은 차주
+        <br></br>신청주신 키워드 "{keyword}"와 관련된 유튜브 아티클들은 차주
         월요일부터 생성될 예정입니다.<br></br> <br></br>차주 월요일에 연동해주신
         구글 계정 이메일로 안내 메일이 발송될 예정이니<br></br>
         <br></br> 꼭 확인 부탁드립니다!!
