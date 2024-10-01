@@ -280,11 +280,11 @@ const My = () => {
         {/* 키워드가 있는 주기 타입에 따른 컴포넌트 전환 */}
         {hasDailyKeyword &&
         currentTab === "데일리" &&
-        userState.email !== "" ? (
+        currentUser.email !== "" ? (
           <Information keyword={keyword.daily} />
         ) : hasWeeklyKeyword &&
           currentTab === "위클리" &&
-          userState.email !== "" ? (
+          currentUser.email !== "" ? (
           <Information keyword={keyword.weekly} />
         ) : (
           <>
