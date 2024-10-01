@@ -13,9 +13,9 @@ const LoginPopup = ({
         <CloseButton onClick={closePopup}>X</CloseButton>
         <PopupTitle>로그인이 필요합니다.</PopupTitle>
         <PopupDescription>
-          구글 계정 연동하고<br></br>"
-          {currentTab === "데일리" ? keyword.daily : keyword.weekly}" 유튜브
-          아티클을<br></br> 매일 구글 이메일로도 받아보세요!
+          구글 계정 연동하고<br></br>&quot;
+          {currentTab === "데일리" ? keyword.daily : keyword.weekly}&quot;
+          유튜브 아티클을<br></br> 매일 구글 이메일로도 받아보세요!
         </PopupDescription>
         <GoogleLogin
           variant="button"
