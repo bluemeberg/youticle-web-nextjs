@@ -41,14 +41,12 @@ export default async function DetailPage({ params }: DetailPageProps) {
   const { id } = params;
 
   const response = await fetch(`https://youticle.shop/editor/article/${id}`);
-  console.log("editor", response);
   if (!response.ok) {
     return <NotFoundPage />;
   }
 
   const data = await response.json();
   const detailData: DataProps | null = data[0] || null;
-  console.log("parse", detailData);
   if (!detailData) {
     return <NotFoundPage />;
   }

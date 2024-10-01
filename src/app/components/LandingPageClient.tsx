@@ -18,7 +18,7 @@ interface LandingPageClientProps {
 export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   const setApiData = useSetRecoilState(dataState);
   const user = useRecoilValue(userState);
-
+  console.log(user);
   useEffect(() => {
     setApiData(apiData);
   }, [apiData, setApiData]);
@@ -26,7 +26,7 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   return (
     <Container $isLogin={user.name !== ""}>
       <LogoHeader />
-      <ServiceIntro />
+      {!user.name && <ServiceIntro />}
       <YoutubeToday data={apiData} />
       <Footer />
     </Container>

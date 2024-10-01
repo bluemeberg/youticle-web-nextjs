@@ -1,7 +1,7 @@
 "use client";
 
 import styled, { css } from "styled-components";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { auth } from "@/firebase";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -13,6 +13,7 @@ interface GoogleLoginProps {
 
 const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
   const setUser = useSetRecoilState(userState);
+  const currentUser = useRecoilValue(userState); // userState 값을 읽음
 
   const provider = new GoogleAuthProvider();
 
@@ -28,6 +29,7 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
       console.error(e);
     }
   };
+  console.log(currentUser);
 
   return (
     <StyledComponent
@@ -39,7 +41,6 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
     </StyledComponent>
   );
 };
-
 export default GoogleLogin;
 
 interface StyledComponentProps {
