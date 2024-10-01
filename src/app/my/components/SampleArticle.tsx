@@ -29,4 +29,5 @@ const ComponentTitle = styled.div`
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(187, 187, 187, 1);
   margin-bottom: 16px;
+  margin-top: 16px;
 `;

@@ -58,13 +58,13 @@ export default ServiceDescription;
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 0 24px 0 14px;
+  padding: 0 24px 24px 14px;
 `;
 
 const BlockSection = styled.div`
   display: flex;
   flex-direction: column;
-  margin-bottom: 28px;
+  margin-bottom: 40px;
 `;
 
 const BlockTitle = styled.div`

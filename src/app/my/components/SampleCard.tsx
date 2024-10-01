@@ -46,7 +46,7 @@ const SampleCard = () => {
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
-        <Section>#엔비디아 - 주식</Section>
+        <Section>#알리바바 - 주식</Section>
         <Title>알리바바 급등, 왜 지금 투자해야 할까?</Title>
       </CardHeader>
       <Body>
