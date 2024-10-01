@@ -1,7 +1,18 @@
 import styled from "styled-components";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 
-const LoginPopup = ({
+// Define the prop types
+interface LoginPopupProps {
+  closePopup: () => void;
+  handleLoginSuccess: (user: any) => void;
+  currentTab: string;
+  keyword: {
+    daily: string;
+    weekly: string;
+  };
+}
+
+const LoginPopup: React.FC<LoginPopupProps> = ({
   closePopup,
   handleLoginSuccess,
   currentTab,
@@ -17,11 +28,7 @@ const LoginPopup = ({
           {currentTab === "데일리" ? keyword.daily : keyword.weekly}&quot;
           유튜브 아티클을<br></br> 매일 구글 이메일로도 받아보세요!
         </PopupDescription>
-        <GoogleLogin
-          variant="button"
-          text="구글 계정으로 시작하기"
-          onLoginSuccess={handleLoginSuccess}
-        />
+        <GoogleLogin onLoginSuccess={handleLoginSuccess} />
       </Popup>
     </PopupOverlay>
   );

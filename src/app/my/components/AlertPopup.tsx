@@ -1,6 +1,9 @@
 import styled from "styled-components";
-
-const AlertPopup = ({ closePopup }) => {
+// Define the types for the props
+interface AlertPopupProps {
+  closePopup: () => void;
+}
+const AlertPopup: React.FC<AlertPopupProps> = ({ closePopup }) => {
   return (
     <PopupOverlay onClick={closePopup}>
       <Popup>

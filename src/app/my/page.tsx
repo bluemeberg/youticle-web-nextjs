@@ -58,13 +58,24 @@ const My = () => {
       setIsPopupVisible(true); // 팝업 보이기
     }
   };
-
-  const handleLoginSuccess = async (user) => {
+  // Define a User interface for user-related data
+  interface User {
+    email: string;
+    displayName: string;
+  }
+  // Define the structure of the Keyword object
+  interface Keyword {
+    user_id: number;
+    keyword: string;
+    category: string;
+    period: string; // 'D' for Daily, 'W' for Weekly
+  }
+  const handleLoginSuccess = async (user: User) => {
     setIsPopupVisible(false); // 팝업 닫기
     await processing(user); // 로그인 후 키워드 추가
   };
 
-  const processing = async (user) => {
+  const processing = async (user: User) => {
     console.log("hello", user);
     if (user.email !== "") {
       const data = await createOrFetchUser(user.email, user.displayName);
@@ -72,20 +83,20 @@ const My = () => {
       try {
         if (currentTab == "데일리") {
           const response = await getKeywordsForUser(data.id);
-          if (response.some((keyword) => keyword.period === "D")) {
+          if (response.some((keyword: Keyword) => keyword.period === "D")) {
             setHasDailyAlertKeyword(true);
           } else {
             await addKeywordForUser(data.id, keyword.daily, topic, "D");
           }
         } else {
           const response = await getKeywordsForUser(data.id);
-          if (response.some((keyword) => keyword.period === "W")) {
+          if (response.some((keyword: Keyword) => keyword.period === "W")) {
             setHasDailyAlertKeyword(true);
           } else {
             await addKeywordForUser(data.id, keyword.weekly, topic, "W");
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         // 404 에러가 발생할 때 addKeywordForUser 호출
         if (error.message.includes("404")) {
           console.log(
@@ -165,7 +176,12 @@ const My = () => {
     }
   };
 
-  const addKeywordForUser = async (userId, keyword, category, period) => {
+  const addKeywordForUser = async (
+    userId: number,
+    keyword: string,
+    category: string,
+    period: string
+  ) => {
     try {
       console.log(keyword, category, userId, period);
       if (keyword && category && userId) {
@@ -200,7 +216,7 @@ const My = () => {
     }
   };
 
-  const getKeywordsForUser = async (userId) => {
+  const getKeywordsForUser = async (userId: number) => {
     try {
       if (userId) {
         const response = await fetch(
@@ -220,14 +236,14 @@ const My = () => {
         const data = await response.json();
         console.log("키워드 정보:", data);
         // 키워드 중 period가 "D"인 경우 hasDailyKeyword를 true로 설정
-        if (data.some((keyword) => keyword.period === "D")) {
+        if (data.some((keyword: Keyword) => keyword.period === "D")) {
           setHasDailyKeyword(true);
         } else {
           setHasDailyKeyword(false);
         }
 
         // 키워드 중 period가 "W"인 경우 hasWeeklyKeyword를 true로 설정
-        if (data.some((keyword) => keyword.period === "W")) {
+        if (data.some((keyword: Keyword) => keyword.period === "W")) {
           setHasWeeklyKeyword(true);
         } else {
           setHasWeeklyKeyword(false);
