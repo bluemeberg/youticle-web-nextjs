@@ -1,25 +1,18 @@
 "use client";
 
-import styled, { css } from "styled-components";
-import { useSetRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
+import { useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import { auth } from "@/firebase";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import GoogleIcon from "@/assets/google_icon.svg";
+import GoogleIcon from "@/assets/google_icon.svg"; // Assuming you have this SVG
 
 interface GoogleLoginProps {
-  variant: "button" | "link";
-  text: string;
   onLoginSuccess?: (user: any) => void; // 로그인 성공 시 호출될 콜백 함수
 }
 
-const GoogleLogin: React.FC<GoogleLoginProps> = ({
-  variant,
-  text,
-  onLoginSuccess,
-}) => {
+const GoogleLogin: React.FC<GoogleLoginProps> = ({ onLoginSuccess }) => {
   const setUser = useSetRecoilState(userState);
-
   const provider = new GoogleAuthProvider();
 
   const signInGoogle = async () => {
@@ -31,34 +24,31 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({
         picture: user.photoURL,
       });
       if (onLoginSuccess) {
-        onLoginSuccess(user);
+        onLoginSuccess(user); // 로그인 성공 시 콜백 호출
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error during login:", e);
     }
   };
 
   return (
-    <StyledComponent
-      as={variant === "link" ? "a" : "button"}
-      onClick={signInGoogle}
-      $variant={variant}
-    >
+    <StyledComponent onClick={signInGoogle}>
       <GoogleIcon />
-      <Text>{text}</Text>
+      <Text>구글 계정으로 로그인</Text> {/* 텍스트 고정 */}
     </StyledComponent>
   );
 };
+
 export default GoogleLogin;
 
 const StyledComponent = styled.div`
   font-family: "Pretendard Variable";
   font-weight: 700;
-  width: calc(110% - 40px);
+  width: calc(100% - 40px);
   height: 60px;
-  padding: 20px 0;
+  padding: 20px;
   border-radius: 4px;
-  border : 1px solid #000
+  border: 1px solid #000;
   background-color: #fff;
   font-size: 16px;
   line-height: 22px;
