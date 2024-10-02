@@ -54,6 +54,16 @@ export default function RootLayout({
             <AppContainer>
               <GlobalStyle />
               <ScrollToTop />
+              <IframeContainer>
+                <iframe
+                  title="disquiet-badge"
+                  src="https://badge.disquiet.io/vote-badge?productUrlSlug=유티클&mode=light"
+                  width="300"
+                  height="60"
+                  frameBorder="0"
+                  scrolling="no"
+                />
+              </IframeContainer>
               {children}
             </AppContainer>
           </StyledComponentsRegistry>
@@ -80,6 +90,11 @@ const AppContainer = styled.div`
   }
 `;
 
+const IframeContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 52px;
+`;
 function ScrollToTop() {
   const pathname = usePathname();
 
