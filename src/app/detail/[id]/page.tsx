@@ -16,7 +16,7 @@ export async function generateMetadata({
   const { id } = params;
 
   const response = await fetch(
-    `https://claying.shop/briefing/top_videos/${id}`
+    `https://youticle.shop/briefing/top_videos/${id}`
   );
   const data = await response.json();
   const detailData = data[0];
