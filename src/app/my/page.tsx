@@ -26,12 +26,6 @@ interface User {
   displayName: string;
 }
 
-interface CurrentUser {
-  email: string;
-  name: string;
-  picture: string;
-}
-
 // Define the structure of the Keyword object
 interface Keyword {
   user_id: number;
@@ -282,7 +276,7 @@ const My = () => {
   };
 
   // 유저 정보 가져오기
-  const getUserByEmail = async (email: string): Promise<void> => {
+  const getUserByEmail = async (email: string): Promise<{ id: number }> => {
     const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
 
     try {
@@ -298,14 +292,18 @@ const My = () => {
         console.log("User data:", data);
         return data;
       } else if (response.status === 404) {
-        console.error("User not found.");
+        console.error("User not found. Creating new user...");
+        // 새로운 유저 생성 로직
         const newUser = await createOrFetchUser(email);
+        console.log("New user created:", newUser);
         return newUser;
       } else {
         console.error(`Error: ${response.status}, ${response.statusText}`);
+        throw new Error(`Error: ${response.statusText}`);
       }
     } catch (error) {
       console.error("Error fetching user:", error);
+      throw error;
     }
   };
 
@@ -542,59 +540,4 @@ const Tab = styled.div<{ $isSelected: boolean }>`
   font-size: 16px;
   font-weight: 600;
   color: ${({ $isSelected }) => ($isSelected ? "#000000" : "#6A6A6A")};
-`;
-
-const InputSection = styled.div`
-  display: flex;
-  height: auto;
-  flex-direction: column;
-  padding: 28px 20px 48px 20px;
-`;
-
-const Title = styled.span`
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 28px;
-  text-align: left;
-`;
-
-const KeywordInput = styled.input`
-  height: 52px;
-  border: none;
-  border-radius: 4px;
-  background-color: #f3f3f3;
-  padding: 16px 21px;
-  margin-top: 16px;
-  margin-bottom: 16px;
-
-  font-family: "Pretendard Variable";
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 19.09px;
-  text-align: left;
-
-  &::placeholder {
-    color: #939393;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 19.09px;
-    text-align: left;
-  }
-
-  &:focus {
-    outline: none;
-  }
-`;
-
-const ServiceButton = styled.button`
-  width: 100%;
-  height: 60px;
-  background-color: #007bff;
-  color: #ffffff;
-  font-family: "Pretendard Variable";
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 22px;
-  text-align: center;
-  margin-top: 26px;
 `;
