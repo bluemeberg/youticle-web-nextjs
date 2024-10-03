@@ -12,28 +12,33 @@ import {
   timeAgo,
 } from "@/utils/formatter";
 
-interface TopicCardProps extends ReportData {
-  icon: React.ReactNode;
-}
-
-const TopicCard = (props: TopicCardProps) => {
+const ReportCard = (props: ReportData) => {
   const router = useRouter();
   const setTopicState = useSetRecoilState(detailDataState);
   const {
-    section,
-    summary_data, // 새로운 summary_data 객체
-    thumbnail,
-    upload_date,
-    channel_details, // 새로운 channel_details 객체
-    icon,
+    briefing_channel,
+    briefing_video, // 새로운 summary_data 객체
+    category,
+    keyword,
+    period, // 새로운 channel_details 객체
+    user_id,
     video_id,
   } = props;
 
   const handleNavigate = () => {
     setTopicState(props);
-    router.push(`/detail/${video_id}`);
+    router.push(`/keyword/${video_id}`);
   };
-  const short_summary = removeMarkTags(summary_data.short_summary);
+
+  // 안전하게 briefing_channel가 null일 경우를 처리
+  const channelThumbnail = briefing_channel?.thumbnail || "";
+  const channelTitle = briefing_channel?.title || "Unknown Channel";
+  const channelSubs = briefing_channel?.sub_count
+    ? parseSubscribersCount(briefing_channel.sub_count)
+    : "No Subscribers";
+  const short_summary = removeMarkTags(
+    briefing_video.summary_data.short_summary
+  );
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
@@ -47,26 +52,25 @@ const TopicCard = (props: TopicCardProps) => {
             <span>{section}</span>
           )}
         </IconWrapper> */}
-        <Section>#{section}</Section>
+        <Section>#{category}</Section>
         <Title>
-          {summary_data.headline_title}, {summary_data.headline_sub_title}
+          {briefing_video.summary_data.headline_title},{" "}
+          {briefing_video.summary_data.headline_sub_title}
         </Title>
       </CardHeader>
       <Body>
         <Summary>
           <p>{short_summary}</p>
         </Summary>
-        <Thumbnail src={thumbnail} />
+        <Thumbnail src={briefing_video.thumbnail} />
       </Body>
       <ChannelInfo>
-        <ProfileImage src={channel_details.channel_thumbnail}></ProfileImage>
+        <ProfileImage src={channelThumbnail}></ProfileImage>
         <ProfileInfo>
-          <Name>{channel_details.channel_name}</Name>
+          <Name>{channelTitle}</Name>
           <SubsUpload>
-            <Subscriber>
-              {parseSubscribersCount(channel_details.channel_subscribers)}
-            </Subscriber>
-            <UploadTime> {timeAgo(upload_date)}</UploadTime>
+            <Subscriber>{channelSubs}</Subscriber>
+            <UploadTime> {timeAgo(briefing_video.upload_date)}</UploadTime>
           </SubsUpload>
         </ProfileInfo>
       </ChannelInfo>
@@ -74,7 +78,7 @@ const TopicCard = (props: TopicCardProps) => {
   );
 };
 
-export default TopicCard;
+export default ReportCard;
 
 const Container = styled.div`
   display: flex;

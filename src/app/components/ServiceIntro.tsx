@@ -4,11 +4,11 @@ import styled from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilState } from "recoil";
 import { keywordState } from "@/store/keyword";
-
+import LandingThumb from "@/assets/yousum_thumb.svg";
 const SERVICE_TITLE =
   "유튜브 영상 정보의 홍수 속에서 <br/> 나만 똑똑하게 시청하는 방법.";
 const SERVICE_DESCRIPTION =
-  "관심 키워드를 구독해서 관련된 최신 영상들을 매일 아티클로 빠르고 편하게 읽어보세요! ";
+  "관심 키워드를 구독해서 관련된 최신 영상들을 <br/> 매일 아티클로 빠르고 편하게 읽어보세요! ";
 
 const ServiceIntro = () => {
   const [keyword, setKeyword] = useRecoilState(keywordState);
@@ -35,6 +35,9 @@ const ServiceIntro = () => {
       <ServiceButton onClick={() => goToPage("my")}>
         지금 바로 무료 체험하기
       </ServiceButton>
+      <ImgContainer>
+        <LandingThumb />
+      </ImgContainer>
     </Container>
   );
 };
@@ -102,4 +105,11 @@ const ServiceButton = styled.button`
   line-height: 22px;
   text-align: center;
   margin-top: 26px;
+`;
+
+const ImgContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 60px;
 `;

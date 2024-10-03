@@ -93,6 +93,10 @@ const YoutubeToday = ({ data }: YoutubeTodayProps) => {
         <TodayIcon />
         {TODAY_TITLE}
       </TodayTitle>
+      <TodaySubTitle>
+        오늘 업로드된 19가지 주요 주제들의 영상을 <br />단 1초만에 아티클로 읽을
+        수 있습니다.
+      </TodaySubTitle>
       <CountdownTimer scrollRef={scrollRef} />
       <TopicNavContainer>
         <TopicNav
@@ -140,11 +144,22 @@ const TodayTitle = styled.span`
   line-height: 28.64px;
   color: rgba(0, 123, 255, 1);
   letter-spacing: -1px;
-  margin-bottom: 24px;
-
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: 4px;
+  margin-top: 12px;
+`;
+
+const TodaySubTitle = styled.span`
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 132%;
+  margin-bottom: 24px;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
 `;
 
 const TopicNavContainer = styled.div`

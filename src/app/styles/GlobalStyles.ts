@@ -40,8 +40,13 @@ const GlobalStyles = createGlobalStyle`
       border: none;
       cursor: pointer;
     }
-
-
+    /* @font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter.woff2') format('woff2'),
+       url('/fonts/Inter.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+} */
 
 	  :root {	
 		  --color-white : #ffffff; // fixed

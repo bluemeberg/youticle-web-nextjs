@@ -35,7 +35,8 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const isDetailPage =
     pathname.includes("/detail") ||
     pathname.startsWith("/editor/") ||
-    pathname.startsWith("/samplePage");
+    pathname.startsWith("/samplePage") ||
+    pathname.startsWith("/keyword/");
 
   const copyUrlToClipboard = () => {
     const currentUrl = window.location.href;
@@ -62,6 +63,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const goHome = () => {
     if (pathname.startsWith("/editor/")) goToPage("/editor");
     else if (pathname.startsWith("/samplePage")) goToPage("/my");
+    else if (pathname.startsWith("/keyword/")) goToPage("/my");
     else goToPage("/");
   };
 

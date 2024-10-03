@@ -1,7 +1,7 @@
 "use client";
 
 import styled from "styled-components";
-import ScrollTopIcon from "@/assets/scrollTop.svg"; // ?react 쿼리 없이 svg를 불러옵니다.
+import ScrollTopIcon from "@/assets/arrow-up.svg"; // ?react 쿼리 없이 svg를 불러옵니다.
 
 interface GoToTopBtnProps {
   isVisible: boolean;
@@ -22,8 +22,8 @@ const GoToTopBtn = ({ isVisible }: GoToTopBtnProps) => {
 export default GoToTopBtn;
 
 const Container = styled.button<{ $isVisible: boolean }>`
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   position: fixed;
   bottom: 32px;
   right: 16px;

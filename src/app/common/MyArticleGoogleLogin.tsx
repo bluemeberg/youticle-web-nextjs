@@ -44,7 +44,7 @@ export default GoogleLogin;
 const StyledComponent = styled.div`
   font-family: "Pretendard Variable";
   font-weight: 700;
-  width: calc(100% - 40px);
+  width: calc(100% - 10px);
   height: 60px;
   padding: 20px;
   border-radius: 4px;

@@ -55,3 +55,39 @@ export interface ChannelDetails {
   channel_thumbnail: string;
   channel_banner: string;
 }
+
+export interface ReportChannel {
+  banner: string;
+  description: string;
+  id: string;
+  sub_count: number;
+  thumbnail: string;
+  title: string;
+  video_count: number;
+  view_count: number;
+  // Add other relevant fields if needed
+}
+
+export interface ReportVideo {
+  channel_id: string;
+  detail_category: string;
+  duration: string;
+  id: string;
+  section: string;
+  summary_data: SummaryData;
+  tags: string;
+  thumbnail: string;
+  title: string;
+  upload_date: string;
+  // Add other relevant fields if needed
+}
+
+export interface ReportData {
+  briefing_channel: ReportChannel;
+  briefing_video: ReportVideo;
+  category: string;
+  keyword: string;
+  period: "D" | "W"; // 'D' for Daily, 'W' for Weekly
+  user_id: number;
+  video_id: string;
+}

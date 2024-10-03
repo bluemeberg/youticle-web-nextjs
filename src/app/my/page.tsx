@@ -5,16 +5,41 @@ import LogoHeader from "@/common/LogoHeader";
 import { useState, useEffect, useId } from "react";
 import Dropdown from "./components/Dropdown";
 import Footer from "@/components/Footer";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { keywordState } from "@/store/keyword";
+import { dailyKeywordTaskState } from "@/store/dailyTaskId";
+
 import ServiceDescription from "./components/ServiceDescription";
 import SampleArticle from "./components/SampleArticle";
-import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { userState } from "@/store/user";
 import AlertPopup from "./components/AlertPopup";
 import LoginPopup from "./components/LoginPopup";
 import KeywordAlertPopup from "./components/KeywordAlertPopup";
 import Information from "./components/Information";
+import Progress from "./components/Progress";
+import KeywordInputForm from "./components/KeywordInputForm";
+import { weeklyKeywordTaskState } from "@/store/weeklyTaskId";
+import Report from "./components/Report";
+// Define a User interface for user-related data
+interface User {
+  email: string;
+  displayName: string;
+}
+
+interface CurrentUser {
+  email: string;
+  name: string;
+  picture: string;
+}
+
+// Define the structure of the Keyword object
+interface Keyword {
+  user_id: number;
+  keyword: string;
+  category: string;
+  period: string; // 'D' for Daily, 'W' for Weekly
+}
+
 const My = () => {
   const [currentTab, setCurrentTab] = useState("데일리");
   const [topic, setTopic] = useState("");
@@ -24,8 +49,22 @@ const My = () => {
   const [alertPopupVisible, setAlertPopupVisible] = useState(false); // 경고 팝업 상태
   const [hasDailyKeyword, setHasDailyKeyword] = useState(false); // 새로운 컴포넌트 상태 관리
   const [hasWeeklyKeyword, setHasWeeklyKeyword] = useState(false); // 새로운 컴포넌트 상태 관리
-  const [hasDailyAlertKeyword, setHasDailyAlertKeyword] = useState(false);
+  // daily task id 받아와서 recoilstate로 저장
+  const setDailyKeywordTask = useSetRecoilState(dailyKeywordTaskState);
+  // daily task id 받아와서 recoilstate로 저장
+  const setWeeklyKeywordTask = useSetRecoilState(weeklyKeywordTaskState);
+  const [hasDailyKeywordProgress, setHasDailyKeywordProgress] = useState(false); // 새로운 컴포넌트 상태 관리
+  const [hasWeeklyKeywordProgress, setHasWeeklyKeywordProgress] =
+    useState(false); // 새로운 컴포넌트 상태 관리
+
+  const [hasDailyKeywordReport, setHasDailyKeywordReport] = useState(false); // 새로운 컴포넌트 상태 관리
+  const [hasWeeklyKeywordReport, setHasWeeklyKeywordReport] = useState(false); // 새로운 컴포넌트 상태 관리
+
+  const [hasAlertKeyword, setHasAlertKeyword] = useState(false);
+
   const currentUser = useRecoilValue(userState); // userState 값을 읽음
+  const dailyTaskId = useRecoilValue(dailyKeywordTaskState); // userState 값을 읽음
+  const weeklyTaskId = useRecoilValue(weeklyKeywordTaskState);
 
   const handleChangeKeyword = (e: any, currentTab: string) => {
     if (currentTab === "데일리") {
@@ -46,7 +85,7 @@ const My = () => {
   const handleChangeDirectTopic = (e: any) => setDirectTopic(e.target.value);
 
   const handleTabClick = (tab: string) => setCurrentTab(tab);
-  const handleServiceButtonClick = () => {
+  const handleServiceButtonClick = async () => {
     if (
       (currentTab === "데일리" && !keyword.daily) ||
       (currentTab === "위클리" && !keyword.weekly) ||
@@ -55,45 +94,60 @@ const My = () => {
     ) {
       setAlertPopupVisible(true); // 경고 팝업 보이기
     } else {
-      setIsPopupVisible(true); // 팝업 보이기
+      if (currentUser.email == "") {
+        setIsPopupVisible(true); // 팝업 보이기
+      } else {
+        await processing({
+          email: currentUser.email,
+          displayName: currentUser.name,
+        });
+      }
     }
   };
-  // Define a User interface for user-related data
-  interface User {
-    email: string;
-    displayName: string;
-  }
-  // Define the structure of the Keyword object
-  interface Keyword {
-    user_id: number;
-    keyword: string;
-    category: string;
-    period: string; // 'D' for Daily, 'W' for Weekly
-  }
+
   const handleLoginSuccess = async (user: User) => {
     setIsPopupVisible(false); // 팝업 닫기
     await processing(user); // 로그인 후 키워드 추가
   };
 
   const processing = async (user: User) => {
-    console.log("hello", user);
+    //
     if (user.email !== "") {
-      const data = await createOrFetchUser(user.email, user.displayName);
+      // user 정보 등록 확인, 없으면 신규 등록함
+      const data = await getUserByEmail(user.email);
       console.log("로그인 후 유저 정보", data);
       try {
         if (currentTab == "데일리") {
           const response = await getKeywordsForUser(data.id);
+          // 이미 등록된 키워드 존재 여부 확인
           if (response.some((keyword: Keyword) => keyword.period === "D")) {
-            setHasDailyAlertKeyword(true);
+            setHasAlertKeyword(true);
+            // /keyword/user_report_status 호출
+            // 레포트가 true면 페이지 넘겨서 /keyword/user 호출
+            // false면 recoil의 taskid 상태 확인
+            // SUCCESS가 아니면 진행 중 화면으로 인동
           } else {
+            // 등록된 키워드가 없다면
             await addKeywordForUser(data.id, keyword.daily, topic, "D");
+            // 키워드 일회성 최초 동작
+            const res = await executeFirstScehdule(data.id, "D");
+            // 그리고 진행 중 컴포넌트 활성화
+            setHasDailyKeywordProgress(true);
           }
         } else {
           const response = await getKeywordsForUser(data.id);
           if (response.some((keyword: Keyword) => keyword.period === "W")) {
-            setHasDailyAlertKeyword(true);
+            setHasAlertKeyword(true);
+            // /keyword/user_report_status 호출
+            // 레포트가 true면 페이지 넘겨서 /keyword/user 호출
+            // false면 recoil의 taskid 상태 확인
+            // SUCCESS가 아니면 진행 중 화면으로 인동
           } else {
             await addKeywordForUser(data.id, keyword.weekly, topic, "W");
+            // 키워드 일회성 최초 동작
+            const res = await executeFirstScehdule(data.id, "W");
+            // 그리고 진행 중 컴포넌트 활성화
+            setHasWeeklyKeywordProgress(true);
           }
         }
       } catch (error: any) {
@@ -104,8 +158,16 @@ const My = () => {
           );
           if (currentTab == "데일리") {
             await addKeywordForUser(data.id, keyword.daily, topic, "D");
+            // 키워드 일회성 최초 동작
+            const res = await executeFirstScehdule(data.id, "D");
+            // 그리고 진행 중 컴포넌트 활성화
+            setHasDailyKeywordProgress(true);
           } else {
             await addKeywordForUser(data.id, keyword.weekly, topic, "W");
+            // 키워드 일회성 최초 동작
+            const res = await executeFirstScehdule(data.id, "W");
+            // 그리고 진행 중 컴포넌트 활성화
+            setHasWeeklyKeywordProgress(true);
           }
         } else {
           console.error("API 호출 중 오류 발생:", error);
@@ -113,28 +175,96 @@ const My = () => {
       }
     }
   };
+
   const closePopup = () => {
     setIsPopupVisible(false); // 팝업 닫기
     setAlertPopupVisible(false);
-    setHasDailyAlertKeyword(false);
+    setHasAlertKeyword(false);
+  };
+
+  // taskid에 대한 상태 가져오기
+  const getTaskId = async (taskId: string) => {
+    const url = `https://claying.shop/keyword/status/${taskId}`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("get Task data:", data);
+        return data;
+      } else if (response.status === 404) {
+        console.error("User not found.");
+      } else {
+        console.error(`Error: ${response.status}, ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
   };
 
   // 유저 정보가 있을 때 API 호출
   useEffect(() => {
-    if (currentUser.email !== "") {
-      console.log(currentUser);
-      const data = getUserByEmail(currentUser.email);
-    }
-  }, [currentUser]);
+    const fetchUser = async () => {
+      if (currentUser.email !== "") {
+        console.log("check", currentUser);
+        try {
+          const data = await getUserByEmail(currentUser.email); // Await for the async function
+          console.log("email check", data);
+          // Check if the userId matches
+          if (currentTab === "데일리") {
+            console.log(dailyTaskId, "데일리 체크");
+            if (data.id === dailyTaskId.userId) {
+              console.log("daily hi");
+              const res = await getTaskId(dailyTaskId.taskId);
+              if (res.status === "SUCCESS") {
+                console.log("daily yes");
+                // 저장된 taskid의 주기 타입에 따라서 레포트 컴포넌트 활성화 분기
+                setHasDailyKeywordReport(true);
+              } else if (res.status != "SUCCESS") {
+                console.log("progressing");
+                // 저장된 taskid의 주기 타입에 따라서 진행중 컴포넌트 활성화 분기
+                setHasDailyKeywordProgress(true);
+              }
+            }
+          } else {
+            console.log(weeklyTaskId);
+            if (data.id === weeklyTaskId.userId) {
+              console.log("hi");
+              const res = await getTaskId(weeklyTaskId.taskId);
+              if (res.status === "SUCCESS") {
+                console.log("yes");
+                // 저장된 taskid의 주기 타입에 따라서 레포트 컴포넌트 활성화 분기
+                setHasWeeklyKeywordReport(true);
+                console.log(hasWeeklyKeywordReport);
+              } else if (res.status != "SUCCESS") {
+                console.log("progressing");
+                // 저장된 taskid의 주기 타입에 따라서 진행중 컴포넌트 활성화 분기
+                setHasWeeklyKeywordProgress(true);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      }
+    };
+    fetchUser(); // Call the async function inside useEffect
+  }, [currentUser, currentTab]);
 
-  const createOrFetchUser = async (email: string, name: string) => {
+  // 유저 정보 최초 등록
+  const createOrFetchUser = async (email: string) => {
     try {
-      const response = await fetch("https://youticle.shop/users/", {
+      const response = await fetch("https://claying.shop/users/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
@@ -151,8 +281,9 @@ const My = () => {
     }
   };
 
+  // 유저 정보 가져오기
   const getUserByEmail = async (email: string): Promise<void> => {
-    const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
+    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
 
     try {
       const response = await fetch(url, {
@@ -165,9 +296,11 @@ const My = () => {
       if (response.ok) {
         const data = await response.json();
         console.log("User data:", data);
-        await getKeywordsForUser(data.id);
+        return data;
       } else if (response.status === 404) {
         console.error("User not found.");
+        const newUser = await createOrFetchUser(email);
+        return newUser;
       } else {
         console.error(`Error: ${response.status}, ${response.statusText}`);
       }
@@ -176,6 +309,7 @@ const My = () => {
     }
   };
 
+  // 키워드 등록하기
   const addKeywordForUser = async (
     userId: number,
     keyword: string,
@@ -186,7 +320,7 @@ const My = () => {
       console.log(keyword, category, userId, period);
       if (keyword && category && userId) {
         console.log(keyword, category, userId);
-        const response = await fetch("https://youticle.shop/keyword/", {
+        const response = await fetch("https://claying.shop/keyword/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -201,14 +335,15 @@ const My = () => {
         if (!response.ok) {
           throw new Error(`API 요청 실패: ${response.status}`);
         }
-
         const data = await response.json();
         console.log("키워드 추가 결과:", data);
-        if (period === "D") {
-          setHasDailyKeyword(true);
-        } else {
-          setHasWeeklyKeyword(true);
-        }
+        // if (period === "D") {
+        //   // 최초 등록 시 즉시 진행 중 화면 표출
+        //   setHasDailyKeywordProgress(true);
+        // } else {
+        //   // 최초 등록 시 즉시 진행 중 화면 표출
+        //   setHasWeeklyKeywordProgress(true);
+        // }
         return data;
       }
     } catch (error) {
@@ -216,11 +351,52 @@ const My = () => {
     }
   };
 
+  // 키워드 최초 일회성으로 실행시키기
+  const executeFirstScehdule = async (id: number, type: string) => {
+    const url = `https://claying.shop/keyword/schedule/${id}`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("get Task data:", data);
+        //   recoil state로 저장하기
+        if (type === "D") {
+          setDailyKeywordTask({
+            taskId: data.task_id,
+            userId: data.user_id,
+            type: type,
+          });
+          setHasDailyKeywordProgress(true);
+        } else {
+          setWeeklyKeywordTask({
+            taskId: data.task_id,
+            userId: data.user_id,
+            type: type,
+          });
+          setHasWeeklyKeywordProgress(true);
+        }
+        return data;
+      } else if (response.status === 404) {
+        console.error("User not found.");
+      } else {
+        console.error(`Error: ${response.status}, ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
+
+  // 유저가 등록한 키워드 확인하기
   const getKeywordsForUser = async (userId: number) => {
     try {
       if (userId) {
         const response = await fetch(
-          `https://youticle.shop/keyword/keywords/${userId}`,
+          `https://claying.shop/keyword/keywords/${userId}`,
           {
             method: "GET",
             headers: {
@@ -278,43 +454,33 @@ const My = () => {
           </Tab>
         </Tabs>
         {/* 키워드가 있는 주기 타입에 따른 컴포넌트 전환 */}
-        {hasDailyKeyword &&
+        {hasDailyKeywordProgress &&
         currentTab === "데일리" &&
         currentUser.email !== "" ? (
-          <Information keyword={keyword.daily} />
-        ) : hasWeeklyKeyword &&
+          <Progress keyword={keyword.daily} currentTab={currentTab} />
+        ) : hasWeeklyKeywordProgress &&
           currentTab === "위클리" &&
           currentUser.email !== "" ? (
-          <Information keyword={keyword.weekly} />
+          <Progress keyword={keyword.weekly} currentTab={currentTab} />
+        ) : currentTab === "데일리" &&
+          hasDailyKeywordReport &&
+          currentUser.email !== "" ? (
+          <Report currentTab={currentTab} />
+        ) : currentTab === "위클리" &&
+          hasWeeklyKeywordReport &&
+          currentUser.email !== "" ? (
+          <Report currentTab={currentTab} />
         ) : (
-          <>
-            <InputSection>
-              <Title>
-                {currentTab === "데일리" ? "매일" : "매주"} 키워드 관련된 최신
-                유튜브 영상을 아티클로 읽어드립니다.
-              </Title>
-              <KeywordInput
-                type="text"
-                value={currentTab === "데일리" ? keyword.daily : keyword.weekly}
-                onChange={(e) => handleChangeKeyword(e, currentTab)}
-                placeholder="관심 키워드를 등록해주세요!"
-              />
-              <Dropdown topic={topic} handleChangeTopic={handleChangeTopic} />
-              {topic === "기타" && (
-                <KeywordInput
-                  type="text"
-                  value={directTopic}
-                  onChange={(e) => handleChangeDirectTopic(e)}
-                  placeholder="키워드 주제를 직접 입력해주세요!"
-                />
-              )}
-              <ServiceButton onClick={handleServiceButtonClick}>
-                {currentTab === "데일리" ? "데일리" : "위클리"} 구독하기
-              </ServiceButton>
-            </InputSection>
-            <ServiceDescription currentTab={currentTab} />
-            <SampleArticle />
-          </>
+          <KeywordInputForm
+            currentTab={currentTab}
+            keyword={keyword}
+            topic={topic}
+            directTopic={directTopic}
+            handleChangeKeyword={handleChangeKeyword}
+            handleChangeTopic={handleChangeTopic}
+            handleChangeDirectTopic={handleChangeDirectTopic}
+            handleServiceButtonClick={handleServiceButtonClick}
+          />
         )}
       </ServiceContents>
       <Footer />
@@ -327,7 +493,7 @@ const My = () => {
         />
       )}
       {alertPopupVisible && <AlertPopup closePopup={closePopup} />}
-      {hasDailyAlertKeyword && <KeywordAlertPopup closePopup={closePopup} />}
+      {hasAlertKeyword && <KeywordAlertPopup closePopup={closePopup} />}
     </Container>
   );
 };
@@ -432,44 +598,3 @@ const ServiceButton = styled.button`
   text-align: center;
   margin-top: 26px;
 `;
-
-// 팝업 오버레이 스타일
-const PopupOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5); // 투명한 검은색 배경
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-// 팝업 스타일
-const Popup = styled.div`
-  width: 300px;
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
-
-const PopupTitle = styled.h2`
-  font-size: 18px;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  width: 100px;
-  height: 40px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-`;
-
-const NewComponent = styled.div``;

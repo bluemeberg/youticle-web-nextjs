@@ -31,6 +31,7 @@ export default function RootLayout({
           rel="preload"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
           as="style"
+          crossOrigin="anonymous"
         />
         {/* Google tag (gtag.js) */}
         <script
@@ -54,16 +55,6 @@ export default function RootLayout({
             <AppContainer>
               <GlobalStyle />
               <ScrollToTop />
-              <IframeContainer>
-                <iframe
-                  title="disquiet-badge"
-                  src="https://badge.disquiet.io/vote-badge?productUrlSlug=유티클&mode=light"
-                  width="300"
-                  height="60"
-                  frameBorder="0"
-                  scrolling="no"
-                />
-              </IframeContainer>
               {children}
             </AppContainer>
           </StyledComponentsRegistry>

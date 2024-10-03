@@ -19,7 +19,6 @@ export default async function Editorpage() {
 
   // Parse the JSON responses
   const data1 = await response1.json();
-  console.log(data1);
   // 데이터를 클라이언트 컴포넌트에 전달
   return (
     <Suspense fallback={<div>로딩 중...</div>}>

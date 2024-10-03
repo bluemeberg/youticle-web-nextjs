@@ -29,8 +29,8 @@ export const calcuateTimeLeft = (): string => {
     now.getFullYear(),
     now.getMonth(),
     now.getDate() + 1,
-    9,
-    0,
+    7,
+    30,
     0
   );
   const diff = tomorrow.getTime() - now.getTime();
