@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
-import { ReportData } from "@/types/dataProps";
+import { DataProps } from "@/types/dataProps";
 import {
   parseSubscribersCount,
   timeSinceUpload,
@@ -12,7 +12,7 @@ import {
   timeAgo,
 } from "@/utils/formatter";
 
-interface TopicCardProps extends ReportData {
+interface TopicCardProps extends DataProps {
   icon: React.ReactNode;
 }
 
