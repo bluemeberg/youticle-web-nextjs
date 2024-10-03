@@ -111,10 +111,12 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
   return (
     <Container>
       <TitleContainer>
-        <Title>"엔비디아" 구독 중</Title>
+        <Title>&quot;엔비디아&quot; 구독 중</Title>{" "}
+        {/* 큰따옴표를 &quot;로 대체 */}
         <ChangeButton>수정</ChangeButton>
       </TitleContainer>
-      <Info>{today}, "엔비디아" 관련 유튜브 아티클</Info>
+      <Info>{today}, &quot;엔비디아&quot; 관련 유튜브 아티클</Info>{" "}
+      {/* 큰따옴표를 &quot;로 대체 */}
       <CountdownTimer scrollRef={scrollRef} />
       {currentTab === "위클리"
         ? weeklyData.map((item) => <ReportCard key={item.video_id} {...item} />)
