@@ -213,11 +213,14 @@ const My = () => {
         return data;
       } else if (response.status === 404) {
         console.error("User not found.");
+        return { status: 404 }; // 404 에러 반환
       } else {
         console.error(`Error: ${response.status}, ${response.statusText}`);
+        return { status: response.status };
       }
     } catch (error) {
       console.error("Error fetching user:", error);
+      return { status: 500 }; // 서버 오류 반환
     }
   };
   // taskid에 대한 상태 가져오기
@@ -269,7 +272,11 @@ const My = () => {
     if (currentTab === "데일리") {
       console.log(dailyTaskId, "데일리 체크");
       const res = await getTaskId(dailyTaskId.taskId);
-      if (res.status === "SUCCESS") {
+      if (res?.status === 404) {
+        console.log("Task ID not found, returning...");
+        return; // 404일 경우 단순히 리턴
+      }
+      if (res?.status === "SUCCESS") {
         setHasDailyKeywordReport(true);
       } else {
         setHasDailyKeywordProgress(true);
@@ -277,7 +284,11 @@ const My = () => {
     } else if (currentTab === "위클리") {
       console.log(weeklyTaskId, "위클리 체크");
       const res = await getTaskId(weeklyTaskId.taskId);
-      if (res.status === "SUCCESS") {
+      if (res?.status === 404) {
+        console.log("Task ID not found, returning...");
+        return; // 404일 경우 단순히 리턴
+      }
+      if (res?.status === "SUCCESS") {
         setHasWeeklyKeywordReport(true);
       } else {
         setHasWeeklyKeywordProgress(true);

@@ -78,7 +78,7 @@ const ServiceInput = styled.textarea`
   font-size: 20px;
   font-weight: 600;
   line-height: 40px;
-  text-align: center;
+  text-align: left;
 
   &::placeholder {
     white-space: pre-wrap;
