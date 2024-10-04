@@ -122,7 +122,11 @@ const My = () => {
             // SUCCESS가 아니면 진행 중 화면으로 인동
           } else {
             // 등록된 키워드가 없다면
-            await addKeywordForUser(data.id, keyword.daily, topic, "D");
+            if (topic === "기타") {
+              await addKeywordForUser(data.id, keyword.daily, directTopic, "D");
+            } else {
+              await addKeywordForUser(data.id, keyword.daily, topic, "D");
+            }
             // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "D");
             // 그리고 진행 중 컴포넌트 활성화
@@ -137,7 +141,12 @@ const My = () => {
             // false면 recoil의 taskid 상태 확인
             // SUCCESS가 아니면 진행 중 화면으로 인동
           } else {
-            await addKeywordForUser(data.id, keyword.weekly, topic, "W");
+            // 등록된 키워드가 없다면
+            if (topic === "기타") {
+              await addKeywordForUser(data.id, keyword.daily, directTopic, "W");
+            } else {
+              await addKeywordForUser(data.id, keyword.daily, topic, "W");
+            }
             // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "W");
             // 그리고 진행 중 컴포넌트 활성화
@@ -151,14 +160,22 @@ const My = () => {
             "404 에러 발생: 키워드가 없으므로 새로운 키워드를 추가합니다."
           );
           if (currentTab == "데일리") {
-            await addKeywordForUser(data.id, keyword.daily, topic, "D");
-            // 키워드 일회성 최초 동작
+            // 등록된 키워드가 없다면
+            if (topic === "기타") {
+              await addKeywordForUser(data.id, keyword.daily, directTopic, "D");
+            } else {
+              await addKeywordForUser(data.id, keyword.daily, topic, "D");
+            } // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "D");
             // 그리고 진행 중 컴포넌트 활성화
             setHasDailyKeywordProgress(true);
           } else {
-            await addKeywordForUser(data.id, keyword.weekly, topic, "W");
-            // 키워드 일회성 최초 동작
+            // 등록된 키워드가 없다면
+            if (topic === "기타") {
+              await addKeywordForUser(data.id, keyword.daily, directTopic, "W");
+            } else {
+              await addKeywordForUser(data.id, keyword.daily, topic, "W");
+            } // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "W");
             // 그리고 진행 중 컴포넌트 활성화
             setHasWeeklyKeywordProgress(true);
