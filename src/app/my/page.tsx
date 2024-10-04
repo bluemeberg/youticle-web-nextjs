@@ -217,8 +217,8 @@ const My = () => {
         console.log("get user report data:", data);
 
         // period가 'D' 또는 'W'인 경우에 따른 분기 처리
-        const hasDaily = data.some((item) => item.period === "D");
-        const hasWeekly = data.some((item) => item.period === "W");
+        const hasDaily = data.some((item: any) => item.period === "D");
+        const hasWeekly = data.some((item: any) => item.period === "W");
 
         if (hasDaily) {
           setHasDailyKeywordReport(true);

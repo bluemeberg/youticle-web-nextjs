@@ -149,6 +149,13 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
                 <MenuItem onClick={() => goToPage("/my")}>
                   나만의 아티클
                 </MenuItem>
+                <MenuItem
+                  onClick={() =>
+                    window.open("https://tally.so/r/w4vWqk", "_blank")
+                  }
+                >
+                  설문 참여하기
+                </MenuItem>
                 <MenuItem onClick={() => handleAuth(user.picture !== "")}>
                   {user.picture !== "" ? "로그아웃" : "로그인하기"}
                 </MenuItem>
@@ -275,6 +282,9 @@ const MenuDropdown = styled.div`
   }
   div:nth-child(4) {
     bottom: -240px;
+  }
+  div:nth-child(5) {
+    bottom: -300px;
   }
 `;
 
