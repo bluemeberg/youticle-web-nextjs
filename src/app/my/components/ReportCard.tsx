@@ -89,6 +89,7 @@ const Container = styled.div`
   border-radius: 8px;
   background: rgba(255, 255, 255, 1);
   margin-bottom: 20px;
+  margin-top: 20px;
 `;
 
 const CardHeader = styled.div`

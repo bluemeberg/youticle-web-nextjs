@@ -111,11 +111,35 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
   return (
     <Container>
       <TitleContainer>
-        <Title>&quot;엔비디아&quot; 구독 중</Title>{" "}
+        {currentTab === "위클리" ? (
+          weeklyData && weeklyData.length > 0 ? (
+            <Title>&quot;{weeklyData[0]["keyword"]}&quot; 구독 중</Title>
+          ) : (
+            <Title>로딩 중...</Title> // 데이터를 로딩 중일 때 표시할 메시지
+          )
+        ) : dailyData && dailyData.length > 0 ? (
+          <Title>&quot;{dailyData[0]["keyword"]}&quot; 구독 중</Title>
+        ) : (
+          <Title>로딩 중...</Title> // 데이터를 로딩 중일 때 표시할 메시지
+        )}
         {/* 큰따옴표를 &quot;로 대체 */}
         <ChangeButton>수정</ChangeButton>
       </TitleContainer>
-      <Info>{today}, &quot;엔비디아&quot; 관련 유튜브 아티클</Info>{" "}
+      {currentTab === "위클리" ? (
+        weeklyData && weeklyData.length > 0 ? (
+          <Info>
+            {today}, &quot;{weeklyData[0]["keyword"]}&quot; 관련 유튜브 아티클
+          </Info>
+        ) : (
+          <Info>로딩 중...</Info> // 데이터를 로딩 중일 때 표시할 메시지
+        )
+      ) : dailyData && dailyData.length > 0 ? (
+        <Info>
+          {today}, &quot;{dailyData[0]["keyword"]}&quot; 관련 유튜브 아티클
+        </Info>
+      ) : (
+        <Info>로딩 중...</Info> // 데이터를 로딩 중일 때 표시할 메시지
+      )}
       {/* 큰따옴표를 &quot;로 대체 */}
       <CountdownTimer scrollRef={scrollRef} />
       {currentTab === "위클리"
@@ -130,7 +154,7 @@ export default Report;
 const Container = styled.div`
   background-color: #f2f2f2;
   display: flex;
-  height: 100%;
+  height: 80vh;
   flex-direction: column;
   padding: 12px;
 `;
