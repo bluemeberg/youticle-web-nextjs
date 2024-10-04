@@ -148,12 +148,12 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
           weeklyData && weeklyData.length > 0 ? (
             <Title>&quot;{weeklyData[0]["keyword"]}&quot; 구독 중</Title>
           ) : (
-            <Title>로딩 중...</Title> // 데이터를 로딩 중일 때 표시할 메시지
+            <Title>오늘 레포트가 생성되지 않았습니다.</Title> // 데이터를 로딩 중일 때 표시할 메시지
           )
         ) : dailyData && dailyData.length > 0 ? (
           <Title>&quot;{dailyData[0]["keyword"]}&quot; 구독 중</Title>
         ) : (
-          <Title>로딩 중...</Title> // 데이터를 로딩 중일 때 표시할 메시지
+          <Title>오늘 레포트가 생성되지 않았습니다.</Title> // 데이터를 로딩 중일 때 표시할 메시지
         )}
         {/* 큰따옴표를 &quot;로 대체 */}
         <ChangeButton>수정</ChangeButton>
@@ -164,20 +164,27 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
             {today}, &quot;{weeklyData[0]["keyword"]}&quot; 관련 유튜브 아티클
           </Info>
         ) : (
-          <Info>로딩 중...</Info> // 데이터를 로딩 중일 때 표시할 메시지
+          <Info>오늘 레포트가 생성되지 않았습니다.</Info> // 데이터를 로딩 중일 때 표시할 메시지
         )
       ) : dailyData && dailyData.length > 0 ? (
         <Info>
           {today}, &quot;{dailyData[0]["keyword"]}&quot; 관련 유튜브 아티클
         </Info>
       ) : (
-        <Info>로딩 중...</Info> // 데이터를 로딩 중일 때 표시할 메시지
+        <Info>오늘 레포트가 생성되지 않았습니다.</Info> // 데이터를 로딩 중일 때 표시할 메시지
       )}
       {/* 큰따옴표를 &quot;로 대체 */}
       <CountdownTimer scrollRef={scrollRef} />
       {currentTab === "위클리"
         ? weeklyData.map((item) => <ReportCard key={item.video_id} {...item} />)
         : dailyData.map((item) => <ReportCard key={item.video_id} {...item} />)}
+      <ButtonContainer>
+        <Button
+          onClick={() => window.open("https://tally.so/r/w4vWqk", "_blank")}
+        >
+          서비스 개선 의견 공유하기 👉🏻
+        </Button>
+      </ButtonContainer>
     </Container>
   );
 };
@@ -196,6 +203,22 @@ const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+`;
+
+const Button = styled.button`
+  background-color: #000;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px 20px;
+  width: 80%;
+  border: none;
+  border-radius: 5px;
+  margin-top: 20px;
+  cursor: pointer;
+  &:hover {
+    background-color: #000;
+  }
 `;
 
 const Title = styled.div`
@@ -228,4 +251,10 @@ const Info = styled.div`
   font-weight: 600;
   font-size: 16px;
   margin-top: 32px;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;

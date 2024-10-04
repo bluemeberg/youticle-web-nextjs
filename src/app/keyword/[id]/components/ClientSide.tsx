@@ -162,6 +162,13 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         thumbnails={thumbnails}
         handleTocItemClick={handleTocItemClick}
       />
+      <ButtonContainer>
+        <Button
+          onClick={() => window.open("https://tally.so/r/w4vWqk", "_blank")}
+        >
+          서비스 개선 의견 공유하기 👉🏻
+        </Button>
+      </ButtonContainer>
       <Footer />
     </Container>
   );
@@ -298,4 +305,27 @@ const Loader = styled.div`
   );
   background-size: 200% 100%;
   animation: ${LoaderAnimation} 1.5s infinite;
+`;
+
+const Button = styled.button`
+  background-color: #000;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  margin-bottom: 40px;
+  width: 80%;
+
+  cursor: pointer;
+  &:hover {
+    background-color: #000;
+  }
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
