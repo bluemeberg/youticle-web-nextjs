@@ -24,6 +24,34 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 유저 정보 가져오기
+  const getUserByEmail = async (email: string): Promise<{ id: number }> => {
+    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("User data:", data);
+        return data;
+      } else if (response.status === 404) {
+        console.error("User not found. Creating new user...");
+      } else {
+        console.error(`Error: ${response.status}, ${response.statusText}`);
+        throw new Error(`Error: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      throw error;
+    }
+  };
+
   // taskid에 대한 상태 가져오기
   const getUserReport = async (userId: number) => {
     const url = `https://claying.shop/keyword/user?user_id=${userId}`;
@@ -48,24 +76,26 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
       console.error("Error fetching user:", error);
     }
   };
+
   useEffect(() => {
-    let userId;
+    const fetchUserAndReport = async () => {
+      try {
+        // 이메일을 통해 유저 정보 가져오기
+        const userData = await getUserByEmail(currentUser.email);
 
-    // Check currentTab and assign the appropriate taskId based on weekly or daily
+        // 유저 ID를 기반으로 User Report 가져오기
+        if (userData?.id) {
+          await getUserReport(userData.id);
+        }
+      } catch (error) {
+        console.error("Error fetching user and report:", error);
+      }
+    };
 
-    if (currentTab === "위클리" && weeklyTaskId.userId) {
-      console.log("위클리", weeklyTaskId);
-      userId = weeklyTaskId.userId;
-    } else if (currentTab === "데일리" && dailyTaskId.userId) {
-      console.log("데일리", dailyTaskId);
-      userId = dailyTaskId.userId;
+    if (currentUser && currentUser.email) {
+      fetchUserAndReport();
     }
-
-    // If currentUser and taskId are available, fetch the report
-    if (currentUser && userId) {
-      getUserReport(Number(userId));
-    }
-  }, [currentUser, weeklyTaskId, dailyTaskId, currentTab]); // Add currentTab to dependencies
+  }, [currentUser]); // currentUser가 변경될 때마다 실행
 
   // Split data based on the period, with null-checks for briefing_channel and other fields
   const weeklyData = reportData

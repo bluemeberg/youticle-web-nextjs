@@ -222,15 +222,14 @@ const My = () => {
 
         if (hasDaily) {
           setHasDailyKeywordReport(true);
+        } else {
+          await handleTaskIdFallback(); // hasDaily가 없으면 처리
         }
 
         if (hasWeekly) {
           setHasWeeklyKeywordReport(true);
-        }
-
-        // 만약 둘 다 없다면 기존 taskId 처리
-        if (!hasDaily && !hasWeekly) {
-          await handleTaskIdFallback();
+        } else {
+          await handleTaskIdFallback(); // hasWeekly가 없으면 처리
         }
 
         return data;
