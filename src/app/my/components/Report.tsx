@@ -154,9 +154,10 @@ export default Report;
 const Container = styled.div`
   background-color: #f2f2f2;
   display: flex;
-  height: 80vh;
+  height: 100%;
   flex-direction: column;
   padding: 12px;
+  padding-bottom: 100px;
 `;
 const TitleContainer = styled.div`
   display: flex;

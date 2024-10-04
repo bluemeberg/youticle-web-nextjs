@@ -200,6 +200,71 @@ const My = () => {
       console.error("Error fetching user:", error);
     }
   };
+  // taskid에 대한 상태 가져오기
+  const getUserReport = async (userId: number) => {
+    const url = `https://claying.shop/keyword/user?user_id=${userId}`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+        },
+      });
+
+      // 성공적으로 데이터를 받아온 경우
+      if (response.ok) {
+        const data = await response.json();
+        console.log("get user report data:", data);
+
+        // period가 'D' 또는 'W'인 경우에 따른 분기 처리
+        const hasDaily = data.some((item) => item.period === "D");
+        const hasWeekly = data.some((item) => item.period === "W");
+
+        if (hasDaily) {
+          setHasDailyKeywordReport(true);
+        }
+
+        if (hasWeekly) {
+          setHasWeeklyKeywordReport(true);
+        }
+
+        // 만약 둘 다 없다면 기존 taskId 처리
+        if (!hasDaily && !hasWeekly) {
+          await handleTaskIdFallback();
+        }
+
+        return data;
+      } else if (response.status === 404) {
+        console.error("User not found.");
+      } else {
+        console.error(`Error: ${response.status}, ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      await handleTaskIdFallback();
+    }
+  };
+
+  // 기존 taskId를 가져오는 로직
+  const handleTaskIdFallback = async () => {
+    if (currentTab === "데일리") {
+      console.log(dailyTaskId, "데일리 체크");
+      const res = await getTaskId(dailyTaskId.taskId);
+      if (res.status === "SUCCESS") {
+        setHasDailyKeywordReport(true);
+      } else {
+        setHasDailyKeywordProgress(true);
+      }
+    } else if (currentTab === "위클리") {
+      console.log(weeklyTaskId, "위클리 체크");
+      const res = await getTaskId(weeklyTaskId.taskId);
+      if (res.status === "SUCCESS") {
+        setHasWeeklyKeywordReport(true);
+      } else {
+        setHasWeeklyKeywordProgress(true);
+      }
+    }
+  };
 
   // 유저 정보가 있을 때 API 호출
   useEffect(() => {
@@ -207,47 +272,16 @@ const My = () => {
       if (currentUser.email !== "") {
         console.log("check", currentUser);
         try {
-          const data = await getUserByEmail(currentUser.email); // Await for the async function
+          const data = await getUserByEmail(currentUser.email);
           console.log("email check", data);
-          // Check if the userId matches
-          if (currentTab === "데일리") {
-            console.log(dailyTaskId, "데일리 체크");
-            if (data.id === dailyTaskId.userId) {
-              console.log("daily hi");
-              const res = await getTaskId(dailyTaskId.taskId);
-              if (res.status === "SUCCESS") {
-                console.log("daily yes");
-                // 저장된 taskid의 주기 타입에 따라서 레포트 컴포넌트 활성화 분기
-                setHasDailyKeywordReport(true);
-              } else if (res.status != "SUCCESS") {
-                console.log("progressing");
-                // 저장된 taskid의 주기 타입에 따라서 진행중 컴포넌트 활성화 분기
-                setHasDailyKeywordProgress(true);
-              }
-            }
-          } else {
-            console.log(weeklyTaskId);
-            if (data.id === weeklyTaskId.userId) {
-              console.log("hi");
-              const res = await getTaskId(weeklyTaskId.taskId);
-              if (res.status === "SUCCESS") {
-                console.log("yes");
-                // 저장된 taskid의 주기 타입에 따라서 레포트 컴포넌트 활성화 분기
-                setHasWeeklyKeywordReport(true);
-                console.log(hasWeeklyKeywordReport);
-              } else if (res.status != "SUCCESS") {
-                console.log("progressing");
-                // 저장된 taskid의 주기 타입에 따라서 진행중 컴포넌트 활성화 분기
-                setHasWeeklyKeywordProgress(true);
-              }
-            }
-          }
+          // 이후의 유저 ID에 따라 로직 실행
+          await getUserReport(data.id);
         } catch (error) {
           console.error("Error fetching user data:", error);
         }
       }
     };
-    fetchUser(); // Call the async function inside useEffect
+    fetchUser();
   }, [currentUser, currentTab]);
 
   // 유저 정보 최초 등록
