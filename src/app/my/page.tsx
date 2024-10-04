@@ -80,6 +80,7 @@ const My = () => {
 
   const handleTabClick = (tab: string) => setCurrentTab(tab);
   const handleServiceButtonClick = async () => {
+    console.log(directTopic);
     if (
       (currentTab === "데일리" && !keyword.daily) ||
       (currentTab === "위클리" && !keyword.weekly) ||
@@ -106,6 +107,7 @@ const My = () => {
 
   const processing = async (user: User) => {
     //
+    console.log("기타 토픽", directTopic);
     if (user.email !== "") {
       // user 정보 등록 확인, 없으면 신규 등록함
       const data = await getUserByEmail(user.email);
@@ -123,6 +125,7 @@ const My = () => {
           } else {
             // 등록된 키워드가 없다면
             if (topic === "기타") {
+              console.log("기타 토픽", topic, directTopic);
               await addKeywordForUser(data.id, keyword.daily, directTopic, "D");
             } else {
               await addKeywordForUser(data.id, keyword.daily, topic, "D");
@@ -285,8 +288,11 @@ const My = () => {
   // 유저 정보가 있을 때 API 호출
   useEffect(() => {
     const fetchUser = async () => {
+      console.log("기타 토픽", directTopic);
+
       if (currentUser.email !== "") {
         console.log("check", currentUser);
+
         try {
           const data = await getUserByEmail(currentUser.email);
           console.log("email check", data);
