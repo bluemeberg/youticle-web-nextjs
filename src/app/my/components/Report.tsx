@@ -25,7 +25,9 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 유저 정보 가져오기
-  const getUserByEmail = async (email: string): Promise<{ id: number }> => {
+  const getUserByEmail = async (
+    email: string
+  ): Promise<{ id: number } | undefined> => {
     const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
 
     try {
@@ -42,6 +44,7 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
         return data;
       } else if (response.status === 404) {
         console.error("User not found. Creating new user...");
+        return undefined; // 명시적으로 undefined 반환
       } else {
         console.error(`Error: ${response.status}, ${response.statusText}`);
         throw new Error(`Error: ${response.statusText}`);
