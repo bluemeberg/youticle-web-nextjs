@@ -35,7 +35,12 @@ export interface SummaryData {
   headline_title: string;
   headline_sub_title: string;
   short_summary: string;
+  key_points?: KeyPoint[]; // key_points 배열 추가
   section: Section[];
+}
+
+export interface KeyPoint {
+  point: string; // key_points 배열의 point 필드
 }
 
 export interface Section {

@@ -146,9 +146,14 @@ const My = () => {
           } else {
             // 등록된 키워드가 없다면
             if (topic === "기타") {
-              await addKeywordForUser(data.id, keyword.daily, directTopic, "W");
+              await addKeywordForUser(
+                data.id,
+                keyword.weekly,
+                directTopic,
+                "W"
+              );
             } else {
-              await addKeywordForUser(data.id, keyword.daily, topic, "W");
+              await addKeywordForUser(data.id, keyword.weekly, topic, "W");
             }
             // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "W");
@@ -175,9 +180,14 @@ const My = () => {
           } else {
             // 등록된 키워드가 없다면
             if (topic === "기타") {
-              await addKeywordForUser(data.id, keyword.daily, directTopic, "W");
+              await addKeywordForUser(
+                data.id,
+                keyword.weekly,
+                directTopic,
+                "W"
+              );
             } else {
-              await addKeywordForUser(data.id, keyword.daily, topic, "W");
+              await addKeywordForUser(data.id, keyword.weekly, topic, "W");
             } // 키워드 일회성 최초 동작
             const res = await executeFirstScehdule(data.id, "W");
             // 그리고 진행 중 컴포넌트 활성화

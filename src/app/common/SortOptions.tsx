@@ -95,11 +95,11 @@ const Container = styled.div<{
   variant: "default" | "border";
 }>`
   display: flex;
-  justify-content: space-between;
+  justify-content: right;
   align-items: center;
   margin-bottom: 16px;
   margin-top: ${(props) =>
-    props.variant === "border" ? "32px" : props.$isFixed ? "130px" : "0px"};
+    props.variant === "border" ? "32px" : props.$isFixed ? "130px" : "20px"};
 
   div {
     display: flex;
@@ -140,26 +140,24 @@ const OptionBtn = styled.button<{
   width: 72px;
   height: 28px;
   border-radius: 4px;
-  background-color: ${(props) => (props.selected ? "#FFFFFF" : "transparent")};
+  background-color: ${(props) => (props.selected ? "#007BFF" : "transparent")};
   font-family: var(--font-Pretendard);
   font-size: 12px;
   font-weight: 500;
   line-height: 14.52px;
-  color: ${(props) => (props.selected ? "#000000E7" : "#7E7E7E")};
-
+  color: ${(props) => (props.selected ? "#FFFFFF" : "#007BFF")};
+  border: 1px solid #007bff;
   ${({ variant, selected }) =>
     variant === "border"
       ? selected
         ? "border: 1px solid rgba(0,0,0,1);"
         : "border: none;"
-      : ""}
-
-  color: ${(props) =>
+      : ""}; /* color: ${(props) =>
     props.variant === "border"
       ? props.selected
         ? "rgba(0,0,0,0.9059)"
         : "rgba(126,126,126,1)"
       : props.selected
       ? "#000000E7"
-      : "#7E7E7E"};
+      : "#7E7E7E"}; */
 `;

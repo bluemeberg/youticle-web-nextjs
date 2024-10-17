@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import TopicCard from "./TopicCard";
+import TopicCard from "../../components/TopicCard";
 import { DataProps } from "@/types/dataProps";
 import TodayIcon from "@/assets/today.svg";
 import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
 import CountdownTimer from "@/common/CountdownTimer";
 import SortOptions from "@/common/SortOptions";
-import TopicNav from "./TopicNav";
+import TopicNav from "../../components/TopicNav";
 import { topicState } from "@/store/topic";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
-const TODAY_TITLE = "오늘의 유튜브 아티클";
+const TODAY_TITLE = "미구독 중인 주제의 아티클";
 
 interface YoutubeTodayProps {
   data: DataProps[];
@@ -89,22 +89,17 @@ const YoutubeToday = ({ data }: YoutubeTodayProps) => {
 
   return (
     <Container>
-      <TodayTitle>
-        <TodayIcon />
-        {TODAY_TITLE}
-      </TodayTitle>
-      <TodaySubTitle>
-        오늘 업로드된 19가지 주요 주제들의 영상을 <br />단 1초만에 아티클로 읽을
-        수 있습니다.
-      </TodaySubTitle>
-      <CountdownTimer scrollRef={scrollRef} />
-      <TopicNavContainer>
-        <TopicNav
-          $isFixed={isFixed}
-          selectedTopic={selectedTopic}
-          handleTopicClick={handleTopicClick}
-        ></TopicNav>
-      </TopicNavContainer>
+      <SubContainer>
+        <TodayTitle>{TODAY_TITLE}</TodayTitle>
+        <CountdownTimer scrollRef={scrollRef} />
+        <TopicNavContainer>
+          <TopicNav
+            $isFixed={isFixed}
+            selectedTopic={selectedTopic}
+            handleTopicClick={handleTopicClick}
+          ></TopicNav>
+        </TopicNavContainer>
+      </SubContainer>
       <SortOptions
         ref={sortOptionsRef}
         isFixed={isFixed}
@@ -130,21 +125,25 @@ export default YoutubeToday;
 
 const Container = styled.div`
   width: 100%;
-  background-color: rgba(242, 242, 242, 1);
-  padding: 24px 12px;
+  background-color: #ffff;
   display: flex;
   flex-direction: column;
   margin-top: 36px;
   font-family: "Pretendard Variable";
 `;
 
+const SubContainer = styled.div`
+  background-color: #f8f9fa;
+  padding: 24px 12px 12px 12px;
+`;
+
 const TodayTitle = styled.span`
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 28.64px;
-  color: rgba(0, 123, 255, 1);
+  color: #000;
   letter-spacing: -1px;
-  margin-bottom: 12px;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -165,4 +164,5 @@ const TodaySubTitle = styled.span`
 const TopicNavContainer = styled.div`
   padding: 0;
   margin-left: -20px;
+  background-color: #f8f9fa;
 `;

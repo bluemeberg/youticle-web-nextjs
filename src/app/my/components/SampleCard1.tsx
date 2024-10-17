@@ -21,18 +21,19 @@ const SUMMARY_DATA = {
   score: 0.926043812020221,
 };
 const CHANNEL_DETAILS = {
-  channel_id: "UCjsm-25chou6wFu50erRtCg",
-  channel_name: "Two Stupid Guys Trade Stocks",
-  channel_subscribers: 8740,
-  channel_video_count: 651,
-  channel_view_count: 1013660,
+  channel_id: "UCFqXmQ56 - Gp1rIKa - GoAJvQ",
+  channel_name: "Andy Stapleton",
+  channel_subscribers: 259000,
+  channel_video_count: 523,
+  channel_view_count: 19028104,
   channel_thumbnail:
-    "https://yt3.ggpht.com/ytc/AIdro_m_lKcKQtls6T29Px88AxZeRn7QLt0Rl2oeCsLTAhiRXw=s88-c-k-c0x00ffffff-no-rj",
+    "https://yt3.ggpht.com/ytc/AIdro_ndQolRBIdQMrEWMSLhghYFmLLkJZKWmywT6fe5uAaeVfk=s88-c-k-c0x00ffffff-no-rj",
   channel_banner:
-    "https://yt3.ggpht.com/ytc/AIdro_m_lKcKQtls6T29Px88AxZeRn7QLt0Rl2oeCsLTAhiRXw=s800-c-k-c0x00ffffff-no-rj",
+    "https://yt3.ggpht.com/ytc/AIdro_ndQolRBIdQMrEWMSLhghYFmLLkJZKWmywT6fe5uAaeVfk=s800-c-k-c0x00ffffff-no-rj",
 };
-const THUMBNAIL = "https://i.ytimg.com/vi/HULbCjTw3tw/sddefault.jpg";
-const UPLOAD_DATE = "2024-09-29T19:48:18+09:00";
+
+const THUMBNAIL = "https://i.ytimg.com/vi/wTw5JOs_MUw/sddefault.jpg";
+const UPLOAD_DATE = "2024-10-15T01:30:35";
 
 const SampleCard = () => {
   const router = useRouter();
@@ -46,8 +47,8 @@ const SampleCard = () => {
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
-        <Section>#주식</Section>
-        <Title>알리바바 급등, 왜 지금 투자해야 할까?</Title>
+        <Section>#인공지능</Section>
+        <Title>AI 도구의 혁신, 어떤 도구가 연구에 도움이 될까?</Title>
       </CardHeader>
       <Body>
         <Summary>

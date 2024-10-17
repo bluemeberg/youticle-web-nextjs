@@ -13,7 +13,6 @@ interface GoogleLoginProps {
 
 const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
   const setUser = useSetRecoilState(userState);
-  const currentUser = useRecoilValue(userState); // userState 값을 읽음
 
   const provider = new GoogleAuthProvider();
 
@@ -29,7 +28,6 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
       console.error(e);
     }
   };
-  console.log(currentUser);
 
   return (
     <StyledComponent

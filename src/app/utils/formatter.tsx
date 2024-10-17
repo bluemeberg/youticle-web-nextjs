@@ -18,6 +18,22 @@ export const parseSubscribersCount = (count: number): string => {
   }
 };
 
+// 구독자 수를 파싱하는 함수
+export const parseVideoCountcribersCount = (count: number): string => {
+  if (count < 1000) {
+    return `${count}`;
+  } else if (count < 10000) {
+    return `${(count / 1000).toFixed(2).replace(/\.?0+$/, "")}천`;
+  } else if (count < 100000000) {
+    if (count >= 1000000) {
+      return `${Math.floor(count / 10000)}만`;
+    }
+    return `${(count / 10000).toFixed(2).replace(/\.?0+$/, "")}만`;
+  } else {
+    return `${(count / 100000000).toFixed(1).replace(/\.?0+$/, "")}억`;
+  }
+};
+
 // 시간을 두 자리 숫자로 포맷팅하는 함수
 const formatToTwoDigits = (time: number): string =>
   time.toString().padStart(2, "0");

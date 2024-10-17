@@ -3,13 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { isDesktop } from "react-device-detect";
-import { YOUTUBE_TOPICS } from "@/constants/topic";
+// import { YOUTUBE_TOPICS } from "@/constants/topic";
 
 interface TopicNavProps {
   $isFixed: boolean;
   selectedTopic: string;
   handleTopicClick: (topic: string) => void;
 }
+
+// 주제 목록 및 아이콘을 정의합니다.
+const YOUTUBE_TOPICS = [
+  { topic: "전체", icon: "🌐" },
+  { topic: "주식", icon: "📈" },
+  { topic: "부동산", icon: "🏢" },
+  { topic: "가상자산", icon: "💰" },
+  { topic: "정치", icon: "🏛️" },
+  { topic: "비즈니스/사업", icon: "💼" },
+  { topic: "건강", icon: "🩺" },
+  { topic: "피트니스/운동", icon: "🏋️" },
+  { topic: "스포츠", icon: "⚽" },
+  { topic: "연애/결혼", icon: "❤️" },
+  { topic: "육아", icon: "👶" },
+  { topic: "뷰티/메이크업", icon: "💄" },
+  { topic: "패션", icon: "👗" },
+  { topic: "요리", icon: "🍳" },
+  { topic: "게임", icon: "🎮" },
+  { topic: "IT/테크", icon: "💻" },
+  { topic: "인공지능", icon: "🤖" },
+  { topic: "자동차", icon: "🚗" },
+];
 
 const TopicNav = ({
   $isFixed,
@@ -95,8 +117,6 @@ const Container = styled.div<{
   flex-direction: column;
   gap: 12px;
   padding: 12px 0;
-  margin-bottom: 12px;
-  background-color: rgba(242, 242, 242, 1);
 
   margin-left: ${({ $isFixed, $hasScrolled }) =>
     $isFixed ? ($hasScrolled ? "0" : "20px") : $hasScrolled ? "0" : "20px"};
@@ -114,6 +134,7 @@ const Container = styled.div<{
   }
   -ms-overflow-style: none;
   scrollbar-width: none;
+  background-color: #f8f9fa;
 `;
 
 const Column = styled.div`
@@ -123,19 +144,20 @@ const Column = styled.div`
 
 const Topic = styled.div<{ selected: boolean }>`
   width: auto;
-  height: 32px;
+  height: 36px;
   display: flex;
   align-items: center;
   padding: 6px 12px;
   gap: 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 1);
-  background-color: ${(props) => (props.selected ? "#30D5C8" : "#D9D9D9")};
+  border-radius: 8px;
+  background-color: ${(props) => (props.selected ? "#007BFF" : "#F0F4FF")};
+  color: ${(props) => (props.selected ? "#fff" : "#737373")};
 
+  font-size: 14px;
   span {
     font-family: var(--font-Pretendard);
-    font-size: 12px;
-    font-weight: 400;
+    font-size: 14px;
+    font-weight: ${(props) => (props.selected ? 700 : 400)};
     line-height: 14.32px;
     white-space: nowrap;
     text-align: center;

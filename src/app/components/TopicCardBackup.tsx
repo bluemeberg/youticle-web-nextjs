@@ -7,17 +7,18 @@ import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
 import {
   parseSubscribersCount,
-  timeAgo,
+  timeSinceUpload,
   removeMarkTags,
+  timeAgo,
   parseVideoCountcribersCount,
 } from "@/utils/formatter";
 import LikeIcon from "@/assets/like_icon.svg";
 import ViewIcon from "@/assets/view_icon.svg";
-import { useEffect, useState } from "react";
 
 interface TopicCardProps extends DataProps {
   icon: React.ReactNode;
 }
+
 const TopicCard = (props: TopicCardProps) => {
   const router = useRouter();
   const setTopicState = useSetRecoilState(detailDataState);
@@ -37,66 +38,51 @@ const TopicCard = (props: TopicCardProps) => {
     setTopicState(props);
     router.push(`/detail/${video_id}`);
   };
-
-  const short_summary = removeMarkTags(summary_data?.short_summary || "");
-
-  // ChannelInfoContainer의 높이를 동적으로 저장하기 위한 state
-  const [channelInfoHeight, setChannelInfoHeight] = useState(0);
-
-  useEffect(() => {
-    const channelInfoContainer = document.getElementById(
-      `channel-info-${video_id}`
-    );
-    if (channelInfoContainer) {
-      setChannelInfoHeight(channelInfoContainer.offsetHeight); // ChannelInfoContainer의 높이를 저장
-    }
-  }, []);
-
+  const short_summary = removeMarkTags(summary_data.short_summary);
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
+        {/* <IconWrapper>
+          <IconBox>{icon}</IconBox>
+          {section === "뷰티/메이크업" ? (
+            <span>
+              뷰티/ <br /> 메이크업
+            </span>
+          ) : (
+            <span>{section}</span>
+          )}
+        </IconWrapper> */}
         <Section>#{section}</Section>
         <Title>
-          {summary_data?.headline_title}, {summary_data?.headline_sub_title}
+          {summary_data.headline_title}, {summary_data.headline_sub_title}
         </Title>
       </CardHeader>
       <BodyContainer>
-        <ChannelInfoContainer id={`channel-info-${video_id}`}>
+        <ChannelInfoContainer>
           <Thumbnail src={thumbnail} />
           <VideoInfo>
             <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
             <LikeIcon /> <span>{parseVideoCountcribersCount(likes)}</span>
           </VideoInfo>
           <ChannelInfo>
-            <ProfileImage src={channel_details.channel_thumbnail} />
+            <ProfileImage
+              src={channel_details.channel_thumbnail}
+            ></ProfileImage>
             <ProfileInfo>
               <Name>{channel_details.channel_name}</Name>
               <SubsUpload>
                 <Subscriber>
                   {parseSubscribersCount(channel_details.channel_subscribers)}
                 </Subscriber>
-                <UploadTime>{timeAgo(upload_date)}</UploadTime>
+                <UploadTime> {timeAgo(upload_date)}</UploadTime>
               </SubsUpload>
             </ProfileInfo>
           </ChannelInfo>
         </ChannelInfoContainer>
         <Body>
-          {section === "주식" && summary_data?.key_points?.length ? (
-            <Summary>
-              {summary_data.key_points.map((point, index) => (
-                <SummaryContainer key={index}>
-                  <Divider height={`${channelInfoHeight / 5}px`} />
-                  <SummaryContent fontSize={`16px`}>
-                    {point.point}
-                  </SummaryContent>
-                </SummaryContainer>
-              ))}
-            </Summary>
-          ) : (
-            <Summary>
-              <p>{summary_data.short_summary}</p>
-            </Summary>
-          )}
+          <Summary>
+            <p>{summary_data.short_summary}</p>
+          </Summary>
         </Body>
       </BodyContainer>
     </Container>
@@ -105,12 +91,11 @@ const TopicCard = (props: TopicCardProps) => {
 
 export default TopicCard;
 
-// 스타일 정의
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 20px 12px;
+  padding: 20px 12px 20px 12px;
   gap: 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 1);
@@ -139,11 +124,37 @@ const Section = styled.div`
   font-weight: 700;
 `;
 
+const IconWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+
+  span {
+    font-family: var(--font-Pretendard);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 12px;
+    text-align: center;
+    width: 46px;
+  }
+`;
+
 const Body = styled.div`
   display: flex;
   align-items: center;
   max-width: 200px;
   min-width: 200px;
+`;
+const IconBox = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #30d5c8;
 `;
 
 const Title = styled.span`
@@ -157,23 +168,35 @@ const SummaryContainer = styled.div`
   align-items: center;
   margin-bottom: 12px;
 `;
-
-const Divider = styled.div<{ height: string }>`
-  height: ${(props) => props.height};
+const Divider = styled.div`
+  height: 28px;
   min-width: 2px;
   background-color: #000;
 `;
 
-const SummaryContent = styled.div<{ fontSize: string }>`
+const SummaryConetent = styled.div`
   margin-left: 4px;
-  font-size: ${(props) => props.fontSize};
+  font-size: 16px;
   line-height: 120%;
-  font-weight: 500;
 `;
 
 const Summary = styled.div`
   border-radius: 4px;
   margin-left: 12px;
+  p {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 140%;
+    color: rgb(60 60 61);
+    display: -webkit-box;
+    word-break: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    box-sizing: border-box;
+  }
 `;
 
 const Thumbnail = styled.img`
@@ -216,6 +239,7 @@ const ChannelInfo = styled.div`
   gap: 9px;
   height: 36px;
   margin-top: 12px;
+  flex-direction: row;
 `;
 
 const ProfileImage = styled.img`
@@ -234,7 +258,7 @@ const Name = styled.span`
   font-size: 14px;
   line-height: 19.6px;
   display: inline-block;
-  max-width: 132px;
+  max-width: 132px; // 적절한 너비 설정 (10글자를 넘지 않도록)
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
