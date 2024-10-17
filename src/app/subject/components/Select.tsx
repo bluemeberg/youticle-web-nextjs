@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import LogoHeader from "@/common/LogoHeader";
-import LoginPopup from "./LoginPopup";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { useRouter } from "next/navigation";
 
