@@ -61,7 +61,7 @@ const ButtonContainer = styled.div`
 `;
 // img 태그 스타일 적용
 const YoutubeThumbnail = styled.img`
-  width: 92%;
+  width: 80%;
 `;
 
 const WhatSection: React.FC = () => {
