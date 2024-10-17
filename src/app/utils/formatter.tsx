@@ -75,31 +75,31 @@ export const formatTimeRange = (startMinutes: number): string => {
 };
 
 // 요약 텍스트를 포맷팅하는 함수
-// export const formatSummary = (summary: string) => {
-//   const regex = /(?<!\d\.\d)\. /g;
+export const formatSummary = (summary: string) => {
+  const regex = /(?<!\d\.\d)\. /g;
 
-//   return summary
-//     .split(regex)
-//     .filter((sentence) => sentence.trim() !== "")
-//     .map((sentence, index, array) => {
-//       const parts = sentence.split(/(<mark>.*?<\/mark>)/g).map((part, i) =>
-//         part.startsWith("<mark>") ? (
-//           <b style={{ fontWeight: "bold" }} key={i}>
-//             {part.replace(/<\/?mark>/g, "")}
-//           </b>
-//         ) : (
-//           part
-//         )
-//       );
+  return summary
+    .split(regex)
+    .filter((sentence) => sentence.trim() !== "")
+    .map((sentence, index, array) => {
+      const parts = sentence.split(/(<mark>.*?<\/mark>)/g).map((part, i) =>
+        part.startsWith("<mark>") ? (
+          <b style={{ fontWeight: "bold" }} key={i}>
+            {part.replace(/<\/?mark>/g, "")}
+          </b>
+        ) : (
+          part
+        )
+      );
 
-//       return (
-//         <span key={index} className="line-break">
-//           {parts}
-//           {index !== array.length - 1 ? "." : ""}
-//         </span>
-//       );
-//     });
-// };
+      return (
+        <span key={index} className="line-break">
+          {parts}
+          {index !== array.length - 1 ? "." : ""}
+        </span>
+      );
+    });
+};
 
 export const timeSinceUpload = (uploadTime: string) => {
   // 현재 시각 가져오기
