@@ -5,7 +5,6 @@ import PlayIcon from "@/assets/play.svg";
 import { formatTimeRange } from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
-import { formatSummary } from "@/utils/formatter";
 import { Section } from "@/types/dataProps";
 
 interface TocItemProps {
