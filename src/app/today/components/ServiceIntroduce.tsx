@@ -40,7 +40,7 @@ const ServiceIntroduce = () => {
               dangerouslySetInnerHTML={{ __html: FREE_BENEFITS_DESC }}
             />
             <ButtonContainer>
-              <ServiceButton onClick={() => goToPage("my")}>
+              <ServiceButton onClick={() => goToPage("subject")}>
                 관심 주제 무료 구독하러가기
               </ServiceButton>
             </ButtonContainer>
