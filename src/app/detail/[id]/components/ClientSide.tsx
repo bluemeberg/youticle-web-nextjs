@@ -26,7 +26,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
-
+  console.log(detailData);
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
     setVideoPlayer(event.target);
     setIsLoading(false);
@@ -145,7 +145,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       <Preview $isFixed={isFixed}>
         <div>
           <span>🔎 미리보기</span>
-          {formatSummary(detailData.summary_data.short_summary)}
+          {detailData.summary_data.short_summary}
         </div>
       </Preview>
       <TOC>

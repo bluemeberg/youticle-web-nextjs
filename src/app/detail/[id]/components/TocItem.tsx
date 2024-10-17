@@ -51,7 +51,7 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
             <span>{formatTimeRange(start)}</span>
           </Timeline>
           <Summary>
-            {formatSummary(summary)}
+            {summary}
             {explanation_keyword ? (
               <TipArea>
                 💡 <Tip>{explanation_keyword}</Tip>
