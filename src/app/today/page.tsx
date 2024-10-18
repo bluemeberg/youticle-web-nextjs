@@ -33,7 +33,7 @@ export default async function LandingPage() {
   // Fetch both APIs in parallel using Promise.all
   const [response1, response2] = await Promise.all([
     fetch(EXCEPT_STOCK_API_URL, { method: "GET", cache: "no-store" }),
-    fetch(STOCK_API_URL_LOCAL, { method: "GET", cache: "no-store" }),
+    fetch(STOCK_API_URL, { method: "GET", cache: "no-store" }),
   ]);
 
   // Handle errors

@@ -83,12 +83,12 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   useEffect(() => {
     const fetchThumbnails = async () => {
       try {
-        // const thumbnailResponse = await fetch(
-        //   `https://youticle.shop/briefing/capture_frames/${id}`
-        // );
         const thumbnailResponse = await fetch(
-          `http://0.0.0.0:8000/briefing/capture_frames/${id}`
+          `https://youticle.shop/briefing/capture_frames/${id}`
         );
+        // const thumbnailResponse = await fetch(
+        //   `http://0.0.0.0:8000/briefing/capture_frames/${id}`
+        // );
         if (!thumbnailResponse.ok)
           throw new Error("Failed to fetch thumbnails");
 
