@@ -46,7 +46,7 @@ const Contents = ({
       calculateHeight();
     }
   }, [tocItemsRef, detailData, thumbnails]);
-
+  console.log(detailData);
   return (
     <>
       <ContentWrapper>

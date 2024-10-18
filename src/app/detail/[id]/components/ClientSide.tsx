@@ -9,6 +9,8 @@ import Contents from "./Contents";
 import { DataProps } from "@/types/dataProps";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
+import { formatSummary } from "@/utils/formatter";
+
 import { isDesktop } from "react-device-detect";
 
 interface ClientSideProps {
@@ -25,7 +27,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
-  console.log(detailData);
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
     setVideoPlayer(event.target);
     setIsLoading(false);
@@ -82,8 +83,11 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   useEffect(() => {
     const fetchThumbnails = async () => {
       try {
+        // const thumbnailResponse = await fetch(
+        //   `https://youticle.shop/briefing/capture_frames/${id}`
+        // );
         const thumbnailResponse = await fetch(
-          `https://youticle.shop/briefing/capture_frames/${id}`
+          `http://0.0.0.0:8000/briefing/capture_frames/${id}`
         );
         if (!thumbnailResponse.ok)
           throw new Error("Failed to fetch thumbnails");
@@ -105,7 +109,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
     fetchThumbnails();
   }, [id]);
-
+  console.log(detailData);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -124,6 +128,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         </Title>
         <Upload>{detailData.upload_date} 업로드</Upload>
       </PageInfo>
+
       <VideoContainer
         ref={videoContainerRef}
         $isFixed={isFixed}
@@ -140,11 +145,10 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           }}
         />
       </VideoContainer>
-
       <Preview $isFixed={isFixed}>
         <div>
           <span>🔎 미리보기</span>
-          {detailData.summary_data.short_summary}
+          {formatSummary(detailData.summary_data.short_summary)}
         </div>
       </Preview>
       <TOC>

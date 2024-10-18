@@ -37,7 +37,7 @@ const TopicCard = (props: TopicCardProps) => {
     setTopicState(props);
     router.push(`/detail/${video_id}`);
   };
-
+  console.log(props);
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
 
   // ChannelInfoContainer의 높이를 동적으로 저장하기 위한 state
@@ -57,7 +57,8 @@ const TopicCard = (props: TopicCardProps) => {
       <CardHeader>
         <Section>#{section}</Section>
         <Title>
-          {summary_data?.headline_title}, {summary_data?.headline_sub_title}
+          {summary_data?.headline_title}
+          {summary_data?.headline_sub_title}
         </Title>
       </CardHeader>
       <BodyContainer>
@@ -94,7 +95,7 @@ const TopicCard = (props: TopicCardProps) => {
             </Summary>
           ) : (
             <Summary>
-              <p>{summary_data.short_summary}</p>
+              <p>{short_summary}</p>
             </Summary>
           )}
         </Body>

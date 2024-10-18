@@ -2,7 +2,7 @@
 
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
-import { formatTimeRange } from "@/utils/formatter";
+import { formatTimeRange, formatSummary } from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
@@ -37,6 +37,7 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
     },
     ref
   ) => {
+    console.log(summary);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
@@ -50,7 +51,7 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
             <span>{formatTimeRange(start)}</span>
           </Timeline>
           <Summary>
-            {summary}
+            {formatSummary(summary)}
             {explanation_keyword ? (
               <TipArea>
                 💡 <Tip>{explanation_keyword}</Tip>
