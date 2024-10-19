@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { isDesktop } from "react-device-detect";
+// import { YOUTUBE_TOPICS } from "@/constants/topic";
 
 interface TopicNavProps {
   $isFixed: boolean;
@@ -41,14 +42,13 @@ const TopicNav = ({
   const [hasScrolled, setHasScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 주제 목록을 3개의 열로 고르게 분할
-  const topicGroups = YOUTUBE_TOPICS.reduce<string[][]>(
-    (acc, topic, index) => {
-      acc[index % 3].push(topic);
-      return acc;
-    },
-    [[], [], []] // 3개의 빈 배열로 초기화
-  );
+  const navSize = Math.ceil(YOUTUBE_TOPICS.length / 3);
+
+  const topicGroups = [
+    YOUTUBE_TOPICS.slice(0, navSize),
+    YOUTUBE_TOPICS.slice(navSize, navSize * 2),
+    YOUTUBE_TOPICS.slice(navSize * 2, YOUTUBE_TOPICS.length),
+  ];
 
   const [clientSelected, setClientSelected] = useState<string>("");
 
@@ -127,6 +127,7 @@ const Container = styled.div<{
 
   position: ${(props) => (props.$isFixed ? "fixed" : "static")};
   top: ${(props) => (props.$isFixed ? "52px" : "auto")};
+  /* z-index: ${(props) => (props.$isFixed ? 0 : 0)}; */
 
   overflow-x: scroll;
   ::-webkit-scrollbar {
