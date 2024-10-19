@@ -40,18 +40,6 @@ const TopicCard = (props: TopicCardProps) => {
   console.log(props);
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
 
-  // ChannelInfoContainer의 높이를 동적으로 저장하기 위한 state
-  const [channelInfoHeight, setChannelInfoHeight] = useState(0);
-
-  useEffect(() => {
-    const channelInfoContainer = document.getElementById(
-      `channel-info-${video_id}`
-    );
-    if (channelInfoContainer) {
-      setChannelInfoHeight(channelInfoContainer.offsetHeight); // ChannelInfoContainer의 높이를 저장
-    }
-  }, []);
-
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
@@ -62,7 +50,7 @@ const TopicCard = (props: TopicCardProps) => {
         </Title>
       </CardHeader>
       <BodyContainer>
-        <ChannelInfoContainer id={`channel-info-${video_id}`}>
+        <ChannelInfoContainer>
           <Thumbnail src={thumbnail} />
           <VideoInfo>
             <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
@@ -82,11 +70,11 @@ const TopicCard = (props: TopicCardProps) => {
           </ChannelInfo>
         </ChannelInfoContainer>
         <Body>
-          {section === "주식" && summary_data?.key_points?.length ? (
+          {summary_data?.key_points?.length ? (
             <Summary>
               {summary_data.key_points.map((point, index) => (
                 <SummaryContainer key={index}>
-                  <Divider height={`${channelInfoHeight / 5}px`} />
+                  <Divider height={"6px"} />
                   <SummaryContent fontSize={`16px`}>
                     {point.point}
                   </SummaryContent>
@@ -113,7 +101,6 @@ const Container = styled.div`
   gap: 8px;
   padding: 20px 12px;
   gap: 10px;
-  border-radius: 8px;
   background: rgba(255, 255, 255, 1);
   margin-bottom: 20px;
   border-bottom: 1px solid #d9d9d9;
@@ -128,6 +115,7 @@ const CardHeader = styled.div`
 
 const BodyContainer = styled.div`
   display: flex;
+  width: 100%;
 `;
 
 const SubsUpload = styled.div`
@@ -142,9 +130,8 @@ const Section = styled.div`
 
 const Body = styled.div`
   display: flex;
-  align-items: center;
-  max-width: 200px;
-  min-width: 200px;
+  max-width: 60%; /* Body 영역을 60%로 설정 */
+  min-width: 60%;
 `;
 
 const Title = styled.span`
@@ -155,13 +142,17 @@ const Title = styled.span`
 
 const SummaryContainer = styled.div`
   display: flex;
-  align-items: center;
   margin-bottom: 12px;
 `;
 
 const Divider = styled.div<{ height: string }>`
-  height: ${(props) => props.height};
-  min-width: 2px;
+  min-height: ${(props) => props.height};
+  max-height: ${(props) => props.height};
+
+  min-width: 6px;
+  max-width: 6px;
+  border-radius: 100%;
+  margin-top: 4px;
   background-color: #000;
 `;
 
@@ -181,11 +172,12 @@ const Thumbnail = styled.img`
   object-fit: cover;
   border-radius: 4px;
   width: 100%;
+  height: auto;
   aspect-ratio: 132 / 72;
 `;
 
 const UploadTime = styled.span`
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 16.8px;
   color: #696868;
@@ -193,7 +185,7 @@ const UploadTime = styled.span`
 
 const VideoInfo = styled.div`
   display: flex;
-  font-size: 14px;
+  font-size: 12px;
   align-items: center;
   margin-top: 4px;
   color: #696868;
@@ -209,6 +201,8 @@ const VideoInfo = styled.div`
 const ChannelInfoContainer = styled.div`
   display: flex;
   flex-direction: column;
+  flex-basis: 40%; /* ChannelInfoContainer의 너비를 BodyContainer의 40%로 설정 */
+  max-width: 40%;
 `;
 
 const ChannelInfo = styled.div`
@@ -220,8 +214,8 @@ const ChannelInfo = styled.div`
 `;
 
 const ProfileImage = styled.img`
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: rgba(217, 217, 217, 1);
 `;
@@ -232,17 +226,17 @@ const ProfileInfo = styled.div`
 `;
 
 const Name = styled.span`
-  font-size: 14px;
-  line-height: 19.6px;
+  font-size: 12px;
+  line-height: 128%;
   display: inline-block;
-  max-width: 132px;
+  max-width: 100px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const Subscriber = styled.span`
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 16.8px;
   color: #696868;
