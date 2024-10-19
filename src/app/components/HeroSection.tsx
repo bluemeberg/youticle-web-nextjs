@@ -7,6 +7,7 @@ const HeroContainer = styled.section`
   padding: 60px 20px;
   text-align: center;
   width: 100%;
+  font-family: "Pretendard Variable";
 `;
 
 const SectionTitle = styled.h2`

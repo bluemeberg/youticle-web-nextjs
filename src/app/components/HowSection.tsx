@@ -6,6 +6,7 @@ const HowContainer = styled.section`
   background-color: #ffffff;
   padding: 60px 20px;
   text-align: center;
+  font-family: "Pretendard Variable";
 `;
 
 const SectionTitle = styled.h2`

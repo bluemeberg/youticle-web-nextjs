@@ -83,7 +83,7 @@ const Container = styled.div`
   border-radius: 8px;
   gap: 10px;
   background: rgba(255, 255, 255, 1);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 카드 느낌을 주는 그림자 효과 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.24); /* 카드 느낌을 주는 그림자 효과 */
 `;
 
 const CardHeader = styled.div`

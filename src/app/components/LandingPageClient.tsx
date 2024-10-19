@@ -22,6 +22,7 @@ const Container = styled.div<{ $isLogin: boolean }>`
   align-items: center;
   padding-top: ${(props) => (props.$isLogin ? "16px" : "52px")};
   background-color: #ffffff;
+  font-family: "Pretendard Variable";
 `;
 
 const ClosingSection = styled.section`

@@ -5,6 +5,7 @@ const RecommendationContainer = styled.section`
   background-color: #fff;
   padding: 40px 32px;
   text-align: center;
+  font-family: "Pretendard Variable";
 `;
 
 const SectionTitle = styled.h2`

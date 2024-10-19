@@ -71,8 +71,8 @@ export default CountdownTimer;
 const TimeContainer = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  margin-left: 4px;
+  align-items: flex-start; /* 좌측 정렬로 맞춤 */
+  margin-left: 8px;
 `;
 const TimeWarning = styled.span`
   font-size: 16px;
@@ -110,14 +110,15 @@ const StyledTime = styled.span`
 const Container = styled.div`
   display: flex;
   margin-bottom: 12px;
-  justify-content: center;
+  justify-content: flex-start;
+  margin-left: 8px;
 `;
 
 const Description = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  justify-content: center;
+  justify-content: flex-start;
 `;
 
 const Tooltip = styled.div<{ $tooltipVisible: boolean }>`

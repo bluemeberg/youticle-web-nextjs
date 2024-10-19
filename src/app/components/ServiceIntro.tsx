@@ -104,7 +104,7 @@ const ServiceIntro = () => {
           </Topic>
         </TopicGroup>
       </TopicMenu>
-      <ServiceButton onClick={() => goToPage("subject")}>
+      <ServiceButton onClick={() => goToPage("subject ")}>
         관심 주제 무료 구독하러가기
       </ServiceButton>
       {/* <ImgContainer>
@@ -123,6 +123,7 @@ const Container = styled.div`
   flex-direction: column;
   background-color: #f0f4ff;
   align-items: center;
+  font-family: "Pretendard Variable";
 `;
 
 const ServiceTitle = styled.span`
@@ -219,6 +220,6 @@ const TopicIcon = styled.span`
 
 const TopicDivider = styled.hr`
   border: none;
-  border-top: 1px solid #e0e0e0;
+  /* border-top: 1px solid #e0e0e0; */
   margin: 10px 0;
 `;
