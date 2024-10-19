@@ -15,7 +15,7 @@ export async function generateMetadata({
 }: DetailPageProps): Promise<Metadata> {
   const { id } = params;
 
-  const response = await fetch(`https://youticle.shop/editor/article/${id}`);
+  const response = await fetch(`https://claying.shop/editor/article/${id}`);
   const data = await response.json();
   const detailData = data[0];
 
@@ -40,7 +40,7 @@ export async function generateMetadata({
 export default async function DetailPage({ params }: DetailPageProps) {
   const { id } = params;
 
-  const response = await fetch(`https://youticle.shop/editor/article/${id}`);
+  const response = await fetch(`https://claying.shop/editor/article/${id}`);
   if (!response.ok) {
     return <NotFoundPage />;
   }
