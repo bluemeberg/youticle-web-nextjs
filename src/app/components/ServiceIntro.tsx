@@ -8,7 +8,7 @@ import LandingThumb from "@/assets/yousum_thumb.svg";
 const SERVICE_TITLE =
   "유튜브 영상 정보의 홍수 속에서 <br/> 나만 똑똑하게 시청하는 방법.";
 const SERVICE_DESCRIPTION =
-  "500시간이 넘는 영상이 매 분마다 업로드되는 시대, <br/>오늘 업로드된 주요 주제의 영상들을  <br/>매일 아티클로 빠르고 편하게 읽어보세요.";
+  "500시간이 넘는 영상이 매 분마다 업로드되는 시대, <br/>오늘 업로드된 주요 키워드의 영상들을  <br/>매일 아티클로 빠르고 편하게 읽어보세요.";
 
 const ServiceIntro = () => {
   const [keyword, setKeyword] = useRecoilState(keywordState);
@@ -105,7 +105,7 @@ const ServiceIntro = () => {
         </TopicGroup>
       </TopicMenu>
       <ServiceButton onClick={() => goToPage("subject ")}>
-        관심 주제 무료 구독하러가기
+        관심 키워드 무료 구독하러가기
       </ServiceButton>
       {/* <ImgContainer>
         <LandingThumb />

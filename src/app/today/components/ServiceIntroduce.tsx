@@ -10,13 +10,13 @@ interface ServiceIntroduceProps {
 
 const SERVICE_TITLE = "오늘의 유튜브 아티클";
 const SERVICE_DESCRIPTION =
-  "오늘 업로드된 주요 주제들의 영상들을 단 1초만에 아티클로 읽을 수 있습니다.";
+  "오늘 업로드된 주요 키워드의 영상들을 단 1초만에 아티클로 읽을 수 있습니다.";
 const NO_SUBSCRIBED_TOPIC_MSG =
-  "❗️현재 구독 중인 주제가 없습니다. <br/>최대 3개의 관심 주제를 등록해주세요.";
+  "❗️현재 구독 중인 키워드가 없습니다. <br/>최대 3개의 관심 주제를 등록해주세요.";
 const FREE_BENEFITS_TITLE = "🎁 무료 구독 혜택";
 const FREE_BENEFITS_DESC = `
   <ul>
-    <li>1️⃣ 매일 구독한 주제의 아티클 전문 읽기.</li>
+    <li>1️⃣ 매일 구독한 키워드의 아티클 전문 읽기.</li>
     <li>2️⃣ 매일 이메일로 아티클 편하게 확인하기.</li>
     <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
   </ul>`;
@@ -36,8 +36,8 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
         {subjects.length === 0 && ( // 구독 주제가 없을 때만 노출
           <NoSubscribedTopicMsg>
             <NoSubsTitle>
-              ❗️현재 구독 중인 주제가 없습니다. <br />
-              3개의 관심 주제를 등록해주세요.
+              ❗️현재 구독 중인 키워드가 없습니다. <br />
+              3개의 관심 키워드를 등록해주세요.
             </NoSubsTitle>
             <BenefitsContainer>
               <FreeBenefitsTitle>{FREE_BENEFITS_TITLE}</FreeBenefitsTitle>
@@ -46,7 +46,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
               />
               <ButtonContainer>
                 <ServiceButton onClick={() => goToPage("subject")}>
-                  관심 주제 무료 구독하러가기
+                  관심 키워드 무료 구독하러가기
                 </ServiceButton>
               </ButtonContainer>
             </BenefitsContainer>

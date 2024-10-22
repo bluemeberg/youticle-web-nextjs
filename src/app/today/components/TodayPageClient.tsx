@@ -37,7 +37,6 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   return (
     <Container $isLogin={user.name !== ""}>
       <LogoHeader />
-      <ServiceIntroduce subjects={subscribedSubjects} />
       <YoutubeToday data={apiData} subjects={subscribedSubjects} />
       <Footer />
     </Container>

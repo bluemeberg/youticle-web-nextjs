@@ -7,11 +7,11 @@ import { Suspense } from "react";
 export const metadata = {
   title: "YouTicle",
   description:
-    "매일 최신 업로드된 19가지 주제의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
+    "매일 최신 업로드된 19가지 키워드의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
   openGraph: {
     title: "YouTicle",
     description:
-      "매일 최신 업로드된 19가지 주제의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
+      "매일 최신 업로드된 19가지 키워드의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
     images: [
       {
         url: "/images/ogImage.png", // public 폴더 내의 경로

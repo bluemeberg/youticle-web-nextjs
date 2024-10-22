@@ -124,8 +124,8 @@ export default function LandingPageClient() {
       {/* Closing Section */}
       <ClosingSection>
         <SectionTitle>
-          지금 바로 관심 주제 <br />
-          최대 3개 선택하고,
+          지금 바로 관심 키워드 <br />
+          3개 선택하고,
           <br /> 매일 최신 유튜브 아티클을 <br /> 받아보세요!
         </SectionTitle>
 

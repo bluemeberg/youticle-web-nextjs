@@ -49,13 +49,13 @@ const App = () => {
     } else if (selectedTopics.length < 3) {
       setSelectedTopics([...selectedTopics, topic]);
     } else {
-      setModalMessage("⚠️ 최대 3개의 주제를 선택할 수 있습니다.");
+      setModalMessage("⚠️ 최대 3개의 키워드의 선택할 수 있습니다.");
       setShowModal(true);
     }
   };
   const handleSubscribe = () => {
     if (selectedTopics.length === 0) {
-      setModalMessage("⚠️ 최소 1개의 주제를 선택해주세요.");
+      setModalMessage("⚠️ 최소 1개의 키워드를 선택해주세요.");
       setShowModal(true);
     } else if (selectedTopics.length < 3) {
       setModalMessage("⚠️ 3개의 주제를 선택해주세요.");
@@ -494,7 +494,7 @@ const FreeBenefitsDesc = styled.div`
 const FREE_BENEFITS_TITLE = "🎁 무료 구독 혜택";
 const FREE_BENEFITS_DESC = `
   <ul>
-    <li>1️⃣ 매일 구독한 주제의 아티클 전문 읽기.</li>
+    <li>1️⃣ 매일 구독한 키워드의 아티클 전문 읽기.</li>
     <li>2️⃣ 매일 이메일로 아티클 편하게 확인하기.</li>
     <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
   </ul>`;

@@ -113,7 +113,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
           <TodayTitle>{TODAY_TITLE}</TodayTitle>
         )}
         {subjects.length > 0 && (
-          <ChangeSubjectButton>관심 주제 변경</ChangeSubjectButton>
+          <ChangeSubjectButton>관심 키워드 변경</ChangeSubjectButton>
         )}
         <CountdownTimer scrollRef={scrollRef} />
         <TopicNavContainer>
@@ -143,7 +143,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
       })}
       <UnSubsArticleInfo>
         <UnSubsArticleInfoDescription>
-          구독중인 아티클을 다 보셨나요? <br /> 미구독중인 주제의 아티클도
+          구독중인 아티클을 다 보셨나요? <br /> 미구독중인 키워드의 아티클도
           구경해보세요!
         </UnSubsArticleInfoDescription>
         <UnSubsArticleInfoButton>
@@ -185,7 +185,7 @@ const ChangeSubjectButton = styled.div`
 `;
 
 const TodayTitle = styled.span<{
-  $isSubs: boolean;
+  $isSubs?: boolean;
 }>`
   font-size: 24px;
   font-weight: 700;

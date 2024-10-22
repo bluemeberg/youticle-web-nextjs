@@ -28,7 +28,7 @@ const Information: React.FC<NewComponentProps> = ({ keyword }) => {
         <br></br> 꼭 확인 부탁드립니다!!
       </TitleContainer>
       <Description>
-        👀 오늘 업로드된 19가지 주제의 유튜브 아티클은?<br></br> 👇지금 바로
+        👀 오늘 업로드된 19가지 키워드의 유튜브 아티클은?<br></br> 👇지금 바로
         확인하기!
       </Description>
       <ServiceButton onClick={() => goToPage("/")}>

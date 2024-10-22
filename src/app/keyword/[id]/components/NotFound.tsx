@@ -19,7 +19,7 @@ const NotFoundPage = () => {
       <Description>(아티클 조회기간이 만료됐을수도 있습니다😭)</Description>
 
       <GoHomePage>
-        <Description>오늘 업로드된 18가지 주요 주제의</Description>
+        <Description>오늘 업로드된 18가지 주요 키워드의</Description>
         <Description>
           유튜브 아티클들은 지금 바로 확인하실수 있습니다!
         </Description>

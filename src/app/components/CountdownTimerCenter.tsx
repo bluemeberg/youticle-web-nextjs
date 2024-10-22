@@ -9,7 +9,7 @@ interface CountdownTimerProps {
   scrollRef?: Ref<HTMLSpanElement>;
 }
 const TOOLTIP_OPTION1 =
-  "매일 오전 7시 30분에 모든 주제의 아티클들이 갱신됩니다. 단, 주식 주제는 국내 증시 소식 갱신을 위해 오후 6시에 중간 갱신됩니다.";
+  "매일 오전 7시 30분에 모든 키워드의 아티클들이 갱신됩니다. 단, 주식 주제는 국내 증시 소식 갱신을 위해 오후 6시에 중간 갱신됩니다.";
 const CountdownTimer = ({ scrollRef }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState("");
   const infoIconRef = useRef<HTMLDivElement>(null);
