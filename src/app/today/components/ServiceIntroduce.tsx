@@ -4,11 +4,15 @@ import styled from "styled-components";
 import TodayIcon from "@/assets/today.svg";
 import { useRouter } from "next/navigation";
 
+interface ServiceIntroduceProps {
+  subjects: string[]; // 추가된 subjects prop
+}
+
 const SERVICE_TITLE = "오늘의 유튜브 아티클";
 const SERVICE_DESCRIPTION =
   "오늘 업로드된 주요 주제들의 영상들을 단 1초만에 아티클로 읽을 수 있습니다.";
 const NO_SUBSCRIBED_TOPIC_MSG =
-  "현재 구독 중인 주제가 없습니다. <br/>최대 3개의 관심 주제를 등록해주세요.";
+  "❗️현재 구독 중인 주제가 없습니다. <br/>최대 3개의 관심 주제를 등록해주세요.";
 const FREE_BENEFITS_TITLE = "🎁 무료 구독 혜택";
 const FREE_BENEFITS_DESC = `
   <ul>
@@ -17,9 +21,9 @@ const FREE_BENEFITS_DESC = `
     <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
   </ul>`;
 
-const ServiceIntroduce = () => {
+const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   const router = useRouter();
-
+  console.log(subjects.length);
   const goToPage = (url: string) => router.push(url);
   return (
     <Container>
@@ -29,23 +33,25 @@ const ServiceIntroduce = () => {
           <ServiceTitle>{SERVICE_TITLE}</ServiceTitle>
         </TitleContainer>
         <ServiceDesc>{SERVICE_DESCRIPTION}</ServiceDesc>
-        <NoSubscribedTopicMsg>
-          <NoSubsTitle>
-            현재 구독 중인 주제가 없습니다. <br />
-            3개의 관심 주제를 등록해주세요.
-          </NoSubsTitle>
-          <BenefitsContainer>
-            <FreeBenefitsTitle>{FREE_BENEFITS_TITLE}</FreeBenefitsTitle>
-            <FreeBenefitsDesc
-              dangerouslySetInnerHTML={{ __html: FREE_BENEFITS_DESC }}
-            />
-            <ButtonContainer>
-              <ServiceButton onClick={() => goToPage("subject")}>
-                관심 주제 무료 구독하러가기
-              </ServiceButton>
-            </ButtonContainer>
-          </BenefitsContainer>
-        </NoSubscribedTopicMsg>
+        {subjects.length === 0 && ( // 구독 주제가 없을 때만 노출
+          <NoSubscribedTopicMsg>
+            <NoSubsTitle>
+              ❗️현재 구독 중인 주제가 없습니다. <br />
+              3개의 관심 주제를 등록해주세요.
+            </NoSubsTitle>
+            <BenefitsContainer>
+              <FreeBenefitsTitle>{FREE_BENEFITS_TITLE}</FreeBenefitsTitle>
+              <FreeBenefitsDesc
+                dangerouslySetInnerHTML={{ __html: FREE_BENEFITS_DESC }}
+              />
+              <ButtonContainer>
+                <ServiceButton onClick={() => goToPage("subject")}>
+                  관심 주제 무료 구독하러가기
+                </ServiceButton>
+              </ButtonContainer>
+            </BenefitsContainer>
+          </NoSubscribedTopicMsg>
+        )}
       </ContentBox>
     </Container>
   );
@@ -58,6 +64,7 @@ const Container = styled.div`
   display: flex;
   justify-content: center;
   background-color: #f0f4ff;
+  font-family: "Pretendard Variable";
 `;
 
 const ContentBox = styled.div`

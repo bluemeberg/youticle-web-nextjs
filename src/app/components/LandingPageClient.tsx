@@ -20,7 +20,8 @@ const Container = styled.div<{ $isLogin: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: ${(props) => (props.$isLogin ? "16px" : "52px")};
+  /* padding-top: ${(props) => (props.$isLogin ? "16px" : "52px")}; */
+  padding-top: 52px;
   background-color: #ffffff;
   font-family: "Pretendard Variable";
 `;
@@ -103,10 +104,11 @@ export default function LandingPageClient() {
   //   setApiData(apiData);
   // }, [apiData, setApiData]);
 
+  // 구독
   return (
     <Container $isLogin={user.name !== ""}>
       <LogoHeader />
-      {!user.name && <ServiceIntro />}
+      <ServiceIntro />
       <PreYoutubeToday />
       {/* 분리된 HeroSection 컴포넌트 사용 */}
       <HeroSection />

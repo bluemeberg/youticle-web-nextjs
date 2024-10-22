@@ -203,7 +203,7 @@ const Container = styled.header<{
   .logo {
     color: ${(props) =>
       props.$isDetailPage ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)"};
-    font-family: "Inter";
+    font-family: "Pretendard Variable";
     font-weight: 700;
     font-size: 20px;
   }

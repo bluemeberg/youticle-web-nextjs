@@ -3,19 +3,15 @@
 import styled from "styled-components";
 import LogoHeader from "@/common/LogoHeader";
 import { useState, useEffect, useId } from "react";
-import Dropdown from "./components/Dropdown";
 import Footer from "@/components/Footer";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { keywordState } from "@/store/keyword";
 import { dailyKeywordTaskState } from "@/store/dailyTaskId";
 
-import ServiceDescription from "./components/ServiceDescription";
-import SampleArticle from "./components/SampleArticle";
 import { userState } from "@/store/user";
 import AlertPopup from "./components/AlertPopup";
 import LoginPopup from "./components/LoginPopup";
 import KeywordAlertPopup from "./components/KeywordAlertPopup";
-import Information from "./components/Information";
 import Progress from "./components/Progress";
 import KeywordInputForm from "./components/KeywordInputForm";
 import { weeklyKeywordTaskState } from "@/store/weeklyTaskId";

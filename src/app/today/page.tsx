@@ -29,6 +29,7 @@ export default async function LandingPage() {
   const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
   const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
   const STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos/stock";
+  const EXCEPT_STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos";
 
   // Fetch both APIs in parallel using Promise.all
   const [response1, response2] = await Promise.all([

@@ -37,7 +37,6 @@ const TopicCard = (props: TopicCardProps) => {
     setTopicState(props);
     router.push(`/detail/${video_id}`);
   };
-  console.log(props);
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
 
   return (
