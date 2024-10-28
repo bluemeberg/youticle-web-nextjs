@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+
 import styled from "styled-components";
 import TopicCard from "../../components/TopicCard";
 import { DataProps } from "@/types/dataProps";
@@ -11,10 +13,11 @@ import CountdownTimer from "@/common/CountdownTimer";
 import SortOptions from "@/common/SortOptions";
 import TopicNav from "../../components/TopicNav";
 import { topicState } from "@/store/topic";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
+import { unsubscribedDataState } from "@/store/unsubscribeData";
 
-const TODAY_TITLE = "미구독 중인 주제의 아티클";
-const SUBS_TODAY_TITLE = "구독 중인 주제의 아티클";
+const TODAY_TITLE = "미구독 중인 키워드 아티클";
+const SUBS_TODAY_TITLE = "구독 중인 키워드 아티클";
 interface YoutubeTodayProps {
   data: DataProps[];
   subjects: string[]; // 추가된 subjects prop
@@ -28,6 +31,24 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const [isFixed, setIsFixed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortOptionsRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const setUnsubscribedData = useSetRecoilState(unsubscribedDataState);
+  const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
+
+  // 미구독 데이터 필터링
+  const unsubscribedData = data.filter(
+    (item) => !subjects.includes(item.section)
+  );
+
+  // 페이지 진입 시 구독한 주제의 첫 번째 항목을 기본 선택 주제로 설정
+  console.log(subjects, "구독한 주제");
+  console.log(selectedTopic, "구독한 주제 선택한");
+  useEffect(() => {
+    if (subjects.length > 0) {
+      setSelectedTopic(subjects[0]);
+    }
+    resetUnsubscribedData();
+  }, [subjects, setSelectedTopic, resetUnsubscribedData]);
 
   const handleTopicClick = (topic: string) => {
     setSelectedTopic(topic);
@@ -56,6 +77,12 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     // 클라이언트 측에서만 데이터를 세팅 (서버와 클라이언트의 데이터를 일치시키기 위해 초기 데이터 사용)
     setClientData(data);
   }, [data]);
+
+  // Unsubscribe 페이지로 이동하며 미구독 데이터를 전달하는 함수
+  const handleUnsubscribeClick = () => {
+    setUnsubscribedData(unsubscribedData);
+    router.push("/today/unsubscribe");
+  };
 
   const filteredAndSortedData = useMemo(() => {
     const filteredData = clientData.filter((item) => {
@@ -104,6 +131,9 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   // 구독중인 주제 서버 불러오기
   // 주제가 있다면
 
+  const handleChangeSubjectClick = () => {
+    router.push("/subject/modify");
+  };
   return (
     <Container>
       <SubContainer>
@@ -113,7 +143,9 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
           <TodayTitle>{TODAY_TITLE}</TodayTitle>
         )}
         {subjects.length > 0 && (
-          <ChangeSubjectButton>관심 키워드 변경</ChangeSubjectButton>
+          <ChangeSubjectButton onClick={handleChangeSubjectClick}>
+            구독 키워드 변경
+          </ChangeSubjectButton>
         )}
         <CountdownTimer scrollRef={scrollRef} />
         <TopicNavContainer>
@@ -122,6 +154,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             selectedTopic={selectedTopic}
             handleTopicClick={handleTopicClick}
             subjects={subjects} // 구독 주제 전달
+            unSubscribe={[]}
           ></TopicNav>
         </TopicNavContainer>
       </SubContainer>
@@ -141,15 +174,17 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
         )?.icon;
         return <TopicCard key={item.video_id} icon={topicIcon} {...item} />;
       })}
-      <UnSubsArticleInfo>
-        <UnSubsArticleInfoDescription>
-          구독중인 아티클을 다 보셨나요? <br /> 미구독중인 키워드의 아티클도
-          구경해보세요!
-        </UnSubsArticleInfoDescription>
-        <UnSubsArticleInfoButton>
-          미구독중인 아티클 확인하러가기
-        </UnSubsArticleInfoButton>
-      </UnSubsArticleInfo>
+      {subjects.length > 0 && (
+        <UnSubsArticleInfo>
+          <UnSubsArticleInfoDescription>
+            구독중인 아티클을 다 보셨나요? <br /> 미구독중인 키워드의 아티클도
+            구경해보세요!
+          </UnSubsArticleInfoDescription>
+          <UnSubsArticleInfoButton onClick={handleUnsubscribeClick}>
+            미구독중인 아티클 확인하러가기
+          </UnSubsArticleInfoButton>
+        </UnSubsArticleInfo>
+      )}
       <GoToTopBtn isVisible={isFixed} />
     </Container>
   );
@@ -200,16 +235,6 @@ const TodayTitle = styled.span<{
   margin-top: 12px;
 `;
 
-const TodaySubTitle = styled.span`
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 132%;
-  margin-bottom: 24px;
-  margin-left: 4px;
-  display: flex;
-  align-items: center;
-`;
-
 const TopicNavContainer = styled.div`
   padding: 0;
   margin-left: -20px;
@@ -237,4 +262,7 @@ const UnSubsArticleInfoButton = styled.div`
   color: white;
   padding: 12px 40px;
   border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  font-weight: 500;
 `;

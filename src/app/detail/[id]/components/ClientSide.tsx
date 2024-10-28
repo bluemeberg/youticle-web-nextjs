@@ -80,6 +80,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
   useEffect(() => {
     const fetchThumbnails = async () => {
       try {
@@ -109,7 +110,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
     fetchThumbnails();
   }, [id]);
-  console.log(detailData);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -128,7 +128,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         </Title>
         <Upload>{detailData.upload_date} 업로드</Upload>
       </PageInfo>
-
       <VideoContainer
         ref={videoContainerRef}
         $isFixed={isFixed}

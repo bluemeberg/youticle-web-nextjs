@@ -10,6 +10,7 @@ interface TopicNavProps {
   selectedTopic: string;
   handleTopicClick: (topic: string) => void;
   subjects: string[]; // 추가된 subjects prop
+  unSubscribe: string[];
 }
 
 // 주제 목록 및 아이콘을 정의합니다.
@@ -34,6 +35,7 @@ const YOUTUBE_TOPICS = [
   { topic: "IT/테크", icon: "💻" },
   { topic: "인공지능", icon: "🤖" },
   { topic: "자동차", icon: "🚗" },
+  { topic: "여행", icon: "✈️" }, // "여행" 항목 추가
 ];
 
 const TopicNav = ({
@@ -41,13 +43,15 @@ const TopicNav = ({
   selectedTopic,
   handleTopicClick,
   subjects, // 추가된 props
+  unSubscribe,
 }: TopicNavProps) => {
   const [hasScrolled, setHasScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // 구독 주제가 있을 경우, 해당 주제로만 필터링
+  // unSubscribe 배열이 비어있지 않으면 unSubscribe 주제만 필터링
   const filteredTopics =
-    subjects.length > 0
+    unSubscribe.length > 0
+      ? YOUTUBE_TOPICS.filter(({ topic }) => unSubscribe.includes(topic))
+      : subjects.length > 0
       ? YOUTUBE_TOPICS.filter(({ topic }) => subjects.includes(topic))
       : YOUTUBE_TOPICS;
 

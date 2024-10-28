@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { useRouter, usePathname } from "next/navigation";
@@ -38,6 +38,33 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     pathname.startsWith("/samplePage") ||
     pathname.startsWith("/keyword/");
 
+  const isUnsubscribeOrModifyPage =
+    pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
+
+  console.log(isUnsubscribeOrModifyPage);
+  const previousPage = useRef<string | null>(null);
+
+  useEffect(() => {
+    // 페이지 최초 접근 시, 현재 경로 저장
+    if (pathname.includes("/unsubscribe")) {
+      previousPage.current = "/unsubscribe";
+    }
+  }, [pathname]);
+
+  const handleBackClick = () => {
+    if (
+      pathname.includes("/detail") &&
+      previousPage.current === "/unsubscribe"
+    ) {
+      router.push("/unsubscribe");
+    }
+    if (pathname.endsWith("/subject/modify")) {
+      router.push("/today");
+    } else {
+      router.back();
+    }
+  };
+
   const copyUrlToClipboard = () => {
     const currentUrl = window.location.href;
 
@@ -64,7 +91,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     if (pathname.startsWith("/editor/")) goToPage("/editor");
     else if (pathname.startsWith("/samplePage")) goToPage("/my");
     else if (pathname.startsWith("/keyword/")) goToPage("/my");
-    else goToPage("/");
+    else goToPage("/today");
   };
 
   const provider = new GoogleAuthProvider();
@@ -110,9 +137,17 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
 
   return (
     <>
-      <Container $isDetailPage={isDetailPage} $isDesktop={isClientDesktop}>
+      <Container
+        $isDetailPage={isDetailPage}
+        $isDesktop={isClientDesktop}
+        $isUnsubscribePage={isUnsubscribeOrModifyPage} // unsubscribe 페이지 스타일 적용
+      >
         <PageInfo>
-          {isDetailPage && <BackIcon onClick={goHome} />}
+          {(pathname.endsWith("/unsubscribe") ||
+            isDetailPage ||
+            isUnsubscribeOrModifyPage) && (
+            <BackIcon onClick={handleBackClick} />
+          )}
           {title === "" ? (
             <span onClick={goHome} className="logo">
               YouTicle
@@ -140,13 +175,11 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
               )}
             {menuOpen && (
               <MenuDropdown>
-                <MenuItem onClick={() => goToPage("/")}>
+                <MenuItem onClick={() => goToPage("/")}>홈</MenuItem>
+                <MenuItem onClick={() => goToPage("/today")}>
                   오늘의 유튜브 아티클
                 </MenuItem>
-                <MenuItem onClick={() => goToPage("/editor")}>
-                  에디터 아티클
-                </MenuItem>
-                <MenuItem onClick={() => goToPage("/my")}>
+                {/* <MenuItem onClick={() => goToPage("/my")}>
                   나만의 아티클
                 </MenuItem>
                 <MenuItem
@@ -155,13 +188,10 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
                   }
                 >
                   설문 참여하기
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem onClick={() => handleAuth(user.picture !== "")}>
                   {user.picture !== "" ? "로그아웃" : "로그인하기"}
                 </MenuItem>
-                {/* {user.picture !== "" && (
-                  <LogoutBtn onClick={logOut}>로그아웃</LogoutBtn>
-                )} */}
               </MenuDropdown>
             )}
             {user.picture !== "" && (
@@ -182,28 +212,40 @@ export default LogoHeader;
 const Container = styled.header<{
   $isDetailPage: boolean;
   $isDesktop: boolean;
+  $isUnsubscribeOrModifyPage: boolean;
 }>`
   width: 100%;
   max-width: none;
-  /* max-width: ${({ $isDesktop }) => ($isDesktop ? "420px" : "none")}; */
   height: 52px;
   padding: 0 20px !important;
   position: fixed;
   top: 0;
-  background-color: ${(props) =>
-    props.$isDetailPage ? "rgba(244, 244, 244, 1)" : "rgba(0, 123, 255, 1)"};
-  font-family: "Pretendard Variable";
+
+  // 로그를 확인하기 위해 콘솔 출력
+  color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) => {
+    console.log("$isUnsubscribeOrModifyPage:", $isUnsubscribeOrModifyPage);
+    console.log("$isDetailPage:", $isDetailPage);
+    return $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white";
+  }};
+
+  background-color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) =>
+    $isUnsubscribeOrModifyPage
+      ? "rgba(244, 244, 244, 1)"
+      : $isDetailPage
+      ? "rgba(244, 244, 244, 1)"
+      : "rgba(0, 123, 255, 1)"};
+
+  color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) =>
+    $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white"};
 
   display: flex;
-  justify-content: ${(props) =>
-    props.$isDetailPage ? "space-between" : "space-between"};
+  justify-content: space-between;
   align-items: center;
   z-index: 1000;
 
   .logo {
-    color: ${(props) =>
-      props.$isDetailPage ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)"};
-    font-family: "Pretendard Variable";
+    color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) =>
+      $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white"};
     font-weight: 700;
     font-size: 20px;
   }
@@ -298,4 +340,5 @@ const MenuItem = styled.div`
   border-bottom: 1px solid black;
   position: absolute;
   right: 0px;
+  color: black;
 `;

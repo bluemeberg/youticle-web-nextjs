@@ -8,6 +8,7 @@ import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 
 interface TocItemProps {
+  section: string;
   title: string;
   start: number;
   summary: string;
@@ -19,10 +20,15 @@ interface TocItemProps {
   partialDimmed: boolean;
   dimmed: boolean;
   onClick: () => void;
+  isLoggedOut: boolean;
+  isUnsubscribedSection: boolean;
+  isNoSubscribedSubjects: boolean;
+  subscribedSubjects: string[];
 }
 const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
     {
+      section,
       title,
       start,
       summary,
@@ -34,10 +40,13 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
       toc,
       tocItemHeight,
       onClick,
+      isLoggedOut,
+      isUnsubscribedSection,
+      isNoSubscribedSubjects,
+      subscribedSubjects,
     },
     ref
   ) => {
-    console.log(summary);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
@@ -57,13 +66,22 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
                 💡 <Tip>{explanation_keyword}</Tip>
               </TipArea>
             ) : null}
-
             {explanation_description && (
               <TipAreaDescription>{explanation_description}</TipAreaDescription>
             )}
           </Summary>
         </ContentWrapper>
-        {dimmed && <DimmedArea tocItemHeight={tocItemHeight} toc={toc} />}
+        {dimmed && (
+          <DimmedArea
+            tocItemHeight={tocItemHeight}
+            toc={toc}
+            isLoggedOut={isLoggedOut}
+            isUnsubscribedSection={isUnsubscribedSection}
+            isNoSubscribedSubjects={isNoSubscribedSubjects}
+            subscribedSubjects={subscribedSubjects}
+            section={section}
+          />
+        )}
       </Container>
     );
   }
@@ -85,7 +103,8 @@ const ContentWrapper = styled.div<{
   opacity: ${(props) => (props.$dimmed ? 0.2 : 1)};
   ${({ $partialDimmed }) =>
     $partialDimmed
-      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);`
+      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);
+      `
       : ""}
 `;
 

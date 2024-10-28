@@ -15,7 +15,7 @@ interface RecommendProps {
 }
 
 const Recommend = ({ detailData }: RecommendProps) => {
-  const RECOMMEND_TITLE = `👇 다음&nbsp;<span class='highlight'>${detailData.section}</span>&nbsp;유튜브 아티클 확인하기`;
+  const RECOMMEND_TITLE = `다음&nbsp;<span class='highlight'>${detailData.section}</span>&nbsp;유튜브 아티클 확인하기`;
   const [sortCriteria, setSortCriteria] = useState("engagement");
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const setApiData = useSetRecoilState(dataState);
@@ -26,7 +26,7 @@ const Recommend = ({ detailData }: RecommendProps) => {
       try {
         // 서버사이드에서 데이터 패칭
         const response = await fetch(
-          "https://claying.shop/briefing/top_videos/",
+          "https://youticle.shop/briefing/top_videos/",
           {
             method: "GET",
           }
@@ -74,16 +74,10 @@ const Recommend = ({ detailData }: RecommendProps) => {
 
   return (
     <Container>
-      <RecommendTitle dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }} />
-      <CountdownTimer />
-      <SortOptions
-        sortCriteria={sortCriteria}
-        tooltipVisible={tooltipVisible}
-        setTooltipVisible={setTooltipVisible}
-        handleSortClick={handleSortClick}
-        handleClickIcon={handleClickIcon}
-        variant="border"
-      />
+      <SubContainer>
+        <RecommendTitle dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }} />
+        <CountdownTimer />
+      </SubContainer>
       {filteredAndSortedData.map((item, index) => {
         const topicIcon = YOUTUBE_TOPICS.find(
           (topic) => topic.topic === item.section
@@ -100,17 +94,26 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   padding: 0 20px;
+  margin-top: -80px;
+`;
+
+const SubContainer = styled.div`
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  padding-top: 32px;
 `;
 
 const RecommendTitle = styled.span`
   display: flex;
   align-items: center;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 400;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
 
   .highlight {
-    font-weight: 600;
-    color: rgba(48, 213, 200, 1);
+    font-weight: 700;
+    color: black;
   }
 `;

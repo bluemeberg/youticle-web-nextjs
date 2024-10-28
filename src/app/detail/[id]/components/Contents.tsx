@@ -1,5 +1,3 @@
-"use client"; // Ensure this is a client component
-
 import styled from "styled-components";
 import TocItem from "./TocItem";
 import Recommend from "./Recommend";
@@ -7,6 +5,7 @@ import { DataProps } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
+import { fetchSubscribedSubjects } from "../../../api/apiClient";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -24,13 +23,11 @@ const Contents = ({
   const [tocItemHeight, setTocItemHeight] = useState(0);
   const tocItemsRef = useRef<HTMLDivElement | null>(null);
 
-  const hasDimmedItem = detailData.summary_data.section.some(
-    (_, index) => index >= 3 && user.name === ""
-  );
-
   // 서버 렌더링 타임에 넘어온 props를 client에서 초기화시켜서 사용해야 hydrate 에러가 안남
   const [clientData, setClientData] = useState<DataProps>();
   const [clientThumbnails, setClientThumbnails] = useState<string[]>([]);
+
+  const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
 
   useEffect(() => {
     setClientData(detailData);
@@ -41,19 +38,43 @@ const Contents = ({
       }
     };
 
-    // DOM을 클라이언트에서만 조작
     if (typeof window !== "undefined") {
       calculateHeight();
     }
   }, [tocItemsRef, detailData, thumbnails]);
-  console.log(detailData);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (user.name !== "") {
+        const subjects = await fetchSubscribedSubjects(user.email);
+        setSubscribedSubjects(subjects); // 구독한 주제 설정
+      }
+    };
+
+    fetchSubjects();
+  }, [user]);
+
+  // 미구독이면 true, 구독이면 false
+  const isUnsubscribedSection =
+    !subscribedSubjects.includes(detailData.section) && user.name !== "";
+
+  // 구독한 주제가 있으면 false, 미구독상태이면 true
+  const isNoSubscribedSubjects =
+    subscribedSubjects.length === 0 && user.name !== "";
+
+  const hasDimmedItem =
+    detailData.summary_data.section.some((_, index) => index >= 3) &&
+    (user.name === "" || isUnsubscribedSection);
+
   return (
     <>
       <ContentWrapper>
         {detailData.summary_data.section
           .slice(
             0,
-            user.name === "" ? 4 : detailData.summary_data.section.length
+            user.name === "" || isUnsubscribedSection
+              ? 4
+              : detailData.summary_data.section.length
           )
           .map(
             (
@@ -70,25 +91,40 @@ const Contents = ({
                 key={index}
                 ref={
                   index ===
-                  (user.name === ""
+                  (user.name === "" || isUnsubscribedSection
                     ? 3
                     : detailData.summary_data.section.length - 1)
                     ? tocItemsRef
                     : null
                 }
+                section={detailData.section}
                 title={title}
                 start={Math.floor(Number(start_time))}
                 summary={detail_contents}
                 thumbnails={clientThumbnails[index]}
-                partialDimmed={index === 2 && user.name === ""}
+                partialDimmed={
+                  index === 2 &&
+                  (user.name === "" ||
+                    isUnsubscribedSection ||
+                    isNoSubscribedSubjects)
+                }
                 explanation_keyword={explanation_keyword}
                 explanation_description={explanation_description}
-                dimmed={index >= 3 && user.name === ""}
+                dimmed={
+                  index >= 3 &&
+                  (user.name === "" ||
+                    isUnsubscribedSection ||
+                    isNoSubscribedSubjects)
+                }
                 tocItemHeight={tocItemHeight}
                 toc={detailData.summary_data.section}
                 onClick={() =>
                   handleTocItemClick(Math.floor(Number(start_time)))
                 }
+                isLoggedOut={user.name === ""}
+                isUnsubscribedSection={isUnsubscribedSection}
+                isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
+                subscribedSubjects={subscribedSubjects}
               />
             )
           )}
@@ -96,6 +132,7 @@ const Contents = ({
       <RecommendWrapper
         $hasDimmedItem={hasDimmedItem}
         $tocItemHeight={tocItemHeight}
+        $isUnsubscribedSection={isUnsubscribedSection} // 새로운 prop 전달
       >
         <Recommend detailData={detailData} />
       </RecommendWrapper>
@@ -115,7 +152,9 @@ const ContentWrapper = styled.div`
 const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
   $tocItemHeight: number;
+  $isUnsubscribedSection: boolean;
 }>`
-  margin-top: ${(props) => (props.$hasDimmedItem ? `120px` : "100px")};
-  z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+  margin-top: ${({ $hasDimmedItem, $isUnsubscribedSection }) =>
+    $isUnsubscribedSection ? "-160px" : $hasDimmedItem ? "120px" : "160px"};
+  z-index: ${({ $hasDimmedItem }) => ($hasDimmedItem ? `500` : "0")};
 `;

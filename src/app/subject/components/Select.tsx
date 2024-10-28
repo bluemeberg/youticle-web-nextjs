@@ -34,6 +34,7 @@ const topics = [
   { name: "자동차", icon: "🚗" },
   { name: "요리", icon: "🍳" },
   { name: "게임", icon: "🎮" },
+  { name: "여행", icon: "✈️" }, // "여행" 항목 추가
 ];
 
 const App = () => {
@@ -58,11 +59,11 @@ const App = () => {
       setModalMessage("⚠️ 최소 1개의 키워드를 선택해주세요.");
       setShowModal(true);
     } else if (selectedTopics.length < 3) {
-      setModalMessage("⚠️ 3개의 주제를 선택해주세요.");
+      setModalMessage("⚠️ 3개의 키워드를 선택해주세요.");
       setShowModal(true);
     } else {
       setModalMessage(
-        "로그인이 필요합니다. 구독한 주제를 이메일로 받아보실 수 있습니다."
+        "로그인이 필요합니다. 구독한 키워드를 이메일로 받아보실 수 있습니다."
       );
       setShowModal(true);
     }
@@ -232,7 +233,7 @@ const App = () => {
 
         {/* 네 번째 카테고리 그룹 */}
         <TopicGroup>
-          {topics.slice(14, 19).map((topic) => (
+          {topics.slice(14, 20).map((topic) => (
             <Topic
               key={topic.name}
               selected={selectedTopics.includes(topic.name)}
@@ -480,12 +481,11 @@ const FreeBenefitsTitle = styled.h2`
 `;
 
 const FreeBenefitsDesc = styled.div`
-  font-size: 18px;
+  font-size: 16px;
   color: #000;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.4;
   margin-top: 20px;
-  margin-bottom: 12px;
   li {
     margin-top: 12px;
   }

@@ -1,101 +1,134 @@
-"use client";
-
 import styled from "styled-components";
-import { TOPIC_TAGS } from "@/constants/topic";
 import InfoIcon from "@/assets/subInfo.svg";
 import GoogleLogin from "@/common/GoogleLogin";
 import { Section } from "@/types/dataProps";
 
-const DIMMED_TITLE = `지금 바로 <span class='highlight'>무료 구독</span>하고 <br/> ${TOPIC_TAGS.length}개의 주요 분야의 <span class='highlight'>영상</span>을 <br/> <span class='highlight'>매일 읽어보세요.</span>`;
+const DIMMED_TITLE = `🔒 구독중이 아니라면?`;
 
 interface DimmedAreaProps {
   tocItemHeight: number;
   toc: Section[];
+  isLoggedOut: boolean;
+  isUnsubscribedSection: boolean;
+  isNoSubscribedSubjects: boolean;
+  subscribedSubjects: string[];
+  section: string;
 }
 
-const DimmedArea = ({ tocItemHeight, toc }: DimmedAreaProps) => {
+const DimmedArea = ({
+  tocItemHeight,
+  toc,
+  isLoggedOut,
+  isUnsubscribedSection,
+  isNoSubscribedSubjects,
+  subscribedSubjects,
+  section,
+}: DimmedAreaProps) => {
+  const subscribedText = subscribedSubjects.join(", ");
+  const subscribeText = isUnsubscribedSection
+    ? "구독 키워드 변경하기"
+    : `'${section}' 키워드 무료 구독하러가기`;
+
   return (
-    <Container $height={tocItemHeight}>
-      <ServiceTitle dangerouslySetInnerHTML={{ __html: DIMMED_TITLE }} />
-      <TopicTags>
-        {TOPIC_TAGS.map((topic) => {
-          return <TopicTag key={topic}>{topic}</TopicTag>;
-        })}
-      </TopicTags>
-      <GoogleLogin variant="button" text="구글 계정 연동해서 무료 구독하기" />
+    <Container $height={tocItemHeight} $isUnsubscribed={isUnsubscribedSection}>
       <Info>
-        <span>
-          <InfoIcon /> 이미 구독중이라면?
-        </span>
-        <GoogleLogin
-          variant="link"
-          text="로그인해서 아티클 아래 내용 마저 읽기"
-        />
+        {isUnsubscribedSection ? (
+          <SubsKeywordInfo>
+            이미 '{subscribedText}' 키워드를 구독 중입니다.
+          </SubsKeywordInfo>
+        ) : (
+          <>
+            <span>
+              <InfoIcon /> 구독 중이 아니라면?
+            </span>
+            <GoogleLogin
+              variant="link"
+              text="로그인해서 아티클 아래 내용 마저 읽기"
+            />
+          </>
+        )}
       </Info>
       <TOC>
         <div>👀 남은 목차</div>
         <div>
-          {toc.slice(3).map(({ title }, index) => {
-            return <span key={index}>{title} </span>;
-          })}
+          {toc.slice(3).map(({ title }, index) => (
+            <span key={index}>{title}</span>
+          ))}
         </div>
       </TOC>
+      {!isUnsubscribedSection && (
+        <>
+          <Divider />
+          <ServiceTitle dangerouslySetInnerHTML={{ __html: DIMMED_TITLE }} />
+          <ServiceSubTitle>
+            <span>✅ 매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.</span>
+            <span>
+              ✅ 매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
+            </span>
+            <span>✅ 내가 놓친 이전 아티클을 자유롭게 조회하기.</span>
+          </ServiceSubTitle>
+        </>
+      )}
+      <ButtonContainer>
+        <ServiceButton
+          $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
+        >
+          {subscribeText}
+        </ServiceButton>
+      </ButtonContainer>
+      {!isUnsubscribedSection && (
+        <ButtonContainer>
+          <ServiceButton $variant="secondary">유티클 더 알아보기</ServiceButton>
+        </ButtonContainer>
+      )}
+      <Divider />
     </Container>
   );
 };
 
 export default DimmedArea;
 
-const Container = styled.div<{ $height: number }>`
-  height: ${({ $height }) => $height + 20}px;
+// Styled Components
+const Container = styled.div<{ $height: number; $isUnsubscribed: boolean }>`
+  height: ${({ $height, $isUnsubscribed }) =>
+    $height + ($isUnsubscribed ? 100 : 100)}px;
   position: absolute;
-  top: -4px;
-  /* padding-top: ${({ $height }) => ($height - 432) / 2}px; */
-  /* padding-bottom: ${({ $height }) => $height - 432}px; */
+  top: -100px;
   padding-bottom: 50px;
   background-color: rgba(255, 255, 255, 0.9);
-
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   gap: 18px;
+  width: 100%;
+`;
+
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 1px;
+  background-color: #dddddd;
+  margin-top: 40px;
+  margin-bottom: 40px;
 `;
 
 const ServiceTitle = styled.span`
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 168%;
-
+  margin-top: 12px;
   text-align: center;
-  .highlight {
-    color: #007bff;
-  }
 `;
 
-const TopicTags = styled.div`
-  padding: 12px 9px;
-  gap: 10px;
-  border-radius: 4px;
-  background: rgba(242, 242, 242, 1);
-
+const ServiceSubTitle = styled.div`
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const TopicTag = styled.div`
-  height: 26px;
-  padding: 6px 12px;
-  gap: 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 1);
-  box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.12);
-
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 14.32px;
+  flex-direction: column;
+  span {
+    font-size: 14px;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
 `;
 
 const Info = styled.div`
@@ -110,6 +143,9 @@ const Info = styled.div`
     line-height: 136%;
     display: flex;
     gap: 4px;
+    b {
+      font-weight: 700;
+    }
   }
 `;
 
@@ -117,8 +153,8 @@ const TOC = styled.div`
   width: 100%;
   div:first-child {
     height: 44px;
-    padding: 10px 16px 10px 16px;
-    background-color: #ffa500;
+    padding: 10px 16px;
+    background-color: #f0f4ff;
     font-size: 20px;
     font-weight: 800;
     line-height: 24px;
@@ -134,4 +170,51 @@ const TOC = styled.div`
     font-weight: 600;
     line-height: 19.09px;
   }
+`;
+
+const ServiceButton = styled.button<{ $variant?: string }>`
+  width: 100%;
+  height: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "52px"
+      : $variant === "secondaryBlack"
+      ? "60px"
+      : "60px"};
+  background-color: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "#6C757D"
+      : $variant === "secondaryBlack"
+      ? "#000"
+      : "#007bff"};
+  color: #fff;
+  font-family: "Pretendard Variable";
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  margin-top: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "0px"
+      : $variant === "secondaryBlack"
+      ? "20px"
+      : "0px"};
+  margin-bottom: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "20px"
+      : $variant === "secondaryBlack"
+      ? "20px"
+      : "0px"};
+`;
+
+const ButtonContainer = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+`;
+
+const SubsKeywordInfo = styled.div`
+  font-size: 16px;
+  font-weight: 600;
 `;
