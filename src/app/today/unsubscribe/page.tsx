@@ -30,7 +30,7 @@ const UnsubscribePage = () => {
   // "전체"를 포함한 미구독 주제 목록 생성
   const unsubscribedTopics = [
     "전체",
-    ...new Set(unsubscribedData.map((item) => item.section)),
+    ...Array.from(new Set(unsubscribedData.map((item) => item.section))),
   ];
 
   useEffect(() => {
