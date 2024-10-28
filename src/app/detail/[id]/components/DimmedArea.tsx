@@ -34,7 +34,7 @@ const DimmedArea = ({
       <Info>
         {isUnsubscribedSection ? (
           <SubsKeywordInfo>
-            이미 '{subscribedText}' 키워드를 구독 중입니다.
+            이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
           </SubsKeywordInfo>
         ) : (
           <>
