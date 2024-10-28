@@ -140,7 +140,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
       <Container
         $isDetailPage={isDetailPage}
         $isDesktop={isClientDesktop}
-        $isUnsubscribePage={isUnsubscribeOrModifyPage} // unsubscribe 페이지 스타일 적용
+        $isUnsubscribeOrModifyPage={isUnsubscribeOrModifyPage} // unsubscribe 페이지 스타일 적용
       >
         <PageInfo>
           {(pathname.endsWith("/unsubscribe") ||
