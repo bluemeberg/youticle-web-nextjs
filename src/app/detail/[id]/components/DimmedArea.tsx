@@ -27,7 +27,7 @@ const DimmedArea = ({
   const subscribedText = subscribedSubjects.join(", ");
   const subscribeText = isUnsubscribedSection
     ? "구독 키워드 변경하기"
-    : `'${section}' 키워드 무료 구독하러가기`;
+    : `&lsquo;${section}&rsquo; 키워드 무료 구독하러가기`;
 
   return (
     <Container $height={tocItemHeight} $isUnsubscribed={isUnsubscribedSection}>
