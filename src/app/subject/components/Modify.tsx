@@ -18,7 +18,7 @@ const topics = [
   { name: "비즈니스/사업", icon: "💼" },
   { name: "건강", icon: "🩺" },
   { name: "피트니스/운동", icon: "🏋️" },
-  { name: "스포츠", icon: "⚽" },
+  //   { name: "스포츠", icon: "⚽" },
   { name: "연애/결혼", icon: "❤️" },
   { name: "육아", icon: "👶" },
   { name: "뷰티/메이크업", icon: "💄" },
@@ -28,8 +28,10 @@ const topics = [
   { name: "IT/테크", icon: "💻" },
   { name: "자동차", icon: "🚗" },
   { name: "요리", icon: "🍳" },
-  { name: "게임", icon: "🎮" },
+  //   { name: "게임", icon: "🎮" },
   { name: "여행", icon: "✈️" },
+  { topic: "과학", icon: "🔬" }, // 과학 항목 추가
+  { topic: "역사", icon: "📜" }, // 역사 항목 추가
 ];
 
 const SubscriptionPage = () => {

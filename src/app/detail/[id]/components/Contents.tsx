@@ -1,3 +1,5 @@
+"use client"; // Ensure this is a client component
+
 import styled from "styled-components";
 import TocItem from "./TocItem";
 import Recommend from "./Recommend";
@@ -132,9 +134,11 @@ const Contents = ({
       <RecommendWrapper
         $hasDimmedItem={hasDimmedItem}
         $tocItemHeight={tocItemHeight}
-        $isUnsubscribedSection={isUnsubscribedSection} // 새로운 prop 전달
       >
-        <Recommend detailData={detailData} />
+        <Recommend
+          detailData={detailData}
+          isUnsubscribedSection={isUnsubscribedSection}
+        />
       </RecommendWrapper>
     </>
   );
@@ -152,9 +156,7 @@ const ContentWrapper = styled.div`
 const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
   $tocItemHeight: number;
-  $isUnsubscribedSection: boolean;
 }>`
-  margin-top: ${({ $hasDimmedItem, $isUnsubscribedSection }) =>
-    $isUnsubscribedSection ? "-160px" : $hasDimmedItem ? "120px" : "160px"};
-  z-index: ${({ $hasDimmedItem }) => ($hasDimmedItem ? `500` : "0")};
+  margin-top: ${(props) => (props.$hasDimmedItem ? `120px` : "160px")};
+  z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
 `;

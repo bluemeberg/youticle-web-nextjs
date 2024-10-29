@@ -24,18 +24,20 @@ const YOUTUBE_TOPICS = [
   { topic: "비즈니스/사업", icon: "💼" },
   { topic: "건강", icon: "🩺" },
   { topic: "피트니스", icon: "🏋️" },
-  { topic: "스포츠", icon: "⚽" },
+  // { topic: "스포츠", icon: "⚽" },
   { topic: "연애/결혼", icon: "❤️" },
   { topic: "육아", icon: "👶" },
   { topic: "뷰티/메이크업", icon: "💄" },
   { topic: "여자 패션", icon: "👗" },
   { topic: "남자 패션", icon: "👔" },
   { topic: "요리", icon: "🍳" },
-  { topic: "게임", icon: "🎮" },
+  // { topic: "게임", icon: "🎮" },
   { topic: "IT/테크", icon: "💻" },
   { topic: "인공지능", icon: "🤖" },
   { topic: "자동차", icon: "🚗" },
   { topic: "여행", icon: "✈️" }, // "여행" 항목 추가
+  { topic: "과학", icon: "🔬" }, // 과학 항목 추가
+  { topic: "역사", icon: "📜" }, // 역사 항목 추가
 ];
 
 const TopicNav = ({

@@ -12,6 +12,7 @@ import SortOptions from "@/common/SortOptions";
 
 interface RecommendProps {
   detailData: DataProps;
+  isUnsubscribedSection: boolean;
 }
 
 const Recommend = ({ detailData }: RecommendProps) => {
@@ -95,6 +96,8 @@ const Container = styled.div`
   flex-direction: column;
   padding: 0 20px;
   margin-top: -80px;
+  margin-top: ${({ $isUnsubscribed }) =>
+    $isUnsubscribed ? "-500px" : "-80px"};
 `;
 
 const SubContainer = styled.div`
@@ -108,7 +111,7 @@ const SubContainer = styled.div`
 const RecommendTitle = styled.span`
   display: flex;
   align-items: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
   margin-bottom: 32px;
 

@@ -34,7 +34,7 @@ const DimmedArea = ({
       <Info>
         {isUnsubscribedSection ? (
           <SubsKeywordInfo>
-            이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
+            🙋이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
           </SubsKeywordInfo>
         ) : (
           <>
@@ -81,7 +81,7 @@ const DimmedArea = ({
           <ServiceButton $variant="secondary">유티클 더 알아보기</ServiceButton>
         </ButtonContainer>
       )}
-      <Divider />
+      {!isUnsubscribedSection && <Divider />}
     </Container>
   );
 };
@@ -110,7 +110,6 @@ const Divider = styled.div`
   min-height: 1px;
   background-color: #dddddd;
   margin-top: 40px;
-  margin-bottom: 40px;
 `;
 
 const ServiceTitle = styled.span`

@@ -243,7 +243,7 @@ const TopicNavContainer = styled.div`
 
 const UnSubsArticleInfo = styled.div`
   background-color: #f0f4ff;
-  padding: 20px 32px;
+  padding: 20px 20px;
   display: flex;
   flex-direction: column;
   margin: 20px;
