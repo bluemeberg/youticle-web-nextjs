@@ -15,7 +15,7 @@ interface RecommendProps {
   isUnsubscribedSection: boolean;
 }
 
-const Recommend = ({ detailData }: RecommendProps) => {
+const Recommend = ({ detailData, isUnsubscribedSection }: RecommendProps) => {
   const RECOMMEND_TITLE = `다음&nbsp;<span class='highlight'>${detailData.section}</span>&nbsp;유튜브 아티클 확인하기`;
   const [sortCriteria, setSortCriteria] = useState("engagement");
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -74,7 +74,7 @@ const Recommend = ({ detailData }: RecommendProps) => {
   }, [apiData, sortCriteria]);
 
   return (
-    <Container>
+    <Container $isUnsubscribed={isUnsubscribedSection}>
       <SubContainer>
         <RecommendTitle dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }} />
         <CountdownTimer />
@@ -91,11 +91,9 @@ const Recommend = ({ detailData }: RecommendProps) => {
 
 export default Recommend;
 
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
+// Add the prop type for $isUnsubscribed
+const Container = styled.div<{ $isUnsubscribed: boolean }>`
   padding: 0 20px;
-  margin-top: -80px;
   margin-top: ${({ $isUnsubscribed }) =>
     $isUnsubscribed ? "-500px" : "-80px"};
 `;
