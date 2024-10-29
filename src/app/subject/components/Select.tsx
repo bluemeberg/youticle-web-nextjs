@@ -35,8 +35,8 @@ const topics = [
   { name: "요리", icon: "🍳" },
   //   { name: "게임", icon: "🎮" },
   { name: "여행", icon: "✈️" }, // "여행" 항목 추가
-  { topic: "과학", icon: "🔬" }, // 과학 항목 추가
-  { topic: "역사", icon: "📜" }, // 역사 항목 추가
+  { name: "과학", icon: "🔬" }, // 과학 항목 추가
+  { name: "역사", icon: "📜" }, // 역사 항목 추가
 ];
 
 const App = () => {
