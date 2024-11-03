@@ -95,7 +95,7 @@ export default Recommend;
 const Container = styled.div<{ $isUnsubscribed: boolean }>`
   padding: 0 20px;
   margin-top: ${({ $isUnsubscribed }) =>
-    $isUnsubscribed ? "-500px" : "-80px"};
+    $isUnsubscribed ? "-440px" : "-80px"};
 `;
 
 const SubContainer = styled.div`

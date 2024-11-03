@@ -10,7 +10,7 @@ import { DataProps } from "@/types/dataProps";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { formatSummary } from "@/utils/formatter";
-
+import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
 
 interface ClientSideProps {
@@ -57,7 +57,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const opts: YouTubeProps["opts"] = {
     height: "202",
     playerVars: {
-      autoplay: 1,
+      autoplay: 0,
       rel: 0,
       disablekb: 1,
     },
@@ -113,20 +113,15 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
-        title={
-          isFixed
-            ? `${detailData.summary_data.headline_title}, ${detailData.summary_data.headline_sub_title}`
-            : ""
-        }
+        title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
       />
       <PageInfo ref={scrollRef}>
         <Category>{detailData.section}</Category>
-        <Title>
-          {detailData.summary_data.headline_title},
-          <br />
-          {detailData.summary_data.headline_sub_title}
-        </Title>
-        <Upload>{detailData.upload_date} 업로드</Upload>
+        <Title>{detailData.summary_data.headline_title}</Title>
+        <UploadContainer>
+          <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
+          <Upload>{detailData.duration}</Upload>
+        </UploadContainer>
       </PageInfo>
       <VideoContainer
         ref={videoContainerRef}
@@ -188,7 +183,7 @@ const Category = styled.span`
   font-size: 16px;
   font-weight: 600;
   line-height: 19.09px;
-  color: rgba(48, 213, 200, 1);
+  color: #007bff;
   margin-bottom: 12px;
 `;
 
@@ -199,10 +194,16 @@ const Title = styled.span`
   margin-bottom: 4px;
 `;
 
+const UploadContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
+
 const Upload = styled.span`
   font-size: 12px;
   font-weight: 400;
   line-height: 14.4px;
+  margin-right: 4px;
 `;
 
 const Preview = styled.div<{ $isFixed: boolean }>`

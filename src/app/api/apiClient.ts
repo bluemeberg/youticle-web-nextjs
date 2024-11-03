@@ -69,7 +69,6 @@ export const fetchSubscribedSubjects = async (
     const response = await fetch(
       `${API_BASE_URL}/users/subjects/${userData.id}`
     );
-
     if (response.ok) {
       const data = await response.json();
       const subjectNames = data.map(
@@ -83,5 +82,36 @@ export const fetchSubscribedSubjects = async (
   } catch (error) {
     console.error("Error fetching subscribed subjects:", error);
     return [];
+  }
+};
+
+export const updateUserSubject = async (
+  userId: number,
+  oldSubjectName: string,
+  newSubjectName: string
+) => {
+  const url = `${API_BASE_URL}/users/subject/?user_id=${userId}&old_subject_name=${encodeURIComponent(
+    oldSubjectName
+  )}&new_subject_name=${encodeURIComponent(newSubjectName)}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update subject: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Subject updated successfully:", data);
+    return data;
+  } catch (error) {
+    console.error("Error updating subject:", error);
+    throw error;
   }
 };

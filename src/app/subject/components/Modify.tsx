@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import LogoHeader from "@/common/LogoHeader";
 import { useRouter } from "next/navigation";
-import { fetchSubscribedSubjects } from "../../api/apiClient";
+import { fetchSubscribedSubjects, getUserByEmail } from "../../api/apiClient";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
+import { updateUserSubject } from "../../api/apiClient";
 
 // 전체 주제 목록 및 아이콘
 const topics = [
@@ -37,17 +38,26 @@ const topics = [
 const SubscriptionPage = () => {
   const router = useRouter();
   const user = useRecoilValue(userState);
+  console.log(user);
   const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
   const [subscribedTopics, setSubscribedTopics] = useState<string[]>([]);
+  const [initialSubscribedSubjects, setInitialSubscribedSubjects] = useState<
+    string[]
+  >([]);
+
   const [unsubscribedTopics, setUnsubscribedTopics] = useState<
     { name: string; icon: string }[]
   >(topics.filter((topic) => !subscribedSubjects.includes(topic.name)));
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+
   useEffect(() => {
     // 구독된 주제를 API로 가져와서 상태에 설정
     const fetchSubjects = async () => {
       if (user.email) {
         const subjects = await fetchSubscribedSubjects(user.email);
         setSubscribedSubjects(subjects);
+        setInitialSubscribedSubjects(subjects);
 
         // 초기 필터링: 구독되지 않은 주제만 필터링하여 설정
         const unsubscribed = topics.filter(
@@ -70,13 +80,49 @@ const SubscriptionPage = () => {
       setSubscribedSubjects((prev) => [...prev, topic]);
       setUnsubscribedTopics((prev) => prev.filter((t) => t.name !== topic));
     } else {
-      alert("최대 3개의 주제만 구독할 수 있습니다.");
+      setModalMessage("⚠️ 최대 3개의 주제만 구독할 수 있습니다.");
+      setShowModal(true);
     }
   };
 
-  const handleConfirm = () => {
-    console.log("Updated Topics:", subscribedSubjects);
-    router.push(`/today`);
+  const handleConfirm = async () => {
+    if (subscribedSubjects.length < 3) {
+      setModalMessage("⚠️ 3개의 주제를 선택해야 합니다.");
+      setShowModal(true);
+      return;
+    }
+    const newTopics = subscribedSubjects.filter(
+      (topic) => !initialSubscribedSubjects.includes(topic)
+    );
+    const removedTopics = initialSubscribedSubjects.filter(
+      (topic) => !subscribedSubjects.includes(topic)
+    );
+    console.log(newTopics);
+    console.log(removedTopics);
+    // 변경된 구독 키워드가 없을 때 팝업 발생
+    if (removedTopics.length === 0 && newTopics.length === 0) {
+      setModalMessage("구독 키워드가 변경되지 않았습니다.");
+      setShowModal(true);
+      return;
+    }
+    try {
+      // 변경된 항목을 PUT 요청으로 전송
+      for (let i = 0; i < newTopics.length; i++) {
+        const data = await getUserByEmail(user.email);
+        // 주제 등록
+        console.log(data.id);
+        await updateUserSubject(data.id, removedTopics[i] || "", newTopics[i]);
+      }
+      setModalMessage("구독 키워드가 성공적으로 업데이트되었습니다.");
+      setShowModal(true);
+      router.push(`/today`);
+    } catch (error) {
+      console.error("주제 업데이트 중 오류 발생:", error);
+      setModalMessage(
+        "주제를 업데이트하는 데 문제가 발생했습니다. 다시 시도해 주세요."
+      );
+      setShowModal(true);
+    }
   };
 
   return (
@@ -87,7 +133,15 @@ const SubscriptionPage = () => {
         현재 구독 중인 키워드를 구독 해제 후 새 키워드를 선택해주세요. 3개의
         키워드 선택이 가능합니다.
       </Subtitle>
-
+      {/* 모달 */}
+      {showModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalClose onClick={() => setShowModal(false)}>×</ModalClose>
+            <ModalMessage>{modalMessage}</ModalMessage>
+          </ModalContent>
+        </ModalOverlay>
+      )}
       <Section bgColor="#E0E7FF">
         <SectionTitle>현재 구독 중인 키워드</SectionTitle>
         <TopicContainer>
@@ -129,6 +183,43 @@ const Container = styled.div`
   padding-top: 80px;
   background-color: #fbfcff;
   font-family: "Pretendard Variable";
+`;
+
+// 모달 스타일 정의
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 400px;
+  position: relative;
+`;
+
+const ModalClose = styled.span`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  font-size: 20px;
+`;
+
+const ModalMessage = styled.p`
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
 `;
 
 const Title = styled.h1`

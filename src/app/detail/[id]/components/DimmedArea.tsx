@@ -2,9 +2,9 @@ import styled from "styled-components";
 import InfoIcon from "@/assets/subInfo.svg";
 import GoogleLogin from "@/common/GoogleLogin";
 import { Section } from "@/types/dataProps";
+import { useRouter } from "next/navigation";
 
-const DIMMED_TITLE = `🔒 구독중이 아니라면?`;
-
+const DIMMED_TITLE = `🔒 구독중이 아니라면?<br/>지금 바로 무료 구독하세요!`;
 interface DimmedAreaProps {
   tocItemHeight: number;
   toc: Section[];
@@ -24,10 +24,12 @@ const DimmedArea = ({
   subscribedSubjects,
   section,
 }: DimmedAreaProps) => {
+  const router = useRouter();
+
   const subscribedText = subscribedSubjects.join(", ");
   const subscribeText = isUnsubscribedSection
     ? "구독 키워드 변경하기"
-    : `&lsquo;${section}&rsquo; 키워드 무료 구독하러가기`;
+    : `‘${section}’ 키워드 무료 구독하러가기`;
 
   return (
     <Container $height={tocItemHeight} $isUnsubscribed={isUnsubscribedSection}>
@@ -38,9 +40,7 @@ const DimmedArea = ({
           </SubsKeywordInfo>
         ) : (
           <>
-            <span>
-              <InfoIcon /> 구독 중이 아니라면?
-            </span>
+            <span>'{section}' 키워드 구독 중이라면?</span>
             <GoogleLogin
               variant="link"
               text="로그인해서 아티클 아래 내용 마저 읽기"
@@ -61,17 +61,20 @@ const DimmedArea = ({
           <Divider />
           <ServiceTitle dangerouslySetInnerHTML={{ __html: DIMMED_TITLE }} />
           <ServiceSubTitle>
-            <span>✅ 매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.</span>
+            <span>📧 매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.</span>
             <span>
-              ✅ 매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
+              🔍 매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
             </span>
-            <span>✅ 내가 놓친 이전 아티클을 자유롭게 조회하기.</span>
+            <span>✨ 최대 3개의 관심 키워드 구독하기.</span>
           </ServiceSubTitle>
         </>
       )}
       <ButtonContainer>
         <ServiceButton
           $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
+          onClick={() => {
+            router.push(isUnsubscribedSection ? "/subject/modify" : "/subject");
+          }}
         >
           {subscribeText}
         </ServiceButton>
@@ -101,6 +104,7 @@ const Container = styled.div<{ $height: number; $isUnsubscribed: boolean }>`
   align-items: center;
   gap: 18px;
   width: 100%;
+  font-family: "Pretendard Variable";
 `;
 
 const Divider = styled.div`
@@ -115,7 +119,7 @@ const Divider = styled.div`
 const ServiceTitle = styled.span`
   font-size: 20px;
   font-weight: 700;
-  line-height: 168%;
+  line-height: 132%;
   margin-top: 12px;
   text-align: center;
 `;
@@ -137,8 +141,8 @@ const Info = styled.div`
   gap: 4px;
   margin-top: 20px;
   span {
-    font-size: 14px;
-    font-weight: 400;
+    font-size: 20px;
+    font-weight: 700;
     line-height: 136%;
     display: flex;
     gap: 4px;
@@ -150,6 +154,7 @@ const Info = styled.div`
 
 const TOC = styled.div`
   width: 100%;
+  margin-top: 12px;
   div:first-child {
     height: 44px;
     padding: 10px 16px;

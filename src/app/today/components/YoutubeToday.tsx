@@ -197,13 +197,14 @@ const Container = styled.div`
   background-color: #ffff;
   display: flex;
   flex-direction: column;
-  margin-top: 36px;
+  margin-top: 4px;
   font-family: "Pretendard Variable";
 `;
 
 const SubContainer = styled.div`
   background-color: #f8f9fa;
   padding: 24px 12px 12px 12px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* 드롭 섀도우 추가 */
 `;
 
 const ChangeSubjectButton = styled.div`

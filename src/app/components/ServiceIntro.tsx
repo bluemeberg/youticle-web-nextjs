@@ -1,9 +1,12 @@
 "use client";
-
 import styled from "styled-components";
+
 import { useRouter } from "next/navigation";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { keywordState } from "@/store/keyword";
+import { userState } from "@/store/user";
+import { fetchSubscribedSubjects } from "@/api/apiClient"; // 구독 주제 가져오기 함수
+import { useEffect, useState } from "react";
 import LandingThumb from "@/assets/yousum_thumb.svg";
 const SERVICE_TITLE =
   "유튜브 영상 정보의 홍수 속에서 <br/> 나만 똑똑하게 시청하는 방법.";
@@ -12,16 +15,36 @@ const SERVICE_DESCRIPTION =
 
 const ServiceIntro = () => {
   const [keyword, setKeyword] = useRecoilState(keywordState);
+  const router = useRouter();
+  const user = useRecoilValue(userState);
+  const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  // 구독 주제 불러오기
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      const subjects = await fetchSubscribedSubjects(user.email);
+      setSubscribedSubjects(subjects);
+    };
+    fetchSubjects();
+  }, [user]);
 
-  const handleChange = (e: any) => {
-    setKeyword({
-      ...keyword,
-      daily: e.target.value,
-    });
+  const goToPageWithPopup = () => {
+    if (subscribedSubjects.length > 0) {
+      setModalMessage(
+        "구독한 키워드가 이미 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
+      );
+      setShowModal(true);
+      // router.push("/today");
+    } else {
+      router.push("/subject");
+    }
   };
 
-  const router = useRouter();
-  const goToPage = (url: string) => router.push(url);
+  const handleModalButtonClick = () => {
+    setShowModal(false);
+    router.push("/today");
+  };
 
   return (
     <Container>
@@ -104,12 +127,22 @@ const ServiceIntro = () => {
           </Topic>
         </TopicGroup>
       </TopicMenu>
-      <ServiceButton onClick={() => goToPage("subject ")}>
+      <ServiceButton onClick={goToPageWithPopup}>
         관심 키워드 무료 구독하러가기
       </ServiceButton>
       {/* <ImgContainer>
         <LandingThumb />
       </ImgContainer> */}
+      {/* 모달 창 */}
+      {showModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalMessage>{modalMessage}</ModalMessage>
+            <ModalButton onClick={handleModalButtonClick}>이동하기</ModalButton>
+            <ModalClose onClick={() => setShowModal(false)}>×</ModalClose>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 };
@@ -126,6 +159,52 @@ const Container = styled.div`
   font-family: "Pretendard Variable";
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 400px;
+  position: relative;
+  text-align: center;
+`;
+
+const ModalMessage = styled.p`
+  font-size: 16px;
+  font-weight: 500;
+`;
+
+const ModalClose = styled.span`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  font-size: 20px;
+`;
+
+const ModalButton = styled.button`
+  background-color: #007bff;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 16px;
+`;
 const ServiceTitle = styled.span`
   font-size: 24px;
   font-weight: 800;

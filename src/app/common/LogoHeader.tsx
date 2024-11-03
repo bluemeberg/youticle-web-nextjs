@@ -52,13 +52,14 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   }, [pathname]);
 
   const handleBackClick = () => {
-    if (
+    if (pathname.includes("/detail/")) {
+      router.push("/today");
+    } else if (
       pathname.includes("/detail") &&
       previousPage.current === "/unsubscribe"
     ) {
       router.push("/unsubscribe");
-    }
-    if (pathname.endsWith("/subject/modify")) {
+    } else if (pathname.endsWith("/subject/modify")) {
       router.push("/today");
     } else {
       router.back();
@@ -149,7 +150,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
             <BackIcon onClick={handleBackClick} />
           )}
           {title === "" ? (
-            <span onClick={goHome} className="logo">
+            <span onClick={() => goToPage("/")} className="logo">
               YouTicle
             </span>
           ) : (

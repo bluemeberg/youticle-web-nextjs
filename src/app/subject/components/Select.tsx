@@ -7,6 +7,7 @@ import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
+import { fetchSubscribedSubjects } from "@/api/apiClient"; // 구독 주제 가져오기 함수
 
 interface User {
   email: string;
@@ -45,6 +46,7 @@ const App = () => {
   const [showModal, setShowModal] = useState<boolean>(false); // 모달 표시 여부 상태
   const setUser = useSetRecoilState(userState);
   const router = useRouter();
+  const [modalButtonLabel, setModalButtonLabel] = useState<string>("이동하기");
 
   const handleTopicClick = (topic: string) => {
     if (selectedTopics.includes(topic)) {
@@ -136,45 +138,57 @@ const App = () => {
   };
 
   const handleLoginSuccess = async (user: User) => {
-    setShowModal(false); // 팝업 닫기
-    console.log(user);
+    setShowModal(false);
     if (user.email !== "") {
-      // user 정보 등록 확인, 없으면 신규 등록함
+      // 사용자 정보 등록 및 가져오기
       const data = await getUserByEmail(user.email, user.displayName);
-      // 주제 등록
-      console.log(data.id);
+
+      // 주제 등록 및 구독 정보 확인
+      const subscribedSubjects = await fetchSubscribedSubjects(user.email);
       setUser({
         name: user.displayName,
         email: user.email,
         picture: user.photoURL,
         id: data.id,
       });
-      // 주제 등록
-      for (const subject of selectedTopics) {
-        try {
-          const response = await fetch("https://youticle.shop/users/subject/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: data.id, // 여기서 data.id는 사용자 ID
-              subject_name: subject,
-            }),
-          });
 
-          if (!response.ok) {
-            throw new Error(`Failed to add subject: ${subject}`);
+      if (subscribedSubjects.length > 0) {
+        setModalMessage(
+          "구독한 주제가 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
+        );
+        setModalButtonLabel("오늘의 아티클로 이동");
+        setShowModal(true);
+      } else {
+        // 구독 주제가 없을 때 주제 등록
+        for (const subject of selectedTopics) {
+          try {
+            const response = await fetch(
+              "https://youticle.shop/users/subject/",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  user_id: data.id, // 사용자 ID
+                  subject_name: subject,
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`Failed to add subject: ${subject}`);
+            }
+
+            const responseData = await response.json();
+            console.log(`Subject ${subject} added for user:`, responseData);
+          } catch (error) {
+            console.error(`Error adding subject ${subject}:`, error);
           }
-
-          const responseData = await response.json();
-          console.log(`Subject ${subject} added for user:`, responseData);
-        } catch (error) {
-          console.error(`Error adding subject ${subject}:`, error);
         }
+        router.push(`/subject`);
       }
     }
-    router.push(`/today`);
   };
   return (
     <Container>
@@ -254,7 +268,7 @@ const App = () => {
           dangerouslySetInnerHTML={{ __html: FREE_BENEFITS_DESC }}
         />
       </BenefitsSection>
-      {/* 모달창 */}
+      {/* // 모달 메시지에 따른 UI 렌더링 수정 */}
       {showModal && (
         <ModalOverlay>
           <ModalContent>
@@ -262,6 +276,18 @@ const App = () => {
             {/* 모달 메시지와 메시지 타입에 따른 UI */}
             {modalMessage.includes("⚠️") ? (
               <WarningMessage>{modalMessage}</WarningMessage>
+            ) : modalMessage.includes("구독한 주제가 있습니다") ? (
+              <>
+                <InfoMessage>{modalMessage}</InfoMessage>
+                <ModalButton
+                  onClick={() => {
+                    setShowModal(false);
+                    router.push(`/today`);
+                  }}
+                >
+                  오늘의 아티클로 이동
+                </ModalButton>
+              </>
             ) : (
               <>
                 <InfoMessage>🙋로그인이 필요합니다.</InfoMessage>
@@ -498,7 +524,7 @@ const FREE_BENEFITS_DESC = `
   <ul>
     <li>1️⃣ 매일 구독한 키워드의 아티클 전문 읽기.</li>
     <li>2️⃣ 매일 이메일로 아티클 편하게 확인하기.</li>
-    <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
+    <li>3️⃣ 최대 3개의 관심 키워드 자유롭게 변경하기.</li>
   </ul>`;
 
 export default App;

@@ -65,12 +65,14 @@ const Container = styled.div`
   justify-content: center;
   background-color: #f0f4ff;
   font-family: "Pretendard Variable";
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* 드롭 섀도우 추가 */
 `;
 
 const ContentBox = styled.div`
   background-color: #f0f4ff;
   padding-left: 16px;
   padding-right: 16px;
+  padding-bottom: 20px;
   width: 100%;
   display: flex;
   flex-direction: column;

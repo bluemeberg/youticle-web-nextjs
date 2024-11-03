@@ -97,7 +97,6 @@ export default TopicCard;
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
   padding: 20px 12px;
   gap: 10px;
   background: rgba(255, 255, 255, 1);
