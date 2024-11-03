@@ -40,7 +40,7 @@ const DimmedArea = ({
           </SubsKeywordInfo>
         ) : (
           <>
-            <span>'{section}' 키워드 구독 중이라면?</span>
+            <span>{section} 키워드 구독 중이라면?</span>
             <GoogleLogin
               variant="link"
               text="로그인해서 아티클 아래 내용 마저 읽기"
