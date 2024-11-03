@@ -38,15 +38,29 @@ const TopicCard = (props: TopicCardProps) => {
     router.push(`/detail/${video_id}`);
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
+  const specialSections = ["주식"]; // 특정 주제 섹션 목록
 
+  // 해당 섹션이 특정 주제인지 확인
+  const isSpecialSection = specialSections.includes(section);
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
         <Section>#{section}</Section>
-        <Title>
-          {summary_data?.headline_title}
-          {summary_data?.headline_sub_title}
-        </Title>
+        {section === "주식" &&
+        (summary_data?.key_points ||
+          summary_data?.headline_sub_title === "") ? (
+          <Title>
+            {summary_data?.headline_title}
+            {summary_data?.headline_sub_title}
+          </Title>
+        ) : (
+          section !== "주식" && (
+            <Title>
+              {summary_data?.headline_title}
+              {summary_data?.headline_sub_title}
+            </Title>
+          )
+        )}
       </CardHeader>
       <BodyContainer>
         <ChannelInfoContainer>
@@ -69,20 +83,41 @@ const TopicCard = (props: TopicCardProps) => {
           </ChannelInfo>
         </ChannelInfoContainer>
         <Body>
-          {summary_data?.key_points?.length ? (
+          {isSpecialSection ? (
             <Summary>
-              {summary_data.key_points.map((point, index) => (
-                <SummaryContainer key={index}>
-                  <Divider height={"6px"} />
-                  <SummaryContent fontSize={`16px`}>
-                    {point.point}
-                  </SummaryContent>
-                </SummaryContainer>
-              ))}
+              {summary_data?.key_points?.length ? (
+                summary_data.key_points.map((point, index) => (
+                  <SummaryContainer key={index}>
+                    <Divider height={"6px"} />
+                    <SummaryContent fontSize={`16px`}>
+                      {point.point}
+                    </SummaryContent>
+                  </SummaryContainer>
+                ))
+              ) : summary_data?.headline_sub_title === "" ? (
+                <ShortSummary>{short_summary}</ShortSummary> // headline_sub_title이 없을 경우 short_summary를 표시
+              ) : (
+                <BodyTitle>
+                  {summary_data?.headline_title}...
+                  {summary_data?.headline_sub_title}
+                </BodyTitle>
+                // <ShortSummary>{short_summary}</ShortSummary> // headline_sub_title이 없을 경우 short_summary를 표시
+              )}
             </Summary>
           ) : (
             <Summary>
-              <p>{short_summary}</p>
+              {summary_data?.key_points?.length ? (
+                summary_data.key_points.map((point, index) => (
+                  <SummaryContainer key={index}>
+                    <Divider height={"6px"} />
+                    <SummaryContent fontSize={`16px`}>
+                      {point.point}
+                    </SummaryContent>
+                  </SummaryContainer>
+                ))
+              ) : (
+                <ShortSummary>{short_summary}</ShortSummary>
+              )}
             </Summary>
           )}
         </Body>
@@ -111,6 +146,16 @@ const CardHeader = styled.div`
   padding-bottom: 8px;
 `;
 
+const ShortSummary = styled.div`
+  font-size: 14px;
+  line-height: 132%;
+  display: -webkit-box;
+  -webkit-line-clamp: 6; /* 최대 5줄 */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
 const BodyContainer = styled.div`
   display: flex;
   width: 100%;
@@ -134,7 +179,13 @@ const Body = styled.div`
 
 const Title = styled.span`
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 28px;
+`;
+
+const BodyTitle = styled.span`
+  font-size: 18px;
+  font-weight: 700;
   line-height: 28px;
 `;
 
@@ -158,7 +209,7 @@ const SummaryContent = styled.div<{ fontSize: string }>`
   margin-left: 4px;
   font-size: ${(props) => props.fontSize};
   line-height: 120%;
-  font-weight: 500;
+  font-weight: 400;
 `;
 
 const Summary = styled.div`

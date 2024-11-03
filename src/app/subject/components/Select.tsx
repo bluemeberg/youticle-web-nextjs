@@ -186,7 +186,7 @@ const App = () => {
             console.error(`Error adding subject ${subject}:`, error);
           }
         }
-        router.push(`/subject`);
+        router.push(`/today`);
       }
     }
   };
