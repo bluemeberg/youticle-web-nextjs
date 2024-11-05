@@ -4,7 +4,8 @@ import GoogleLogin from "@/common/GoogleLogin";
 import { Section } from "@/types/dataProps";
 import { useRouter } from "next/navigation";
 
-const DIMMED_TITLE = `🔒 구독중이 아니라면?<br/>지금 바로 무료 구독하세요!`;
+const DIMMED_TITLE = `🔒 구독중이 아니라면?`;
+const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
 interface DimmedAreaProps {
   tocItemHeight: number;
   toc: Section[];
@@ -40,7 +41,10 @@ const DimmedArea = ({
           </SubsKeywordInfo>
         ) : (
           <>
-            <span>{section} 키워드 구독 중이라면?</span>
+            <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
+            <LogoTitleSubs>
+              이미 &lsquo;{section}&rsquo; 키워드 구독 중이라면?
+            </LogoTitleSubs>
             <GoogleLogin
               variant="link"
               text="로그인해서 아티클 아래 내용 마저 읽기"
@@ -58,15 +62,33 @@ const DimmedArea = ({
       </TOC>
       {!isUnsubscribedSection && (
         <>
-          <Divider />
+          {/* <Divider /> */}
           <ServiceTitle dangerouslySetInnerHTML={{ __html: DIMMED_TITLE }} />
-          <ServiceSubTitle>
-            <span>📧 매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.</span>
-            <span>
-              🔍 매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
-            </span>
-            <span>✨ 최대 3개의 관심 키워드 구독하기.</span>
-          </ServiceSubTitle>
+          <UnSubscribeContainer>
+            <ServiceTitleSub
+              dangerouslySetInnerHTML={{ __html: DIMMED_SUBTITLE }}
+            />
+            <ServiceSubTitleContainer>
+              <ServiceSubTitleSubContainer>
+                <ServiceSubTitleIcon>📧</ServiceSubTitleIcon>
+                <ServiceSubTitleDescription>
+                  매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.
+                </ServiceSubTitleDescription>
+              </ServiceSubTitleSubContainer>
+              <ServiceSubTitleSubContainer>
+                <ServiceSubTitleIcon>🔍</ServiceSubTitleIcon>
+                <ServiceSubTitleDescription>
+                  매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
+                </ServiceSubTitleDescription>
+              </ServiceSubTitleSubContainer>
+              <ServiceSubTitleSubContainer>
+                <ServiceSubTitleIcon>✨</ServiceSubTitleIcon>
+                <ServiceSubTitleDescription>
+                  최대 3개의 관심 키워드 구독하기.{" "}
+                </ServiceSubTitleDescription>
+              </ServiceSubTitleSubContainer>
+            </ServiceSubTitleContainer>
+          </UnSubscribeContainer>
         </>
       )}
       <ButtonContainer>
@@ -81,10 +103,17 @@ const DimmedArea = ({
       </ButtonContainer>
       {!isUnsubscribedSection && (
         <ButtonContainer>
-          <ServiceButton $variant="secondary">유티클 더 알아보기</ServiceButton>
+          <ServiceButton
+            $variant="secondary"
+            onClick={() => {
+              router.push("/");
+            }}
+          >
+            유티클 더 알아보기
+          </ServiceButton>
         </ButtonContainer>
       )}
-      {!isUnsubscribedSection && <Divider />}
+      {/* {!isUnsubscribedSection && <Divider />} */}
     </Container>
   );
 };
@@ -107,6 +136,18 @@ const Container = styled.div<{ $height: number; $isUnsubscribed: boolean }>`
   font-family: "Pretendard Variable";
 `;
 
+const LogoTitle = styled.div`
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 40px;
+  font-family: "Pretendard Variable";
+`;
+
+const LogoTitleSubs = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
 const Divider = styled.div`
   display: flex;
   align-items: center;
@@ -119,14 +160,55 @@ const Divider = styled.div`
 const ServiceTitle = styled.span`
   font-size: 20px;
   font-weight: 700;
-  line-height: 132%;
-  margin-top: 12px;
+  line-height: 148%;
+  margin-top: 68px;
   text-align: center;
+  font-family: "Pretendard Variable";
+`;
+
+const ServiceTitleSub = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 148%;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  font-family: "Pretendard Variable";
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+`;
+
+const ServiceSubTitleContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const ServiceSubTitleSubContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  div:first-child {
+    margin-bottom: 24px;
+  }
+  div:nth-child(2) {
+    margin-bottom: 24px;
+  }
+`;
+const ServiceSubTitleIcon = styled.div`
+  font-size: 16px;
+`;
+
+const ServiceSubTitleDescription = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  margin-left: 10px;
+  line-height: 132%;
 `;
 
 const ServiceSubTitle = styled.div`
   display: flex;
   flex-direction: column;
+  font-family: "Pretendard Variable";
   span {
     font-size: 14px;
     margin-bottom: 12px;
@@ -154,7 +236,7 @@ const Info = styled.div`
 
 const TOC = styled.div`
   width: 100%;
-  margin-top: 12px;
+  margin-top: 4px;
   div:first-child {
     height: 44px;
     padding: 10px 16px;
@@ -163,6 +245,7 @@ const TOC = styled.div`
     font-weight: 800;
     line-height: 24px;
     color: #020202;
+    border-radius: 4px;
   }
   div:nth-child(2) {
     padding: 20px;
@@ -173,6 +256,7 @@ const TOC = styled.div`
     font-size: 18px;
     font-weight: 600;
     line-height: 19.09px;
+    border-radius: 4px;
   }
 `;
 
@@ -186,11 +270,22 @@ const ServiceButton = styled.button<{ $variant?: string }>`
       : "60px"};
   background-color: ${({ $variant }) =>
     $variant === "secondary"
-      ? "#6C757D"
+      ? "#fff"
       : $variant === "secondaryBlack"
       ? "#000"
       : "#007bff"};
-  color: #fff;
+  color: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "#007bff"
+      : $variant === "secondaryBlack"
+      ? "#fff"
+      : "#fff"};
+  border: ${({ $variant }) =>
+    $variant === "secondary"
+      ? "1px solid #007bff"
+      : $variant === "secondaryBlack"
+      ? ""
+      : ""};
   font-family: "Pretendard Variable";
   font-size: 16px;
   font-weight: 700;
@@ -221,4 +316,10 @@ const ButtonContainer = styled.div`
 const SubsKeywordInfo = styled.div`
   font-size: 16px;
   font-weight: 600;
+`;
+
+const UnSubscribeContainer = styled.div`
+  background-color: #e9f4ff;
+  padding: 28px 24px 8px 24px;
+  border-radius: 4px;
 `;

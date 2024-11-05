@@ -157,6 +157,6 @@ const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
   $tocItemHeight: number;
 }>`
-  margin-top: ${(props) => (props.$hasDimmedItem ? `120px` : "160px")};
+  margin-top: ${(props) => (props.$hasDimmedItem ? `320px` : "160px")};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
 `;

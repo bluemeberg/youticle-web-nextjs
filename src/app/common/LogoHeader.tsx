@@ -218,7 +218,7 @@ const Container = styled.header<{
   width: 100%;
   max-width: none;
   height: 52px;
-  padding: 0 20px !important;
+  padding: 0 16px !important;
   position: fixed;
   top: 0;
 
@@ -264,14 +264,15 @@ const PageInfo = styled.div`
 `;
 
 const Title = styled.span`
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 19.09px;
   width: 200px;
   flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-right: 12px;
 `;
 
 const ProfileImage = styled.div`

@@ -70,7 +70,7 @@ const StyledComponent = styled.div<StyledComponentProps>`
           border: none;
           border-bottom: 1px solid rgba(0, 123, 255, 1);
           background-color: white;
-          font-size: 16px;
+          font-size: 14px;
           line-height: 15.51px;
           color: rgba(0, 123, 255, 1);
           cursor: pointer;
