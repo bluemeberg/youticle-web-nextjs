@@ -14,6 +14,18 @@ export interface DataProps {
   channel_details: ChannelDetails;
 }
 
+export interface Overview {
+  market_analysis: string;
+  stock_analysis: StockAnalysis[];
+  investment_strategy: string;
+}
+
+export interface StockAnalysis {
+  stock: string;
+  stock_description: string;
+  analysis: string;
+}
+
 export interface EditorDataProps {
   video_id: string;
   title: string;
@@ -37,6 +49,7 @@ export interface SummaryData {
   short_summary: string;
   key_points?: KeyPoint[]; // key_points 배열 추가
   section: Section[];
+  overview?: Overview; // Make overview optional
 }
 
 export interface KeyPoint {

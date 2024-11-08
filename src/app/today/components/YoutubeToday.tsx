@@ -15,6 +15,7 @@ import TopicNav from "../../components/TopicNav";
 import { topicState } from "@/store/topic";
 import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
 import { unsubscribedDataState } from "@/store/unsubscribeData";
+import { userState } from "@/store/user";
 
 const TODAY_TITLE = "미구독 중인 키워드 아티클";
 const SUBS_TODAY_TITLE = "구독 중인 키워드 아티클";
@@ -34,6 +35,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const router = useRouter();
   const setUnsubscribedData = useSetRecoilState(unsubscribedDataState);
   const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
+  const user = useRecoilValue(userState);
 
   // 미구독 데이터 필터링
   const unsubscribedData = data.filter(

@@ -6,7 +6,7 @@ import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import Contents from "./Contents";
-import { DataProps } from "@/types/dataProps";
+import { DataProps, StockAnalysis } from "@/types/dataProps";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { formatSummary } from "@/utils/formatter";
@@ -110,6 +110,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
     fetchThumbnails();
   }, [id]);
+  console.log(detailData);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -139,12 +140,38 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           }}
         />
       </VideoContainer>
-      <Preview $isFixed={isFixed}>
+      <OverviewTitle>✨ 하이라이트</OverviewTitle>
+
+      {detailData.summary_data.overview && (
+        <OverviewContainer>
+          <SectionTitle>시장 분석</SectionTitle>
+          <Analysis>
+            {detailData.summary_data.overview.market_analysis}
+          </Analysis>
+
+          <SectionTitle>종목 분석</SectionTitle>
+          {detailData.summary_data.overview.stock_analysis.map(
+            (stock: StockAnalysis, index) => (
+              <StockCard key={index}>
+                <StockName>{stock.stock}</StockName>
+                <StockDescription>{stock.stock_description}</StockDescription>
+                <StockAnalysisText>{stock.analysis}</StockAnalysisText>
+              </StockCard>
+            )
+          )}
+
+          <SectionTitle>투자 전략</SectionTitle>
+          <Analysis>
+            {detailData.summary_data.overview.investment_strategy}
+          </Analysis>
+        </OverviewContainer>
+      )}
+      {/* <Preview $isFixed={isFixed}>
         <div>
           <span>🔎 미리보기</span>
           {formatSummary(detailData.summary_data.short_summary)}
         </div>
-      </Preview>
+      </Preview> */}
       <TOC>
         <div>목차</div>
         <div>
@@ -208,7 +235,7 @@ const Upload = styled.span`
 
 const Preview = styled.div<{ $isFixed: boolean }>`
   padding: 20px;
-  margin-top: ${(props) => (props.$isFixed ? "176px" : "28px")};
+  margin-top: ${(props) => (props.$isFixed ? "40px" : "28px")};
 
   div {
     display: flex;
@@ -236,8 +263,8 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 `;
 
 const TOC = styled.div`
-  margin-top: 24px;
-  padding: 0 20px;
+  margin-top: 100px;
+  padding: 0 16px;
 
   div:first-child {
     height: 44px;
@@ -254,7 +281,7 @@ const TOC = styled.div`
     display: flex;
     flex-direction: column;
     gap: 24px;
-    background-color: rgba(242, 242, 242, 1);
+    background-color: rgb(248, 248, 248);
     font-size: 18px;
     font-weight: 600;
     line-height: 19.09px;
@@ -299,4 +326,65 @@ const Loader = styled.div`
   );
   background-size: 200% 100%;
   animation: ${LoaderAnimation} 1.5s infinite;
+`;
+
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 40px;
+  margin-left: 16px;
+`;
+
+const OverviewContainer = styled.div`
+  padding: 0 16px;
+  margin-top: 20px;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  margin-top: 12px;
+  &:nth-of-type(2) {
+    margin-top: 32px;
+  }
+  &:nth-of-type(3) {
+    margin-top: 32px; // Different margin for the third SectionTitle
+  }
+`;
+
+const Analysis = styled.p`
+  font-size: 16px;
+  line-height: 132%;
+  background-color: #f0f4ff;
+  padding: 16px 12px;
+  border-radius: 4px;
+  margin-top: 12px;
+`;
+
+const StockCard = styled.div`
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px 12px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+`;
+
+const StockName = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+`;
+
+const StockDescription = styled.p`
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 16px;
+  margin-top: 4px;
+`;
+
+const StockAnalysisText = styled.p`
+  font-size: 16px;
+  color: #000;
+  line-height: 132%;
 `;

@@ -71,7 +71,7 @@ const SortOptions = forwardRef<HTMLDivElement, SortOptionsProps>(
             조회수
           </OptionBtn>
         </div>
-        <TooltipSection ref={infoIconRef}>
+        {/* <TooltipSection ref={infoIconRef}>
           <InfoIcon onClick={handleClickIcon} />
           {tooltipVisible && (
             <Tooltip $tooltipVisible={tooltipVisible}>
@@ -82,7 +82,7 @@ const SortOptions = forwardRef<HTMLDivElement, SortOptionsProps>(
               </span>
             </Tooltip>
           )}
-        </TooltipSection>
+        </TooltipSection> */}
       </Container>
     );
   }
@@ -104,6 +104,7 @@ const Container = styled.div<{
   div {
     display: flex;
     gap: 4px;
+    margin-right: 12px;
   }
 `;
 

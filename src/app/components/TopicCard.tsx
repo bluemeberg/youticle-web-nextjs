@@ -63,38 +63,10 @@ const TopicCard = (props: TopicCardProps) => {
         )}
       </CardHeader>
       <BodyContainer>
-        <ChannelInfoContainer>
-          <Thumbnail src={thumbnail} />
-          <VideoInfo>
-            <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
-            <LikeIcon /> <span>{parseVideoCountcribersCount(likes)}</span>
-          </VideoInfo>
-          <ChannelInfo>
-            <ProfileImage src={channel_details.channel_thumbnail} />
-            <ProfileInfo>
-              <Name>{channel_details.channel_name}</Name>
-              <SubsUpload>
-                <Subscriber>
-                  {parseSubscribersCount(channel_details.channel_subscribers)}
-                </Subscriber>
-                <UploadTime>{timeAgo(upload_date)}</UploadTime>
-              </SubsUpload>
-            </ProfileInfo>
-          </ChannelInfo>
-        </ChannelInfoContainer>
         <Body>
           {isSpecialSection ? (
             <Summary>
-              {summary_data?.key_points?.length ? (
-                summary_data.key_points.map((point, index) => (
-                  <SummaryContainer key={index}>
-                    <Divider height={"6px"} />
-                    <SummaryContent fontSize={`16px`}>
-                      {point.point}
-                    </SummaryContent>
-                  </SummaryContainer>
-                ))
-              ) : summary_data?.headline_sub_title === "" ? (
+              {summary_data?.headline_sub_title === "" ? (
                 <ShortSummary>{short_summary}</ShortSummary> // headline_sub_title이 없을 경우 short_summary를 표시
               ) : (
                 <BodyTitle>
@@ -106,22 +78,31 @@ const TopicCard = (props: TopicCardProps) => {
             </Summary>
           ) : (
             <Summary>
-              {summary_data?.key_points?.length ? (
-                summary_data.key_points.map((point, index) => (
-                  <SummaryContainer key={index}>
-                    <Divider height={"6px"} />
-                    <SummaryContent fontSize={`16px`}>
-                      {point.point}
-                    </SummaryContent>
-                  </SummaryContainer>
-                ))
-              ) : (
-                <ShortSummary>{short_summary}</ShortSummary>
-              )}
+              <ShortSummary>{short_summary}</ShortSummary>
             </Summary>
           )}
         </Body>
+        <ChannelInfoContainer>
+          <Thumbnail src={thumbnail} />
+          <VideoInfo>
+            <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
+            <LikeIcon /> <span>{parseVideoCountcribersCount(likes)}</span>
+          </VideoInfo>
+        </ChannelInfoContainer>
       </BodyContainer>
+
+      <ChannelInfo>
+        <ProfileImage src={channel_details.channel_thumbnail} />
+        <ProfileInfo>
+          <Name>{channel_details.channel_name}</Name>
+          <SubsUpload>
+            <Subscriber>
+              {parseSubscribersCount(channel_details.channel_subscribers)}
+            </Subscriber>
+            <UploadTime>{timeAgo(upload_date)}</UploadTime>
+          </SubsUpload>
+        </ProfileInfo>
+      </ChannelInfo>
     </Container>
   );
 };
@@ -132,10 +113,11 @@ export default TopicCard;
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 20px 12px;
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-top: 24px;
   gap: 10px;
   background: rgba(255, 255, 255, 1);
-  margin-bottom: 20px;
   border-bottom: 1px solid #d9d9d9;
 `;
 
@@ -147,13 +129,15 @@ const CardHeader = styled.div`
 `;
 
 const ShortSummary = styled.div`
-  font-size: 14px;
-  line-height: 132%;
+  font-size: 16px;
+  line-height: 140%;
   display: -webkit-box;
-  -webkit-line-clamp: 6; /* 최대 5줄 */
+  -webkit-line-clamp: 4; /* 최대 5줄 */
   -webkit-box-orient: vertical;
   overflow: hidden;
+  color: rgb(60, 60, 61);
   text-overflow: ellipsis;
+  margin-top: -2px;
 `;
 
 const BodyContainer = styled.div`
@@ -173,8 +157,8 @@ const Section = styled.div`
 
 const Body = styled.div`
   display: flex;
-  max-width: 60%; /* Body 영역을 60%로 설정 */
-  min-width: 60%;
+  max-width: 64%; /* Body 영역을 60%로 설정 */
+  min-width: 64%;
 `;
 
 const Title = styled.span`
@@ -187,6 +171,7 @@ const BodyTitle = styled.span`
   font-size: 18px;
   font-weight: 700;
   line-height: 28px;
+  margin-top: -8px;
 `;
 
 const SummaryContainer = styled.div`
@@ -214,7 +199,7 @@ const SummaryContent = styled.div<{ fontSize: string }>`
 
 const Summary = styled.div`
   border-radius: 4px;
-  margin-left: 12px;
+  margin-right: 12px;
 `;
 
 const Thumbnail = styled.img`
@@ -226,7 +211,7 @@ const Thumbnail = styled.img`
 `;
 
 const UploadTime = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 16.8px;
   color: #696868;
@@ -260,11 +245,12 @@ const ChannelInfo = styled.div`
   gap: 9px;
   height: 36px;
   margin-top: 12px;
+  margin-bottom: 24px;
 `;
 
 const ProfileImage = styled.img`
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(217, 217, 217, 1);
 `;
@@ -275,17 +261,17 @@ const ProfileInfo = styled.div`
 `;
 
 const Name = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   line-height: 128%;
-  display: inline-block;
-  max-width: 100px;
+  /* display: inline-block; */
+  /* max-width: 100px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: ellipsis; */
 `;
 
 const Subscriber = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 16.8px;
   color: #696868;
