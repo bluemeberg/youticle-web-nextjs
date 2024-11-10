@@ -15,9 +15,104 @@ export interface DataProps {
 }
 
 export interface Overview {
-  market_analysis: string;
-  stock_analysis: StockAnalysis[];
-  investment_strategy: string;
+  market_analysis?: string;
+  stock_analysis?: StockAnalysis[];
+  real_estate_analysis?: RealEstateAnalysis[];
+  investment_strategy?: string;
+  beauty_trends?: BeautyTrend[]; // Beauty trend section
+  brand_spotlight?: BrandSpotlight[] | FashionBrandSpotlight[]; // Brand spotlight section
+  styling_tips?: StylingTip[];
+  // AI 관련 데이터
+  ai_trends?: AITrend[];
+  company_spotlight?: CompanySpotlight[];
+  application_tips?: ApplicationTip[];
+  fashion_trends?: FashionTrend[]; // 패션 관련
+  styling_tips_fashion?: FashionStylingTip[]; // 패션 관련
+  business_trends?: BusinessTrend[]; // 비즈니스 트렌드
+  case_studies?: CaseStudy[]; // 사례 연구
+  growth_strategies?: GrowthStrategy[]; // 성장 전략
+  recommended_tools?: RecommendedTool[]; // 추천 도구
+}
+
+export interface BusinessTrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+export interface CaseStudy {
+  company_name: string;
+  case_description: string;
+  key_learnings: KeyLearning[];
+}
+
+export interface KeyLearning {
+  learning_point: string;
+}
+
+export interface GrowthStrategy {
+  strategy_name: string;
+  strategy_description: string;
+  target_industry: string;
+}
+
+export interface RecommendedTool {
+  tool_name: string;
+  tool_description: string;
+  recommended_use_case: string;
+}
+
+export interface FashionTrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+export interface FashionBrandSpotlight {
+  brand_name: string;
+  brand_description: string;
+  highlighted_items: HighlightedItem[];
+}
+
+export interface HighlightedItem {
+  item_name: string;
+  item_description: string;
+}
+
+export interface FashionStylingTip {
+  tip_title: string;
+  tip_description: string;
+  recommended_item: RecommendedItem[];
+}
+
+export interface RecommendedItem {
+  item_name: string;
+  usage_tip: string;
+}
+// AI 데이터 구조 정의
+export interface AITrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+export interface CompanySpotlight {
+  company_name: string;
+  company_description: string;
+  highlighted_technologies: HighlightedTechnology[];
+}
+
+export interface HighlightedTechnology {
+  technology_name: string;
+  technology_description: string;
+}
+
+export interface ApplicationTip {
+  tip_title: string;
+  tip_description: string;
+  recommended_tool: RecommendedTool[];
+}
+
+export interface RecommendedTool {
+  tool_name: string;
+  tool_usage_tip: string;
 }
 
 export interface StockAnalysis {
@@ -26,6 +121,38 @@ export interface StockAnalysis {
   analysis: string;
 }
 
+export interface RealEstateAnalysis {
+  real_estate_area: string;
+  area_description: string;
+  analysis: string;
+}
+
+export interface BeautyTrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+export interface BrandSpotlight {
+  brand_name: string;
+  brand_description: string;
+  highlighted_products: HighlightedProduct[];
+}
+
+export interface HighlightedProduct {
+  product_name: string;
+  product_description: string;
+}
+
+export interface StylingTip {
+  tip_title: string;
+  tip_description: string;
+  recommended_product: RecommendedProduct[];
+}
+
+export interface RecommendedProduct {
+  product_name: string;
+  product_usage_tip: string;
+}
 export interface EditorDataProps {
   video_id: string;
   title: string;
