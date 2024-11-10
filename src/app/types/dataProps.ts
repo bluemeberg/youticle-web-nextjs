@@ -20,13 +20,14 @@ export interface Overview {
   real_estate_analysis?: RealEstateAnalysis[];
   investment_strategy?: string;
   beauty_trends?: BeautyTrend[]; // Beauty trend section
-  brand_spotlight?: BrandSpotlight[] | FashionBrandSpotlight[]; // Brand spotlight section
+  brand_spotlight?: BrandSpotlight[]; // Brand spotlight section
   styling_tips?: StylingTip[];
   // AI 관련 데이터
   ai_trends?: AITrend[];
   company_spotlight?: CompanySpotlight[];
   application_tips?: ApplicationTip[];
   fashion_trends?: FashionTrend[]; // 패션 관련
+  brand_spotlight_fashion?: FashionBrandSpotlight[]; // 패션 관련
   styling_tips_fashion?: FashionStylingTip[]; // 패션 관련
   business_trends?: BusinessTrend[]; // 비즈니스 트렌드
   case_studies?: CaseStudy[]; // 사례 연구
