@@ -22,17 +22,38 @@ export interface Overview {
   beauty_trends?: BeautyTrend[]; // Beauty trend section
   brand_spotlight?: BrandSpotlight[]; // Brand spotlight section
   styling_tips?: StylingTip[];
+
   // AI 관련 데이터
   ai_trends?: AITrend[];
-  company_spotlight?: CompanySpotlight[];
-  application_tips?: ApplicationTip[];
+  related_technologies?: RelatedTechnology[];
+
   fashion_trends?: FashionTrend[]; // 패션 관련
   brand_spotlight_fashion?: FashionBrandSpotlight[]; // 패션 관련
   styling_tips_fashion?: FashionStylingTip[]; // 패션 관련
+
   business_trends?: BusinessTrend[]; // 비즈니스 트렌드
-  case_studies?: CaseStudy[]; // 사례 연구
-  growth_strategies?: GrowthStrategy[]; // 성장 전략
-  recommended_tools?: RecommendedTool[]; // 추천 도구
+  strategic_insights?: StrategicInsight[];
+
+  // 경제 관련 데이터 추가
+  economic_trends?: EconomicTrend[];
+  market_analysis_economy?: MarketAnalysisEconomy[];
+  investment_strategies_economy?: InvestmentStrategyEconomy[];
+}
+
+// 새로운 경제 관련 타입 정의
+export interface EconomicTrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+export interface MarketAnalysisEconomy {
+  market_indicator: string;
+  analysis: string;
+}
+
+export interface InvestmentStrategyEconomy {
+  strategy_title: string;
+  strategy_description: string;
 }
 
 export interface BusinessTrend {
@@ -40,20 +61,21 @@ export interface BusinessTrend {
   trend_description: string;
 }
 
-export interface CaseStudy {
-  company_name: string;
-  case_description: string;
-  key_learnings: KeyLearning[];
-}
-
-export interface KeyLearning {
-  learning_point: string;
-}
-
-export interface GrowthStrategy {
+export interface StrategicInsight {
   strategy_name: string;
   strategy_description: string;
-  target_industry: string;
+  application_tips: ApplicationTip[];
+}
+
+export interface ApplicationTip {
+  tip_title: string;
+  tip_description: string;
+  related_tools: RelatedTool[];
+}
+
+export interface RelatedTool {
+  tool_name: string;
+  tool_usage_description: string;
 }
 
 export interface RecommendedTool {
@@ -88,34 +110,25 @@ export interface RecommendedItem {
   item_name: string;
   usage_tip: string;
 }
-// AI 데이터 구조 정의
+
+// 인공지능
 export interface AITrend {
   trend_name: string;
   trend_description: string;
 }
 
-export interface CompanySpotlight {
-  company_name: string;
-  company_description: string;
-  highlighted_technologies: HighlightedTechnology[];
-}
-
-export interface HighlightedTechnology {
+export interface RelatedTechnology {
   technology_name: string;
   technology_description: string;
+  usage_tips: UsageTip[];
 }
 
-export interface ApplicationTip {
+export interface UsageTip {
   tip_title: string;
   tip_description: string;
-  recommended_tool: RecommendedTool[];
 }
 
-export interface RecommendedTool {
-  tool_name: string;
-  tool_usage_tip: string;
-}
-
+// 주식
 export interface StockAnalysis {
   stock: string;
   stock_description: string;

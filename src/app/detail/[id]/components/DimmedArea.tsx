@@ -4,7 +4,7 @@ import GoogleLogin from "@/common/GoogleLogin";
 import { Section } from "@/types/dataProps";
 import { useRouter } from "next/navigation";
 
-const DIMMED_TITLE = `🔒 구독중이 아니라면?`;
+const DIMMED_TITLE = `아직 구독중이 아니라면?!`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
 interface DimmedAreaProps {
   tocItemHeight: number;

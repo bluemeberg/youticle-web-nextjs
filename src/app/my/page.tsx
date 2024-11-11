@@ -103,11 +103,9 @@ const My = () => {
 
   const processing = async (user: User) => {
     //
-    console.log("기타 토픽", directTopic);
     if (user.email !== "") {
       // user 정보 등록 확인, 없으면 신규 등록함
       const data = await getUserByEmail(user.email);
-      console.log("로그인 후 유저 정보", data);
       try {
         if (currentTab == "데일리") {
           const response = await getKeywordsForUser(data.id);
@@ -121,7 +119,6 @@ const My = () => {
           } else {
             // 등록된 키워드가 없다면
             if (topic === "기타") {
-              console.log("기타 토픽", topic, directTopic);
               await addKeywordForUser(data.id, keyword.daily, directTopic, "D");
             } else {
               await addKeywordForUser(data.id, keyword.daily, topic, "D");

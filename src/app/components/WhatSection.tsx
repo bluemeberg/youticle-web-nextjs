@@ -85,7 +85,7 @@ const WhatSection: React.FC = () => {
         <br />
       </WhatSectionDes>
       <MorningUpdate>
-        <YoutubeThumbnail src="/images/What유티클2.png" />
+        <YoutubeThumbnail src="/images/What유티클.svg" />
       </MorningUpdate>
       <ButtonContainer>
         <ServiceButton onClick={() => goToPage("subject")}>

@@ -69,7 +69,7 @@ const RecommendationSection: React.FC = () => {
         <UserType>
           <UserTypeContainer>
             <UserTypeThumbnail>
-              <img src="/images/recommend1.png" />
+              <img src="/images/recommend1.svg" />
             </UserTypeThumbnail>
             <UserTypeTitle>
               트렌드에 민감한
@@ -87,7 +87,7 @@ const RecommendationSection: React.FC = () => {
         <UserType>
           <UserTypeContainer>
             <UserTypeThumbnail>
-              <img src="/images/recommend2.png" />
+              <img src="/images/recommend2.svg" />
             </UserTypeThumbnail>
             <UserTypeTitle>
               재테크에 관심이 많은
@@ -105,7 +105,7 @@ const RecommendationSection: React.FC = () => {
         <UserType>
           <UserTypeContainer>
             <UserTypeThumbnail>
-              <img src="/images/recommend3.png" />
+              <img src="/images/recommend3.svg" />
             </UserTypeThumbnail>
             <UserTypeTitle>
               바쁜 일상 속에서

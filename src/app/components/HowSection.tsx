@@ -58,7 +58,7 @@ const HowSection: React.FC = () => {
         아티클로 생성합니다.
       </HowSectionDes>
       <AiProcess>
-        <YoutubeThumbnail src="/images/How유티클.png" alt="how 썸네일" />
+        <YoutubeThumbnail src="/images/How유티클.svg" alt="how 썸네일" />
       </AiProcess>
     </HowContainer>
   );

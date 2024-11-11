@@ -41,7 +41,6 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const isUnsubscribeOrModifyPage =
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
 
-  console.log(isUnsubscribeOrModifyPage);
   const previousPage = useRef<string | null>(null);
 
   useEffect(() => {
@@ -224,8 +223,6 @@ const Container = styled.header<{
 
   // 로그를 확인하기 위해 콘솔 출력
   color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) => {
-    console.log("$isUnsubscribeOrModifyPage:", $isUnsubscribeOrModifyPage);
-    console.log("$isDetailPage:", $isDetailPage);
     return $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white";
   }};
 
