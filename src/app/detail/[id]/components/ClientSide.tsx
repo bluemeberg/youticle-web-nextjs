@@ -25,6 +25,13 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { formatSummary } from "@/utils/formatter";
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
+import StockOverview from "./overviews/StockOverview";
+import RealEstateOverview from "./overviews/RealEstateOverview";
+import EconomyOverview from "./overviews/EconomyOverview";
+import BeautyOverview from "./overviews/BeautyOverview";
+import AIOverview from "./overviews/AIOverview";
+import BusinessOverview from "./overviews/BusinessOverview";
+import FashionOverview from "./overviews/FashionOverview";
 
 interface ClientSideProps {
   id: string;
@@ -123,7 +130,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
     fetchThumbnails();
   }, [id]);
-  console.log(detailData);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -157,325 +163,37 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
       {/* Conditionally render overview based on the section */}
       {detailData.section === "주식" && detailData.summary_data.overview && (
-        <OverviewContainer>
-          <SectionTitle>시장 분석</SectionTitle>
-          <Description>
-            이 정보는 유튜브 영상에서 제공된 시장 동향과 관련된 내용입니다.
-          </Description>
-          <Analysis>
-            {detailData.summary_data.overview.market_analysis}
-          </Analysis>
-          <SectionTitle>종목 분석</SectionTitle>
-          <Description>
-            유튜브 영상에 소개된 주식 종목들에 대한 심층 분석입니다.
-          </Description>
-          {detailData.summary_data.overview.stock_analysis?.map(
-            (stock: StockAnalysis, index) => (
-              <StockCard key={index}>
-                <StockName>{stock.stock}</StockName>
-                <StockDescription>{stock.stock_description}</StockDescription>
-                <StockAnalysisText>{stock.analysis}</StockAnalysisText>
-              </StockCard>
-            )
-          )}
-          <SectionTitle>투자 전략</SectionTitle>
-          <Description>
-            영상에서 제안된 투자 전략과 조언을 포함합니다.
-          </Description>
-          <Analysis>
-            {detailData.summary_data.overview.investment_strategy}
-          </Analysis>
-        </OverviewContainer>
-      )}
-
-      {detailData.section === "부동산" && detailData.summary_data.overview && (
-        <OverviewContainer>
-          <SectionTitle>시장 분석</SectionTitle>
-          <Description>
-            이 정보는 유튜브 영상에서 제공된 시장 동향과 관련된 내용입니다.
-          </Description>
-          <Analysis>
-            {detailData.summary_data.overview.market_analysis}
-          </Analysis>
-          <SectionTitle>지역 분석</SectionTitle>
-          <Description>
-            유튜브 영상에 소개된 지역에 대한 심층 분석입니다.
-          </Description>
-          {detailData.summary_data.overview.real_estate_analysis?.map(
-            (real_estate: RealEstateAnalysis, index) => (
-              <StockCard key={index}>
-                <StockName>{real_estate.real_estate_area}</StockName>
-                <StockDescription>
-                  {real_estate.area_description}
-                </StockDescription>
-                <StockAnalysisText>{real_estate.analysis}</StockAnalysisText>
-              </StockCard>
-            )
-          )}
-          <SectionTitle>투자 전략</SectionTitle>
-          <Description>
-            영상에서 제안된 투자 전략과 조언을 포함합니다.
-          </Description>
-          <Analysis>
-            {detailData.summary_data.overview.investment_strategy}
-          </Analysis>
-        </OverviewContainer>
+        <StockOverview overview={detailData.summary_data.overview} />
       )}
 
       {detailData.section === "경제" && detailData.summary_data.overview && (
-        <OverviewContainer>
-          {/* 경제 트렌드 */}
-          <SectionTitle>경제 트렌드</SectionTitle>
-          <Description>
-            유튜브 영상에서 언급된 경제 트렌드와 변화 요인등을 소개합니다.
-          </Description>
-          {detailData.summary_data.overview.economic_trends?.map(
-            (trend: EconomicTrend, index) => (
-              <Card key={index}>
-                <TrendTitle>{trend.trend_name}</TrendTitle>
-                <TrendDescription>{trend.trend_description}</TrendDescription>
-              </Card>
-            )
-          )}
-
-          {/* 시장 분석 */}
-          <SectionTitle>시장 분석</SectionTitle>
-          <Description>
-            영상에 등장한 다양한 시장 지표를 바탕으로 한 경제 분석을 소개합니다.
-          </Description>
-          {detailData.summary_data.overview.market_analysis_economy?.map(
-            (analysis: MarketAnalysisEconomy, index) => (
-              <BrandCard key={index}>
-                <BrandName>{analysis.market_indicator}</BrandName>
-                <BrandDescription>{analysis.analysis}</BrandDescription>
-              </BrandCard>
-            )
-          )}
-
-          {/* 투자 전략 */}
-          <SectionTitle>투자 전략</SectionTitle>
-          <Description>
-            현재 경제 상황에 맞춰 실용적인 투자 전략을 제공합니다.
-          </Description>
-          {detailData.summary_data.overview.investment_strategies_economy?.map(
-            (strategy: InvestmentStrategyEconomy, index) => (
-              <ProductCard key={index}>
-                <BrandName>{strategy.strategy_title}</BrandName>
-                <StrategyDescription>
-                  {strategy.strategy_description}
-                </StrategyDescription>
-              </ProductCard>
-            )
-          )}
-        </OverviewContainer>
+        <EconomyOverview overview={detailData.summary_data.overview} />
       )}
+
+      {detailData.section === "부동산" && detailData.summary_data.overview && (
+        <RealEstateOverview overview={detailData.summary_data.overview} />
+      )}
+
       {detailData.section === "뷰티/메이크업" &&
         detailData.summary_data.overview && (
-          <OverviewContainer>
-            <SectionTitle>뷰티 트렌드</SectionTitle>
-            <Description>
-              유튜브 영상에서 언급된 뷰티 트렌드와 최신 스타일을 소개합니다.
-            </Description>
-
-            {detailData.summary_data.overview.beauty_trends?.map(
-              (trend, index) => (
-                <Card key={index}>
-                  <TrendTitle>{trend.trend_name}</TrendTitle>
-                  <TrendDescription>{trend.trend_description}</TrendDescription>
-                </Card>
-              )
-            )}
-            <SectionTitle>브랜드 스포트라이트</SectionTitle>
-            <Description>
-              유튜브 영상에서 주목받은 브랜드와 그 제품들을 소개합니다.
-            </Description>
-
-            {detailData.summary_data.overview.brand_spotlight?.map(
-              (brand, index) => (
-                <BrandCard key={index}>
-                  <BrandName>{brand.brand_name}</BrandName>
-                  <BrandDescription>{brand.brand_description}</BrandDescription>
-                  <ProductCardTitle>🛍️ 대표 제품</ProductCardTitle>
-                  {brand.highlighted_products.map((product, idx) => (
-                    <ProductCard key={idx}>
-                      <ProductName>{product.product_name}</ProductName>
-                      <ProductDescription>
-                        {product.product_description}
-                      </ProductDescription>
-                    </ProductCard>
-                  ))}
-                </BrandCard>
-              )
-            )}
-            <SectionTitle>스타일링 팁</SectionTitle>
-            <Description>
-              영상에 등장한 뷰티 제품을 활용한 실용적인 스타일링 팁을
-              제공합니다.
-            </Description>
-
-            {detailData.summary_data.overview.styling_tips?.map(
-              (tip, index) => (
-                <TipCard key={index}>
-                  <TipTitle>{tip.tip_title}</TipTitle>
-                  <TipDescription>{tip.tip_description}</TipDescription>
-                  {tip.recommended_product.map((product, idx) => (
-                    <ProductUsageTip key={idx}>
-                      <strong>💡 추천 제품 : {product.product_name}</strong>
-                      <br />
-                      {product.product_usage_tip}
-                    </ProductUsageTip>
-                  ))}
-                </TipCard>
-              )
-            )}
-          </OverviewContainer>
+          <BeautyOverview overview={detailData.summary_data.overview} />
         )}
 
       {detailData.section === "인공지능" &&
         detailData.summary_data.overview && (
-          <OverviewContainer>
-            <SectionTitle>AI 트렌드</SectionTitle>
-            <Description>
-              유튜브 영상에서 설명된 AI 기술의 발전 동향을 소개합니다.
-            </Description>
-            {detailData.summary_data.overview.ai_trends?.map((trend, index) => (
-              <Card key={index}>
-                <TrendTitle>{trend.trend_name}</TrendTitle>
-                <TrendDescription>{trend.trend_description}</TrendDescription>
-              </Card>
-            ))}
-            <SectionTitle>AI 적용 기술</SectionTitle>
-            <Description>영상에 소개된 AI 기술들을 설명합니다.</Description>
-            {detailData.summary_data.overview.related_technologies?.map(
-              (tech: RelatedTechnology, index) => (
-                <BrandCard key={index}>
-                  <BrandName>{tech.technology_name}</BrandName>
-                  <BrandDescription>
-                    {tech.technology_description}
-                  </BrandDescription>
-                  <ProductCardDescription>주요 특징</ProductCardDescription>
-                  {tech.usage_tips.map((technology, idx) => (
-                    <ProductCard key={idx}>
-                      <ProductName>{technology.tip_title}</ProductName>
-                      <ProductDescription>
-                        {technology.tip_description}
-                      </ProductDescription>
-                    </ProductCard>
-                  ))}
-                </BrandCard>
-              )
-            )}
-          </OverviewContainer>
+          <AIOverview overview={detailData.summary_data.overview} />
         )}
+
       {detailData.section === "비즈니스/사업" &&
         detailData.summary_data.overview && (
-          <OverviewContainer>
-            <SectionTitle>비즈니스 트렌드</SectionTitle>
-            <Description>
-              유튜브 영상에서 설명된 비즈니스 업계에서 주목받고 있는 최신
-              트렌드와 변화의 흐름을 소개합니다.
-            </Description>
-            {detailData.summary_data.overview.business_trends?.map(
-              (trend, index) => (
-                <Card key={index}>
-                  <TrendTitle>{trend.trend_name}</TrendTitle>
-                  <TrendDescription>{trend.trend_description}</TrendDescription>
-                </Card>
-              )
-            )}
-            <SectionTitle>전략적 인사이트</SectionTitle>
-            <Description>
-              영상에서 공유된 공적인 비즈니스를 위한 핵심 전략과 아이디어를
-              소개합니다.
-            </Description>
-            {detailData.summary_data.overview.strategic_insights?.map(
-              (insight: StrategicInsight, index) => (
-                <BrandCard key={index}>
-                  <BrandName>{insight.strategy_name}</BrandName>
-                  <BrandDescription>
-                    {insight.strategy_description}
-                  </BrandDescription>
-                  <BusniessTipTitle>💡실전 팁</BusniessTipTitle>
-                  {insight.application_tips.map((tip: ApplicationTip, idx) => (
-                    <TipContainer key={idx}>
-                      <TipTitle>{tip.tip_title}</TipTitle>
-                      <TipDescription>{tip.tip_description}</TipDescription>
-                      {tip.related_tools.map((tool: RelatedTool, toolIdx) => (
-                        <ProductCard key={toolIdx}>
-                          <TipTitle>{tool.tool_name}</TipTitle>
-                          <ToolUsageDescription>
-                            {tool.tool_usage_description}
-                          </ToolUsageDescription>
-                        </ProductCard>
-                      ))}
-                    </TipContainer>
-                  ))}
-                </BrandCard>
-              )
-            )}
-          </OverviewContainer>
+          <BusinessOverview overview={detailData.summary_data.overview} />
         )}
 
       {/* 패션 섹션 */}
       {(detailData.section === "남자 패션" ||
         detailData.section === "여자 패션") &&
         detailData.summary_data.overview && (
-          <OverviewContainer>
-            <SectionTitle>패션 트렌드</SectionTitle>
-            <Description>
-              유튜브 영상에서 언급된 패션 트렌드와 최신 스타일을 소개합니다.
-            </Description>
-            {detailData.summary_data.overview.fashion_trends?.map(
-              (trend, index) => (
-                <Card key={index}>
-                  <TrendTitle>{trend.trend_name}</TrendTitle>
-                  <TrendDescription>{trend.trend_description}</TrendDescription>
-                </Card>
-              )
-            )}
-
-            <SectionTitle>브랜드 스포트라이트</SectionTitle>
-            <Description>
-              유튜브 영상에서 주목받은 브랜드와 그 제품들을 소개합니다.
-            </Description>
-            {detailData.summary_data.overview.brand_spotlight_fashion?.map(
-              (brand, index) => (
-                <BrandCard key={index}>
-                  <BrandName>{brand.brand_name}</BrandName>
-                  <BrandDescription>{brand.brand_description}</BrandDescription>
-                  <ProductCardTitle>🛍️ 대표 제품</ProductCardTitle>
-                  {brand.highlighted_items.map((item, idx) => (
-                    <ProductCard key={idx}>
-                      <ProductName>{item.item_name}</ProductName>
-                      <ProductDescription>
-                        {item.item_description}
-                      </ProductDescription>
-                    </ProductCard>
-                  ))}
-                </BrandCard>
-              )
-            )}
-
-            <SectionTitle>스타일링 팁</SectionTitle>
-            <Description>
-              영상에 등장한 패션 제품을 활용한 실용적인 스타일링 팁을
-              제공합니다.
-            </Description>
-            {detailData.summary_data.overview.styling_tips_fashion?.map(
-              (tip, index) => (
-                <TipCard key={index}>
-                  <TipTitle>{tip.tip_title}</TipTitle>
-                  <TipDescription>{tip.tip_description}</TipDescription>
-                  {tip.recommended_item.map((item, idx) => (
-                    <ProductUsageTip key={idx}>
-                      <strong>💡 추천 제품 : {item.item_name}</strong> <br />
-                      {item.usage_tip}
-                    </ProductUsageTip>
-                  ))}
-                </TipCard>
-              )
-            )}
-          </OverviewContainer>
+          <FashionOverview overview={detailData.summary_data.overview} />
         )}
       {/* <Preview $isFixed={isFixed}>
         <div>
@@ -582,7 +300,9 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 const TOC = styled.div`
   margin-top: 100px;
   padding: 0 16px;
-
+  span {
+    line-height: 132%;
+  }
   div:first-child {
     height: 44px;
     padding: 10px 16px 10px 16px;
@@ -601,7 +321,7 @@ const TOC = styled.div`
     background-color: rgb(248, 248, 248);
     font-size: 18px;
     font-weight: 600;
-    line-height: 19.09px;
+    line-height: 132%;
   }
 `;
 
@@ -650,207 +370,4 @@ const OverviewTitle = styled.div`
   font-weight: 700;
   margin-top: 40px;
   margin-left: 16px;
-`;
-
-const OverviewContainer = styled.div`
-  padding: 0 16px;
-  margin-top: 20px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  margin-top: 12px;
-  &:nth-of-type(2) {
-    margin-top: 32px;
-  }
-  &:nth-of-type(3) {
-    margin-top: 32px; // Different margin for the third SectionTitle
-  }
-  &:nth-of-type(4) {
-    margin-top: 32px; // Different margin for the third SectionTitle
-  }
-`;
-
-const Analysis = styled.p`
-  font-size: 16px;
-  line-height: 132%;
-  background-color: #f0f4ff;
-  padding: 16px 12px;
-  border-radius: 4px;
-  margin-top: 12px;
-`;
-
-const StockCard = styled.div`
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px 12px;
-  margin-top: 8px;
-  margin-bottom: 20px;
-`;
-
-const StockName = styled.h4`
-  font-size: 16px;
-  font-weight: 700;
-`;
-
-const StockDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 16px;
-  margin-top: 4px;
-`;
-
-const StockAnalysisText = styled.p`
-  font-size: 16px;
-  color: #000;
-  line-height: 132%;
-`;
-const Card = styled.div`
-  background-color: #f7f9fc;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
-`;
-
-const TrendTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 132%;
-`;
-const AITrendTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 132%;
-`;
-
-const TrendDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  line-height: 128%;
-`;
-
-const BrandCard = styled.div`
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 8px;
-`;
-
-const BrandName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const BrandDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 120%;
-`;
-
-const ProductCard = styled.div`
-  background-color: #f0f4ff;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-`;
-
-const ProductCardTitle = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 20px;
-`;
-
-const ProductName = styled.h4`
-  font-size: 14px;
-  font-weight: 600;
-`;
-
-const ProductDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 8px;
-  line-height: 128%;
-`;
-
-const TipCard = styled.div`
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-`;
-
-const TipTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-`;
-
-const BusniessTipTitle = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 24px;
-`;
-
-const TipDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 120%;
-`;
-
-const ProductUsageTip = styled.p`
-  font-size: 13px;
-  color: #888;
-  margin-top: 16px;
-  line-height: 132%;
-  strong {
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-`;
-
-const ProductCardDescription = styled.div`
-  font-size: 16px;
-  margin-top: 20px;
-  font-weight: 600;
-`;
-
-const StrategyDescription = styled.p`
-  font-size: 14px;
-  margin-bottom: 8px;
-  margin-top: 8px;
-  line-height: 128%;
-`;
-
-const TipContainer = styled.div`
-  background-color: #f7f7f7;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 6px;
-`;
-
-const ToolCard = styled.div`
-  background-color: #e8f5e9;
-  padding: 8px;
-  border-radius: 6px;
-  margin-top: 8px;
-`;
-
-const ToolName = styled.h5`
-  font-size: 15px;
-  font-weight: bold;
-  color: #2e7d32;
-`;
-
-const ToolUsageDescription = styled.p`
-  font-size: 14px;
-  color: #333;
-  line-height: 1.4;
 `;
