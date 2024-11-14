@@ -18,6 +18,7 @@ export interface Overview {
   market_analysis?: string;
   stocks?: Stock[];
   investment_strategy?: InvestmentStrategy[];
+  investment_strategy_real_estate: string;
   beauty_trends?: BeautyTrend[]; // Beauty trend section
   brand_spotlight?: BrandSpotlight[]; // Brand spotlight section
   styling_tips?: StylingTip[];

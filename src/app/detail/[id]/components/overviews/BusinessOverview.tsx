@@ -38,7 +38,7 @@ const BusinessOverview: React.FC<BusinessOverviewProps> = ({ overview }) => (
         <BrandDescription>{insight.strategy_description}</BrandDescription>
         <ProductCardTitle>📌 주요 팁</ProductCardTitle>
         {insight.application_tips.map((tip, idx) => (
-          <TipContainer>
+          <TipContainer key={idx}>
             <TipTitle>{tip.tip_title}</TipTitle>
             <TipDescription>{tip.tip_description}</TipDescription>
             {tip.related_tools.map((tool, toolIdx) => (

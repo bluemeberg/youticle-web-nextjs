@@ -208,7 +208,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         </div>
       </TOC>
       <OverviewTitle>👀 미리보기</OverviewTitle>
-      <Preview>{formatSummary(detailData.summary_data.short_summary)}</Preview>
+      <Preview $isFixed={isFixed}>
+        {formatSummary(detailData.summary_data.short_summary)}
+      </Preview>
 
       <Contents
         detailData={detailData}

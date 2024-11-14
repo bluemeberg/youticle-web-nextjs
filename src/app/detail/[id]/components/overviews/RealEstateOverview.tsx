@@ -7,7 +7,7 @@ interface RealEstateOverviewProps {
   overview: {
     market_analysis?: string;
     real_estate_analysis?: RealEstateAnalysis[];
-    investment_strategy?: string;
+    investment_strategy_real_estate?: string;
   };
 }
 
@@ -38,7 +38,7 @@ const RealEstateOverview: React.FC<RealEstateOverviewProps> = ({
 
     <SectionTitle>투자 전략</SectionTitle>
     <Description>부동산 관련 투자 전략을 제공합니다.</Description>
-    <Analysis>{overview.investment_strategy}</Analysis>
+    <Analysis>{overview.investment_strategy_real_estate}</Analysis>
   </OverviewContainer>
 );
 
