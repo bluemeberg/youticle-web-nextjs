@@ -286,7 +286,7 @@ const Description = styled.p`
 const Preview = styled.div<{ $isFixed: boolean }>`
   padding: 20px;
   background-color: #f9f9f9;
-  margin-top: ${(props) => (props.$isFixed ? "40px" : "12px")};
+  margin-top: ${(props) => (props.$isFixed ? "12px" : "12px")};
   margin-left: 16px;
   margin-right: 16px;
   margin-bottom: 32px;

@@ -107,8 +107,9 @@ const StockDescription = styled.p`
 
 const StockAnalysisText = styled.p`
   font-size: 14px;
-  color: #555;
+  color: #000;
   line-height: 132%;
+  font-weight: 400;
 `;
 
 const Description = styled.p`
