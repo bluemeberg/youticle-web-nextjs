@@ -93,6 +93,7 @@ const YoutubeToday = () => {
         )?.icon;
         return <TopicCard key={item.video_id} icon={topicIcon} {...item} />;
       })}
+
       <ButtonContainer>
         <ServiceButton onClick={() => goToPage("today ")}>
           더 많은 아티클을 확인하고 싶다면? 👉🏻
@@ -149,7 +150,7 @@ const TodaySubTitle = styled.span`
 `;
 
 const ServiceButton = styled.button`
-  width: 100%;
+  width: 96%;
   height: 60px;
   background-color: #007bff;
   color: #ffffff;

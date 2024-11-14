@@ -9,6 +9,7 @@ import { YOUTUBE_TOPICS } from "@/constants/topic";
 import RecommendCard from "./RecommendCard";
 import CountdownTimer from "@/common/CountdownTimer";
 import SortOptions from "@/common/SortOptions";
+import { fetchStockVideo, fetchTopVideosBySection } from "@/api/apiClient";
 
 interface RecommendProps {
   detailData: DataProps;
@@ -21,33 +22,33 @@ const Recommend = ({ detailData, isUnsubscribedSection }: RecommendProps) => {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const setApiData = useSetRecoilState(dataState);
   const apiData = useRecoilValue<DataProps[]>(dataState);
+  const [videos, setVideos] = useState<DataProps[]>([]);
+  console.log(videos);
 
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // console.log("recommend", detailData.section);
   useEffect(() => {
-    const getData = async () => {
+    async function loadVideos() {
+      setLoading(true);
       try {
-        // 서버사이드에서 데이터 패칭
-        const response = await fetch(
-          "https://youticle.shop/briefing/top_videos/",
-          {
-            method: "GET",
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("API 요청 실패");
+        if (detailData.section == "주식") {
+          const data = await fetchStockVideo();
+          setVideos(data);
+        } else {
+          const data = await fetchTopVideosBySection(detailData.section);
+          setVideos(data);
         }
-
-        const apiData = await response.json();
-        setApiData(apiData);
       } catch (error) {
-        console.error("Error fetching top videos:", error);
+        setError("Error fetching videos");
+      } finally {
+        setLoading(false);
       }
-    };
-    if (apiData.length === 0) {
-      getData();
     }
-  }, [setApiData]);
 
+    loadVideos();
+  }, [detailData.section]);
   const handleSortClick = (criteria: string) => {
     setSortCriteria(criteria);
   };
@@ -58,7 +59,7 @@ const Recommend = ({ detailData, isUnsubscribedSection }: RecommendProps) => {
   };
 
   const filteredAndSortedData = useMemo(() => {
-    const filteredData = apiData.filter(
+    const filteredData = videos.filter(
       (item) =>
         item.section === detailData.section &&
         item.video_id !== detailData.video_id
@@ -71,7 +72,7 @@ const Recommend = ({ detailData, isUnsubscribedSection }: RecommendProps) => {
       }
     });
     return sortedData;
-  }, [apiData, sortCriteria]);
+  }, [videos, sortCriteria]);
 
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>

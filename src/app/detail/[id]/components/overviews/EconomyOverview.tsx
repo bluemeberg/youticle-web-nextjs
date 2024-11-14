@@ -18,6 +18,8 @@ interface EconomyOverviewProps {
 
 const EconomyOverview: React.FC<EconomyOverviewProps> = ({ overview }) => (
   <OverviewContainer>
+    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+
     <SectionTitle>경제 트렌드</SectionTitle>
     <Description>
       유튜브 영상에서 소개된 최신 경제 트렌드를 소개합니다.
@@ -54,6 +56,11 @@ export default EconomyOverview;
 const OverviewContainer = styled.div`
   padding: 0 16px;
   margin-top: 20px;
+`;
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 32px;
 `;
 
 const Card = styled.div`
@@ -94,20 +101,6 @@ const BrandDescription = styled.p`
   color: #555;
   margin-top: 8px;
   line-height: 128%;
-`;
-
-const StrategyDescription = styled.p`
-  font-size: 14px;
-  margin-bottom: 8px;
-  margin-top: 8px;
-  line-height: 128%;
-`;
-
-const ProductCard = styled.div`
-  background-color: #f0f4ff;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
 `;
 
 const Description = styled.p`

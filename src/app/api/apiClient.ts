@@ -18,7 +18,6 @@ export const createOrFetchUser = async (email: string) => {
     }
 
     const data = await response.json();
-    console.log("유저 정보:", data);
     return data;
   } catch (error) {
     console.error("API 호출 중 오류 발생:", error);
@@ -115,3 +114,50 @@ export const updateUserSubject = async (
     throw error;
   }
 };
+
+export async function fetchTopVideosBySection(section: string) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/briefing/top_videos/section?section=${encodeURIComponent(
+        section
+      )}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch top videos for section: ${section}`);
+    }
+
+    const data = await response.json();
+    console.log(data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching top videos:", error);
+    throw error;
+  }
+}
+
+const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
+
+export async function fetchStockVideo() {
+  try {
+    const response1 = await fetch(STOCK_API_URL, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response1.ok) {
+      throw new Error("API request failed");
+    }
+    const data1 = response1.json();
+    console.log(data1);
+    return data1;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+}

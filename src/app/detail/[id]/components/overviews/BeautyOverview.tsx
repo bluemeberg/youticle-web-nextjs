@@ -12,6 +12,7 @@ interface BeautyOverviewProps {
 import styled, { keyframes } from "styled-components";
 const BeautyOverview: React.FC<BeautyOverviewProps> = ({ overview }) => (
   <OverviewContainer>
+    <OverviewTitle>✨ 하이라이트</OverviewTitle>
     <SectionTitle>뷰티 트렌드</SectionTitle>
     <Description>
       유튜브 영상에서 소개된 최신 뷰티 트렌드를 제공합니다.
@@ -66,6 +67,11 @@ const Card = styled.div`
   padding: 16px;
   margin-bottom: 12px;
 `;
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 32px;
+`;
 
 const TrendTitle = styled.h3`
   font-size: 16px;
@@ -104,7 +110,7 @@ const BrandDescription = styled.p`
   color: #555;
   margin-top: 4px;
   margin-bottom: 12px;
-  line-height: 120%;
+  line-height: 128%;
 `;
 
 const ProductCard = styled.div`
@@ -175,12 +181,12 @@ const SectionTitle = styled.h2`
   margin-bottom: 4px;
   margin-top: 12px;
   &:nth-of-type(2) {
-    margin-top: 32px;
+    margin-top: 48px;
   }
   &:nth-of-type(3) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
   &:nth-of-type(4) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
 `;

@@ -15,19 +15,26 @@ const RealEstateOverview: React.FC<RealEstateOverviewProps> = ({
   overview,
 }) => (
   <OverviewContainer>
+    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+
     <SectionTitle>시장 분석</SectionTitle>
     <Description>유튜브 영상에서 제공된 부동산 시장 분석입니다.</Description>
     <Analysis>{overview.market_analysis}</Analysis>
 
-    <SectionTitle>지역 분석</SectionTitle>
-    <Description>영상에 소개된 주요 부동산 지역 분석입니다.</Description>
-    {overview.real_estate_analysis?.map((realEstate, index) => (
-      <StockCard key={index}>
-        <StockName>{realEstate.real_estate_area}</StockName>
-        <StockDescription>{realEstate.area_description}</StockDescription>
-        <StockAnalysisText>{realEstate.analysis}</StockAnalysisText>
-      </StockCard>
-    ))}
+    {overview.real_estate_analysis &&
+      overview.real_estate_analysis.length > 0 && (
+        <>
+          <SectionTitle>지역 분석</SectionTitle>
+          <Description>영상에 소개된 주요 부동산 지역 분석입니다.</Description>
+          {overview.real_estate_analysis.map((realEstate, index) => (
+            <StockCard key={index}>
+              <StockName>{realEstate.real_estate_area}</StockName>
+              <StockDescription>{realEstate.area_description}</StockDescription>
+              <StockAnalysisText>{realEstate.analysis}</StockAnalysisText>
+            </StockCard>
+          ))}
+        </>
+      )}
 
     <SectionTitle>투자 전략</SectionTitle>
     <Description>부동산 관련 투자 전략을 제공합니다.</Description>
@@ -42,19 +49,25 @@ const OverviewContainer = styled.div`
   margin-top: 20px;
 `;
 
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 32px;
+`;
+
 const SectionTitle = styled.h2`
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 4px;
   margin-top: 12px;
   &:nth-of-type(2) {
-    margin-top: 32px;
+    margin-top: 48px;
   }
   &:nth-of-type(3) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
   &:nth-of-type(4) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
 `;
 

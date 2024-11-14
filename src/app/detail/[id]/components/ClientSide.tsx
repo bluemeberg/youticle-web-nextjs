@@ -159,8 +159,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           }}
         />
       </VideoContainer>
-      <OverviewTitle>✨ 하이라이트</OverviewTitle>
-
       {/* Conditionally render overview based on the section */}
       {detailData.section === "주식" && detailData.summary_data.overview && (
         <StockOverview overview={detailData.summary_data.overview} />
@@ -209,6 +207,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           ))}
         </div>
       </TOC>
+      <OverviewTitle>👀 미리보기</OverviewTitle>
+      <Preview>{formatSummary(detailData.summary_data.short_summary)}</Preview>
+
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
@@ -243,6 +244,18 @@ const Category = styled.span`
   margin-bottom: 12px;
 `;
 
+const Analysis = styled.p`
+  font-size: 16px;
+  line-height: 140%;
+  background-color: #f9f9f9;
+  padding: 16px 12px;
+  border-radius: 4px;
+  margin-top: 12px;
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-bottom: 40px;
+`;
+
 const Title = styled.span`
   font-size: 20px;
   font-weight: 800;
@@ -270,8 +283,11 @@ const Description = styled.p`
 
 const Preview = styled.div<{ $isFixed: boolean }>`
   padding: 20px;
-  margin-top: ${(props) => (props.$isFixed ? "40px" : "28px")};
-
+  background-color: #f9f9f9;
+  margin-top: ${(props) => (props.$isFixed ? "40px" : "12px")};
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-bottom: 32px;
   div {
     display: flex;
     flex-direction: column;

@@ -12,6 +12,8 @@ interface AIOverviewProps {
 
 const AIOverview: React.FC<AIOverviewProps> = ({ overview }) => (
   <OverviewContainer>
+    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+
     <SectionTitle>AI 트렌드</SectionTitle>
     <Description>
       유튜브 영상에서 설명된 AI 기술의 발전 동향을 소개합니다.
@@ -50,6 +52,12 @@ const Card = styled.div`
   margin-bottom: 12px;
 `;
 
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 32px;
+`;
+
 const TrendTitle = styled.h3`
   font-size: 16px;
   font-weight: 600;
@@ -74,7 +82,8 @@ const BrandCard = styled.div`
 const Description = styled.p`
   font-size: 14px;
   color: #666;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  line-height: 128%;
 `;
 
 const BrandName = styled.h3`
@@ -158,12 +167,12 @@ const SectionTitle = styled.h2`
   margin-bottom: 4px;
   margin-top: 12px;
   &:nth-of-type(2) {
-    margin-top: 32px;
+    margin-top: 48px;
   }
   &:nth-of-type(3) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
   &:nth-of-type(4) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
 `;

@@ -264,9 +264,26 @@ const App = () => {
       {/* 무료 구독 혜택 */}
       <BenefitsSection>
         <FreeBenefitsTitle>{FREE_BENEFITS_TITLE}</FreeBenefitsTitle>
-        <FreeBenefitsDesc
-          dangerouslySetInnerHTML={{ __html: FREE_BENEFITS_DESC }}
-        />
+        <ServiceSubTitleContainer>
+          <ServiceSubTitleSubContainer>
+            <ServiceSubTitleIcon>📧</ServiceSubTitleIcon>
+            <ServiceSubTitleDescription>
+              매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.
+            </ServiceSubTitleDescription>
+          </ServiceSubTitleSubContainer>
+          <ServiceSubTitleSubContainer>
+            <ServiceSubTitleIcon>🔍</ServiceSubTitleIcon>
+            <ServiceSubTitleDescription>
+              매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
+            </ServiceSubTitleDescription>
+          </ServiceSubTitleSubContainer>
+          <ServiceSubTitleSubContainer>
+            <ServiceSubTitleIcon>✨</ServiceSubTitleIcon>
+            <ServiceSubTitleDescription>
+              최대 3개의 관심 키워드 구독하기.{" "}
+            </ServiceSubTitleDescription>
+          </ServiceSubTitleSubContainer>
+        </ServiceSubTitleContainer>
       </BenefitsSection>
       {/* // 모달 메시지에 따른 UI 렌더링 수정 */}
       {showModal && (
@@ -366,11 +383,12 @@ const TopicDivider = styled.hr`
 `;
 
 const BenefitsSection = styled.div`
-  background-color: #e0e7ff;
-  padding: 16px;
+  background-color: #e9f4ff;
+  padding: 16px 16px 0px 16px;
   border-radius: 8px;
   margin-left: 20px;
   margin-right: 20px;
+  margin-bottom: 20px;
   font-family: "Pretendard Variable";
 `;
 
@@ -438,8 +456,8 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background-color: white;
-  padding: 20px;
-  border-radius: 10px;
+  padding: 16px 12px 16px 12px;
+  border-radius: 4px;
   text-align: center;
   max-width: 400px;
   width: 90%;
@@ -447,6 +465,7 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 `;
 
 const InfoDescription = styled.div`
@@ -483,7 +502,7 @@ const ModalButton = styled.button`
 
 // 개선된 모달 UI - 경고성, 제한 알림, 안내성 모달의 스타일
 const WarningMessage = styled.p`
-  color: red;
+  color: black;
   font-weight: bold;
   margin-top: 10px;
   display: flex;
@@ -501,10 +520,10 @@ const InfoMessage = styled.p`
 `;
 
 const FreeBenefitsTitle = styled.h2`
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #000;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   margin-top: 12px;
 `;
 
@@ -517,6 +536,33 @@ const FreeBenefitsDesc = styled.div`
   li {
     margin-top: 12px;
   }
+`;
+
+const ServiceSubTitleContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const ServiceSubTitleSubContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  div:first-child {
+    margin-bottom: 24px;
+  }
+  div:nth-child(2) {
+    margin-bottom: 24px;
+  }
+`;
+const ServiceSubTitleIcon = styled.div`
+  font-size: 16px;
+`;
+
+const ServiceSubTitleDescription = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  margin-left: 10px;
+  line-height: 132%;
+  text-align: left;
 `;
 
 const FREE_BENEFITS_TITLE = "🎁 무료 구독 혜택";

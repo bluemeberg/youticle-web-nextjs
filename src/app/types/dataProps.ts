@@ -16,9 +16,8 @@ export interface DataProps {
 
 export interface Overview {
   market_analysis?: string;
-  stock_analysis?: StockAnalysis[];
-  real_estate_analysis?: RealEstateAnalysis[];
-  investment_strategy?: string;
+  stocks?: Stock[];
+  investment_strategy?: InvestmentStrategy[];
   beauty_trends?: BeautyTrend[]; // Beauty trend section
   brand_spotlight?: BrandSpotlight[]; // Brand spotlight section
   styling_tips?: StylingTip[];
@@ -128,11 +127,19 @@ export interface UsageTip {
   tip_description: string;
 }
 
-// 주식
+export interface Stock {
+  stock_name: string;
+  company_description: string;
+  stock_analysis: StockAnalysis[];
+}
+
 export interface StockAnalysis {
-  stock: string;
-  stock_description: string;
-  analysis: string;
+  description: string;
+}
+
+export interface InvestmentStrategy {
+  strategy_title: string;
+  strategy_description: string;
 }
 
 export interface RealEstateAnalysis {

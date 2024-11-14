@@ -17,6 +17,8 @@ interface FashionOverviewProps {
 
 const FashionOverview: React.FC<FashionOverviewProps> = ({ overview }) => (
   <OverviewContainer>
+    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+
     <SectionTitle>패션 트렌드</SectionTitle>
     <Description>
       유튜브 영상에서 언급된 최신 패션 트렌드를 소개합니다.
@@ -72,6 +74,12 @@ const Card = styled.div`
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
+`;
+
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 32px;
 `;
 
 const TrendTitle = styled.h3`
@@ -182,12 +190,12 @@ const SectionTitle = styled.h2`
   margin-bottom: 4px;
   margin-top: 12px;
   &:nth-of-type(2) {
-    margin-top: 32px;
+    margin-top: 48px;
   }
   &:nth-of-type(3) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
   &:nth-of-type(4) {
-    margin-top: 32px; // Different margin for the third SectionTitle
+    margin-top: 48px; // Different margin for the third SectionTitle
   }
 `;

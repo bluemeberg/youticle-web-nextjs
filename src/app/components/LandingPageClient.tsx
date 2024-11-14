@@ -35,10 +35,10 @@ const ClosingSection = styled.section`
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 24px;
+  font-size: 22px;
   color: #ffffff;
   margin-bottom: 20px;
-  line-height: 136%;
+  line-height: 148%;
   font-weight: 900;
 `;
 
