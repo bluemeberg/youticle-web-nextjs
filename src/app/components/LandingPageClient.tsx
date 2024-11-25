@@ -8,11 +8,11 @@ import PreYoutubeToday from "../about/components/PreYoutubeToday";
 import Footer from "./Footer";
 import { dataState } from "@/store/data";
 import { userState } from "@/store/user";
-import ServiceIntro from "./ServiceIntro";
-import HeroSection from "./HeroSection"; // 분리된 HeroSection import
-import HowSection from "./HowSection";
-import WhatSection from "./WhatSection";
-import RecommendSection from "./RecommendSection";
+import ServiceIntro from "../about/components/ServiceIntro";
+import HeroSection from "../about/components/HeroSection"; // 분리된 HeroSection import
+import HowSection from "../about/components/HowSection";
+import WhatSection from "../about/components/WhatSection";
+import RecommendSection from "../about/components/RecommendSection";
 import { useRouter } from "next/navigation";
 
 // 컴포넌트 스타일 정의

@@ -101,13 +101,13 @@ const UnsubscribePage = () => {
         <Title>미구독 중인 키워드 아티클</Title>
         <CountdownTimer scrollRef={scrollRef} />
         <TopicNavContainer>
-          <TopicNav
+          {/* <TopicNav
             $isFixed={isFixed}
             selectedTopic={selectedTopic}
             handleTopicClick={handleTopicClick}
             subjects={[]} // 구독 주제 전달
             unSubscribe={unsubscribedTopics} // "전체" 포함 미구독 주제 전달
-          />
+          /> */}
         </TopicNavContainer>
       </SubContainer>
       <SortOptions
@@ -120,12 +120,12 @@ const UnsubscribePage = () => {
         handleClickIcon={handleClickIcon}
         variant="default"
       />
-      {filteredAndSortedData.map((item, index) => {
+      {/* {filteredAndSortedData.map((item, index) => {
         const topicIcon = YOUTUBE_TOPICS.find(
           (topic) => topic.topic === item.section
         )?.icon;
         return <TopicCard key={item.video_id} icon={topicIcon} {...item} />;
-      })}
+      })} */}
     </Container>
   );
 };

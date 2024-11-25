@@ -129,7 +129,7 @@ const TopicNav = ({
 
 export default TopicNav;
 
-const Container = styled.div<{ $isFixed: boolean }>`
+const Container = styled.div<{ $isFixed: boolean; $hasScrolled: boolean }>`
   display: flex;
   flex-wrap: nowrap; /* 한 줄로 강제 배치 */
   overflow-x: scroll;
