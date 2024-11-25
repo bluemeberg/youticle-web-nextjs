@@ -6,6 +6,7 @@ import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import Contents from "./Contents";
+import VideoCard from "./VideoCard";
 import {
   DataProps,
   StockAnalysis,
@@ -25,13 +26,6 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { formatSummary } from "@/utils/formatter";
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
-import StockOverview from "./overviews/StockOverview";
-import RealEstateOverview from "./overviews/RealEstateOverview";
-import EconomyOverview from "./overviews/EconomyOverview";
-import BeautyOverview from "./overviews/BeautyOverview";
-import AIOverview from "./overviews/AIOverview";
-import BusinessOverview from "./overviews/BusinessOverview";
-import FashionOverview from "./overviews/FashionOverview";
 
 interface ClientSideProps {
   id: string;
@@ -160,45 +154,21 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         />
       </VideoContainer>
       {/* Conditionally render overview based on the section */}
-      {detailData.section === "주식" && detailData.summary_data.overview && (
-        <StockOverview overview={detailData.summary_data.overview} />
-      )}
+      {/* 채널 소개 */}
+      <VideoCard
+        thumbnail={detailData.thumbnail}
+        title={detailData.title}
+        channelName={detailData.channel_details.channel_name}
+        subscriber={detailData.channel_details.channel_subscribers}
+        upload_date={detailData.upload_date}
+        description={detailData.summary_data.channel_overview}
+        channel_thumbnail={detailData.channel_details.channel_thumbnail}
+      />
+      <OverviewTitle>📹 영상 소개</OverviewTitle>
+      <Preview $isFixed={isFixed}>
+        {formatSummary(detailData.summary_data.short_summary)}
+      </Preview>
 
-      {detailData.section === "경제" && detailData.summary_data.overview && (
-        <EconomyOverview overview={detailData.summary_data.overview} />
-      )}
-
-      {detailData.section === "부동산" && detailData.summary_data.overview && (
-        <RealEstateOverview overview={detailData.summary_data.overview} />
-      )}
-
-      {detailData.section === "뷰티/메이크업" &&
-        detailData.summary_data.overview && (
-          <BeautyOverview overview={detailData.summary_data.overview} />
-        )}
-
-      {detailData.section === "인공지능" &&
-        detailData.summary_data.overview && (
-          <AIOverview overview={detailData.summary_data.overview} />
-        )}
-
-      {detailData.section === "비즈니스/사업" &&
-        detailData.summary_data.overview && (
-          <BusinessOverview overview={detailData.summary_data.overview} />
-        )}
-
-      {/* 패션 섹션 */}
-      {(detailData.section === "남자 패션" ||
-        detailData.section === "여자 패션") &&
-        detailData.summary_data.overview && (
-          <FashionOverview overview={detailData.summary_data.overview} />
-        )}
-      {/* <Preview $isFixed={isFixed}>
-        <div>
-          <span>🔎 미리보기</span>
-          {formatSummary(detailData.summary_data.short_summary)}
-        </div>
-      </Preview> */}
       <TOC>
         <div>목차</div>
         <div>
@@ -207,16 +177,19 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           ))}
         </div>
       </TOC>
-      <OverviewTitle>👀 미리보기</OverviewTitle>
-      <Preview $isFixed={isFixed}>
-        {formatSummary(detailData.summary_data.short_summary)}
-      </Preview>
 
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
         handleTocItemClick={handleTocItemClick}
       />
+
+      {/* <Preview $isFixed={isFixed}>
+        <div>
+          <span>🔎 미리보기</span>
+          {formatSummary(detailData.summary_data.short_summary)}
+        </div>
+      </Preview> */}
     </Container>
   );
 };
@@ -316,7 +289,7 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 `;
 
 const TOC = styled.div`
-  margin-top: 100px;
+  margin-top: 20px;
   padding: 0 16px;
   span {
     line-height: 132%;

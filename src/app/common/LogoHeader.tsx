@@ -52,14 +52,14 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
 
   const handleBackClick = () => {
     if (pathname.includes("/detail/")) {
-      router.push("/today");
+      router.push("/");
     } else if (
       pathname.includes("/detail") &&
       previousPage.current === "/unsubscribe"
     ) {
       router.push("/unsubscribe");
     } else if (pathname.endsWith("/subject/modify")) {
-      router.push("/today");
+      router.push("/");
     } else {
       router.back();
     }
@@ -175,9 +175,9 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
               )}
             {menuOpen && (
               <MenuDropdown>
-                <MenuItem onClick={() => goToPage("/")}>홈</MenuItem>
-                <MenuItem onClick={() => goToPage("/today")}>
-                  오늘의 유튜브 아티클
+                <MenuItem onClick={() => goToPage("/")}>유티클 투데이</MenuItem>
+                <MenuItem onClick={() => goToPage("/about")}>
+                  유티클 소개
                 </MenuItem>
                 {/* <MenuItem onClick={() => goToPage("/my")}>
                   나만의 아티클

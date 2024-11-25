@@ -7,10 +7,10 @@ import styled from "styled-components";
 import ServiceIntroduce from "./ServiceIntroduce";
 import LogoHeader from "@/common/LogoHeader";
 import YoutubeToday from "./YoutubeToday";
-import Footer from "../../components/Footer";
+import Footer from "./Footer";
 import { dataState } from "@/store/data";
 import { userState } from "@/store/user";
-import { fetchSubscribedSubjects } from "../../api/apiClient";
+import { fetchSubscribedSubjects } from "../api/apiClient";
 
 interface LandingPageClientProps {
   apiData: any;
@@ -22,14 +22,22 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Recoil 상태에 apiData를 설정
   useEffect(() => {
-    // 클라이언트에서 받은 데이터를 Recoil 상태에 설정
     setApiData(apiData);
+  }, [apiData, setApiData]);
 
+  // 사용자 정보를 기준으로 구독 키워드 데이터를 가져오는 로직
+  useEffect(() => {
     const fetchSubjects = async () => {
       if (user.name !== "") {
-        const subjects = await fetchSubscribedSubjects(user.email);
-        setSubscribedSubjects(subjects);
+        try {
+          const subjects = await fetchSubscribedSubjects(user.email);
+          setSubscribedSubjects(subjects);
+        } catch (error) {
+          console.error("Error fetching subscribed subjects:", error);
+          setSubscribedSubjects([]);
+        }
       } else {
         setSubscribedSubjects([]);
       }
@@ -37,7 +45,7 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
     };
 
     fetchSubjects();
-  }, [apiData, user]);
+  }, [user.name, user.email]); // user 상태가 변경될 때만 실행
 
   return (
     <Container $isLogin={user.name !== ""}>

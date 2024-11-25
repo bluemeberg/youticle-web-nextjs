@@ -8,7 +8,13 @@ import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
 import { fetchSubscribedSubjects } from "../../../api/apiClient";
-
+import StockOverview from "./overviews/StockOverview";
+import RealEstateOverview from "./overviews/RealEstateOverview";
+import EconomyOverview from "./overviews/EconomyOverview";
+import BeautyOverview from "./overviews/BeautyOverview";
+import AIOverview from "./overviews/AIOverview";
+import BusinessOverview from "./overviews/BusinessOverview";
+import FashionOverview from "./overviews/FashionOverview";
 interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
@@ -59,6 +65,8 @@ const Contents = ({
   // 미구독이면 true, 구독이면 false
   const isUnsubscribedSection =
     !subscribedSubjects.includes(detailData.section) && user.name !== "";
+
+  console.log(isUnsubscribedSection, "구독여부");
 
   // 구독한 주제가 있으면 false, 미구독상태이면 true
   const isNoSubscribedSubjects =
@@ -131,6 +139,60 @@ const Contents = ({
             )
           )}
       </ContentWrapper>
+      {user.name !== "" && !isUnsubscribedSection && (
+        <HilightContainer>
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "주식" &&
+            detailData.summary_data.overview && (
+              <StockOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "경제" &&
+            detailData.summary_data.overview && (
+              <EconomyOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "부동산" &&
+            detailData.summary_data.overview && (
+              <RealEstateOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "뷰티/메이크업" &&
+            detailData.summary_data.overview && (
+              <BeautyOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "인공지능" &&
+            detailData.summary_data.overview && (
+              <AIOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "비즈니스/사업" &&
+            detailData.summary_data.overview && (
+              <BusinessOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {/* 패션 섹션 */}
+          {(detailData.section === "남자 패션" ||
+            detailData.section === "여자 패션") &&
+            detailData.summary_data.overview &&
+            user.name !== "" &&
+            !isUnsubscribedSection && (
+              <FashionOverview overview={detailData.summary_data.overview} />
+            )}
+        </HilightContainer>
+      )}
       <RecommendWrapper
         $hasDimmedItem={hasDimmedItem}
         $tocItemHeight={tocItemHeight}
@@ -157,6 +219,10 @@ const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
   $tocItemHeight: number;
 }>`
-  margin-top: ${(props) => (props.$hasDimmedItem ? `320px` : "160px")};
+  margin-top: ${(props) => (props.$hasDimmedItem ? `400px` : "160px")};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+`;
+
+const HilightContainer = styled.div`
+  margin-top: 40px;
 `;

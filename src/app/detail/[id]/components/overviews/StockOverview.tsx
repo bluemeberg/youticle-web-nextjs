@@ -39,7 +39,7 @@ const StockOverview: React.FC<StockOverviewProps> = ({ overview }) => (
     {overview.investment_strategy?.map((strategy, index) => (
       <Analysis key={index}>
         <StockName>{strategy.strategy_title}</StockName>
-        <StockAnalysisText>{strategy.strategy_description}</StockAnalysisText>
+        <StockStrategyText>{strategy.strategy_description}</StockStrategyText>
       </Analysis>
     ))}
   </OverviewContainer>
@@ -109,7 +109,15 @@ const StockAnalysisText = styled.p`
   font-size: 14px;
   color: #000;
   line-height: 132%;
+  font-weight: 500;
+`;
+
+const StockStrategyText = styled.p`
+  font-size: 14px;
+  color: #000;
+  line-height: 132%;
   font-weight: 400;
+  margin-top: 4px;
 `;
 
 const Description = styled.p`

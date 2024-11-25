@@ -1,6 +1,6 @@
 "use client";
 
-import TodayPageClient from "./components/TodayPageClient"; // 클라이언트 컴포넌트
+import TodayPageClient from "../components/TodayPageClient"; // 클라이언트 컴포넌트
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 

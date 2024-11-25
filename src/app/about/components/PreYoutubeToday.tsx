@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import TopicCard from "./TopicCard";
+import TopicCard from "../../components/TopicCard";
 import { DataProps } from "@/types/dataProps";
 import TodayIcon from "@/assets/today.svg";
 import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
-import CountdownTimerCenter from "./CountdownTimerCenter";
+import CountdownTimerCenter from "../../components/CountdownTimerCenter";
 import SortOptions from "@/common/SortOptions";
-import TopicNav from "./TopicNav";
+import TopicNav from "../../components/TopicNav";
 import { topicState } from "@/store/topic";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import SampleCard from "../my/components/SampleCard";
-import SampleCard1 from "../my/components/SampleCard1";
+import SampleCard from "../../my/components/SampleCard";
+import SampleCard1 from "../../my/components/SampleCard1";
 import { useRouter } from "next/navigation";
 
 const TODAY_TITLE = "👀 오늘의 유튜브 아티클 맛보기";
@@ -91,11 +91,18 @@ const YoutubeToday = () => {
         const topicIcon = YOUTUBE_TOPICS.find(
           (topic) => topic.topic === item.section
         )?.icon;
-        return <TopicCard key={item.video_id} icon={topicIcon} {...item} />;
+        return (
+          <TopicCard
+            key={item.video_id}
+            icon={topicIcon}
+            subjects={[]}
+            {...item}
+          />
+        );
       })}
 
       <ButtonContainer>
-        <ServiceButton onClick={() => goToPage("today ")}>
+        <ServiceButton onClick={() => goToPage("/ ")}>
           더 많은 아티클을 확인하고 싶다면? 👉🏻
         </ServiceButton>
       </ButtonContainer>

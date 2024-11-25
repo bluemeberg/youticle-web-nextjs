@@ -97,14 +97,13 @@ const Container = styled.div<{
   display: flex;
   justify-content: right;
   align-items: center;
-  margin-bottom: 16px;
   margin-top: ${(props) =>
-    props.variant === "border" ? "32px" : props.$isFixed ? "130px" : "20px"};
+    props.variant === "border" ? "32px" : props.$isFixed ? "32px" : "32px"};
 
   div {
     display: flex;
     gap: 4px;
-    margin-right: 12px;
+    margin-right: 16px;
   }
 `;
 

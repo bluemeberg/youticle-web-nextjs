@@ -1,80 +1,91 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import styled from "styled-components";
 import { isDesktop } from "react-device-detect";
-// import { YOUTUBE_TOPICS } from "@/constants/topic";
 
 interface TopicNavProps {
   $isFixed: boolean;
   selectedTopic: string;
   handleTopicClick: (topic: string) => void;
-  subjects: string[]; // 추가된 subjects prop
+  subjects: string[];
   unSubscribe: string[];
+  showSubscribedOnly: boolean;
+  subscribedSubjects: string[]; // 구독한 주제 전달
 }
 
-// 주제 목록 및 아이콘을 정의합니다.
 const YOUTUBE_TOPICS = [
   { topic: "전체", icon: "🌐" },
   { topic: "주식", icon: "📈" },
   { topic: "부동산", icon: "🏢" },
   { topic: "가상자산", icon: "💰" },
-  { topic: "경제", icon: "💵" }, // "경제" 항목 추가
+  { topic: "경제", icon: "💵" },
   { topic: "정치", icon: "🏛️" },
   { topic: "비즈니스/사업", icon: "💼" },
   { topic: "건강", icon: "🩺" },
   { topic: "피트니스", icon: "🏋️" },
-  // { topic: "스포츠", icon: "⚽" },
   { topic: "연애/결혼", icon: "❤️" },
   { topic: "육아", icon: "👶" },
   { topic: "뷰티/메이크업", icon: "💄" },
   { topic: "여자 패션", icon: "👗" },
   { topic: "남자 패션", icon: "👔" },
   { topic: "요리", icon: "🍳" },
-  // { topic: "게임", icon: "🎮" },
   { topic: "IT/테크", icon: "💻" },
   { topic: "인공지능", icon: "🤖" },
   { topic: "자동차", icon: "🚗" },
-  { topic: "여행", icon: "✈️" }, // "여행" 항목 추가
-  { topic: "과학", icon: "🔬" }, // 과학 항목 추가
-  { topic: "역사", icon: "📜" }, // 역사 항목 추가
+  { topic: "여행", icon: "✈️" },
+  { topic: "과학", icon: "🔬" },
+  { topic: "역사", icon: "📜" },
 ];
 
 const TopicNav = ({
   $isFixed,
   selectedTopic,
   handleTopicClick,
-  subjects, // 추가된 props
+  subjects,
   unSubscribe,
+  showSubscribedOnly,
+  subscribedSubjects,
 }: TopicNavProps) => {
-  const [hasScrolled, setHasScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  // unSubscribe 배열이 비어있지 않으면 unSubscribe 주제만 필터링
-  const filteredTopics =
-    unSubscribe.length > 0
-      ? YOUTUBE_TOPICS.filter(({ topic }) => unSubscribe.includes(topic))
-      : subjects.length > 0
-      ? YOUTUBE_TOPICS.filter(({ topic }) => subjects.includes(topic))
-      : YOUTUBE_TOPICS;
 
-  const navSize = Math.ceil(filteredTopics.length / 3);
-  const topicGroups = [
-    filteredTopics.slice(0, navSize),
-    filteredTopics.slice(navSize, navSize * 2),
-    filteredTopics.slice(navSize * 2, filteredTopics.length),
-  ];
+  const filteredTopics = useMemo(() => {
+    if (showSubscribedOnly && subjects.length > 0) {
+      // 구독 중 키워드만 표시 (전체 포함)
+      const subscribedTopics = YOUTUBE_TOPICS.filter(({ topic }) =>
+        subscribedSubjects.includes(topic)
+      );
 
+      // 전체를 포함한 배열 반환
+      return [{ topic: "전체", icon: "🌐" }, ...subscribedTopics];
+    }
+    if (!showSubscribedOnly && subscribedSubjects.length > 0) {
+      // 전체 토픽 중 구독 키워드를 전체 다음으로 배치
+      console.log(subscribedSubjects);
+      const allTopics = YOUTUBE_TOPICS.filter(({ topic }) => topic === "전체");
+      console.log(allTopics, "전체");
+      const subscribedTopics = YOUTUBE_TOPICS.filter(({ topic }) =>
+        subscribedSubjects.includes(topic)
+      );
+      console.log(subscribedTopics, "구독주제");
+      const otherTopics = YOUTUBE_TOPICS.filter(
+        ({ topic }) => topic !== "전체" && !subscribedSubjects.includes(topic)
+      );
+      console.log(otherTopics, "다른주제");
+
+      return [...allTopics, ...subscribedTopics, ...otherTopics];
+    }
+
+    // 기본적으로 전체 토픽 반환
+    return YOUTUBE_TOPICS;
+  }, [subjects, unSubscribe]);
+  console.log(filteredTopics);
   const [clientSelected, setClientSelected] = useState<string>("");
 
   useEffect(() => {
     setClientSelected(selectedTopic);
   }, [selectedTopic]);
-
-  const [isClientDesktop, setIsClientDesktop] = useState(false);
-  useEffect(() => {
-    // 클라이언트에서만 isDesktop 값을 설정
-    setIsClientDesktop(isDesktop);
-  }, []);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -98,24 +109,19 @@ const TopicNav = ({
   return (
     <Container
       ref={containerRef}
-      $isDesktop={isClientDesktop}
       $isFixed={$isFixed}
       $hasScrolled={hasScrolled}
-      flexDirection={subjects.length > 0 ? "row" : "column"} // subjects에 따라 가로/세로 정렬 결정
     >
-      {topicGroups.map((chunk, index) => (
-        <Column key={index}>
-          {chunk.map(({ topic, icon }) => (
-            <Topic
-              key={topic}
-              onClick={() => handleTopicClick(topic)}
-              selected={clientSelected === topic}
-            >
-              {icon}
-              <span>{topic}</span>
-            </Topic>
-          ))}
-        </Column>
+      {filteredTopics.map(({ topic, icon }) => (
+        <Topic
+          key={topic}
+          onClick={() => handleTopicClick(topic)}
+          selected={clientSelected === topic}
+          isSubscribed={subscribedSubjects.includes(topic)} // 구독된 주제 색상 변경
+        >
+          {icon}
+          <span>{topic}</span>
+        </Topic>
       ))}
     </Container>
   );
@@ -123,45 +129,27 @@ const TopicNav = ({
 
 export default TopicNav;
 
-const Container = styled.div<{
-  $isDesktop: boolean;
-  $isFixed: boolean;
-  $hasScrolled: boolean;
-  flexDirection: string; // 추가된 props
-}>`
-  max-width: ${({ $isDesktop }) => ($isDesktop ? "400px" : "none")};
+const Container = styled.div<{ $isFixed: boolean }>`
   display: flex;
-  flex-direction: ${({ flexDirection }) =>
-    flexDirection}; // props로 받아서 설정
-  gap: 12px;
-  padding: 12px 0;
-
-  margin-left: ${({ $isFixed, $hasScrolled }) =>
-    $isFixed ? ($hasScrolled ? "0" : "20px") : $hasScrolled ? "0" : "20px"};
-  width: ${(props) =>
-    props.$isFixed ? "calc(100% + 20px)" : "calc(100% + 20px)"};
-  transition: margin-left 0.3s ease;
-
-  position: ${(props) => (props.$isFixed ? "fixed" : "static")};
-  top: ${(props) => (props.$isFixed ? "52px" : "auto")};
-  /* z-index: ${(props) => (props.$isFixed ? 0 : 0)}; */
-
+  flex-wrap: nowrap; /* 한 줄로 강제 배치 */
   overflow-x: scroll;
+  gap: 12px;
+  padding: 12px 16px;
+  position: ${({ $isFixed }) => ($isFixed ? "fixed" : "relative")};
+  top: ${({ $isFixed }) => ($isFixed ? "52px" : "auto")};
+  width: 100%;
+  background-color: #fff;
+  z-index: 10;
+
   ::-webkit-scrollbar {
     display: none;
   }
   -ms-overflow-style: none;
   scrollbar-width: none;
-  background-color: #f8f9fa;
 `;
 
-const Column = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const Topic = styled.div<{ selected: boolean }>`
-  width: auto;
+const Topic = styled.div<{ selected: boolean; isSubscribed: boolean }>`
+  flex: 0 0 auto;
   height: 36px;
   display: flex;
   align-items: center;
@@ -169,14 +157,18 @@ const Topic = styled.div<{ selected: boolean }>`
   gap: 6px;
   border-radius: 8px;
   background-color: ${(props) => (props.selected ? "#007BFF" : "#F0F4FF")};
-  color: ${(props) => (props.selected ? "#fff" : "#737373")};
-
+  color: ${(props) =>
+    props.selected ? "#fff" : props.isSubscribed ? "#007BFF" : "#737373"};
+  border: ${(props) =>
+    props.isSubscribed ? "1px solid #007BFF" : "1px solid transparent"};
   font-size: 14px;
+
+  cursor: pointer;
+
   span {
     font-family: var(--font-Pretendard);
     font-size: 14px;
     font-weight: ${(props) => (props.selected ? 700 : 400)};
-    line-height: 14.32px;
     white-space: nowrap;
     text-align: center;
   }

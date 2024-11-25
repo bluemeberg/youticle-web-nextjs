@@ -17,7 +17,33 @@ import { useEffect, useState } from "react";
 
 interface TopicCardProps extends DataProps {
   icon: React.ReactNode;
+  subjects: string[]; // 구독 키워드 전달
 }
+
+const YOUTUBE_TOPICS = [
+  { topic: "전체", icon: "🌐" },
+  { topic: "주식", icon: "📈" },
+  { topic: "부동산", icon: "🏢" },
+  { topic: "가상자산", icon: "💰" },
+  { topic: "경제", icon: "💵" },
+  { topic: "정치", icon: "🏛️" },
+  { topic: "비즈니스/사업", icon: "💼" },
+  { topic: "건강", icon: "🩺" },
+  { topic: "피트니스", icon: "🏋️" },
+  { topic: "연애/결혼", icon: "❤️" },
+  { topic: "육아", icon: "👶" },
+  { topic: "뷰티/메이크업", icon: "💄" },
+  { topic: "여자 패션", icon: "👗" },
+  { topic: "남자 패션", icon: "👔" },
+  { topic: "요리", icon: "🍳" },
+  { topic: "IT/테크", icon: "💻" },
+  { topic: "인공지능", icon: "🤖" },
+  { topic: "자동차", icon: "🚗" },
+  { topic: "여행", icon: "✈️" },
+  { topic: "과학", icon: "🔬" },
+  { topic: "역사", icon: "📜" },
+];
+
 const TopicCard = (props: TopicCardProps) => {
   const router = useRouter();
   const setTopicState = useSetRecoilState(detailDataState);
@@ -42,10 +68,17 @@ const TopicCard = (props: TopicCardProps) => {
 
   // 해당 섹션이 특정 주제인지 확인
   const isSpecialSection = specialSections.includes(section);
+
+  // YOUTUBE_TOPICS에서 해당 섹션에 맞는 icon과 topic 가져오기
+  const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
+  const isSubscribed = props.subjects.includes(section);
+
   return (
     <Container onClick={handleNavigate}>
       <CardHeader>
-        <Section>#{section}</Section>
+        <Section isSubscribed={isSubscribed}>
+          {topicInfo?.icon} {topicInfo?.topic || section}
+        </Section>
         {section === "주식" &&
         (summary_data?.key_points ||
           summary_data?.headline_sub_title === "") ? (
@@ -115,7 +148,7 @@ const Container = styled.div`
   flex-direction: column;
   margin-left: 16px;
   margin-right: 16px;
-  margin-top: 24px;
+  margin-top: 20px;
   gap: 10px;
   background: rgba(255, 255, 255, 1);
   border-bottom: 1px solid #d9d9d9;
@@ -126,6 +159,8 @@ const CardHeader = styled.div`
   flex-direction: column;
   gap: 8px;
   padding-bottom: 8px;
+  align-items: flex-start; /* Section을 왼쪽 정렬 */
+  width: 100%; /* 부모의 가로폭을 채움 */
 `;
 
 const ShortSummary = styled.div`
@@ -149,10 +184,23 @@ const SubsUpload = styled.div`
   display: flex;
 `;
 
-const Section = styled.div`
-  font-size: 16px;
-  color: #007bff;
-  font-weight: 700;
+const Section = styled.div<{ isSubscribed: boolean }>`
+  display: inline-flex; /* 텍스트 크기에 맞게 가로폭을 설정 */
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background-color: #f9fafc;
+  padding: 6px 8px; /* 내부 여백 */
+  border-radius: 4px; /* 둥근 테두리 */
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  overflow: hidden; /* 내용이 넘칠 경우 숨김 */
+  text-overflow: ellipsis; /* 넘치는 텍스트 말줄임표 처리 */
+  box-sizing: border-box; /* 패딩 포함한 크기 계산 */
+  color: ${({ isSubscribed }) =>
+    isSubscribed ? "#007BFF" : "#80858a"}; /* 구독 여부에 따른 색상 */
+  height: 32px;
+  border: 1px solid
+    ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")}; /* 구독 여부에 따른 테두리 */
 `;
 
 const Body = styled.div`

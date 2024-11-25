@@ -198,6 +198,7 @@ export interface SummaryData {
   short_summary: string;
   key_points?: KeyPoint[]; // key_points 배열 추가
   section: Section[];
+  channel_overview: string;
   overview?: Overview; // Make overview optional
 }
 

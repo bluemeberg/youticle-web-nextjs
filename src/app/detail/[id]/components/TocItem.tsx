@@ -185,7 +185,7 @@ const TipArea = styled.div`
 
 const Tip = styled.span`
   font-weight: 700;
-  background-color: #30d5c8;
+  background-color: #e9f4ff;
   padding-left: 8px;
   padding-right: 8px;
   border-radius: 4px;

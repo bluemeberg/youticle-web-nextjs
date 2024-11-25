@@ -4,14 +4,14 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import styled from "styled-components";
-import TopicCard from "../../components/TopicCard";
+import TopicCard from "./TopicCard";
 import { DataProps } from "@/types/dataProps";
 import TodayIcon from "@/assets/today.svg";
 import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
 import CountdownTimer from "@/common/CountdownTimer";
 import SortOptions from "@/common/SortOptions";
-import TopicNav from "../../components/TopicNav";
+import TopicNav from "./TopicNav";
 import { topicState } from "@/store/topic";
 import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
 import { unsubscribedDataState } from "@/store/unsubscribeData";
@@ -45,12 +45,12 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   // 페이지 진입 시 구독한 주제의 첫 번째 항목을 기본 선택 주제로 설정
   console.log(subjects, "구독한 주제");
   console.log(selectedTopic, "구독한 주제 선택한");
-  useEffect(() => {
-    if (subjects.length > 0) {
-      setSelectedTopic(subjects[0]);
-    }
-    resetUnsubscribedData();
-  }, [subjects, setSelectedTopic, resetUnsubscribedData]);
+  // useEffect(() => {
+  //   if (subjects.length > 0) {
+  //     setSelectedTopic(subjects[0]);
+  //   }
+  //   resetUnsubscribedData();
+  // }, [subjects, setSelectedTopic, resetUnsubscribedData]);
 
   const handleTopicClick = (topic: string) => {
     setSelectedTopic(topic);
@@ -58,7 +58,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     if (sortOptionsRef.current) {
       const { top } = sortOptionsRef.current.getBoundingClientRect();
       window.scrollTo({
-        top: window.scrollY + top - 94 - 112,
+        top: window.scrollY + top - 94 - 68,
         behavior: "smooth",
       });
     }
@@ -85,33 +85,33 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     setUnsubscribedData(unsubscribedData);
     router.push("/today/unsubscribe");
   };
-
+  const [showSubscribedOnly, setShowSubscribedOnly] = useState(false); // 토글 상태
   const filteredAndSortedData = useMemo(() => {
     const filteredData = clientData.filter((item) => {
-      // 구독한 주제가 있으면
-      if (subjects.length > 0) {
-        // 선택된 주제가 "전체"일 경우 구독한 주제만 보여줌
+      if (showSubscribedOnly && subjects.length > 0) {
+        // showSubscribedOnly가 true이고 subjects가 있을 때
         if (selectedTopic === "전체") {
           return subjects.includes(item.section);
         }
-        // 선택된 주제가 구독한 주제 중 하나일 경우 해당 주제로 필터링
         return (
           subjects.includes(selectedTopic) && item.section === selectedTopic
         );
       }
 
-      // 구독한 주제가 없으면 선택된 주제로 필터링
+      // subjects가 없을 때 전체 데이터 반환
       return selectedTopic === "전체" || item.section === selectedTopic;
     });
+
+    // 데이터 정렬
     const sortedData = filteredData.sort((a, b) => {
       if (sortCriteria === "engagement") {
         return b.score - a.score;
-      } else {
-        return b.views + b.likes * 10 - a.views + a.likes * 10;
       }
+      return b.views + b.likes * 10 - (a.views + a.likes * 10);
     });
+
     return sortedData;
-  }, [clientData, selectedTopic, sortCriteria]);
+  }, [data, showSubscribedOnly, subjects, selectedTopic, sortCriteria]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -136,27 +136,50 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const handleChangeSubjectClick = () => {
     router.push("/subject/modify");
   };
+
+  const filteredSubjects = showSubscribedOnly
+    ? subjects
+    : YOUTUBE_TOPICS.map((t) => t.topic);
+
   return (
     <Container>
-      <SubContainer>
-        {subjects.length > 0 ? (
-          <TodayTitle $isSubs={true}>{SUBS_TODAY_TITLE}</TodayTitle>
-        ) : (
-          <TodayTitle>{TODAY_TITLE}</TodayTitle>
+      <Header>
+        {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
+          <ToggleContainer>
+            <ToggleLabel>📌 구독중인 키워드 아티클만 보기</ToggleLabel>
+            <ToggleButtonContainer>
+              <ToggleButton
+                isActive={showSubscribedOnly}
+                onClick={() => {
+                  setShowSubscribedOnly(true); // 구독 키워드 보기 활성화
+                  setSelectedTopic("전체"); // 섹션 초기화
+                }}
+              >
+                ON
+              </ToggleButton>
+              <ToggleButton
+                isActive={!showSubscribedOnly}
+                onClick={() => {
+                  setShowSubscribedOnly(false); // 구독 키워드 보기 비활성화
+                  setSelectedTopic("전체"); // 섹션 초기화
+                }}
+              >
+                OFF
+              </ToggleButton>
+            </ToggleButtonContainer>
+          </ToggleContainer>
         )}
-        {subjects.length > 0 && (
-          <ChangeSubjectButton onClick={handleChangeSubjectClick}>
-            구독 키워드 변경
-          </ChangeSubjectButton>
-        )}
-        <CountdownTimer scrollRef={scrollRef} />
+      </Header>
+      <SubContainer ref={scrollRef}>
         <TopicNavContainer>
           <TopicNav
             $isFixed={isFixed}
             selectedTopic={selectedTopic}
             handleTopicClick={handleTopicClick}
-            subjects={subjects} // 구독 주제 전달
+            subjects={filteredSubjects} // 구독 주제 전달
             unSubscribe={[]}
+            showSubscribedOnly={showSubscribedOnly}
+            subscribedSubjects={subjects} // 구독 주제 전달 (색상 변경용)
           ></TopicNav>
         </TopicNavContainer>
       </SubContainer>
@@ -174,9 +197,16 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
         const topicIcon = YOUTUBE_TOPICS.find(
           (topic) => topic.topic === item.section
         )?.icon;
-        return <TopicCard key={item.video_id} icon={topicIcon} {...item} />;
+        return (
+          <TopicCard
+            key={item.video_id}
+            icon={topicIcon}
+            subjects={subjects}
+            {...item}
+          />
+        );
       })}
-      {subjects.length > 0 && (
+      {/* {subjects.length > 0 && (
         <UnSubsArticleInfo>
           <UnSubsArticleInfoDescription>
             구독중인 아티클을 다 보셨나요? <br /> 미구독중인 키워드의 아티클도
@@ -186,7 +216,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             미구독중인 아티클 확인하러가기
           </UnSubsArticleInfoButton>
         </UnSubsArticleInfo>
-      )}
+      )} */}
       <GoToTopBtn isVisible={isFixed} />
     </Container>
   );
@@ -203,10 +233,9 @@ const Container = styled.div`
   font-family: "Pretendard Variable";
 `;
 
-const SubContainer = styled.div`
-  background-color: #f8f9fa;
-  padding: 24px 12px 12px 12px;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* 드롭 섀도우 추가 */
+// SubContainer modified to use React.forwardRef
+const SubContainer = styled.div.attrs(({ ref }) => ({ ref }))`
+  background-color: #fff;
 `;
 
 const ChangeSubjectButton = styled.div`
@@ -221,7 +250,10 @@ const ChangeSubjectButton = styled.div`
   margin-top: -12px;
   margin-bottom: 32px;
 `;
-
+const ToggleButtonContainer = styled.div`
+  display: flex;
+  gap: 8px; /* 버튼 간 간격 */
+`;
 const TodayTitle = styled.span<{
   $isSubs?: boolean;
 }>`
@@ -240,7 +272,6 @@ const TodayTitle = styled.span<{
 
 const TopicNavContainer = styled.div`
   padding: 0;
-  margin-left: -20px;
   background-color: #f8f9fa;
 `;
 
@@ -268,4 +299,41 @@ const UnSubsArticleInfoButton = styled.div`
   display: flex;
   justify-content: center;
   font-weight: 500;
+`;
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border: 1px solid #e9e9e9;
+  width: 100%;
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-top: 8px;
+  border-radius: 4px;
+`;
+
+const ToggleLabel = styled.span`
+  font-size: 14px;
+  font-weight: 400;
+`;
+
+const ToggleButton = styled.button<{ isActive: boolean }>`
+  width: 60px;
+  height: 30px;
+  background-color: ${(props) => (props.isActive ? "#007bff" : "#F0F4FF")};
+  color: ${(props) => (props.isActive ? "#fff" : "#737373")};
+  font-weight: ${(props) => (props.isActive ? 700 : 400)};
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 `;
