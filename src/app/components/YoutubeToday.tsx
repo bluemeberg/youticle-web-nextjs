@@ -45,6 +45,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   // 페이지 진입 시 구독한 주제의 첫 번째 항목을 기본 선택 주제로 설정
   console.log(subjects, "구독한 주제");
   console.log(selectedTopic, "구독한 주제 선택한");
+  console.log(data, "데이터");
   // useEffect(() => {
   //   if (subjects.length > 0) {
   //     setSelectedTopic(subjects[0]);
@@ -86,6 +87,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     router.push("/today/unsubscribe");
   };
   const [showSubscribedOnly, setShowSubscribedOnly] = useState(false); // 토글 상태
+
   const filteredAndSortedData = useMemo(() => {
     const filteredData = clientData.filter((item) => {
       if (showSubscribedOnly && subjects.length > 0) {
@@ -111,7 +113,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     });
 
     return sortedData;
-  }, [data, showSubscribedOnly, subjects, selectedTopic, sortCriteria]);
+  }, [clientData, showSubscribedOnly, subjects, selectedTopic, sortCriteria]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -309,9 +311,8 @@ const Header = styled.div`
 const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding-left: 12px;
-  padding-right: 12px;
   padding-top: 12px;
   padding-bottom: 12px;
   border: 1px solid #e9e9e9;
