@@ -58,6 +58,10 @@ const DimmedArea = ({
           {toc.slice(3).map(({ title }, index) => (
             <span key={index}>{title}</span>
           ))}
+          {/* <span>-------------------------------------------</span>
+          <span>💡유티클 인사이트</span>
+          <InsightContent>- AI 트렌드</InsightContent>
+          <InsightContent>- AI 적용기술</InsightContent> */}
         </div>
       </TOC>
       {!isUnsubscribedSection && (
@@ -216,6 +220,11 @@ const ServiceSubTitle = styled.div`
   }
 `;
 
+const InsightContent = styled.div`
+  margin-left: 40px;
+  margin-top: -12px;
+`;
+
 const Info = styled.div`
   display: flex;
   flex-direction: column;
@@ -320,6 +329,7 @@ const ButtonContainer = styled.div`
 const SubsKeywordInfo = styled.div`
   font-size: 16px;
   font-weight: 600;
+  line-height: 140%;
 `;
 
 const UnSubscribeContainer = styled.div`

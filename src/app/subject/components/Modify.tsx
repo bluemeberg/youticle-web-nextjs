@@ -18,7 +18,7 @@ const topics = [
   { name: "정치", icon: "🏛️" },
   { name: "비즈니스/사업", icon: "💼" },
   { name: "건강", icon: "🩺" },
-  { name: "피트니스/운동", icon: "🏋️" },
+  { name: "피트니스", icon: "🏋️" },
   //   { name: "스포츠", icon: "⚽" },
   { name: "연애/결혼", icon: "❤️" },
   { name: "육아", icon: "👶" },

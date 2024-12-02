@@ -30,7 +30,6 @@ const BeautyOverview: React.FC<BeautyOverviewProps> = ({ overview }) => (
       <BrandCard key={index}>
         <BrandName>{brand.brand_name}</BrandName>
         <BrandDescription>{brand.brand_description}</BrandDescription>
-        <ProductCardTitle>💄 대표 제품</ProductCardTitle>
         {brand.highlighted_products.map((product, idx) => (
           <ProductCard key={idx}>
             <ProductName>{product.product_name}</ProductName>
@@ -50,7 +49,7 @@ const BeautyOverview: React.FC<BeautyOverviewProps> = ({ overview }) => (
         <TipDescription>{tip.tip_description}</TipDescription>
         {tip.recommended_product.map((product, idx) => (
           <ProductUsageTip key={idx}>
-            <strong>💄 {product.product_name}</strong> <br />
+            <strong>{product.product_name}</strong> <br />
             {product.product_usage_tip}
           </ProductUsageTip>
         ))}

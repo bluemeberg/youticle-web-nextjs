@@ -196,6 +196,7 @@ const Contents = ({
       <RecommendWrapper
         $hasDimmedItem={hasDimmedItem}
         $tocItemHeight={tocItemHeight}
+        $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
       >
         <Recommend
           detailData={detailData}
@@ -217,9 +218,15 @@ const ContentWrapper = styled.div`
 
 const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
+  $isUnsubscribedSection: boolean;
   $tocItemHeight: number;
 }>`
-  margin-top: ${(props) => (props.$hasDimmedItem ? `480px` : "160px")};
+  margin-top: ${(props) =>
+    props.$hasDimmedItem && props.$isUnsubscribedSection
+      ? `240px`
+      : props.$hasDimmedItem
+      ? `400px`
+      : `160px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
 `;
 
