@@ -32,7 +32,7 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
     const fetchSubjects = async () => {
       if (user.name !== "") {
         try {
-          const subjects = await fetchSubscribedSubjects(user.email);
+          const subjects = await fetchSubscribedSubjects(user.email, user.name);
           setSubscribedSubjects(subjects);
         } catch (error) {
           console.error("Error fetching subscribed subjects:", error);

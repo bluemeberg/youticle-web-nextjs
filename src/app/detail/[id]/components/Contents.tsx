@@ -15,6 +15,8 @@ import BeautyOverview from "./overviews/BeautyOverview";
 import AIOverview from "./overviews/AIOverview";
 import BusinessOverview from "./overviews/BusinessOverview";
 import FashionOverview from "./overviews/FashionOverview";
+import { useRouter } from "next/navigation"; // For navigation
+
 interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
@@ -27,6 +29,7 @@ const Contents = ({
   handleTocItemClick,
 }: ContentsProps) => {
   const user = useRecoilValue(userState);
+  const router = useRouter(); // Navigation hook
 
   const [tocItemHeight, setTocItemHeight] = useState(0);
   const tocItemsRef = useRef<HTMLDivElement | null>(null);
@@ -36,6 +39,7 @@ const Contents = ({
   const [clientThumbnails, setClientThumbnails] = useState<string[]>([]);
 
   const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
+  const [showPopup, setShowPopup] = useState(false); // For popup visibility
 
   useEffect(() => {
     setClientData(detailData);
@@ -51,14 +55,21 @@ const Contents = ({
     }
   }, [tocItemsRef, detailData, thumbnails]);
 
+  const navigateToSubscribePage = () => {
+    router.push("/subject"); // Navigate to keyword subscription page
+    setShowPopup(false);
+  };
   useEffect(() => {
     const fetchSubjects = async () => {
       if (user.name !== "") {
-        const subjects = await fetchSubscribedSubjects(user.email);
+        const subjects = await fetchSubscribedSubjects(user.email, user.name);
+        console.log("로그인 후 구독한 키워드", subjects);
         setSubscribedSubjects(subjects); // 구독한 주제 설정
+        if (subjects.length === 0) {
+          setShowPopup(true); // Show popup if no subscribed subjects
+        }
       }
     };
-
     fetchSubjects();
   }, [user]);
 
@@ -75,6 +86,10 @@ const Contents = ({
   const hasDimmedItem =
     detailData.summary_data.section.some((_, index) => index >= 3) &&
     (user.name === "" || isUnsubscribedSection);
+
+  const handlePopupClose = () => {
+    setShowPopup(false);
+  };
 
   return (
     <>
@@ -139,6 +154,23 @@ const Contents = ({
             )
           )}
       </ContentWrapper>
+      {/* 
+      {showPopup && (
+        <PopupOverlay>
+          <PopupContainer>
+            <PopupMessage>
+              현재 구독한 키워드가 없습니다. 아티클 전문을 읽으려면{" "}
+              <strong>{detailData.section} 키워드</strong>를 구독해주세요. 지금
+              바로 키워드 구독 페이지로 이동합니다.
+            </PopupMessage>
+            <PopupButton onClick={navigateToSubscribePage}>
+              {detailData.section} 키워드 구독하러가기
+            </PopupButton>
+            <CloseButton onClick={handlePopupClose}>X</CloseButton>
+          </PopupContainer>
+        </PopupOverlay>
+      )} */}
+
       {user.name !== "" && !isUnsubscribedSection && (
         <HilightContainer>
           {user.name !== "" &&
@@ -232,4 +264,62 @@ const RecommendWrapper = styled.div<{
 
 const HilightContainer = styled.div`
   margin-top: 40px;
+`;
+
+const PopupOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const PopupContainer = styled.div`
+  position: relative;
+  background-color: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 300px;
+`;
+
+const PopupMessage = styled.div`
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+`;
+
+const PopupButton = styled.button`
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  width: 100%;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  margin-bottom: 10px;
+
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+  cursor: pointer;
 `;

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import LogoHeader from "@/common/LogoHeader";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import { fetchSubscribedSubjects } from "@/api/apiClient"; // 구독 주제 가져오기 함수
+import Loading from "@/assets/loading.svg";
 
 interface User {
   email: string;
@@ -45,6 +46,9 @@ const App = () => {
   const [modalMessage, setModalMessage] = useState<string>(""); // 모달 메시지 상태
   const [showModal, setShowModal] = useState<boolean>(false); // 모달 표시 여부 상태
   const setUser = useSetRecoilState(userState);
+  const user = useRecoilValue(userState);
+  const [isLoading, setIsLoading] = useState<boolean>(false); // 로딩 상태 추가
+
   const router = useRouter();
   const [modalButtonLabel, setModalButtonLabel] = useState<string>("이동하기");
 
@@ -58,13 +62,64 @@ const App = () => {
       setShowModal(true);
     }
   };
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
     if (selectedTopics.length === 0) {
       setModalMessage("⚠️ 최소 1개의 키워드를 선택해주세요.");
       setShowModal(true);
     } else if (selectedTopics.length < 3) {
       setModalMessage("⚠️ 3개의 키워드를 선택해주세요.");
       setShowModal(true);
+    } else if (user.email) {
+      // 사용자가 로그인한 경우 선택된 키워드를 바로 구독
+      try {
+        setIsLoading(true); // 로딩 시작
+        const data = await getUserByEmail(user.email, user.name);
+        // 주제 등록 및 구독 정보 확인
+        const subscribedSubjects = await fetchSubscribedSubjects(
+          user.email,
+          user.name
+        );
+
+        if (subscribedSubjects.length > 0) {
+          setModalMessage(
+            "구독한 주제가 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
+          );
+          setModalButtonLabel("오늘의 아티클로 이동");
+          setShowModal(true);
+        } else {
+          for (const topic of selectedTopics) {
+            const response = await fetch(
+              "https://youticle.shop/users/subject/",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  user_id: data.id, // 사용자 ID
+                  subject_name: topic,
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`키워드 구독에 실패했습니다: ${topic}`);
+            }
+
+            console.log(`키워드 ${topic} 구독 완료.`);
+          }
+
+          setModalMessage("구독이 완료되었습니다. 오늘의 아티클로 이동합니다.");
+          setModalButtonLabel("오늘의 아티클로 이동");
+          setShowModal(true);
+        }
+      } catch (error) {
+        console.error("구독 처리 중 오류 발생:", error);
+        setModalMessage("⚠️ 키워드 구독 처리 중 문제가 발생했습니다.");
+        setShowModal(true);
+      } finally {
+        setIsLoading(false); // 로딩 종료
+      }
     } else {
       setModalMessage(
         "로그인이 필요합니다. 구독한 키워드를 이메일로 받아보실 수 있습니다."
@@ -144,7 +199,10 @@ const App = () => {
       const data = await getUserByEmail(user.email, user.displayName);
 
       // 주제 등록 및 구독 정보 확인
-      const subscribedSubjects = await fetchSubscribedSubjects(user.email);
+      const subscribedSubjects = await fetchSubscribedSubjects(
+        user.email,
+        user.displayName
+      );
       setUser({
         name: user.displayName,
         email: user.email,
@@ -293,6 +351,18 @@ const App = () => {
             {/* 모달 메시지와 메시지 타입에 따른 UI */}
             {modalMessage.includes("⚠️") ? (
               <WarningMessage>{modalMessage}</WarningMessage>
+            ) : modalMessage.includes("구독이 완료되었습니다") ? (
+              <>
+                <InfoMessage>{modalMessage}</InfoMessage>
+                <ModalButton
+                  onClick={() => {
+                    setShowModal(false);
+                    router.push(`/today`);
+                  }}
+                >
+                  오늘의 아티클로 이동
+                </ModalButton>
+              </>
             ) : modalMessage.includes("구독한 주제가 있습니다") ? (
               <>
                 <InfoMessage>{modalMessage}</InfoMessage>
@@ -320,9 +390,13 @@ const App = () => {
         </ModalOverlay>
       )}
       <ButtonContainer>
-        <ServiceButton onClick={handleSubscribe}>
-          지금 바로 무료 구독하러가기 👉🏻
-        </ServiceButton>
+        {isLoading ? (
+          <Loading />
+        ) : (
+          <ServiceButton onClick={handleSubscribe}>
+            "지금 바로 무료 구독하러가기 👉🏻"
+          </ServiceButton>
+        )}
       </ButtonContainer>
     </Container>
   );
@@ -456,7 +530,7 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background-color: white;
-  padding: 16px 12px 16px 12px;
+  padding: 20px 16px 20px 16px;
   border-radius: 4px;
   text-align: center;
   max-width: 400px;
@@ -481,8 +555,8 @@ const InfoDescription = styled.div`
 
 const ModalClose = styled.button`
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 4px;
+  right: 4px;
   background: none;
   border: none;
   font-size: 24px;
@@ -494,9 +568,12 @@ const ModalButton = styled.button`
   background-color: #007bff;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 16px 8px;
+  border-radius: 4px;
   margin-top: 20px;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
 `;
 
@@ -574,3 +651,26 @@ const FREE_BENEFITS_DESC = `
   </ul>`;
 
 export default App;
+
+const LoaderAnimation = keyframes`
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: 200px 0;
+    }
+`;
+
+const Loader = styled.div`
+  width: 360px;
+  height: 202px;
+  background: #f0f0f0;
+  background-image: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: ${LoaderAnimation} 1.5s infinite;
+`;

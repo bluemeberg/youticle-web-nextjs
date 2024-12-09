@@ -3,6 +3,8 @@ import InfoIcon from "@/assets/subInfo.svg";
 import GoogleLogin from "@/common/GoogleLogin";
 import { Section } from "@/types/dataProps";
 import { useRouter } from "next/navigation";
+import { useRecoilValue } from "recoil";
+import { userState } from "@/store/user";
 
 const DIMMED_TITLE = `아직 구독중이 아니라면?!`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
@@ -25,17 +27,24 @@ const DimmedArea = ({
   subscribedSubjects,
   section,
 }: DimmedAreaProps) => {
+  const user = useRecoilValue(userState);
   const router = useRouter();
-
+  console.log("구독한 키워드", subscribedSubjects);
   const subscribedText = subscribedSubjects.join(", ");
-  const subscribeText = isUnsubscribedSection
-    ? "구독 키워드 변경하기"
-    : `‘${section}’ 키워드 무료 구독하러가기`;
+  const subscribeText =
+    isUnsubscribedSection && subscribedSubjects.length != 0
+      ? "구독 키워드 변경하기"
+      : `‘${section}’ 키워드 무료 구독하러가기`;
 
   return (
     <Container $height={tocItemHeight} $isUnsubscribed={isUnsubscribedSection}>
       <Info>
-        {isUnsubscribedSection ? (
+        {user.name !== "" && subscribedSubjects.length === 0 ? (
+          <SubsKeywordInfo>
+            🚫 구독중인 키워드가 없습니다. <br />
+            아티클을 읽으려면 키워드를 구독하세요.
+          </SubsKeywordInfo>
+        ) : isUnsubscribedSection ? (
           <SubsKeywordInfo>
             🙋이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
           </SubsKeywordInfo>
@@ -58,10 +67,13 @@ const DimmedArea = ({
           {toc.slice(3).map(({ title }, index) => (
             <span key={index}>{title}</span>
           ))}
-          {/* <span>-------------------------------------------</span>
-          <span>💡유티클 인사이트</span>
-          <InsightContent>- AI 트렌드</InsightContent>
-          <InsightContent>- AI 적용기술</InsightContent> */}
+          {/* <InsightsContainer>
+            <InsightsTitle>✨ 유티클 인사이트</InsightsTitle>
+            <InsightsList>
+              <InsightItem>- AI 기술 설명</InsightItem>
+              <InsightItem>- AI 기술 설명</InsightItem>
+            </InsightsList>
+          </InsightsContainer> */}
         </div>
       </TOC>
       {!isUnsubscribedSection && (
@@ -99,7 +111,11 @@ const DimmedArea = ({
         <ServiceButton
           $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
           onClick={() => {
-            router.push(isUnsubscribedSection ? "/subject/modify" : "/subject");
+            router.push(
+              isUnsubscribedSection && subscribedSubjects.length != 0
+                ? "/subject/modify"
+                : "/subject"
+            );
           }}
         >
           {subscribeText}
@@ -336,4 +352,31 @@ const UnSubscribeContainer = styled.div`
   background-color: #e9f4ff;
   padding: 28px 24px 8px 24px;
   border-radius: 4px;
+`;
+
+// Styled Components
+const InsightsContainer = styled.div`
+  background-color: #f9f9f9;
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #dddddd;
+`;
+
+const InsightsTitle = styled.div`
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 12px;
+`;
+
+const InsightsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const InsightItem = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  color: #333333;
 `;

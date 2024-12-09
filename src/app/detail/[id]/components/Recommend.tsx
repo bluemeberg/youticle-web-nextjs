@@ -23,7 +23,6 @@ const Recommend = ({ detailData, isUnsubscribedSection }: RecommendProps) => {
   const setApiData = useSetRecoilState(dataState);
   const apiData = useRecoilValue<DataProps[]>(dataState);
   const [videos, setVideos] = useState<DataProps[]>([]);
-  console.log(videos);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

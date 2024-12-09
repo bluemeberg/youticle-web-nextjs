@@ -55,7 +55,7 @@ const SubscriptionPage = () => {
     // 구독된 주제를 API로 가져와서 상태에 설정
     const fetchSubjects = async () => {
       if (user.email) {
-        const subjects = await fetchSubscribedSubjects(user.email);
+        const subjects = await fetchSubscribedSubjects(user.email, user.name);
         setSubscribedSubjects(subjects);
         setInitialSubscribedSubjects(subjects);
 

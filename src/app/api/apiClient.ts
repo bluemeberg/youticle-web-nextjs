@@ -3,14 +3,14 @@
 const API_BASE_URL = "https://youticle.shop";
 const LOCAL_API_BASE_URL = "http://0.0.0.0:8000";
 // 유저 정보 최초 등록
-export const createOrFetchUser = async (email: string) => {
+export const createOrFetchUser = async (email: string, name: string) => {
   try {
     const response = await fetch(`${API_BASE_URL}/users/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, name }),
     });
 
     if (!response.ok) {
@@ -27,7 +27,8 @@ export const createOrFetchUser = async (email: string) => {
 
 // 유저 정보 가져오기
 export const getUserByEmail = async (
-  email: string
+  email: string,
+  name: string
 ): Promise<{ id: number }> => {
   const url = `${API_BASE_URL}/users/${encodeURIComponent(email)}`;
 
@@ -45,7 +46,7 @@ export const getUserByEmail = async (
       return data;
     } else if (response.status === 404) {
       console.error("User not found. Creating new user...");
-      const newUser = await createOrFetchUser(email);
+      const newUser = await createOrFetchUser(email, name);
       console.log("New user created:", newUser);
       return newUser;
     } else {
@@ -60,11 +61,12 @@ export const getUserByEmail = async (
 
 // 구독 주제 가져오는 API
 export const fetchSubscribedSubjects = async (
-  email: string
+  email: string,
+  name: string
 ): Promise<string[]> => {
   try {
     // user_id 정보 가져오기
-    const userData = await getUserByEmail(email);
+    const userData = await getUserByEmail(email, name);
     const response = await fetch(
       `${API_BASE_URL}/users/subjects/${userData.id}`
     );
@@ -134,7 +136,6 @@ export async function fetchTopVideosBySection(section: string) {
     }
 
     const data = await response.json();
-    console.log(data);
     return data;
   } catch (error) {
     console.error("Error fetching top videos:", error);
@@ -155,7 +156,6 @@ export async function fetchStockVideo() {
       throw new Error("API request failed");
     }
     const data1 = response1.json();
-    console.log(data1);
     return data1;
   } catch (error) {
     console.error("Error fetching data:", error);

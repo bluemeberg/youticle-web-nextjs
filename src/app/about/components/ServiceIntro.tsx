@@ -23,7 +23,7 @@ const ServiceIntro = () => {
   // 구독 주제 불러오기
   useEffect(() => {
     const fetchSubjects = async () => {
-      const subjects = await fetchSubscribedSubjects(user.email);
+      const subjects = await fetchSubscribedSubjects(user.email, user.name);
       setSubscribedSubjects(subjects);
     };
     fetchSubjects();
