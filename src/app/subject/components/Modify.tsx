@@ -108,7 +108,7 @@ const SubscriptionPage = () => {
     try {
       // 변경된 항목을 PUT 요청으로 전송
       for (let i = 0; i < newTopics.length; i++) {
-        const data = await getUserByEmail(user.email);
+        const data = await getUserByEmail(user.email, user.name);
         // 주제 등록
         console.log(data.id);
         await updateUserSubject(data.id, removedTopics[i] || "", newTopics[i]);
