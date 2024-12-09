@@ -79,7 +79,6 @@ const App = () => {
           user.email,
           user.name
         );
-
         if (subscribedSubjects.length > 0) {
           setModalMessage(
             "구독한 주제가 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
@@ -394,7 +393,7 @@ const App = () => {
           <Loading />
         ) : (
           <ServiceButton onClick={handleSubscribe}>
-            "지금 바로 무료 구독하러가기 👉🏻"
+            지금 바로 무료 구독하러가기 👉🏻
           </ServiceButton>
         )}
       </ButtonContainer>
