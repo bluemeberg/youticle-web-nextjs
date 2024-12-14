@@ -11,13 +11,17 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchData = async () => {
       const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
-      const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
+      // const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
       //   const STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos/stock";
-      //   const EXCEPT_STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos";
+      const EXCEPT_STOCK_API_URL_LOCAL =
+        "http://0.0.0.0:8000/briefing/top_videos";
 
       try {
         const [response1, response2] = await Promise.all([
-          fetch(EXCEPT_STOCK_API_URL, { method: "GET", cache: "no-store" }),
+          fetch(EXCEPT_STOCK_API_URL_LOCAL, {
+            method: "GET",
+            cache: "no-store",
+          }),
           fetch(STOCK_API_URL, { method: "GET", cache: "no-store" }),
         ]);
 

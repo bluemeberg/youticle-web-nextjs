@@ -16,6 +16,7 @@ import AIOverview from "./overviews/AIOverview";
 import BusinessOverview from "./overviews/BusinessOverview";
 import FashionOverview from "./overviews/FashionOverview";
 import { useRouter } from "next/navigation"; // For navigation
+import CryptoOverview from "./overviews/CryptoOverview";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -78,7 +79,7 @@ const Contents = ({
     !subscribedSubjects.includes(detailData.section) && user.name !== "";
 
   console.log(isUnsubscribedSection, "구독여부");
-
+  console.log("height", tocItemHeight);
   // 구독한 주제가 있으면 false, 미구독상태이면 true
   const isNoSubscribedSubjects =
     subscribedSubjects.length === 0 && user.name !== "";
@@ -90,7 +91,6 @@ const Contents = ({
   const handlePopupClose = () => {
     setShowPopup(false);
   };
-
   return (
     <>
       <ContentWrapper>
@@ -123,6 +123,7 @@ const Contents = ({
                     : null
                 }
                 section={detailData.section}
+                videoId={detailData.video_id}
                 title={title}
                 start={Math.floor(Number(start_time))}
                 summary={detail_contents}
@@ -150,6 +151,7 @@ const Contents = ({
                 isUnsubscribedSection={isUnsubscribedSection}
                 isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
                 subscribedSubjects={subscribedSubjects}
+                overview={detailData.summary_data.overview}
               />
             )
           )}
@@ -215,6 +217,13 @@ const Contents = ({
               <BusinessOverview overview={detailData.summary_data.overview} />
             )}
 
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "가상자산" &&
+            detailData.summary_data.overview && (
+              <CryptoOverview overview={detailData.summary_data.overview} />
+            )}
+
           {/* 패션 섹션 */}
           {(detailData.section === "남자 패션" ||
             detailData.section === "여자 패션") &&
@@ -225,16 +234,20 @@ const Contents = ({
             )}
         </HilightContainer>
       )}
-      <RecommendWrapper
-        $hasDimmedItem={hasDimmedItem}
-        $tocItemHeight={tocItemHeight}
-        $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
-      >
-        <Recommend
-          detailData={detailData}
-          isUnsubscribedSection={isUnsubscribedSection}
-        />
-      </RecommendWrapper>
+      {!hasDimmedItem ? (
+        <RecommendWrapper
+          $hasDimmedItem={hasDimmedItem}
+          $tocItemHeight={tocItemHeight}
+          $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
+        >
+          <Recommend
+            detailData={detailData}
+            isUnsubscribedSection={isUnsubscribedSection}
+          />
+        </RecommendWrapper>
+      ) : (
+        <></>
+      )}
     </>
   );
 };
@@ -257,7 +270,7 @@ const RecommendWrapper = styled.div<{
     props.$hasDimmedItem && props.$isUnsubscribedSection
       ? `240px`
       : props.$hasDimmedItem
-      ? `400px`
+      ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
       : `160px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
 `;

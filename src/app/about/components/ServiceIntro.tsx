@@ -43,7 +43,7 @@ const ServiceIntro = () => {
 
   const handleModalButtonClick = () => {
     setShowModal(false);
-    router.push("/today");
+    router.push("/");
   };
 
   return (

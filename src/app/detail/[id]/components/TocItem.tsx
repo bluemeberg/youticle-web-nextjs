@@ -6,9 +6,11 @@ import { formatTimeRange, formatSummary } from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
+import { Overview } from "@/types/dataProps";
 
 interface TocItemProps {
   section: string;
+  videoId: string;
   title: string;
   start: number;
   summary: string;
@@ -24,11 +26,13 @@ interface TocItemProps {
   isUnsubscribedSection: boolean;
   isNoSubscribedSubjects: boolean;
   subscribedSubjects: string[];
+  overview: Overview | undefined;
 }
 const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
     {
       section,
+      videoId,
       title,
       start,
       summary,
@@ -44,6 +48,7 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
       isUnsubscribedSection,
       isNoSubscribedSubjects,
       subscribedSubjects,
+      overview,
     },
     ref
   ) => {
@@ -74,12 +79,14 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
         {dimmed && (
           <DimmedArea
             tocItemHeight={tocItemHeight}
+            videoId={videoId}
             toc={toc}
             isLoggedOut={isLoggedOut}
             isUnsubscribedSection={isUnsubscribedSection}
             isNoSubscribedSubjects={isNoSubscribedSubjects}
             subscribedSubjects={subscribedSubjects}
             section={section}
+            overview={overview}
           />
         )}
       </Container>

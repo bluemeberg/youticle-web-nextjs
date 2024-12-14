@@ -38,8 +38,18 @@ export interface Overview {
   economic_trends?: EconomicTrend[];
   market_analysis_economy?: MarketAnalysisEconomy[];
   investment_strategies_economy?: InvestmentStrategyEconomy[];
+
+  cryptos?: Crypto[]; // 새로운 cryptos 필드 추가
+}
+export interface Crypto {
+  crypto_name: string;
+  crypto_description: string;
+  crypto_analysis: CryptoAnalysis[];
 }
 
+export interface CryptoAnalysis {
+  description: string;
+}
 // 새로운 경제 관련 타입 정의
 export interface EconomicTrend {
   trend_name: string;

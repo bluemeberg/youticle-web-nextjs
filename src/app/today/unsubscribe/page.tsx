@@ -39,7 +39,7 @@ const UnsubscribePage = () => {
 
     if (unsubscribedData.length === 0) {
       console.error("미구독 데이터가 없습니다.");
-      router.push("/today");
+      router.push("/");
     }
   }, [setSelectedTopic, unsubscribedData, router]);
 
