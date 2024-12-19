@@ -1,6 +1,6 @@
 // apiClient.ts
 
-const API_BASE_URL = "https://youticle.shop";
+const API_BASE_URL = "https://claying.shop";
 const LOCAL_API_BASE_URL = "http://0.0.0.0:8000";
 // 유저 정보 최초 등록
 export const createOrFetchUser = async (email: string, name: string) => {
@@ -143,7 +143,7 @@ export async function fetchTopVideosBySection(section: string) {
   }
 }
 
-const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
+const STOCK_API_URL = "https://claying.shop/briefing/top_videos/stock";
 
 export async function fetchStockVideo() {
   try {

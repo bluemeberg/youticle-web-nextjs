@@ -201,7 +201,7 @@ const My = () => {
 
   // taskid에 대한 상태 가져오기
   const getTaskId = async (taskId: string) => {
-    const url = `https://youticle.shop/keyword/status/${taskId}`;
+    const url = `https://claying.shop/keyword/status/${taskId}`;
     try {
       const response = await fetch(url, {
         method: "GET",
@@ -228,7 +228,7 @@ const My = () => {
   };
   // taskid에 대한 상태 가져오기
   const getUserReport = async (userId: number) => {
-    const url = `https://youticle.shop/keyword/user?user_id=${userId}`;
+    const url = `https://claying.shop/keyword/user?user_id=${userId}`;
     try {
       const response = await fetch(url, {
         method: "GET",
@@ -323,7 +323,7 @@ const My = () => {
   // 유저 정보 최초 등록
   const createOrFetchUser = async (email: string) => {
     try {
-      const response = await fetch("https://youticle.shop/users/", {
+      const response = await fetch("https://claying.shop/users/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -347,7 +347,7 @@ const My = () => {
 
   // 유저 정보 가져오기
   const getUserByEmail = async (email: string): Promise<{ id: number }> => {
-    const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
+    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
 
     try {
       const response = await fetch(url, {
@@ -388,7 +388,7 @@ const My = () => {
       console.log(keyword, category, userId, period);
       if (keyword && category && userId) {
         console.log(keyword, category, userId);
-        const response = await fetch("https://youticle.shop/keyword/", {
+        const response = await fetch("https://claying.shop/keyword/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -421,7 +421,7 @@ const My = () => {
 
   // 키워드 최초 일회성으로 실행시키기
   const executeFirstScehdule = async (id: number, type: string) => {
-    const url = `https://youticle.shop/keyword/schedule/${id}`;
+    const url = `https://claying.shop/keyword/schedule/${id}`;
     try {
       const response = await fetch(url, {
         method: "GET",
@@ -464,7 +464,7 @@ const My = () => {
     try {
       if (userId) {
         const response = await fetch(
-          `https://youticle.shop/keyword/keywords/${userId}`,
+          `https://claying.shop/keyword/keywords/${userId}`,
           {
             method: "GET",
             headers: {

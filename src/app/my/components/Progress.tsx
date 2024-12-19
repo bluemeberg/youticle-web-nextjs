@@ -25,7 +25,7 @@ const Progress: React.FC<NewComponentProps> = ({ keyword, currentTab }) => {
   // taskid에 대한 상태 가져오기
   const getTaskId = async () => {
     if (currentTab === "데일리") {
-      const url = `https://youticle.shop/keyword/status/${dailyTaskId.taskId}`;
+      const url = `https://claying.shop/keyword/status/${dailyTaskId.taskId}`;
       try {
         const response = await fetch(url, {
           method: "GET",
@@ -48,7 +48,7 @@ const Progress: React.FC<NewComponentProps> = ({ keyword, currentTab }) => {
       }
     } else {
       console.log();
-      const url = `https://youticle.shop/keyword/status/${weeklyTaskId.taskId}`;
+      const url = `https://claying.shop/keyword/status/${weeklyTaskId.taskId}`;
       try {
         const response = await fetch(url, {
           method: "GET",

@@ -16,7 +16,7 @@ export async function generateMetadata({
   const { id } = params;
 
   const response = await fetch(
-    `https://youticle.shop/briefing/top_videos/${id}`
+    `https://claying.shop/briefing/top_videos/${id}`
   );
   const data = await response.json();
   const detailData = data[0];
@@ -43,7 +43,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
   const { id } = params;
 
   const response = await fetch(
-    `https://youticle.shop/briefing/top_videos/${id}`
+    `https://claying.shop/briefing/top_videos/${id}`
   );
   if (!response.ok) {
     return <NotFoundPage />;

@@ -28,7 +28,7 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
   const getUserByEmail = async (
     email: string
   ): Promise<{ id: number } | undefined> => {
-    const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
+    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
 
     try {
       const response = await fetch(url, {
@@ -57,7 +57,7 @@ const Report: React.FC<ReportComponentProps> = ({ currentTab }) => {
 
   // taskid에 대한 상태 가져오기
   const getUserReport = async (userId: number) => {
-    const url = `https://youticle.shop/keyword/user?user_id=${userId}`;
+    const url = `https://claying.shop/keyword/user?user_id=${userId}`;
     try {
       const response = await fetch(url, {
         method: "GET",

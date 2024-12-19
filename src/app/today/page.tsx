@@ -10,8 +10,8 @@ export default function LandingPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
-      // const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
+      const STOCK_API_URL = "https://claying.shop/briefing/top_videos/stock";
+      // const EXCEPT_STOCK_API_URL = "https://claying.shop/briefing/top_videos";
       //   const STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos/stock";
       const EXCEPT_STOCK_API_URL_LOCAL =
         "http://0.0.0.0:8000/briefing/top_videos";
