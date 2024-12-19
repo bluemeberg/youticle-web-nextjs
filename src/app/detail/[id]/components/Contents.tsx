@@ -91,6 +91,7 @@ const Contents = ({
   const handlePopupClose = () => {
     setShowPopup(false);
   };
+  console.log(clientThumbnails);
   return (
     <>
       <ContentWrapper>

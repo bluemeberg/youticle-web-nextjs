@@ -115,7 +115,7 @@ const SubscriptionPage = () => {
       }
       setModalMessage("구독 키워드가 성공적으로 업데이트되었습니다.");
       setShowModal(true);
-      router.push(`/today`);
+      router.push(`/`);
     } catch (error) {
       console.error("주제 업데이트 중 오류 발생:", error);
       setModalMessage(

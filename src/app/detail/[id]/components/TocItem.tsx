@@ -52,12 +52,16 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
     },
     ref
   ) => {
+    console.log(thumbnails);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <Title>{title}</Title>
           <Thumbnail onClick={onClick}>
-            <img src={thumbnails} alt={title} />
+            <img
+              src={`https://claying.shop/captures/${videoId}/${thumbnails}`}
+              alt={title}
+            />
             <PlayIcon className="play-icon" />
           </Thumbnail>
           <Timeline>

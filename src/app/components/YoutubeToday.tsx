@@ -42,10 +42,6 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     (item) => !subjects.includes(item.section)
   );
 
-  // 페이지 진입 시 구독한 주제의 첫 번째 항목을 기본 선택 주제로 설정
-  console.log(subjects, "구독한 주제");
-  console.log(selectedTopic, "구독한 주제 선택한");
-  console.log(data, "데이터");
   // useEffect(() => {
   //   if (subjects.length > 0) {
   //     setSelectedTopic(subjects[0]);
