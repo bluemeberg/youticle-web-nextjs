@@ -84,7 +84,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     const fetchThumbnails = async () => {
       try {
         const thumbnailResponse = await fetch(
-          `https://claying.shop/briefing/capture_frames/${id}`
+          `https://youticle.shop/editor/capture_frames/${id}`
         );
         if (!thumbnailResponse.ok)
           throw new Error("Failed to fetch thumbnails");
@@ -186,8 +186,20 @@ const Category = styled.span`
   font-size: 16px;
   font-weight: 600;
   line-height: 19.09px;
-  color: rgba(48, 213, 200, 1);
+  color: #007bff;
   margin-bottom: 12px;
+`;
+
+const Analysis = styled.p`
+  font-size: 16px;
+  line-height: 140%;
+  background-color: #f9f9f9;
+  padding: 16px 12px;
+  border-radius: 4px;
+  margin-top: 12px;
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-bottom: 40px;
 `;
 
 const Title = styled.span`
@@ -197,16 +209,31 @@ const Title = styled.span`
   margin-bottom: 4px;
 `;
 
+const UploadContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
+
 const Upload = styled.span`
   font-size: 12px;
   font-weight: 400;
   line-height: 14.4px;
+  margin-right: 4px;
+`;
+
+const Description = styled.p`
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
 `;
 
 const Preview = styled.div<{ $isFixed: boolean }>`
   padding: 20px;
-  margin-top: ${(props) => (props.$isFixed ? "176px" : "28px")};
-
+  background-color: #f9f9f9;
+  margin-top: ${(props) => (props.$isFixed ? "12px" : "12px")};
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-bottom: 32px;
   div {
     display: flex;
     flex-direction: column;
@@ -233,9 +260,11 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 `;
 
 const TOC = styled.div`
-  margin-top: 24px;
-  padding: 0 20px;
-
+  margin-top: 20px;
+  padding: 0 16px;
+  span {
+    line-height: 132%;
+  }
   div:first-child {
     height: 44px;
     padding: 10px 16px 10px 16px;
@@ -251,10 +280,10 @@ const TOC = styled.div`
     display: flex;
     flex-direction: column;
     gap: 24px;
-    background-color: rgba(242, 242, 242, 1);
+    background-color: rgb(248, 248, 248);
     font-size: 18px;
     font-weight: 600;
-    line-height: 19.09px;
+    line-height: 132%;
   }
 `;
 
@@ -296,4 +325,11 @@ const Loader = styled.div`
   );
   background-size: 200% 100%;
   animation: ${LoaderAnimation} 1.5s infinite;
+`;
+
+const OverviewTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 40px;
+  margin-left: 16px;
 `;

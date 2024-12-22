@@ -80,16 +80,17 @@ const ContentWrapper = styled.div<{
   $dimmed: boolean;
   $partialDimmed: boolean;
 }>`
-  /* opacity: ${(props) => (props.$dimmed ? 0.2 : 1)}; */
-  /* ${({ $partialDimmed }) =>
+  /* opacity: ${(props) => (props.$dimmed ? 0.2 : 1)};
+  ${({ $partialDimmed }) =>
     $partialDimmed
-      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);`
+      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);
+      `
       : ""} */
 `;
 
 const Title = styled.span`
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 140%;
 `;
 
@@ -140,7 +141,7 @@ const Timeline = styled.div`
 `;
 
 const Summary = styled.div`
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 168%;
   margin-left: 8px;
@@ -158,13 +159,13 @@ const Summary = styled.div`
 
 const TipArea = styled.div`
   display: flex;
-  font-size: 16px;
+  font-size: 14px;
   margin-top: 36px;
 `;
 
 const Tip = styled.span`
   font-weight: 700;
-  background-color: #30d5c8;
+  background-color: #e9f4ff;
   padding-left: 8px;
   padding-right: 8px;
   border-radius: 4px;
@@ -172,7 +173,7 @@ const Tip = styled.span`
 `;
 
 const TipAreaDescription = styled.div`
-  font-size: 16px;
+  font-size: 14px;
   line-height: 152%;
   margin-top: 8px;
 `;
