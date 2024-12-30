@@ -1,6 +1,6 @@
 "use client"; // 클라이언트 컴포넌트임을 명시
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import styled from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
@@ -46,6 +46,8 @@ const YOUTUBE_TOPICS = [
 
 const TopicCard = (props: TopicCardProps) => {
   const router = useRouter();
+  const pathname = usePathname(); // 현재 경로 가져오기
+
   const setTopicState = useSetRecoilState(detailDataState);
   const {
     section,
@@ -61,7 +63,14 @@ const TopicCard = (props: TopicCardProps) => {
 
   const handleNavigate = () => {
     setTopicState(props);
-    router.push(`/detail/${video_id}`);
+
+    // 현재 경로 확인 및 동적 라우팅
+    console.log("Current Path:", pathname); // 현재 경로 디버깅 로그
+    if (pathname === "/editor") {
+      router.push(`/editor/${video_id}`);
+    } else {
+      router.push(`/detail/${video_id}`);
+    }
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
   const specialSections = ["주식"]; // 특정 주제 섹션 목록

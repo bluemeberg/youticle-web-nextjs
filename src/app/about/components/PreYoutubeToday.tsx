@@ -34,7 +34,7 @@ const YoutubeToday = () => {
     const fetchData = async () => {
       try {
         const response = await fetch(
-          "https://claying.shop/briefing/top_videos/engagement",
+          "https://youticle.shop/briefing/top_videos/engagement",
           // "http://0.0.0.0:8000/briefing/top_videos/engagement",
           {
             method: "GET",

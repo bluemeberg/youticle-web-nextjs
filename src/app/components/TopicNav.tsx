@@ -79,7 +79,6 @@ const TopicNav = ({
     // 기본적으로 전체 토픽 반환
     return YOUTUBE_TOPICS;
   }, [subjects, unSubscribe]);
-  console.log(filteredTopics);
   const [clientSelected, setClientSelected] = useState<string>("");
 
   useEffect(() => {
@@ -138,6 +137,7 @@ const Container = styled.div<{ $isFixed: boolean; $hasScrolled: boolean }>`
   position: ${({ $isFixed }) => ($isFixed ? "fixed" : "relative")};
   top: ${({ $isFixed }) => ($isFixed ? "52px" : "auto")};
   width: 100%;
+  max-width: 430px;
   background-color: #fff;
   z-index: 10;
 
@@ -146,6 +146,7 @@ const Container = styled.div<{ $isFixed: boolean; $hasScrolled: boolean }>`
   }
   -ms-overflow-style: none;
   scrollbar-width: none;
+  transition: top 1s ease; /* 위치 변경 시 부드러운 애니메이션 */
 `;
 
 const Topic = styled.div<{ selected: boolean; isSubscribed: boolean }>`

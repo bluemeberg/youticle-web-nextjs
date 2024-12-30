@@ -2,13 +2,16 @@ import styled from "styled-components";
 import InfoIcon from "@/assets/subInfo.svg";
 import GoogleLogin from "@/common/GoogleLogin";
 import { Overview, Section } from "@/types/dataProps";
+import { useEffect, useRef, useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import Recommend from "./Recommend";
 import RecommendDimmed from "./RecommendDimmed";
+import { usePathname } from "next/navigation";
 
-const DIMMED_TITLE = `아직 구독중이 아니라면?!`;
+const DIMMED_TITLE = `✨ 무료 구독 혜택`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
 interface DimmedAreaProps {
   tocItemHeight: number;
@@ -35,6 +38,9 @@ const DimmedArea = ({
 }: DimmedAreaProps) => {
   const user = useRecoilValue(userState);
   const router = useRouter();
+  const pathname = usePathname(); // 현재 경로 가져오기
+  const isEditorPath = pathname.startsWith("/editor"); // editor 경로 확인
+
   // console.log("구독한 키워드", overview);
   const subscribedText = subscribedSubjects.join(", ");
   const subscribeText =
@@ -84,11 +90,38 @@ const DimmedArea = ({
   };
 
   const currentInsights = (
-    insightsBySection[section] || insightsBySection.default
+    isEditorPath
+      ? insightsBySection.default
+      : insightsBySection[section] || insightsBySection.default
   )().filter(Boolean);
 
+  const [dimmedHeight, setDimmedHeight] = useState<number>(0);
+  const dimmedRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const updateHeight = () => {
+      if (dimmedRef.current) {
+        const height = dimmedRef.current.offsetHeight;
+        console.log(height);
+        setDimmedHeight(height);
+        document.body.style.minHeight = `${height + window.innerHeight}px`;
+      }
+    };
+
+    // 초기 실행 및 윈도우 리사이즈 대응
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, []);
+  const contentNumberNotLogin = Math.ceil(toc.length / 2);
   return (
-    <Container $height={tocItemHeight} $isUnsubscribed={isUnsubscribedSection}>
+    <Container
+      ref={dimmedRef}
+      $height={tocItemHeight}
+      $isUnsubscribed={isUnsubscribedSection}
+    >
       <Info>
         {user.name !== "" && subscribedSubjects.length === 0 ? (
           <SubsKeywordInfo>
@@ -99,12 +132,34 @@ const DimmedArea = ({
           <SubsKeywordInfo>
             🙋이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
           </SubsKeywordInfo>
+        ) : isEditorPath ? ( // editor 경로에 따른 조건 추가
+          <>
+            <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
+            <LogoTitleSubs>
+              &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 양질의
+              인사이트를 빠르게 확인해보세요!🙋
+              <br />
+            </LogoTitleSubs>
+            {/* <LogoTitleSubs>
+              해당 키워드 구독 시 전문 확인 가능합니다.
+            </LogoTitleSubs> */}
+            <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
+            <GoogleLogin
+              variant="link"
+              text="로그인해서 아티클 아래 내용 마저 읽기"
+            />
+          </>
         ) : (
           <>
             <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
             <LogoTitleSubs>
-              이미 &lsquo;{section}&rsquo; 키워드 구독 중이라면?
+              &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 최신 트렌드
+              정보를 매일 받아보세요!🙋 <br />
             </LogoTitleSubs>
+            {/* <LogoTitleSubs>
+              해당 키워드 구독 시 전문 확인 가능합니다.
+            </LogoTitleSubs> */}
+            <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
             <GoogleLogin
               variant="link"
               text="로그인해서 아티클 아래 내용 마저 읽기"
@@ -115,7 +170,7 @@ const DimmedArea = ({
       <TOC>
         <div>👀 남은 목차</div>
         <div>
-          {toc.slice(3).map(({ title }, index) => (
+          {toc.slice(contentNumberNotLogin).map(({ title }, index) => (
             <span key={index}>{title}</span>
           ))}
           {currentInsights.length > 0 && (
@@ -137,26 +192,42 @@ const DimmedArea = ({
           {/* <Divider /> */}
           <ServiceTitle dangerouslySetInnerHTML={{ __html: DIMMED_TITLE }} />
           <UnSubscribeContainer>
-            <ServiceTitleSub
+            {/* <ServiceTitleSub
               dangerouslySetInnerHTML={{ __html: DIMMED_SUBTITLE }}
-            />
+            /> */}
             <ServiceSubTitleContainer>
               <ServiceSubTitleSubContainer>
-                <ServiceSubTitleIcon>📧</ServiceSubTitleIcon>
+                <ServiceSubTitleIcon>
+                  1️⃣ 매일 뉴스레터 제공!
+                </ServiceSubTitleIcon>
                 <ServiceSubTitleDescription>
-                  매일 자동 요약된 최신 유튜브 아티클을 이메일로 받기.
+                  구독 키워드 기반으로 자동 요약된 유튜브 아티클을 매일 이메일로
+                  받아보세요!
+                  <ul>
+                    <li>
+                      <strong>최신 트렌드 아티클:</strong> 최신 유튜브 영상을
+                      요약한 아티클을 통해 트렌드 세터가 되어보세요.
+                    </li>
+                    <li>
+                      <strong>에디터 추천 아티클:</strong> 에디터가 선정한
+                      양질의 영상을 통해 깊이있는 인사이트를 얻으세요.
+                    </li>
+                  </ul>
                 </ServiceSubTitleDescription>
               </ServiceSubTitleSubContainer>
               <ServiceSubTitleSubContainer>
-                <ServiceSubTitleIcon>🔍</ServiceSubTitleIcon>
+                <ServiceSubTitleIcon>
+                  2️⃣ 아티클 전문 열람 가능!
+                </ServiceSubTitleIcon>
                 <ServiceSubTitleDescription>
-                  매일 구독한 키워드의 아티클 전문을 자유롭게 탐색하기.
+                  구독 시 모든 아티클의 전문을 자유롭게 확인할 수 있습니다.
                 </ServiceSubTitleDescription>
               </ServiceSubTitleSubContainer>
               <ServiceSubTitleSubContainer>
-                <ServiceSubTitleIcon>✨</ServiceSubTitleIcon>
+                <ServiceSubTitleIcon>3️⃣ 관심 키워드 3Pick!</ServiceSubTitleIcon>
                 <ServiceSubTitleDescription>
-                  최대 3개의 관심 키워드 구독하기.{" "}
+                  최대 3개의 관심 키워드를 선택하여 나만의 맞춤형 콘텐츠를
+                  받아보세요.
                 </ServiceSubTitleDescription>
               </ServiceSubTitleSubContainer>
             </ServiceSubTitleContainer>
@@ -177,18 +248,7 @@ const DimmedArea = ({
           {subscribeText}
         </ServiceButton>
       </ButtonContainer>
-      {!isUnsubscribedSection && (
-        <ButtonContainer>
-          <ServiceButton
-            $variant="secondary"
-            onClick={() => {
-              router.push("/");
-            }}
-          >
-            유티클 더 알아보기
-          </ServiceButton>
-        </ButtonContainer>
-      )}
+
       <RecommendDimmed
         section={section}
         videoId={videoId}
@@ -227,6 +287,9 @@ const LogoTitle = styled.div`
 const LogoTitleSubs = styled.div`
   font-size: 18px;
   font-weight: 700;
+  line-height: 132%;
+  margin-bottom: 16px;
+  text-align: center;
 `;
 
 const Divider = styled.div`
@@ -238,7 +301,7 @@ const Divider = styled.div`
   margin-top: 40px;
 `;
 
-const ServiceTitle = styled.span`
+const ServiceTitle = styled.div`
   font-size: 20px;
   font-weight: 700;
   line-height: 148%;
@@ -267,9 +330,11 @@ const ServiceSubTitleContainer = styled.div`
 
 const ServiceSubTitleSubContainer = styled.div`
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   div:first-child {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
+    margin-top: 4px;
+    min-width: 92px;
   }
   div:nth-child(2) {
     margin-bottom: 24px;
@@ -277,13 +342,25 @@ const ServiceSubTitleSubContainer = styled.div`
 `;
 const ServiceSubTitleIcon = styled.div`
   font-size: 16px;
+  font-weight: 600;
 `;
 
 const ServiceSubTitleDescription = styled.div`
   font-size: 16px;
-  font-weight: 500;
-  margin-left: 10px;
   line-height: 132%;
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style-type: disc;
+    margin-top: 12px;
+  }
+
+  li {
+    margin-bottom: 8px;
+  }
+  strong {
+    font-weight: 600;
+  }
 `;
 
 const ServiceSubTitle = styled.div`
@@ -342,7 +419,7 @@ const TOC = styled.div`
     display: flex;
     flex-direction: column;
     gap: 24px;
-    background-color: rgba(242, 242, 242, 1);
+    background-color: #f6f6f6;
     font-size: 18px;
     font-weight: 600;
     line-height: 19.09px;
@@ -405,9 +482,9 @@ const ButtonContainer = styled.div`
 `;
 
 const SubsKeywordInfo = styled.div`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 140%;
+  margin-top: 20px;
 `;
 
 const UnSubscribeContainer = styled.div`

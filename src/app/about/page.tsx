@@ -6,8 +6,8 @@ import { Suspense } from "react";
 
 export default async function LandingPage() {
   // Server-side data fetching using fetch with no-store
-  const STOCK_API_URL = "https://claying.shop/briefing/top_videos/stock";
-  const EXCEPT_STOCK_API_URL = "https://claying.shop/briefing/top_videos";
+  const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
+  const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
 
   // // Fetch both APIs in parallel using Promise.all
   // const [response1, response2] = await Promise.all([

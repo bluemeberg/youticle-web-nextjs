@@ -6,8 +6,11 @@ import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
 import { timeAgo } from "@/utils/formatter";
+import { usePathname } from "next/navigation";
+
 interface RecommendCardProps extends DataProps {
   icon: React.ReactNode;
+  path: string;
 }
 
 const RecommendCard = (props: RecommendCardProps) => {
@@ -17,7 +20,9 @@ const RecommendCard = (props: RecommendCardProps) => {
 
   const handleNavigate = () => {
     setTopicState(props);
-    router.push(`/detail/${video_id}`);
+    const navigatePath =
+      props.path === "editor" ? `/editor/${video_id}` : `/detail/${video_id}`;
+    router.push(navigatePath);
   };
 
   return (

@@ -115,6 +115,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     const handleScroll = () => {
       if (scrollRef.current) {
         const scrollRefTop = scrollRef.current.getBoundingClientRect().top;
+        console.log(scrollRefTop);
         setIsFixed(scrollRefTop <= 0);
       }
     };
@@ -124,6 +125,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     handleScroll();
 
     return () => {
+      console.log("Removing scroll listener");
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);

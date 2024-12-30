@@ -1,6 +1,6 @@
 // apiClient.ts
 
-const API_BASE_URL = "https://claying.shop";
+const API_BASE_URL = "https://youticle.shop";
 const LOCAL_API_BASE_URL = "http://0.0.0.0:8000";
 // 유저 정보 최초 등록
 export const createOrFetchUser = async (email: string, name: string) => {
@@ -143,11 +143,31 @@ export async function fetchTopVideosBySection(section: string) {
   }
 }
 
-const STOCK_API_URL = "https://claying.shop/briefing/top_videos/stock";
+const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
 
 export async function fetchStockVideo() {
   try {
     const response1 = await fetch(STOCK_API_URL, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response1.ok) {
+      throw new Error("API request failed");
+    }
+    const data1 = response1.json();
+    return data1;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+}
+
+const EDITOR_API_URL = "https://youticle.shop/briefing/editor/all/article";
+const EDITOR_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
+
+export async function fetchEditorArticle() {
+  try {
+    const response1 = await fetch(EDITOR_API_LOCAL_URL, {
       method: "GET",
       cache: "no-store",
     });

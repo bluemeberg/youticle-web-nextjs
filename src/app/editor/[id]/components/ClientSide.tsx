@@ -11,6 +11,8 @@ import { formatSummary, removeMarkTags } from "@/utils/formatter";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
+import { timeAgo } from "@/utils/formatter";
+import VideoCard from "@/detail/[id]/components/VideoCard";
 
 interface ClientSideProps {
   id: string;
@@ -57,7 +59,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const opts: YouTubeProps["opts"] = {
     height: "202",
     playerVars: {
-      autoplay: 1,
+      autoplay: 0,
       rel: 0,
       disablekb: 1,
     },
@@ -84,7 +86,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     const fetchThumbnails = async () => {
       try {
         const thumbnailResponse = await fetch(
-          `https://youticle.shop/editor/capture_frames/${id}`
+          `http://0.0.0.0:8000/editor/capture_frames/${id}`
         );
         if (!thumbnailResponse.ok)
           throw new Error("Failed to fetch thumbnails");
@@ -107,23 +109,46 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     fetchThumbnails();
   }, [id]);
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // 목차 데이터를 최대 5개까지만 표시
+  const visibleSections = isExpanded
+    ? detailData.summary_data.section
+    : detailData.summary_data.section.slice(0, 5);
+
+  const toggleView = () => {
+    setIsExpanded((prev) => !prev);
+  };
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState("0px"); // 초기 높이
+
+  // 높이를 계산하는 함수
+  const calculateHeight = () => {
+    if (contentRef.current) {
+      const totalHeight = contentRef.current.scrollHeight; // 전체 높이
+      return isExpanded ? `${totalHeight}px` : `${totalHeight / 2}px`; // 절반 높이 or 전체 높이
+    }
+    return "0px";
+  };
+
+  // 상태 변화 시 높이 재계산
+  useEffect(() => {
+    setContentHeight(calculateHeight());
+  }, [isExpanded, detailData]);
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
-        title={
-          isFixed
-            ? `${detailData.summary_data.headline_title}, ${detailData.summary_data.headline_sub_title}`
-            : ""
-        }
+        title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
       />
       <PageInfo ref={scrollRef}>
         <Category>{detailData.section}</Category>
-        <Title>
-          {detailData.summary_data.headline_title},
-          <br />
-          {detailData.summary_data.headline_sub_title}
-        </Title>
-        <Upload>{detailData.upload_date} 업로드</Upload>
+        <Title>{detailData.summary_data.headline_title}</Title>
+        <UploadContainer>
+          <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
+          <Upload>{detailData.duration}</Upload>
+        </UploadContainer>
       </PageInfo>
       <VideoContainer
         ref={videoContainerRef}
@@ -142,20 +167,38 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         />
       </VideoContainer>
 
+      <VideoCard
+        thumbnail={detailData.thumbnail}
+        title={detailData.title}
+        channelName={detailData.channel_details.channel_name}
+        subscriber={detailData.channel_details.channel_subscribers}
+        upload_date={detailData.upload_date}
+        description={detailData.summary_data.channel_overview}
+        channel_thumbnail={detailData.channel_details.channel_thumbnail}
+      />
+      <OverviewTitle>📹 영상 소개</OverviewTitle>
       <Preview $isFixed={isFixed}>
-        <div>
-          <span>🔎 미리보기</span>
-          {formatSummary(detailData.summary_data.short_summary)}
-        </div>
+        {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
+
       <TOC>
         <div>목차</div>
-        <div>
+        <ContentWrapper
+          ref={contentRef}
+          $height={contentHeight}
+          $isExpanded={isExpanded}
+        >
           {detailData.summary_data.section.map(({ title }, index) => (
-            <span key={index}>{title} </span>
+            <span key={index}>{title}</span>
           ))}
-        </div>
+        </ContentWrapper>
+        {detailData.summary_data.section.length > 5 && (
+          <ToggleButton onClick={toggleView}>
+            {isExpanded ? "간단히 보기" : "더 보기"}
+          </ToggleButton>
+        )}
       </TOC>
+
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
@@ -287,6 +330,21 @@ const TOC = styled.div`
   }
 `;
 
+const ToggleButton = styled.button`
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: transparent;
+  color: #007bff;
+  border: none;
+  cursor: pointer;
+  align-self: flex-start;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 const VideoContainer = styled.div<{ $isFixed: boolean; $isDesktop: boolean }>`
   position: ${(props) => (props.$isFixed ? "fixed" : "static")};
   top: ${(props) => (props.$isFixed ? "52px" : "auto")};
@@ -332,4 +390,18 @@ const OverviewTitle = styled.div`
   font-weight: 700;
   margin-top: 40px;
   margin-left: 16px;
+`;
+
+const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
+  overflow: hidden;
+  height: ${({ $height }) => $height};
+  transition: height 0.3s ease;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background-color: rgb(248, 248, 248);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 132%;
 `;

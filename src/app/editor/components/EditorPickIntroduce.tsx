@@ -70,6 +70,7 @@ const ContentBox = styled.div`
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 12px;
+  padding-top: 28px;
   margin-top: 4px;
   width: 100%;
   display: flex;

@@ -88,7 +88,7 @@ const App = () => {
         } else {
           for (const topic of selectedTopics) {
             const response = await fetch(
-              "https://claying.shop/users/subject/",
+              "https://youticle.shop/users/subject/",
               {
                 method: "POST",
                 headers: {
@@ -129,11 +129,11 @@ const App = () => {
 
   // 유저 정보 최초 등록
   const createOrFetchUser = async (email: string, name: string) => {
-    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
+    const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
     const localUrl = `http://0.0.0.0:8000/users/${encodeURIComponent(email)}`;
 
     try {
-      const response = await fetch("https://claying.shop/users/", {
+      const response = await fetch("https://youticle.shop/users/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -160,7 +160,7 @@ const App = () => {
     email: string,
     name: string
   ): Promise<{ id: number }> => {
-    const url = `https://claying.shop/users/${encodeURIComponent(email)}`;
+    const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
     const localUrl = `http://0.0.0.0:8000/users/${encodeURIComponent(email)}`;
 
     try {
@@ -220,7 +220,7 @@ const App = () => {
         for (const subject of selectedTopics) {
           try {
             const response = await fetch(
-              "https://claying.shop/users/subject/",
+              "https://youticle.shop/users/subject/",
               {
                 method: "POST",
                 headers: {

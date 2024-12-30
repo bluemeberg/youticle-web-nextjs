@@ -100,7 +100,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       try {
         // API 호출
         const thumbnailResponse = await fetch(
-          `https://claying.shop/briefing/images/${id}`
+          `https://youticle.shop/briefing/images/${id}`
         );
 
         if (!thumbnailResponse.ok) {
@@ -204,6 +204,8 @@ const Container = styled.div<{ $isFixed: boolean }>`
   font-family: "Pretendard Variable";
   padding-top: 76px;
   background-color: white;
+  height: fit-content;
+  min-height: calc(100vh + 813px); // 기본 100vh + 추가 813px
 `;
 
 const PageInfo = styled.div`

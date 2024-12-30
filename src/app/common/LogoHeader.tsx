@@ -176,6 +176,9 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
             {menuOpen && (
               <MenuDropdown>
                 <MenuItem onClick={() => goToPage("/")}>유티클 투데이</MenuItem>
+                <MenuItem onClick={() => goToPage("/editor")}>
+                  에디터 픽
+                </MenuItem>
                 <MenuItem onClick={() => goToPage("/about")}>
                   유티클 소개
                 </MenuItem>

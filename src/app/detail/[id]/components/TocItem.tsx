@@ -7,6 +7,7 @@ import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 import { Overview } from "@/types/dataProps";
+import { usePathname } from "../../../../../node_modules/next/navigation";
 
 interface TocItemProps {
   section: string;
@@ -52,15 +53,22 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
     },
     ref
   ) => {
+    const pathname = usePathname();
+    const isEditorPath = pathname.includes("/editor");
+
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <Title>{title}</Title>
           <Thumbnail onClick={onClick}>
-            <img
-              src={`https://claying.shop/captures/${videoId}/${thumbnails}`}
-              alt={title}
-            />
+            {!isEditorPath ? (
+              <img
+                src={`https://youticle.shop/captures/${videoId}/${thumbnails}`}
+                alt={title}
+              />
+            ) : (
+              <img src={thumbnails} alt={title} />
+            )}
             <PlayIcon className="play-icon" />
           </Thumbnail>
           <Timeline>

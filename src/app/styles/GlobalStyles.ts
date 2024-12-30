@@ -27,7 +27,7 @@ const GlobalStyles = createGlobalStyle`
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: gray;
+      background-color: #fafafa;
       box-sizing: border-box;
       margin: 0;
       padding: 0;
