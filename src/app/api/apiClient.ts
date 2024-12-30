@@ -162,7 +162,7 @@ export async function fetchStockVideo() {
   }
 }
 
-const EDITOR_API_URL = "https://youticle.shop/briefing/editor/all/article";
+const EDITOR_API_URL = "https://youticle.shop/editor/all/article";
 const EDITOR_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
 
 export async function fetchEditorArticle() {
