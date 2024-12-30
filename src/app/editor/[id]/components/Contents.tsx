@@ -98,8 +98,10 @@ const Contents = ({
       window.removeEventListener("resize", calculateHeight);
     };
   }, []);
+
   const contentNumberNotLogin =
     Math.ceil(detailData.summary_data.section.length / 2) + 1;
+
   return (
     <>
       <ContentWrapper
@@ -177,7 +179,8 @@ const Contents = ({
           $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
         >
           <Recommend
-            detailData={detailData}
+            section={detailData.section}
+            videoId={detailData.video_id}
             isUnsubscribedSection={isUnsubscribedSection}
           />
         </RecommendWrapper>
@@ -199,8 +202,16 @@ const ContentWrapper = styled.div`
 
 const RecommendWrapper = styled.div<{
   $hasDimmedItem: boolean;
+  $isUnsubscribedSection: boolean;
   $tocItemHeight: number;
 }>`
-  margin-top: ${(props) => (props.$hasDimmedItem ? `120px` : "100px")};
+  margin-top: ${(props) =>
+    props.$hasDimmedItem && props.$isUnsubscribedSection
+      ? `240px`
+      : props.$hasDimmedItem
+      ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
+      : `100px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+  padding-left: 20px;
+  padding-right: 20px;
 `;

@@ -17,7 +17,7 @@ const RecommendCard = (props: RecommendCardProps) => {
   const router = useRouter();
   const setTopicState = useSetRecoilState(detailDataState);
   const { video_id, summary_data, thumbnail, upload_date } = props;
-
+  const pathname = usePathname();
   const handleNavigate = () => {
     setTopicState(props);
     const navigatePath =

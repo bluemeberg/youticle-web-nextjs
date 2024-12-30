@@ -82,6 +82,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+  // Server-side data fetching using fetch with no-store
+  const EDITOR_ARTICLE_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
+  const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
   useEffect(() => {
     const fetchThumbnails = async () => {
       try {

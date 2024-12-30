@@ -60,6 +60,7 @@ const Contents = ({
     router.push("/subject"); // Navigate to keyword subscription page
     setShowPopup(false);
   };
+
   useEffect(() => {
     const fetchSubjects = async () => {
       if (user.name !== "") {
@@ -91,7 +92,6 @@ const Contents = ({
   const handlePopupClose = () => {
     setShowPopup(false);
   };
-  console.log(clientThumbnails);
 
   const [wrapperHeight, setWrapperHeight] = useState(0);
 
@@ -271,7 +271,8 @@ const Contents = ({
           $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
         >
           <Recommend
-            detailData={detailData}
+            section={detailData.section}
+            videoId={detailData.video_id}
             isUnsubscribedSection={isUnsubscribedSection}
           />
         </RecommendWrapper>
@@ -301,8 +302,10 @@ const RecommendWrapper = styled.div<{
       ? `240px`
       : props.$hasDimmedItem
       ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
-      : `160px`};
+      : `100px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+  padding-left: 20px;
+  padding-right: 20px;
 `;
 
 const HilightContainer = styled.div`
