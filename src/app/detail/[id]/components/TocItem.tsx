@@ -63,7 +63,8 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
           <Thumbnail onClick={onClick}>
             {!isEditorPath ? (
               <img
-                src={`https://youticle.shop/captures/${videoId}/${thumbnails}`}
+                // src={`https://youticle.shop/captures/${videoId}/${thumbnails}`}
+                src={thumbnails}
                 alt={title}
               />
             ) : (

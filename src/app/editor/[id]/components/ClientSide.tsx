@@ -89,7 +89,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     const fetchThumbnails = async () => {
       try {
         const thumbnailResponse = await fetch(
-          `http://0.0.0.0:8000/editor/capture_frames/${id}`
+          `https://youticle.shop/editor/capture_frames/${id}`
         );
         if (!thumbnailResponse.ok)
           throw new Error("Failed to fetch thumbnails");
