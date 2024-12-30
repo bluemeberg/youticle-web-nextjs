@@ -167,7 +167,7 @@ const EDITOR_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
 
 export async function fetchEditorArticle() {
   try {
-    const response1 = await fetch(EDITOR_API_LOCAL_URL, {
+    const response1 = await fetch(EDITOR_API_URL, {
       method: "GET",
       cache: "no-store",
     });
