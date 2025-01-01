@@ -67,7 +67,6 @@ export default function RootLayout({
 const AppContainer = styled.div`
   width: 100vw;
   max-width: none;
-  min-height: 100vh;
   padding: 0;
   margin: 0;
   background-color: white;

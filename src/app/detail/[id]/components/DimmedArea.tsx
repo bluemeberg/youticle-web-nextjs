@@ -97,24 +97,24 @@ const DimmedArea = ({
 
   const [dimmedHeight, setDimmedHeight] = useState<number>(0);
   const dimmedRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const updateHeight = () => {
-      if (dimmedRef.current) {
-        const height = dimmedRef.current.offsetHeight;
-        console.log(height);
-        setDimmedHeight(height);
-        document.body.style.minHeight = `${height + window.innerHeight}px`;
-      }
-    };
+  // useEffect(() => {
+  //   const updateHeight = () => {
+  //     if (dimmedRef.current) {
+  //       const height = dimmedRef.current.offsetHeight;
+  //       console.log(height);
+  //       setDimmedHeight(height);
+  //       document.body.style.minHeight = `${height + window.innerHeight}px`;
+  //     }
+  //   };
 
-    // 초기 실행 및 윈도우 리사이즈 대응
-    updateHeight();
-    window.addEventListener("resize", updateHeight);
+  //   // 초기 실행 및 윈도우 리사이즈 대응
+  //   updateHeight();
+  //   window.addEventListener("resize", updateHeight);
 
-    return () => {
-      window.removeEventListener("resize", updateHeight);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener("resize", updateHeight);
+  //   };
+  // }, []);
   const contentNumberNotLogin = Math.ceil(toc.length / 2);
   return (
     <Container
@@ -342,7 +342,7 @@ const ServiceSubTitleSubContainer = styled.div`
 `;
 const ServiceSubTitleIcon = styled.div`
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
 `;
 
 const ServiceSubTitleDescription = styled.div`
