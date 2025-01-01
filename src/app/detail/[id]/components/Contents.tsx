@@ -93,37 +93,30 @@ const Contents = ({
     setShowPopup(false);
   };
 
-  const [wrapperHeight, setWrapperHeight] = useState(0);
+  // useEffect(() => {
+  //   const calculateHeight = () => {
+  //     const contentWrapperElement = document.querySelector(
+  //       ".content-wrapper"
+  //     ) as HTMLDivElement;
 
-  useEffect(() => {
-    const calculateHeight = () => {
-      const contentWrapperElement = document.querySelector(
-        ".content-wrapper"
-      ) as HTMLDivElement;
+  //     if (contentWrapperElement) {
+  //       const contentHeight = contentWrapperElement.scrollHeight;
+  //       setWrapperHeight(contentHeight + 600); // 기존 높이에 813px 추가
+  //     }
+  //   };
 
-      if (contentWrapperElement) {
-        const contentHeight = contentWrapperElement.scrollHeight;
-        setWrapperHeight(contentHeight + 600); // 기존 높이에 813px 추가
-      }
-    };
+  //   calculateHeight();
 
-    calculateHeight();
+  //   // 윈도우 크기 변경에 대응
+  //   window.addEventListener("resize", calculateHeight);
 
-    // 윈도우 크기 변경에 대응
-    window.addEventListener("resize", calculateHeight);
-
-    return () => {
-      window.removeEventListener("resize", calculateHeight);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener("resize", calculateHeight);
+  //   };
+  // }, []);
   return (
     <>
-      <ContentWrapper
-        style={{
-          minHeight: `${wrapperHeight}px`,
-        }}
-        className="content-wrapper"
-      >
+      <ContentWrapper>
         {detailData.summary_data.section
           .slice(
             0,
