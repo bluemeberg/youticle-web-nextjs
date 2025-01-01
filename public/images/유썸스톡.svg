@@ -1,11 +1,11 @@
-<svg width="419" height="416" viewBox="0 0 419 416" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<rect x="1.55664" width="416" height="416" rx="208" fill="url(#paint0_linear_2759_6209)"/>
-<rect y="59.8008" width="418.86" height="356.2" fill="url(#pattern0_2759_6209)"/>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<rect x="3.80469" width="1017.01" height="1023.99" rx="508.504" fill="url(#paint0_linear_2759_6209)"/>
+<rect y="147.207" width="1024" height="876.793" fill="url(#pattern0_2759_6209)"/>
 <defs>
 <pattern id="pattern0_2759_6209" patternContentUnits="objectBoundingBox" width="1" height="1">
 <use xlink:href="#image0_2759_6209" transform="scale(0.002 0.00235182)"/>
 </pattern>
-<linearGradient id="paint0_linear_2759_6209" x1="103.517" y1="7.54305e-07" x2="348.223" y2="416" gradientUnits="userSpaceOnUse">
+<linearGradient id="paint0_linear_2759_6209" x1="253.071" y1="1.85674e-06" x2="857.415" y2="1020.38" gradientUnits="userSpaceOnUse">
 <stop stop-color="#007BFF"/>
 <stop offset="1" stop-color="#30D5C8" stop-opacity="0.5"/>
 </linearGradient>

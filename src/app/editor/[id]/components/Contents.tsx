@@ -75,29 +75,29 @@ const Contents = ({
     detailData.summary_data.section.some((_, index) => index >= 3) &&
     (user.name === "" || isUnsubscribedSection);
 
-  const [wrapperHeight, setWrapperHeight] = useState(0);
+  // const [wrapperHeight, setWrapperHeight] = useState(0);
 
-  useEffect(() => {
-    const calculateHeight = () => {
-      const contentWrapperElement = document.querySelector(
-        ".content-wrapper"
-      ) as HTMLDivElement;
+  // useEffect(() => {
+  //   const calculateHeight = () => {
+  //     const contentWrapperElement = document.querySelector(
+  //       ".content-wrapper"
+  //     ) as HTMLDivElement;
 
-      if (contentWrapperElement) {
-        const contentHeight = contentWrapperElement.scrollHeight;
-        setWrapperHeight(contentHeight + 600); // 기존 높이에 813px 추가
-      }
-    };
+  //     if (contentWrapperElement) {
+  //       const contentHeight = contentWrapperElement.scrollHeight;
+  //       setWrapperHeight(contentHeight + 600); // 기존 높이에 813px 추가
+  //     }
+  //   };
 
-    calculateHeight();
+  //   calculateHeight();
 
-    // 윈도우 크기 변경에 대응
-    window.addEventListener("resize", calculateHeight);
+  //   // 윈도우 크기 변경에 대응
+  //   window.addEventListener("resize", calculateHeight);
 
-    return () => {
-      window.removeEventListener("resize", calculateHeight);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener("resize", calculateHeight);
+  //   };
+  // }, []);
 
   const contentNumberNotLogin =
     Math.ceil(detailData.summary_data.section.length / 2) + 1;
@@ -105,10 +105,10 @@ const Contents = ({
   return (
     <>
       <ContentWrapper
-        style={{
-          minHeight: `${wrapperHeight}px`,
-        }}
-        className="content-wrapper"
+      // style={{
+      //   minHeight: `${wrapperHeight}px`,
+      // }}
+      // className="content-wrapper"
       >
         {detailData.summary_data.section
           .slice(

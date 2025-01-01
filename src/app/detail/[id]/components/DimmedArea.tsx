@@ -337,11 +337,11 @@ const ServiceSubTitleSubContainer = styled.div`
     min-width: 92px;
   }
   div:nth-child(2) {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
   }
 `;
 const ServiceSubTitleIcon = styled.div`
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
 `;
 

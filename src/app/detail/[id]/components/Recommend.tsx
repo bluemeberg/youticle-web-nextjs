@@ -106,8 +106,6 @@ const Recommend = ({
     return sortedData;
   }, [editorVideos]);
 
-  console.log(filteredAndSortedEditorData);
-
   const editors: Editor[] = [
     {
       id: "1",
@@ -123,7 +121,7 @@ const Recommend = ({
     },
     {
       id: "3",
-      name: "유썸 웰빙",
+      name: "유썸 메디컬",
       image: "/images/유썸건강.svg",
       keywords: ["건강"],
     },
