@@ -122,7 +122,7 @@ const RecommendDimmed = ({
     {
       id: "3",
       name: "유썸 메디컬",
-      image: "/images/유썸건강.png",
+      image: "/images/유썸메디컬.png",
       keywords: ["건강"],
     },
     {
@@ -134,7 +134,7 @@ const RecommendDimmed = ({
     {
       id: "5",
       name: "유썸 AI/테크",
-      image: "/images/유썸AI테크.png",
+      image: "/images/유썸테크.png",
       keywords: ["인공지능", "IT/테크", "IT/Tech"],
     },
   ];

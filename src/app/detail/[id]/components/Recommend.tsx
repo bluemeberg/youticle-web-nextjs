@@ -110,31 +110,31 @@ const Recommend = ({
     {
       id: "1",
       name: "유썸 스톡",
-      image: "/images/유썸스톡.svg",
+      image: "/images/유썸스톡.png",
       keywords: ["주식"],
     },
     {
       id: "2",
       name: "유썸 비즈",
-      image: "/images/유썸비즈.svg",
+      image: "/images/유썸비즈.png",
       keywords: ["비즈니스/사업"],
     },
     {
       id: "3",
       name: "유썸 메디컬",
-      image: "/images/유썸건강.svg",
+      image: "/images/유썸메디컬.png",
       keywords: ["건강"],
     },
     {
       id: "4",
       name: "유썸 로맨틱",
-      image: "/images/유썸로맨틱.svg",
+      image: "/images/유썸로맨틱.png",
       keywords: ["연애/결혼"],
     },
     {
       id: "5",
       name: "유썸 AI/테크",
-      image: "/images/유썸AI테크.svg",
+      image: "/images/유썸테크.png",
       keywords: ["인공지능", "IT/테크", "IT/Tech"],
     },
   ];
