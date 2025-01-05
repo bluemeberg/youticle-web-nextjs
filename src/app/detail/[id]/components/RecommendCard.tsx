@@ -17,8 +17,15 @@ const RecommendCard = (props: RecommendCardProps) => {
   const router = useRouter();
   const setTopicState = useSetRecoilState(detailDataState);
   const { video_id, summary_data, thumbnail, upload_date } = props;
-  const pathname = usePathname();
+
   const handleNavigate = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "recommend_card_click", {
+        event_category: "navigation",
+        event_label: props.summary_data.headline_title,
+        value: props.video_id,
+      });
+    }
     setTopicState(props);
     const navigatePath =
       props.path === "editor" ? `/editor/${video_id}` : `/detail/${video_id}`;

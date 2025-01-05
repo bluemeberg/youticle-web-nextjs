@@ -74,7 +74,6 @@ export const formatTimeRange = (startMinutes: number): string => {
   return `${startTime} ~`;
 };
 
-// 요약 텍스트를 포맷팅하는 함수
 export const formatSummary = (summary: string | string[] | undefined) => {
   // summary가 undefined일 경우 기본 메시지 반환
   if (!summary) {
@@ -95,16 +94,28 @@ export const formatSummary = (summary: string | string[] | undefined) => {
           .filter((sentence) => sentence.trim() !== "")
           .map((sentence, index, array) => {
             const parts = sentence
-              .split(/(<mark>.*?<\/mark>)/g)
-              .map((part, i) =>
-                part.startsWith("<mark>") ? (
-                  <b style={{ fontWeight: "bold" }} key={i}>
-                    {part.replace(/<\/?mark>/g, "")}
-                  </b>
-                ) : (
-                  part
-                )
-              );
+              .split(
+                /(<mark>.*?<\/mark>|<mark[^>]*?>.*?<\/mark[^>]*?>|<\/?mark[^>]*>)/g
+              ) // 잘못된 <mark> 필터링
+              .map((part, i) => {
+                // 올바른 <mark> 태그만 처리
+                if (part.startsWith("<mark>") && part.endsWith("</mark>")) {
+                  return (
+                    <b style={{ fontWeight: "bold" }} key={i}>
+                      {part.replace(/<\/?mark>/g, "")}
+                    </b>
+                  );
+                }
+
+                // 잘못된 <mark> 태그 제거
+                if (/<mark[^>]*?>|<\/?mark[^>]*>/.test(part)) {
+                  // 잘못된 태그만 제거하고 텍스트를 반환
+                  return part.replace(/<\/?mark[^>]*>/g, "");
+                }
+
+                // 일반 텍스트 처리
+                return part;
+              });
 
             return (
               <span key={index} className="line-break">

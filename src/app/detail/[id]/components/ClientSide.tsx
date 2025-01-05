@@ -26,6 +26,7 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { formatSummary } from "@/utils/formatter";
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
+import Footer from "@/components/Footer";
 
 interface ClientSideProps {
   id: string;

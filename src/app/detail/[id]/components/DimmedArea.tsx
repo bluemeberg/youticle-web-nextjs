@@ -11,7 +11,7 @@ import Recommend from "./Recommend";
 import RecommendDimmed from "./RecommendDimmed";
 import { usePathname } from "next/navigation";
 
-const DIMMED_TITLE = `✨ 무료 구독 혜택`;
+const DIMMED_TITLE = `✨ 초기 무료 구독자에게만 제공되는 혜택`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
 interface DimmedAreaProps {
   tocItemHeight: number;
@@ -46,8 +46,13 @@ const DimmedArea = ({
   const subscribeText =
     isUnsubscribedSection && subscribedSubjects.length != 0
       ? "구독 키워드 변경하기"
+      : isEditorPath
+      ? `무료 구독하고 더 많은 인사이트 확인하기`
+      : "무료 구독하고 더 많은 트렌드 확인하기";
+  const subscribeText2 =
+    isUnsubscribedSection && subscribedSubjects.length != 0
+      ? "구독 키워드 변경하기"
       : `‘${section}’ 키워드 무료 구독하러가기`;
-
   // 섹션별 유티클 인사이트 내용 정의
   const insightsBySection: Record<string, () => (string | undefined)[]> = {
     주식: () => {
@@ -83,6 +88,18 @@ const DimmedArea = ({
       "2️⃣ 브랜드 제품 소개",
       "3️⃣ 스타일링 꿀팁",
     ],
+    부동산: () => ["1️⃣ 시장 분석", "2️⃣ 지역 분석", "3️⃣ 투자 전략"],
+    경제: () => ["1️⃣ 경제 트렌드", "2️⃣ 시장 분석", "3️⃣ 투자 전략"],
+    "여자 패션": () => [
+      "1️⃣ 패션 트렌드",
+      "2️⃣ 브랜드 스포트라이트",
+      "3️⃣ 스타일링 팁",
+    ],
+    "남자 패션": () => [
+      "1️⃣ 패션 트렌드",
+      "2️⃣ 브랜드 스포트라이트",
+      "3️⃣ 스타일링 팁",
+    ],
     인공지능: () => ["1️⃣ AI 트렌드", "2️⃣ AI 적용 기술"],
     // 경제: () => ["1️⃣ 경제 동향", "2️⃣ 재무 분석", "3️⃣ 세계 시장 전망"],
     // 기타 섹션
@@ -116,6 +133,24 @@ const DimmedArea = ({
   //   };
   // }, []);
   const contentNumberNotLogin = Math.ceil(toc.length / 2);
+
+  const handleButtonClick = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "subscription_button_click", {
+        event_category: "engagement",
+        event_label: "Subscribe Button",
+        value: 1,
+      });
+    }
+    // section 값을 쿼리 파라미터로 전달
+    const targetUrl =
+      isUnsubscribedSection && subscribedSubjects.length !== 0
+        ? `/subject/modify?section=${section}`
+        : `/subject?section=${section}`;
+
+    router.push(targetUrl);
+  };
+
   return (
     <Container
       ref={dimmedRef}
@@ -124,14 +159,14 @@ const DimmedArea = ({
     >
       <Info>
         {user.name !== "" && subscribedSubjects.length === 0 ? (
-          <SubsKeywordInfo>
+          <SubsKeywordInfoAfterLogin>
             🚫 구독중인 키워드가 없습니다. <br />
             아티클을 읽으려면 키워드를 구독하세요.
-          </SubsKeywordInfo>
+          </SubsKeywordInfoAfterLogin>
         ) : isUnsubscribedSection ? (
-          <SubsKeywordInfo>
+          <SubsKeywordInfoAfterLogin>
             🙋이미 &lsquo;{subscribedText}&rsquo; 키워드를 구독 중입니다.
-          </SubsKeywordInfo>
+          </SubsKeywordInfoAfterLogin>
         ) : isEditorPath ? ( // editor 경로에 따른 조건 추가
           <>
             <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
@@ -143,11 +178,6 @@ const DimmedArea = ({
             {/* <LogoTitleSubs>
               해당 키워드 구독 시 전문 확인 가능합니다.
             </LogoTitleSubs> */}
-            <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
-            <GoogleLogin
-              variant="link"
-              text="로그인해서 아티클 아래 내용 마저 읽기"
-            />
           </>
         ) : (
           <>
@@ -159,16 +189,21 @@ const DimmedArea = ({
             {/* <LogoTitleSubs>
               해당 키워드 구독 시 전문 확인 가능합니다.
             </LogoTitleSubs> */}
-            <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
+            {/* <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
             <GoogleLogin
               variant="link"
               text="로그인해서 아티클 아래 내용 마저 읽기"
-            />
+            /> */}
           </>
         )}
       </Info>
       <TOC>
-        <div>👀 남은 목차</div>
+        <div>
+          {" "}
+          {isEditorPath
+            ? "😱 지금 구독하지 않으면 놓치는 인사이트들!"
+            : "😱 지금 구독하지 않으면 놓치는 트렌드들!"}
+        </div>
         <div>
           {toc.slice(contentNumberNotLogin).map(({ title }, index) => (
             <span key={index}>{title}</span>
@@ -187,6 +222,21 @@ const DimmedArea = ({
           )}
         </div>
       </TOC>
+      <ButtonContainer>
+        <ServiceButton
+          $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
+          onClick={handleButtonClick} // GA4 이벤트 추가
+        >
+          {subscribeText}
+        </ServiceButton>
+      </ButtonContainer>
+      {user.name == "" && (
+        <>
+          {" "}
+          <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
+          <GoogleLogin variant="link" text="로그인해서 아티클 내용 마저 읽기" />
+        </>
+      )}
       {!isUnsubscribedSection && (
         <>
           {/* <Divider /> */}
@@ -206,11 +256,12 @@ const DimmedArea = ({
                   <ul>
                     <li>
                       <strong>최신 트렌드 아티클:</strong> 최신 유튜브 영상을
-                      요약한 아티클을 통해 트렌드 세터가 되어보세요.
+                      요약한 아티클을 통해 빠르게 트렌드에 올라타세요.
                     </li>
                     <li>
                       <strong>에디터 추천 아티클:</strong> 에디터가 선정한
-                      양질의 영상을 통해 깊이있는 인사이트를 얻으세요.
+                      양질의 영상을 통해 인사이트를 키우고 더 나은 결정을
+                      내리세요.
                     </li>
                   </ul>
                 </ServiceSubTitleDescription>
@@ -220,34 +271,29 @@ const DimmedArea = ({
                   2️⃣ 아티클 전문 열람 가능!
                 </ServiceSubTitleIcon>
                 <ServiceSubTitleDescription>
-                  구독 시 모든 아티클의 전문을 자유롭게 확인할 수 있습니다.
+                  구독자만 누릴 수 있는 혜택! 아티클의 모든 전문 내용을 자유롭게
+                  열람하고 완벽한 정보를 얻으세요.
                 </ServiceSubTitleDescription>
               </ServiceSubTitleSubContainer>
               <ServiceSubTitleSubContainer>
                 <ServiceSubTitleIcon>3️⃣ 관심 키워드 3Pick!</ServiceSubTitleIcon>
                 <ServiceSubTitleDescription>
-                  최대 3개의 관심 키워드를 선택하여 나만의 맞춤형 콘텐츠를
+                  최대 3개의 관심 키워드를 선택하여 나만의 맞춤형 아티클을 매일
                   받아보세요.
                 </ServiceSubTitleDescription>
               </ServiceSubTitleSubContainer>
             </ServiceSubTitleContainer>
           </UnSubscribeContainer>
+          <ButtonContainer>
+            <ServiceButton
+              $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
+              onClick={handleButtonClick} // GA4 이벤트 추가
+            >
+              {subscribeText2}
+            </ServiceButton>
+          </ButtonContainer>
         </>
       )}
-      <ButtonContainer>
-        <ServiceButton
-          $variant={isUnsubscribedSection ? "secondaryBlack" : "primary"}
-          onClick={() => {
-            router.push(
-              isUnsubscribedSection && subscribedSubjects.length != 0
-                ? "/subject/modify"
-                : "/subject"
-            );
-          }}
-        >
-          {subscribeText}
-        </ServiceButton>
-      </ButtonContainer>
 
       <RecommendDimmed
         section={section}
@@ -357,6 +403,7 @@ const ServiceSubTitleDescription = styled.div`
 
   li {
     margin-bottom: 8px;
+    font-size: 14px;
   }
   strong {
     font-weight: 600;
@@ -405,11 +452,14 @@ const TOC = styled.div`
     line-height: 132%;
   }
   div:first-child {
-    height: 44px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    /* justify-content: center; */
     padding: 10px 16px;
     background-color: #f0f4ff;
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 18px;
+    font-weight: 700;
     line-height: 24px;
     color: #020202;
     border-radius: 4px;
@@ -421,7 +471,7 @@ const TOC = styled.div`
     gap: 24px;
     background-color: #f6f6f6;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 19.09px;
     border-radius: 4px;
   }
@@ -484,7 +534,15 @@ const ButtonContainer = styled.div`
 const SubsKeywordInfo = styled.div`
   font-size: 14px;
   font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: -18px;
+`;
+
+const SubsKeywordInfoAfterLogin = styled.div`
+  font-size: 16px;
+  font-weight: 600;
   margin-top: 20px;
+  line-height: 140%;
 `;
 
 const UnSubscribeContainer = styled.div`
@@ -502,10 +560,12 @@ const InsightsContainer = styled.div`
 `;
 
 const InsightsTitle = styled.div`
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 800 !important;
   /* color: #0033cc !important; 강조된 파란색 */
   background-color: #f9f9f9 !important;
+  height: 42px !important;
+  justify-content: left !important;
 `;
 
 const InsightsList = styled.div`
@@ -519,7 +579,7 @@ const InsightsList = styled.div`
 const InsightItem = styled.div<{ section: string }>`
   padding: 0px 0px !important;
   background-color: #f9f9f9 !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   line-height: 1.5 !important; /* 줄바꿈 시 간격 조정 */
   color: #333333 !important;
@@ -529,6 +589,8 @@ const InsightItem = styled.div<{ section: string }>`
   align-items: center !important; /* 텍스트 정렬 */
   min-height: 40px !important; /* 최소 높이 설정 */
   white-space: pre-wrap !important; /* 줄바꿈 허용 */
+  height: 42px !important ;
+  justify-content: left !important;
 
   ${({ section }) =>
     `

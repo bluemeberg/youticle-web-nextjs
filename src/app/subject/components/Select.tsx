@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
 import LogoHeader from "@/common/LogoHeader";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
@@ -52,6 +52,16 @@ const App = () => {
   const router = useRouter();
   const [modalButtonLabel, setModalButtonLabel] = useState<string>("이동하기");
 
+  useEffect(() => {
+    // URL에서 넘어온 section 값 가져오기
+    const queryParams = new URLSearchParams(window.location.search);
+    const section = queryParams.get("section");
+
+    if (section && topics.some((topic) => topic.name === section)) {
+      setSelectedTopics([section]); // 넘어온 section을 선택 상태로 설정
+    }
+  }, []);
+
   const handleTopicClick = (topic: string) => {
     if (selectedTopics.includes(topic)) {
       setSelectedTopics(selectedTopics.filter((t) => t !== topic));
@@ -81,7 +91,7 @@ const App = () => {
         );
         if (subscribedSubjects.length > 0) {
           setModalMessage(
-            "구독한 주제가 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
+            "구독한 주제가 있습니다. <br/>오늘의 유튜브 아티클 페이지로 이동합니다."
           );
           setModalButtonLabel("오늘의 아티클로 이동");
           setShowModal(true);
@@ -104,11 +114,11 @@ const App = () => {
             if (!response.ok) {
               throw new Error(`키워드 구독에 실패했습니다: ${topic}`);
             }
-
             console.log(`키워드 ${topic} 구독 완료.`);
           }
-
-          setModalMessage("구독이 완료되었습니다. 오늘의 아티클로 이동합니다.");
+          setModalMessage(
+            "구독이 완료되었습니다! <br/>오늘의 아티클로 이동합니다."
+          );
           setModalButtonLabel("오늘의 아티클로 이동");
           setShowModal(true);
         }
@@ -121,7 +131,7 @@ const App = () => {
       }
     } else {
       setModalMessage(
-        "로그인이 필요합니다. 구독한 키워드를 이메일로 받아보실 수 있습니다."
+        "로그인이 필요합니다. <br/>구독한 키워드를 이메일로 받아보실 수 있습니다."
       );
       setShowModal(true);
     }
@@ -211,39 +221,52 @@ const App = () => {
 
       if (subscribedSubjects.length > 0) {
         setModalMessage(
-          "구독한 주제가 있습니다. 오늘의 유튜브 아티클 페이지로 이동합니다."
+          "🙋 구독한 키워드가 이미 있습니다!<br/> 오늘의 유튜브 아티클 페이지로 이동합니다."
         );
         setModalButtonLabel("오늘의 아티클로 이동");
         setShowModal(true);
       } else {
         // 구독 주제가 없을 때 주제 등록
-        for (const subject of selectedTopics) {
-          try {
-            const response = await fetch(
-              "https://youticle.shop/users/subject/",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  user_id: data.id, // 사용자 ID
-                  subject_name: subject,
-                }),
+        setIsLoading(true); // 로딩 시작
+        try {
+          for (const subject of selectedTopics) {
+            try {
+              const response = await fetch(
+                "https://youticle.shop/users/subject/",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    user_id: data.id, // 사용자 ID
+                    subject_name: subject,
+                  }),
+                }
+              );
+
+              if (!response.ok) {
+                throw new Error(`Failed to add subject: ${subject}`);
               }
-            );
 
-            if (!response.ok) {
-              throw new Error(`Failed to add subject: ${subject}`);
+              const responseData = await response.json();
+              console.log(`Subject ${subject} added for user:`, responseData);
+            } catch (error) {
+              console.error(`Error adding subject ${subject}:`, error);
             }
-
-            const responseData = await response.json();
-            console.log(`Subject ${subject} added for user:`, responseData);
-          } catch (error) {
-            console.error(`Error adding subject ${subject}:`, error);
           }
+          setModalMessage(
+            "구독이 완료되었습니다! <br/>오늘의 아티클로 이동합니다."
+          );
+          setModalButtonLabel("오늘의 아티클로 이동");
+          setShowModal(true);
+        } catch (error) {
+          console.error("구독 처리 중 오류 발생:", error);
+          setModalMessage("⚠️ 키워드 구독 처리 중 문제가 발생했습니다.");
+          setShowModal(true);
+        } finally {
+          setIsLoading(false); // 로딩 종료
         }
-        router.push(`/`);
       }
     }
   };
@@ -352,7 +375,9 @@ const App = () => {
               <WarningMessage>{modalMessage}</WarningMessage>
             ) : modalMessage.includes("구독이 완료되었습니다") ? (
               <>
-                <InfoMessage>{modalMessage}</InfoMessage>
+                <InfoMessage
+                  dangerouslySetInnerHTML={{ __html: modalMessage }}
+                />
                 <ModalButton
                   onClick={() => {
                     setShowModal(false);
@@ -362,9 +387,11 @@ const App = () => {
                   오늘의 아티클로 이동
                 </ModalButton>
               </>
-            ) : modalMessage.includes("구독한 주제가 있습니다") ? (
+            ) : modalMessage.includes("🙋 구독한 키워드가 이미 있습니다!") ? (
               <>
-                <InfoMessage>{modalMessage}</InfoMessage>
+                <InfoMessage
+                  dangerouslySetInnerHTML={{ __html: modalMessage }}
+                />
                 <ModalButton
                   onClick={() => {
                     setShowModal(false);
@@ -593,6 +620,7 @@ const InfoMessage = styled.p`
   font-weight: bold;
   font-size: 20px;
   margin-bottom: 12px;
+  line-height: 132%;
 `;
 
 const FreeBenefitsTitle = styled.h2`

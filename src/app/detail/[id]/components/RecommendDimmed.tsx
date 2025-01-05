@@ -156,6 +156,24 @@ const RecommendDimmed = ({
     ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터가 업로드한 <span class='highlight'>${section} </span>아티클도 확인해보세요!`
     : "다른 에디터의 아티클을 확인해보세요.";
 
+  const handleYouticleTodayButtonClick = (buttonName: string) => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "youticle_today_click", {
+        event_category: "navigation",
+        event_label: buttonName,
+      });
+    }
+  };
+
+  const handleEditorPickButtonClick = (buttonName: string) => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "editor_pick_click", {
+        event_category: "navigation",
+        event_label: buttonName,
+      });
+    }
+  };
+
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>
       {pathname.includes("/detail") ? (
@@ -188,6 +206,7 @@ const RecommendDimmed = ({
             <ServiceButton
               $variant="secondary"
               onClick={() => {
+                handleYouticleTodayButtonClick("Youticle Today Button");
                 router.push("/");
               }}
             >
@@ -223,6 +242,7 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
+                    handleEditorPickButtonClick("Editor Pick Button");
                     router.push("/editor");
                   }}
                 >
@@ -265,6 +285,7 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
+                    handleEditorPickButtonClick("Editor Pick Button");
                     router.push("/editor");
                   }}
                 >
@@ -299,6 +320,7 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
+                    handleYouticleTodayButtonClick("Youticle Today Button");
                     router.push("/");
                   }}
                 >

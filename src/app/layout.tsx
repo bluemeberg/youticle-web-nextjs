@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { RecoilRoot } from "recoil";
 import StyledComponentsRegistry from "./lib/registry";
+import MobileOptimizedPopup from "./components/MobileOptimizedPopup";
 
 export default function RootLayout({
   children,
@@ -39,12 +40,13 @@ export default function RootLayout({
           src="https://www.googletagmanager.com/gtag/js?id=G-VN0ZH9YB60"
         ></script>
         <script
+          id="gtag-init"
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', 'G-VN0ZH9YB60');
+              gtag('config', 'G-VN0ZH9YB60', { debug_mode: true });
             `,
           }}
         />
@@ -56,6 +58,7 @@ export default function RootLayout({
               <GlobalStyle />
               <ScrollToTop />
               {children}
+              <MobileOptimizedPopup />
             </AppContainer>
           </StyledComponentsRegistry>
         </RecoilRoot>
@@ -77,6 +80,8 @@ const AppContainer = styled.div`
 
   @media screen and (min-width: 430px) {
     max-width: 430px;
+    border-radius: 16px; /* 둥근 테두리 */
+    border: 1px solid #ddd; /* 경계선 */
   }
 `;
 

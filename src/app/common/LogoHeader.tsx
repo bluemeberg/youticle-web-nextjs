@@ -51,6 +51,14 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   }, [pathname]);
 
   const handleBackClick = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "back_button_click", {
+        event_category: "navigation",
+        event_label: "Back Button",
+        page_path: pathname,
+      });
+    }
+
     if (pathname.includes("/detail/")) {
       router.push("/");
     } else if (
@@ -128,8 +136,29 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     else await GoogleLogOut();
   };
 
+  const handleLogoClick = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "logo_click", {
+        event_category: "navigation",
+        event_label: "Logo",
+        page_path: pathname,
+      });
+    }
+    router.push("/");
+  };
+
   const handleClickProfile = () => setMenuOpen((prev) => !prev);
-  const handleMenuClick = () => setMenuOpen((prev) => !prev);
+
+  const handleMenuClick = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "menu_open", {
+        event_category: "interaction",
+        event_label: "Menu Open",
+        page_path: pathname,
+      });
+    }
+    setMenuOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     setIsClientDesktop(isDesktop);
@@ -149,7 +178,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
             <BackIcon onClick={handleBackClick} />
           )}
           {title === "" ? (
-            <span onClick={() => goToPage("/")} className="logo">
+            <span onClick={handleLogoClick} className="logo">
               YouTicle
             </span>
           ) : (
