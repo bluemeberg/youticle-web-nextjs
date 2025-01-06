@@ -28,6 +28,13 @@ const MobileOptimizedPopup = () => {
   }, []);
 
   const handleClosePopup = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "desktop_button_click", {
+        event_category: "engagement",
+        event_label: "Desktop Button",
+        value: 1,
+      });
+    }
     setIsPopupVisible(false);
     localStorage.setItem("popupDismissed", "true");
   };
