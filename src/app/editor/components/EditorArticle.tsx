@@ -28,9 +28,9 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
   const editors: Editor[] = [
     {
       id: "1",
-      name: "유썸 스톡",
+      name: "유썸 투자",
       image: "/images/유썸스톡.png",
-      keywords: ["주식"],
+      keywords: ["주식", "부동산", "가상자산"],
     },
     {
       id: "2",
