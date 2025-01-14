@@ -94,10 +94,14 @@ export default function AdminPageClient() {
       }
       setData(result); // 응답 데이터 설정
     } catch (err) {
-      if (err.name === "AbortError") {
-        console.error("요청 시간이 초과되었습니다.");
+      if (err instanceof Error) {
+        if (err.name === "AbortError") {
+          console.error("요청 시간이 초과되었습니다.");
+        } else {
+          console.error("요청 실패:", err.message);
+        }
       } else {
-        console.error("요청 실패:", err);
+        console.error("알 수 없는 오류:", err);
       }
     } finally {
       setIsLoading(false); // 로딩 종료
