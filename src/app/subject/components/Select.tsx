@@ -51,14 +51,19 @@ const App = () => {
 
   const router = useRouter();
   const [modalButtonLabel, setModalButtonLabel] = useState<string>("이동하기");
+  const [videoId, setVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     // URL에서 넘어온 section 값 가져오기
     const queryParams = new URLSearchParams(window.location.search);
     const section = queryParams.get("section");
+    const videoId = queryParams.get("videoId");
 
     if (section && topics.some((topic) => topic.name === section)) {
       setSelectedTopics([section]); // 넘어온 section을 선택 상태로 설정
+    }
+    if (videoId) {
+      setVideoId(videoId); // videoId 상태로 설정
     }
   }, []);
 
@@ -107,6 +112,7 @@ const App = () => {
                 body: JSON.stringify({
                   user_id: data.id, // 사용자 ID
                   subject_name: topic,
+                  article_id: videoId,
                 }),
               }
             );
@@ -171,7 +177,7 @@ const App = () => {
     name: string
   ): Promise<{ id: number }> => {
     const url = `https://youticle.shop/users/${encodeURIComponent(email)}`;
-    const localUrl = `http://0.0.0.0:8000/users/${encodeURIComponent(email)}`;
+    // const localUrl = `http://0.0.0.0:8000/users/${encodeURIComponent(email)}`;
 
     try {
       const response = await fetch(url, {
@@ -241,6 +247,7 @@ const App = () => {
                   body: JSON.stringify({
                     user_id: data.id, // 사용자 ID
                     subject_name: subject,
+                    article_id: videoId,
                   }),
                 }
               );

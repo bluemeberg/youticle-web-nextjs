@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import AdminPageClient from "./components/AdminPageClient"; // 클라이언트 컴포넌트
+import { Suspense } from "react";
 
 export default async function AdminPage() {
   // Server-side data fetching using fetch with no-store
@@ -22,7 +22,7 @@ export default async function AdminPage() {
   // 데이터를 클라이언트 컴포넌트에 전달
   return (
     <Suspense fallback={<div>로딩 중...</div>}>
-      <AdminPageClient />
+      <AdminPageClient apiData={data1} />
     </Suspense>
   );
 }

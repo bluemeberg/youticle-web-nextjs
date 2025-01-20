@@ -146,7 +146,7 @@ const DimmedArea = ({
     const targetUrl =
       isUnsubscribedSection && subscribedSubjects.length !== 0
         ? `/subject/modify?section=${section}`
-        : `/subject?section=${section}`;
+        : `/subject?section=${section}&videoId=${videoId}`;
 
     router.push(targetUrl);
   };

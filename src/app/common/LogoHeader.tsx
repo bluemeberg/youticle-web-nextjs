@@ -36,7 +36,8 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     pathname.includes("/detail") ||
     pathname.startsWith("/editor/") ||
     pathname.startsWith("/samplePage") ||
-    pathname.startsWith("/keyword/");
+    pathname.startsWith("/keyword/") ||
+    pathname.startsWith("/admin/");
 
   const isUnsubscribeOrModifyPage =
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
@@ -97,6 +98,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
 
   const goHome = () => {
     if (pathname.startsWith("/editor/")) goToPage("/editor");
+    else if (pathname.startsWith("/admin/")) goToPage("/admin");
     else if (pathname.startsWith("/samplePage")) goToPage("/my");
     else if (pathname.startsWith("/keyword/")) goToPage("/my");
     else goToPage("/today");
@@ -199,6 +201,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
           <>
             {!pathname.includes("/detail") &&
               !pathname.startsWith("/editor/") &&
+              !pathname.startsWith("/admin/") &&
               user.picture === "" && (
                 <MenuIcon onClick={handleMenuClick}></MenuIcon>
               )}
