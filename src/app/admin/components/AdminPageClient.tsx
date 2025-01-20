@@ -36,8 +36,6 @@ export default function AdminPageClient({ apiData }: EditorPageClientProps) {
           <ArticleCard>
             <Thumbnail />
             <ArticleInfo>
-              <h3>""</h3>
-              <p>""</p>
               <small>조회수: | 좋아요:</small>
             </ArticleInfo>
           </ArticleCard>
