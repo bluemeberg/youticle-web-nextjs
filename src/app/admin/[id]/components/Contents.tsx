@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchSubscribedSubjects } from "../../../api/apiClient";
 import TocItem from "@/detail/[id]/components/TocItem";
 import Recommend from "@/detail/[id]/components/Recommend";
+import AdminTocItem from "./AdminTocItem";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -128,7 +129,7 @@ const Contents = ({
               },
               index
             ) => (
-              <TocItem
+              <AdminTocItem
                 key={index}
                 ref={
                   index ===

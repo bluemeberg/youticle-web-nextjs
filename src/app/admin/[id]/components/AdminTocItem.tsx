@@ -3,7 +3,7 @@
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
 import { formatTimeRange, formatSummary } from "@/utils/formatter";
-import DimmedArea from "./DimmedArea";
+import AdminDimmedArea from "./AdminDimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 import { Overview } from "@/types/dataProps";
@@ -29,7 +29,7 @@ interface TocItemProps {
   subscribedSubjects: string[];
   overview: Overview | undefined;
 }
-const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
+const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
     {
       section,
@@ -91,7 +91,7 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
           </Summary>
         </ContentWrapper>
         {dimmed && (
-          <DimmedArea
+          <AdminDimmedArea
             tocItemHeight={tocItemHeight}
             videoId={videoId}
             toc={toc}
@@ -107,8 +107,8 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
     );
   }
 );
-TocItem.displayName = "TocItem";
-export default TocItem;
+AdminTocItem.displayName = "AdminTocItem";
+export default AdminTocItem;
 
 const Container = styled.div`
   position: relative;

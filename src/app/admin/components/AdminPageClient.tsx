@@ -18,29 +18,18 @@ import { EditorDataProps } from "@/types/dataProps";
 import { off } from "process";
 import { useRouter } from "next/navigation";
 import AdminIntroduce from "./AdminIntroduce";
+import AdminArticleBeforeLogin from "./AdminAritcleBeforeLogin";
 
 interface EditorPageClientProps {
   apiData: EditorDataProps[]; // 서버에서 전달된 데이터
 }
 
 export default function AdminPageClient({ apiData }: EditorPageClientProps) {
-  console.log(apiData);
   return (
     <Container>
       <LogoHeader />
       <AdminIntroduce />
-      <ArchiveSection>
-        <SectionTitle>내가 생성한 아티클</SectionTitle>
-        <p>지금까지 생성한 아티클을 확인하고 관리하세요.</p>
-        <ArticleList>
-          <ArticleCard>
-            <Thumbnail />
-            <ArticleInfo>
-              <small>조회수: | 좋아요:</small>
-            </ArticleInfo>
-          </ArticleCard>
-        </ArticleList>
-      </ArchiveSection>
+      <AdminArticleBeforeLogin data={apiData} />
       <Footer />
     </Container>
   );

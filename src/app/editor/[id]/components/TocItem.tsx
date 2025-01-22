@@ -41,10 +41,10 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <Title>{title}</Title>
-          <Thumbnail onClick={onClick}>
+          {/* <Thumbnail onClick={onClick}>
             <img src={thumbnails} alt={title} />
             <PlayIcon className="play-icon" />
-          </Thumbnail>
+          </Thumbnail> */}
           <Timeline>
             <PlayIcon width={16} height={16} />
             <span>{formatTimeRange(start)}</span>

@@ -57,8 +57,34 @@ const AdminIntroduce = () => {
     );
     try {
       console.log("hello");
+      const extractVideoId = (urlOrId: any) => {
+        try {
+          const url = new URL(urlOrId);
+
+          // youtu.be 형식일 경우 pathname에서 ID 추출
+          if (url.hostname === "youtu.be") {
+            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+          }
+
+          // youtube.com 형식일 경우 v 파라미터 값 추출
+          if (url.hostname.includes("youtube.com")) {
+            return url.searchParams.get("v") || urlOrId;
+          }
+
+          return urlOrId; // 다른 경우 그대로 반환
+        } catch (error) {
+          // URL 형식이 아니면 그대로 반환
+          return urlOrId;
+        }
+      };
+
+      // id가 URL 형태라면 파싱하여 videoId만 추출
+      const videoId = extractVideoId(id);
+
       const response = await fetch(
-        `https://youticle.shop/editor/test/${encodeURIComponent(id)}`,
+        `https://youticle.shop/editor/test/${encodeURIComponent(
+          videoId
+        )}?user_id=${encodeURIComponent(user.id)}`,
         {
           method: "GET",
           headers: {
@@ -85,10 +111,9 @@ const AdminIntroduce = () => {
           throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
         }
         const result = await response.json();
-        console.log(result);
       }
       setData(result); // 응답 데이터 설정
-      router.push(`/admin/${id}`); // ID 포함 URL로 이동
+      router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === "AbortError") {
@@ -110,9 +135,31 @@ const AdminIntroduce = () => {
   };
 
   const fetchEditorArticle = async (id: string): Promise<any> => {
+    const extractVideoId = (urlOrId: any) => {
+      try {
+        const url = new URL(urlOrId);
+
+        // youtu.be 형식일 경우 pathname에서 ID 추출
+        if (url.hostname === "youtu.be") {
+          return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+        }
+
+        // youtube.com 형식일 경우 v 파라미터 값 추출
+        if (url.hostname.includes("youtube.com")) {
+          return url.searchParams.get("v") || urlOrId;
+        }
+
+        return urlOrId; // 다른 경우 그대로 반환
+      } catch (error) {
+        // URL 형식이 아니면 그대로 반환
+        return urlOrId;
+      }
+    };
+    // id가 URL 형태라면 파싱하여 videoId만 추출
+    const videoId = extractVideoId(id);
     try {
       const response = await fetch(
-        `https://youticle.shop/editor/article/${id}`,
+        `https://youticle.shop/editor/article/${videoId}`,
         {
           method: "GET",
           headers: {
@@ -142,7 +189,28 @@ const AdminIntroduce = () => {
         clearInterval(polling);
         return;
       }
+      const extractVideoId = (urlOrId: any) => {
+        try {
+          const url = new URL(urlOrId);
 
+          // youtu.be 형식일 경우 pathname에서 ID 추출
+          if (url.hostname === "youtu.be") {
+            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+          }
+
+          // youtube.com 형식일 경우 v 파라미터 값 추출
+          if (url.hostname.includes("youtube.com")) {
+            return url.searchParams.get("v") || urlOrId;
+          }
+
+          return urlOrId; // 다른 경우 그대로 반환
+        } catch (error) {
+          // URL 형식이 아니면 그대로 반환
+          return urlOrId;
+        }
+      };
+      // id가 URL 형태라면 파싱하여 videoId만 추출
+      const videoId = extractVideoId(id);
       try {
         console.log(`폴링 시도 ${attempts}...`);
         const articleData = await fetchEditorArticle(id);
@@ -155,7 +223,7 @@ const AdminIntroduce = () => {
           setData(articleData); // 상태 업데이트
           lastData = articleData; // 마지막 데이터 업데이트
           clearInterval(polling); // 폴링 중단
-          router.push(`/admin/${id}`); // ID 포함 URL로 이동
+          router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
         }
       } catch (error) {
         console.error("폴링 중 오류:", error);
@@ -184,10 +252,35 @@ const AdminIntroduce = () => {
       );
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
+      const extractVideoId = (urlOrId: any) => {
+        try {
+          const url = new URL(urlOrId);
+
+          // youtu.be 형식일 경우 pathname에서 ID 추출
+          if (url.hostname === "youtu.be") {
+            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+          }
+
+          // youtube.com 형식일 경우 v 파라미터 값 추출
+          if (url.hostname.includes("youtube.com")) {
+            return url.searchParams.get("v") || urlOrId;
+          }
+
+          return urlOrId; // 다른 경우 그대로 반환
+        } catch (error) {
+          // URL 형식이 아니면 그대로 반환
+          return urlOrId;
+        }
+      };
+
+      // id가 URL 형태라면 파싱하여 videoId만 추출
+      const videoId = extractVideoId(id);
       try {
         console.log("hello");
         const response = await fetch(
-          `https://youticle.shop/editor/test/${encodeURIComponent(id)}`,
+          `https://youticle.shop/editor/test/${encodeURIComponent(
+            videoId
+          )}?user_id=${encodeURIComponent(data.id)}`,
           {
             method: "GET",
             headers: {
@@ -202,7 +295,7 @@ const AdminIntroduce = () => {
         const result = await response.json();
         if (result === "success") {
           const response = await fetch(
-            `https://youticle.shop/editor/article/${id}`,
+            `https://youticle.shop/editor/article/${videoId}`,
             {
               method: "GET",
               headers: {
@@ -214,10 +307,9 @@ const AdminIntroduce = () => {
             throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
           }
           const result = await response.json();
-          console.log(result);
         }
         setData(result); // 응답 데이터 설정
-        router.push(`/admin/${id}`); // ID 포함 URL로 이동
+        router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
       } catch (err) {
         if (err instanceof Error) {
           if (err.name === "AbortError") {
