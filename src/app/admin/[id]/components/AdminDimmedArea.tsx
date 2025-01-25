@@ -9,6 +9,7 @@ import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 
 import { usePathname } from "next/navigation";
+import Footer from "@/components/Footer";
 
 const DIMMED_TITLE = `✨ 초기 무료 구독자에게만 제공되는 혜택`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
@@ -183,8 +184,11 @@ const AdminDimmedArea = ({
           <>
             <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
             <LogoTitleSubs>
-              유튜브 영상을 빠르게 요약하고, <br /> 중요한 핵심만 담은 아티클로
-              시간 낭비 없이 <br /> 트렌드와 인사이트를 잡아보세요! 🙋
+              🎯 이제 관심 있는 유튜브 영상을 <br />
+              나만의 아티클로 생성해보세요! <br /> <br />
+              시간을 절약하고 인사이트를
+              <br />
+              빠르게 확인할 수 있습니다! 🕒
             </LogoTitleSubs>
             {/* <LogoTitleSubs>
               해당 키워드 구독 시 전문 확인 가능합니다.
@@ -201,8 +205,8 @@ const AdminDimmedArea = ({
         <div>
           {" "}
           {isEditorPath
-            ? "😱 앗! 엄청난 인사이트 기다리고 있어요!"
-            : "😱 앗! 엄청난 인사이트 기다리고 있어요!"}
+            ? "😱 아티클 생성하고 남은 인사이트 확인하세요!"
+            : "👇 아티클 생성하고 남은 인사이트 확인하기!"}
         </div>
         <div>
           {toc.slice(contentNumberNotLogin).map(({ title }, index) => (
@@ -237,7 +241,7 @@ const AdminDimmedArea = ({
           <GoogleLogin variant="link" text="로그인해서 아티클 내용 마저 읽기" />
         </>
       )}
-
+      <Footer />
       {/* <RecommendDimmed
         section={section}
         videoId={videoId}

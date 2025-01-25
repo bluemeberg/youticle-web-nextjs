@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchSubscribedSubjects } from "../../../api/apiClient";
 import TocItem from "@/detail/[id]/components/TocItem";
 import Recommend from "@/detail/[id]/components/Recommend";
+import NewTocItem from "@/detail/[id]/components/NewTocItem";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -127,49 +128,63 @@ const Contents = ({
                 explanation_description,
               },
               index
-            ) => (
-              <TocItem
-                key={index}
-                ref={
+            ) => {
+              const commonProps = {
+                key: index,
+                ref:
                   index ===
                   (user.name === "" || isUnsubscribedSection
                     ? contentNumberNotLogin - 1
                     : detailData.summary_data.section.length - 1)
                     ? tocItemsRef
-                    : null
-                }
-                section={detailData.section}
-                videoId={detailData.video_id}
-                title={title}
-                start={Math.floor(Number(start_time))}
-                summary={detail_contents}
-                thumbnails={clientThumbnails[index]}
-                partialDimmed={
+                    : null,
+                section: detailData.section,
+                videoId: detailData.video_id,
+                title,
+                start: Math.floor(Number(start_time)),
+                summary: detail_contents,
+                partialDimmed:
                   index === contentNumberNotLogin - 2 &&
                   (user.name === "" ||
                     isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
-                }
-                explanation_keyword={explanation_keyword}
-                explanation_description={explanation_description}
-                dimmed={
+                    isNoSubscribedSubjects),
+                explanation_keyword,
+                explanation_description,
+                dimmed:
                   index >= contentNumberNotLogin - 1 &&
                   (user.name === "" ||
                     isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
-                }
-                tocItemHeight={tocItemHeight}
-                toc={detailData.summary_data.section}
-                onClick={() =>
-                  handleTocItemClick(Math.floor(Number(start_time)))
-                }
-                isLoggedOut={user.name === ""}
-                isUnsubscribedSection={isUnsubscribedSection}
-                isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
-                subscribedSubjects={subscribedSubjects}
-                overview={detailData.summary_data.overview}
-              />
-            )
+                    isNoSubscribedSubjects),
+                tocItemHeight,
+                toc: detailData.summary_data.section,
+                onClick: () =>
+                  handleTocItemClick(Math.floor(Number(start_time))),
+                isLoggedOut: user.name === "",
+                isUnsubscribedSection,
+                isNoSubscribedSubjects,
+                subscribedSubjects,
+                overview: detailData.summary_data.overview,
+              };
+
+              // 썸네일이 있는지 확인
+              if (clientThumbnails[index]) {
+                return (
+                  <TocItem
+                    {...commonProps}
+                    key={`toc-${index}`} // key 속성 추가
+                    thumbnails={clientThumbnails[index]} // 썸네일이 있는 경우
+                  />
+                );
+              } else {
+                return (
+                  <NewTocItem
+                    {...commonProps}
+                    key={`new-toc-${index}`} // key 속성 추가
+                    thumbnails={clientThumbnails[index]} // 썸네일이 없는 경우
+                  />
+                );
+              }
+            }
           )}
       </ContentWrapper>
       {!hasDimmedItem ? (

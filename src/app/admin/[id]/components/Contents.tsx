@@ -198,7 +198,7 @@ const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 16px;
 `;
 
 const RecommendWrapper = styled.div<{

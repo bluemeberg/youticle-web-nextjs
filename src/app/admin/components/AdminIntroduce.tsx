@@ -53,7 +53,7 @@ const AdminIntroduce = () => {
     setIsLoading(true);
     setLoadingMessage("아티클을 생성 중입니다.");
     setLoadingMessage2(
-      "최대 1분이 소요될 수 있습니다. 페이지를 이탈하지 말아주세요!!"
+      "최대 1분이 소요될 수 있습니다. \n페이지를 이탈하지 말아주세요!🙋"
     );
     try {
       console.log("hello");
@@ -358,7 +358,6 @@ const AdminIntroduce = () => {
         입력하세요.
       </Guide>
       <Button onClick={fetchSummaryEditorVideo}>아티클 생성하기</Button>
-      {isLoading && <div className="spinner">로딩 중...</div>}
       {/* 입력 가이드 */}
       {isLoading && (
         <LoadingOverlay>
@@ -506,9 +505,11 @@ const LoadingSpinner = styled.div`
 
 const LoadingMessage = styled.p`
   margin-top: 20px;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 700;
   color: #fff;
+  line-height: 132%;
+  white-space: pre-line; // \n을 줄바꿈으로 처리
 `;
 
 const ModalOverlay = styled.div`

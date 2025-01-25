@@ -135,11 +135,12 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         setThumbnails(sortedThumbnails);
       } catch (error) {
         console.error("Error fetching thumbnails:", error);
+        setThumbnails([]);
       }
     };
-
     fetchThumbnails();
   }, [id]);
+  console.log("썸네일 확ㅇ니 콘텐츠", thumbnails);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -196,7 +197,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
       <Contents
         detailData={detailData}
-        thumbnails={thumbnails}
+        thumbnails={thumbnails.length > 0 ? thumbnails : []}
         handleTocItemClick={handleTocItemClick}
       />
 

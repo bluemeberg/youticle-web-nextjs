@@ -3,7 +3,7 @@
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
 import { formatTimeRange, formatSummary } from "@/utils/formatter";
-import AdminDimmedArea from "./AdminDimmedArea";
+import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 import { Overview } from "@/types/dataProps";
@@ -29,7 +29,7 @@ interface TocItemProps {
   subscribedSubjects: string[];
   overview: Overview | undefined;
 }
-const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
+const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
     {
       section,
@@ -81,6 +81,7 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
                 <span>{formatTimeRange(start)}</span>
               </Timeline>
             </Header>
+
             <Summary>
               {formatSummary(summary)}
               {explanation_keyword ? (
@@ -97,7 +98,7 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
           </SectionCard>
         </ContentWrapper>
         {dimmed && (
-          <AdminDimmedArea
+          <DimmedArea
             tocItemHeight={tocItemHeight}
             videoId={videoId}
             toc={toc}
@@ -113,8 +114,8 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
     );
   }
 );
-AdminTocItem.displayName = "AdminTocItem";
-export default AdminTocItem;
+NewTocItem.displayName = "NewTocItem";
+export default NewTocItem;
 
 const Container = styled.div`
   position: relative;
@@ -185,8 +186,8 @@ const Thumbnail = styled.div`
   }
 
   .play-icon svg {
-    width: 16px;
-    height: 16px;
+    width: 40px;
+    height: 40px;
   }
 `;
 
@@ -262,25 +263,4 @@ const TipAreaDescription = styled.div`
   font-size: 14px;
   line-height: 152%;
   margin-top: 8px;
-`;
-
-const PlayIconWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: #e9e9e9;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #007bff; /* 아이콘 배경 강조 */
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-    fill: white;
-  }
 `;

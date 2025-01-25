@@ -17,6 +17,7 @@ import BusinessOverview from "./overviews/BusinessOverview";
 import FashionOverview from "./overviews/FashionOverview";
 import { useRouter } from "next/navigation"; // For navigation
 import CryptoOverview from "./overviews/CryptoOverview";
+import NewTocItem from "./NewTocItem";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -56,11 +57,6 @@ const Contents = ({
     }
   }, [tocItemsRef, detailData, thumbnails]);
 
-  const navigateToSubscribePage = () => {
-    router.push("/subject"); // Navigate to keyword subscription page
-    setShowPopup(false);
-  };
-
   useEffect(() => {
     const fetchSubjects = async () => {
       if (user.name !== "") {
@@ -78,9 +74,6 @@ const Contents = ({
   // 미구독이면 true, 구독이면 false
   const isUnsubscribedSection =
     !subscribedSubjects.includes(detailData.section) && user.name !== "";
-
-  console.log(isUnsubscribedSection, "구독여부");
-  console.log("height", tocItemHeight);
   // 구독한 주제가 있으면 false, 미구독상태이면 true
   const isNoSubscribedSubjects =
     subscribedSubjects.length === 0 && user.name !== "";
@@ -89,31 +82,6 @@ const Contents = ({
     detailData.summary_data.section.some((_, index) => index >= 3) &&
     (user.name === "" || isUnsubscribedSection);
 
-  const handlePopupClose = () => {
-    setShowPopup(false);
-  };
-
-  // useEffect(() => {
-  //   const calculateHeight = () => {
-  //     const contentWrapperElement = document.querySelector(
-  //       ".content-wrapper"
-  //     ) as HTMLDivElement;
-
-  //     if (contentWrapperElement) {
-  //       const contentHeight = contentWrapperElement.scrollHeight;
-  //       setWrapperHeight(contentHeight + 600); // 기존 높이에 813px 추가
-  //     }
-  //   };
-
-  //   calculateHeight();
-
-  //   // 윈도우 크기 변경에 대응
-  //   window.addEventListener("resize", calculateHeight);
-
-  //   return () => {
-  //     window.removeEventListener("resize", calculateHeight);
-  //   };
-  // }, []);
   return (
     <>
       <ContentWrapper>
@@ -134,67 +102,60 @@ const Contents = ({
                 explanation_description,
               },
               index
-            ) => (
-              <TocItem
-                key={index}
-                ref={
+            ) => {
+              const thumbnail = thumbnails?.[index]; // thumbnails와 index를 안전하게 확인
+              const commonProps = {
+                key: index,
+                ref:
                   index ===
                   (user.name === "" || isUnsubscribedSection
                     ? 3
                     : detailData.summary_data.section.length - 1)
                     ? tocItemsRef
-                    : null
-                }
-                section={detailData.section}
-                videoId={detailData.video_id}
-                title={title}
-                start={Math.floor(Number(start_time))}
-                summary={detail_contents}
-                thumbnails={clientThumbnails[index]}
-                partialDimmed={
+                    : null,
+                section: detailData.section,
+                videoId: detailData.video_id,
+                title,
+                start: Math.floor(Number(start_time)),
+                summary: detail_contents,
+                partialDimmed:
                   index === 2 &&
                   (user.name === "" ||
                     isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
-                }
-                explanation_keyword={explanation_keyword}
-                explanation_description={explanation_description}
-                dimmed={
+                    isNoSubscribedSubjects),
+                explanation_keyword,
+                explanation_description,
+                dimmed:
                   index >= 3 &&
                   (user.name === "" ||
                     isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
-                }
-                tocItemHeight={tocItemHeight}
-                toc={detailData.summary_data.section}
-                onClick={() =>
-                  handleTocItemClick(Math.floor(Number(start_time)))
-                }
-                isLoggedOut={user.name === ""}
-                isUnsubscribedSection={isUnsubscribedSection}
-                isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
-                subscribedSubjects={subscribedSubjects}
-                overview={detailData.summary_data.overview}
-              />
-            )
+                    isNoSubscribedSubjects),
+                tocItemHeight,
+                toc: detailData.summary_data.section,
+                onClick: () =>
+                  handleTocItemClick(Math.floor(Number(start_time))),
+                isLoggedOut: user.name === "",
+                isUnsubscribedSection,
+                isNoSubscribedSubjects,
+                subscribedSubjects,
+                overview: detailData.summary_data.overview,
+              };
+              return thumbnail ? (
+                <TocItem
+                  {...commonProps}
+                  key={`toc-${index}`} // key 속성 추가
+                  thumbnails={thumbnail} // 썸네일이 있을 경우
+                />
+              ) : (
+                <NewTocItem
+                  {...commonProps}
+                  key={`new-toc-${index}`} // key 속성 추가
+                  thumbnails={thumbnail}
+                /> // 썸네일이 없을 경우
+              );
+            }
           )}
       </ContentWrapper>
-      {/* 
-      {showPopup && (
-        <PopupOverlay>
-          <PopupContainer>
-            <PopupMessage>
-              현재 구독한 키워드가 없습니다. 아티클 전문을 읽으려면{" "}
-              <strong>{detailData.section} 키워드</strong>를 구독해주세요. 지금
-              바로 키워드 구독 페이지로 이동합니다.
-            </PopupMessage>
-            <PopupButton onClick={navigateToSubscribePage}>
-              {detailData.section} 키워드 구독하러가기
-            </PopupButton>
-            <CloseButton onClick={handlePopupClose}>X</CloseButton>
-          </PopupContainer>
-        </PopupOverlay>
-      )} */}
 
       {user.name !== "" && !isUnsubscribedSection && (
         <HilightContainer>
