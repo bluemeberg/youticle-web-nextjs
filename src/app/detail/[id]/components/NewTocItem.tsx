@@ -195,8 +195,7 @@ const Timeline = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 12px 8px;
+  padding: 12px 0px 12px 8px;
   border: 1px solid #007bff;
   border-radius: 8px;
   background-color: #eaf4ff;
@@ -212,18 +211,18 @@ const Timeline = styled.button`
   }
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     fill: #007bff;
     transition: fill 0.2s ease;
   }
 
   span {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: #007bff;
     transition: color 0.2s ease;
-    min-width: 48px;
+    min-width: 56px;
   }
 `;
 
