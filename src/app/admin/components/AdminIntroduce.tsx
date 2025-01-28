@@ -80,9 +80,11 @@ const AdminIntroduce = () => {
 
       // id가 URL 형태라면 파싱하여 videoId만 추출
       const videoId = extractVideoId(id);
+      //   router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
 
+      // 영상 요약 호출하기
       const response = await fetch(
-        `https://youticle.shop/editor/test/${encodeURIComponent(
+        `https://youticle.shop/editor/process/${encodeURIComponent(
           videoId
         )}?user_id=${encodeURIComponent(user.id)}`,
         {
@@ -96,36 +98,36 @@ const AdminIntroduce = () => {
       if (!response.ok) {
         throw new Error(`HTTP 오류: ${response.status}`);
       }
-      const result = await response.json();
-      if (result === "success") {
-        const response = await fetch(
-          `https://youticle.shop/editor/article/${id}`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-            },
-          }
-        );
-        if (!response.ok) {
-          throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
-        }
-        const result = await response.json();
-      }
-      setData(result); // 응답 데이터 설정
-      router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+      const { task_id } = await response.json(); // `task_id` 반환
+      //   if (result === "success") {
+      //     const response = await fetch(
+      //       `http://0.0.0.0:8000/editor/article/${id}`,
+      //       {
+      //         method: "GET",
+      //         headers: {
+      //           accept: "application/json",
+      //         },
+      //       }
+      //     );
+      //     if (!response.ok) {
+      //       throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
+      //     }
+      //     const result = await response.json();
+      //   }
+      //   setData(result); // 응답 데이터 설정
+      router.push(`/admin/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
     } catch (err) {
-      if (err instanceof Error) {
-        if (err.name === "AbortError") {
-          console.error("요청 시간이 초과되었습니다.");
-          startPollingEditorArticle(id);
-        } else {
-          console.error("요청 실패:", err.message);
-          startPollingEditorArticle(id);
-        }
-      } else {
-        console.error("알 수 없는 오류:", err);
-      }
+      //   if (err instanceof Error) {
+      //     if (err.name === "AbortError") {
+      //       console.error("요청 시간이 초과되었습니다.");
+      //       startPollingEditorArticle(id);
+      //     } else {
+      //       console.error("요청 실패:", err.message);
+      //       startPollingEditorArticle(id);
+      //     }
+      //   } else {
+      //     console.error("알 수 없는 오류:", err);
+      //   }
     } finally {
       setIsLoading(false); // 로딩 종료
       clearTimeout(timeoutId); // 타임아웃 클리어
@@ -248,10 +250,12 @@ const AdminIntroduce = () => {
       setIsLoading(true); // 로딩 시작
       setLoadingMessage("아티클을 생성 중입니다");
       setLoadingMessage2(
-        "최대 1분이 소요될 수 있습니다. 페이지를 이탈하지 마세요."
+        "최대 1분이 소요될 수 있습니다. \n페이지를 이탈하지 말아주세요!🙋"
       );
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
+      console.log("hello1");
+
       const extractVideoId = (urlOrId: any) => {
         try {
           const url = new URL(urlOrId);
@@ -275,10 +279,13 @@ const AdminIntroduce = () => {
 
       // id가 URL 형태라면 파싱하여 videoId만 추출
       const videoId = extractVideoId(id);
+      //   router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+
       try {
         console.log("hello");
+        // 영상 요약 호출하기
         const response = await fetch(
-          `https://youticle.shop/editor/test/${encodeURIComponent(
+          `https://youticle.shop/editor/process/${encodeURIComponent(
             videoId
           )}?user_id=${encodeURIComponent(data.id)}`,
           {
@@ -292,24 +299,27 @@ const AdminIntroduce = () => {
         if (!response.ok) {
           throw new Error(`HTTP 오류: ${response.status}`);
         }
-        const result = await response.json();
-        if (result === "success") {
-          const response = await fetch(
-            `https://youticle.shop/editor/article/${videoId}`,
-            {
-              method: "GET",
-              headers: {
-                accept: "application/json",
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
-          }
-          const result = await response.json();
-        }
-        setData(result); // 응답 데이터 설정
-        router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+        const { task_id } = await response.json(); // `task_id` 반환
+        router.push(`/admin/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
+
+        // const result = await response.json();
+        // if (result === "success") {
+        //   const response = await fetch(
+        //     `http://0.0.0.0:8000/editor/article/${videoId}`,
+        //     {
+        //       method: "GET",
+        //       headers: {
+        //         accept: "application/json",
+        //       },
+        //     }
+        //   );
+        //   if (!response.ok) {
+        //     throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
+        //   }
+        //   const result = await response.json();
+        // }
+        // setData(result); // 응답 데이터 설정
+        // router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
       } catch (err) {
         if (err instanceof Error) {
           if (err.name === "AbortError") {

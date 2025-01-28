@@ -9,7 +9,7 @@ import { userState } from "@/store/user";
 import { playerState } from "@/store/player";
 import BackIcon from "@/assets/back.svg";
 import YoutubeOffIcon from "@/assets/youtubeOff.svg";
-import YoutubeOnIcon from "@/assets/youtubeOn.svg";
+import YoutubeOnIcon from "@/assets/youtubeOn2.svg";
 import MenuIcon from "@/assets/menu_icon.svg";
 import ShareIcon from "@/assets/share.svg";
 import Toast from "./Toast";
@@ -190,9 +190,9 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
         {isDetailPage && title !== "" && (
           <IconSection>
             {player ? (
-              <YoutubeOffIcon onClick={togglePlayerVisible} />
-            ) : (
               <YoutubeOnIcon onClick={togglePlayerVisible} />
+            ) : (
+              <YoutubeOffIcon onClick={togglePlayerVisible} />
             )}
             <ShareIcon onClick={copyUrlToClipboard} />
           </IconSection>

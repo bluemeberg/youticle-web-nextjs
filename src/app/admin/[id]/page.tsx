@@ -3,6 +3,7 @@ import ClientSide from "./components/ClientSide";
 // import NotFoundPage from "./components/NotFound";
 import { DataProps } from "@/types/dataProps";
 import NotFoundPage from "@/detail/[id]/components/NotFound";
+import ClientSide2 from "./components/ClientSide2";
 
 interface DetailPageProps {
   params: {
@@ -32,26 +33,46 @@ interface DetailPageProps {
 // }
 
 // Main page component
-export default async function AdminDetailPage({ params }: DetailPageProps) {
+export default async function AdminDetailPage({ params, searchParams }: any) {
   const { id } = params;
-  console.log(id);
-  // Server-side data fetching using fetch with no-store
-  const EDITOR_ARTICLE_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
+  const { task_id } = searchParams;
 
-  const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
+  //   console.log(id);
+  //   // Server-side data fetching using fetch with no-store
+  //   const EDITOR_ARTICLE_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
 
-  const response = await fetch(`https://youticle.shop/editor/article/${id}`);
-  if (!response.ok) {
-    return <NotFoundPage />;
+  //   const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
+
+  //   const response = await fetch(`http://0.0.0.0:8000/editor/article/${id}`);
+  //   if (!response.ok) {
+  //     return <NotFoundPage />;
+  //   }
+
+  //   const data = await response.json();
+  //   console.log("test", data);
+
+  //   const detailData: DataProps | null = data[0] || null;
+  //   if (!detailData) {
+  //     return <NotFoundPage />;
+  //   }
+
+  // task_id가 없는 경우 ClientSide 렌더링
+  if (!task_id) {
+    const EDITOR_ARTICLE_API_LOCAL_URL =
+      "http://0.0.0.0:8000/editor/all/article";
+
+    const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
+
+    const response = await fetch(`https://youticle.shop/editor/article/${id}`);
+    if (!response.ok) {
+      return <NotFoundPage />;
+    }
+
+    const data = await response.json();
+    console.log("test", data);
+    return <ClientSide detailData={data[0]} id={id} />;
   }
 
-  const data = await response.json();
-  console.log("test", data);
-
-  const detailData: DataProps | null = data[0] || null;
-  if (!detailData) {
-    return <NotFoundPage />;
-  }
-
-  return <ClientSide detailData={detailData} id={id} />;
+  // task_id가 있는 경우 ClientSide2 렌더링
+  return <ClientSide2 taskId={task_id} id={id} />;
 }

@@ -123,7 +123,16 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
       return dateB - dateA;
     });
   }, [selectedEditor, data]);
-  console.log(archiveData);
+
+  // 최신순 정렬된 데이터
+  const sortedFilteredData = useMemo(() => {
+    return [...archiveData].sort((a, b) => {
+      const dateA = new Date(a.article_date).getTime();
+      const dateB = new Date(b.article_date).getTime();
+      return dateB - dateA; // 최신순 정렬
+    });
+  }, [archiveData]);
+  console.log(sortedFilteredData);
   return (
     <>
       {/* <EditorListContainer ref={listRef}>
@@ -156,7 +165,7 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
             <ArchiveTitle>{user.name}님의 아카이브</ArchiveTitle>
           </ArchiveHeader>
           <ArchiveList>
-            {archiveData.map((item) => {
+            {sortedFilteredData.map((item) => {
               const topicIcon = YOUTUBE_TOPICS.find(
                 (topic) => topic.topic === item.section
               )?.icon;

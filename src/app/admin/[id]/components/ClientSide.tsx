@@ -87,39 +87,39 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   // Server-side data fetching using fetch with no-store
   const EDITOR_ARTICLE_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
   const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
-  useEffect(() => {
-    const fetchThumbnails = async () => {
-      try {
-        const thumbnailResponse = await fetch(
-          `https://youticle.shop/editor/capture_frames/${id}`
-        );
-        if (!thumbnailResponse.ok)
-          throw new Error("Failed to fetch thumbnails");
+  // useEffect(() => {
+  //   const fetchThumbnails = async () => {
+  //     try {
+  //       const thumbnailResponse = await fetch(
+  //         `https://youticle.shop/editor/capture_frames/${id}`
+  //       );
+  //       if (!thumbnailResponse.ok)
+  //         throw new Error("Failed to fetch thumbnails");
 
-        const thumbnailData = await thumbnailResponse.json();
-        const sortedThumbnails = thumbnailData
-          .sort((a: any, b: any) => {
-            const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
-            const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
-            return numA - numB;
-          })
-          .map(({ content }: any) => base64ToBlobUrl(content));
+  //       const thumbnailData = await thumbnailResponse.json();
+  //       const sortedThumbnails = thumbnailData
+  //         .sort((a: any, b: any) => {
+  //           const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
+  //           const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
+  //           return numA - numB;
+  //         })
+  //         .map(({ content }: any) => base64ToBlobUrl(content));
 
-        setThumbnails(sortedThumbnails);
-      } catch (error) {
-        console.error("Error fetching thumbnails:", error);
-      }
-    };
+  //       setThumbnails(sortedThumbnails);
+  //     } catch (error) {
+  //       console.error("Error fetching thumbnails:", error);
+  //     }
+  //   };
 
-    fetchThumbnails();
-  }, [id]);
+  //   fetchThumbnails();
+  // }, [id]);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 목차 데이터를 최대 5개까지만 표시
-  const visibleSections = isExpanded
-    ? detailData.summary_data.section
-    : detailData.summary_data.section.slice(0, 5);
+  // // 목차 데이터를 최대 5개까지만 표시
+  // const visibleSections = isExpanded
+  //   ? detailData.summary_data.section
+  //   : detailData.summary_data.section.slice(0, 5);
 
   const toggleView = () => {
     setIsExpanded((prev) => !prev);
@@ -181,6 +181,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         description={detailData.summary_data.channel_overview}
         channel_thumbnail={detailData.channel_details.channel_thumbnail}
       />
+
       <OverviewTitle>📹 영상 소개</OverviewTitle>
       <Preview $isFixed={isFixed}>
         {formatSummary(detailData.summary_data.short_summary)}
@@ -208,6 +209,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         detailData={detailData}
         thumbnails={thumbnails}
         handleTocItemClick={handleTocItemClick}
+        taskStatus="Success"
       />
     </Container>
   );

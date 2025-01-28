@@ -81,32 +81,32 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
-  useEffect(() => {
-    const fetchThumbnails = async () => {
-      try {
-        const thumbnailResponse = await fetch(
-          `https://youticle.shop/briefing/capture_frames/${id}`
-        );
-        if (!thumbnailResponse.ok)
-          throw new Error("Failed to fetch thumbnails");
+  // useEffect(() => {
+  //   const fetchThumbnails = async () => {
+  //     try {
+  //       const thumbnailResponse = await fetch(
+  //         `https://youticle.shop/briefing/capture_frames/${id}`
+  //       );
+  //       if (!thumbnailResponse.ok)
+  //         throw new Error("Failed to fetch thumbnails");
 
-        const thumbnailData = await thumbnailResponse.json();
-        const sortedThumbnails = thumbnailData
-          .sort((a: any, b: any) => {
-            const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
-            const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
-            return numA - numB;
-          })
-          .map(({ content }: any) => base64ToBlobUrl(content));
+  //       const thumbnailData = await thumbnailResponse.json();
+  //       const sortedThumbnails = thumbnailData
+  //         .sort((a: any, b: any) => {
+  //           const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
+  //           const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
+  //           return numA - numB;
+  //         })
+  //         .map(({ content }: any) => base64ToBlobUrl(content));
 
-        setThumbnails(sortedThumbnails);
-      } catch (error) {
-        console.error("Error fetching thumbnails:", error);
-      }
-    };
+  //       setThumbnails(sortedThumbnails);
+  //     } catch (error) {
+  //       console.error("Error fetching thumbnails:", error);
+  //     }
+  //   };
 
-    fetchThumbnails();
-  }, [id]);
+  //   fetchThumbnails();
+  // }, [id]);
 
   return (
     <Container $isFixed={isFixed}>

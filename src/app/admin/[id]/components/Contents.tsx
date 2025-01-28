@@ -14,12 +14,14 @@ interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
   handleTocItemClick: (starTime: number) => void;
+  taskStatus: string;
 }
 
 const Contents = ({
   detailData,
   thumbnails,
   handleTocItemClick,
+  taskStatus,
 }: ContentsProps) => {
   const user = useRecoilValue(userState);
 
@@ -74,7 +76,7 @@ const Contents = ({
 
   const hasDimmedItem =
     detailData.summary_data.section.some((_, index) => index >= 3) &&
-    (user.name === "" || isUnsubscribedSection);
+    user.name === "";
 
   // const [wrapperHeight, setWrapperHeight] = useState(0);
 
@@ -102,7 +104,7 @@ const Contents = ({
 
   const contentNumberNotLogin =
     Math.ceil(detailData.summary_data.section.length / 2) + 1;
-
+  console.log("task status", taskStatus);
   return (
     <>
       <ContentWrapper
@@ -114,7 +116,7 @@ const Contents = ({
         {detailData.summary_data.section
           .slice(
             0,
-            user.name === "" || isUnsubscribedSection
+            user.name === ""
               ? contentNumberNotLogin
               : detailData.summary_data.section.length
           )
@@ -146,19 +148,11 @@ const Contents = ({
                 summary={detail_contents}
                 thumbnails={clientThumbnails[index]}
                 partialDimmed={
-                  index === contentNumberNotLogin - 2 &&
-                  (user.name === "" ||
-                    isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
+                  index === contentNumberNotLogin - 2 && user.name === ""
                 }
                 explanation_keyword={explanation_keyword}
                 explanation_description={explanation_description}
-                dimmed={
-                  index >= contentNumberNotLogin - 1 &&
-                  (user.name === "" ||
-                    isUnsubscribedSection ||
-                    isNoSubscribedSubjects)
-                }
+                dimmed={index >= contentNumberNotLogin - 1 && user.name === ""}
                 tocItemHeight={tocItemHeight}
                 toc={detailData.summary_data.section}
                 onClick={() =>
@@ -173,7 +167,7 @@ const Contents = ({
             )
           )}
       </ContentWrapper>
-      {!hasDimmedItem ? (
+      {!hasDimmedItem && taskStatus === "Success" ? (
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
           $tocItemHeight={tocItemHeight}

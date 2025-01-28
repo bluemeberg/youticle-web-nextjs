@@ -96,51 +96,50 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     };
   }, []);
 
-  useEffect(() => {
-    const fetchThumbnails = async () => {
-      try {
-        // API 호출
-        // const thumbnailResponse = await fetch(
-        //   `https://youticle.shop/briefing/images/${id}`
-        // );
+  // useEffect(() => {
+  //   const fetchThumbnails = async () => {
+  //     try {
+  //       // API 호출
+  //       // const thumbnailResponse = await fetch(
+  //       //   `https://youticle.shop/briefing/images/${id}`
+  //       // );
 
-        const thumbnailResponse = await fetch(
-          `https://youticle.shop/briefing/capture_frames/${id}`
-        );
+  //       const thumbnailResponse = await fetch(
+  //         `https://youticle.shop/briefing/capture_frames/${id}`
+  //       );
 
-        if (!thumbnailResponse.ok) {
-          throw new Error("Failed to fetch thumbnails");
-        }
+  //       if (!thumbnailResponse.ok) {
+  //         throw new Error("Failed to fetch thumbnails");
+  //       }
 
-        // // JSON 데이터 파싱
-        // const thumbnailData: string[] = await thumbnailResponse.json();
+  //       // // JSON 데이터 파싱
+  //       // const thumbnailData: string[] = await thumbnailResponse.json();
 
-        // // 파일 이름을 숫자 기준으로 정렬
-        // const sortedThumbnails = thumbnailData.sort((a, b) => {
-        //   const numA = parseInt(a.match(/\d+/)?.[0] || "0", 10);
-        //   const numB = parseInt(b.match(/\d+/)?.[0] || "0", 10);
-        //   return numA - numB;
-        // });
+  //       // // 파일 이름을 숫자 기준으로 정렬
+  //       // const sortedThumbnails = thumbnailData.sort((a, b) => {
+  //       //   const numA = parseInt(a.match(/\d+/)?.[0] || "0", 10);
+  //       //   const numB = parseInt(b.match(/\d+/)?.[0] || "0", 10);
+  //       //   return numA - numB;
+  //       // });
 
-        const thumbnailData = await thumbnailResponse.json();
-        const sortedThumbnails = thumbnailData
-          .sort((a: any, b: any) => {
-            const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
-            const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
-            return numA - numB;
-          })
-          .map(({ content }: any) => base64ToBlobUrl(content));
+  //       const thumbnailData = await thumbnailResponse.json();
+  //       const sortedThumbnails = thumbnailData
+  //         .sort((a: any, b: any) => {
+  //           const numA = parseInt(a.filename.match(/\d+/)?.[0] || "0", 10);
+  //           const numB = parseInt(b.filename.match(/\d+/)?.[0] || "0", 10);
+  //           return numA - numB;
+  //         })
+  //         .map(({ content }: any) => base64ToBlobUrl(content));
 
-        // 정렬된 파일 이름을 상태로 설정
-        setThumbnails(sortedThumbnails);
-      } catch (error) {
-        console.error("Error fetching thumbnails:", error);
-        setThumbnails([]);
-      }
-    };
-    fetchThumbnails();
-  }, [id]);
-  console.log("썸네일 확ㅇ니 콘텐츠", thumbnails);
+  //       // 정렬된 파일 이름을 상태로 설정
+  //       setThumbnails(sortedThumbnails);
+  //     } catch (error) {
+  //       console.error("Error fetching thumbnails:", error);
+  //       setThumbnails([]);
+  //     }
+  //   };
+  //   fetchThumbnails();
+  // }, [id]);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
