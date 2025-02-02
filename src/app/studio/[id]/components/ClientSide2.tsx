@@ -13,6 +13,7 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
+import ThreadModal from "./ThreadModal";
 
 interface ClientSide2Props {
   id: string;
@@ -27,6 +28,9 @@ interface SectionData {
   explanation_keyword?: string;
   explanation_description?: string;
 }
+
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
@@ -116,15 +120,38 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   };
   const [progress, setProgress] = useState(0); // 진행률 상태 추가
 
-  // 상태 변화 시 높이 재계산
   useEffect(() => {
-    setContentHeight(calculateHeight());
+    if (!detailData?.summary_data?.section) return;
+
+    const sectionCount = detailData.summary_data.section.length;
+    if (contentRef.current) {
+      const fullHeight = contentRef.current.scrollHeight;
+
+      if (sectionCount <= 5) {
+        // 항목이 5개 이하라면 접힘/펼침 구분 없이 전체
+        setContentHeight(`${fullHeight}px`);
+      } else {
+        // 항목이 6개 이상
+        if (isExpanded) {
+          // 펼친 상태: 전체 높이
+          setContentHeight(`${fullHeight}px`);
+        } else {
+          // 접힌 상태: 200px 정도로 고정
+          setContentHeight("260px");
+        }
+      }
+    }
   }, [isExpanded, detailData]);
+
+  //   // 상태 변화 시 높이 재계산
+  //   useEffect(() => {
+  //     setContentHeight(calculateHeight());
+  //   }, [isExpanded, detailData]);
   useEffect(() => {
     const pollTaskStatus = async () => {
       try {
         const response = await fetch(
-          `https://youticle.shop/editor/status/${taskId}`
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/status/${taskId}`
         );
         if (!response.ok) throw new Error("Task 상태 확인 실패");
 
@@ -174,7 +201,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
     return () => clearInterval(interval);
   }, [taskId]);
   console.log(taskStatus);
-  console.log(detailData);
+  const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
+  // (3) "스레드 생성하기" 버튼 클릭 핸들러
+  const handleOpenThreadModal = () => {
+    setIsThreadModalOpen(true);
+  };
   return (
     <Container $isFixed={isFixed}>
       {/* 상태에 따른 콘텐츠 렌더링 */}
@@ -187,13 +218,13 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
       />
       {/* 상태 메시지 및 로딩 표시 */}
       {isArticleLoading && (
-        <LoaderContainer>
+        <LoaderOverlay>
           <Spinner />
           <p>{taskMessage}</p>
           <ProgressBarContainer>
             <ProgressBar progress={progress} />
           </ProgressBarContainer>
-        </LoaderContainer>
+        </LoaderOverlay>
       )}
       {taskStatus === "START" && detailData && (
         <FadeInContainer>
@@ -289,7 +320,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               <Upload>{detailData.duration}</Upload>
             </UploadContainer>
           </PageInfo>
-
           <VideoCard
             thumbnail={detailData.thumbnail}
             title={detailData.title} // title은 포함
@@ -304,20 +334,22 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           <Preview $isFixed={isFixed}>
             {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
+          {/* 목차 영역 */}
           <TOC>
             <div>목차</div>
             <ContentWrapper
               ref={contentRef}
               $height={contentHeight}
-              $isExpanded={isExpanded}
+              $isExpanded={false}
             >
-              {detailData.summary_data.section.map(
-                ({ title }: any, index: any) => (
+              {detailData.summary_data?.section?.map(
+                ({ title }: any, index: number) => (
                   <span key={index}>{title}</span>
                 )
               )}
             </ContentWrapper>
-            {detailData.summary_data.section.length > 5 && (
+
+            {detailData.summary_data?.section?.length > 5 && (
               <ToggleButton onClick={toggleView}>
                 {isExpanded ? "간단히 보기" : "더 보기"}
               </ToggleButton>
@@ -384,15 +416,16 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             <ContentWrapper
               ref={contentRef}
               $height={contentHeight}
-              $isExpanded={isExpanded}
+              $isExpanded={false}
             >
-              {detailData.summary_data.section.map(
-                ({ title }: any, index: any) => (
+              {detailData.summary_data?.section?.map(
+                ({ title }: any, index: number) => (
                   <span key={index}>{title}</span>
                 )
               )}
             </ContentWrapper>
-            {detailData.summary_data.section.length > 5 && (
+
+            {detailData.summary_data?.section?.length > 5 && (
               <ToggleButton onClick={toggleView}>
                 {isExpanded ? "간단히 보기" : "더 보기"}
               </ToggleButton>
@@ -404,6 +437,18 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             handleTocItemClick={handleTocItemClick}
             taskStatus={taskStatus}
           />
+          {isThreadModalOpen && (
+            <ThreadModal
+              videoId={id}
+              section={detailData.section}
+              onClose={() => setIsThreadModalOpen(false)}
+            />
+          )}
+          {taskStatus === "Success" && (
+            <FloatingButton onClick={handleOpenThreadModal}>
+              스레드 생성하기
+            </FloatingButton>
+          )}
         </SlideInContainer>
       )}
       {/* 초기 데이터 렌더링 */}
@@ -538,27 +583,17 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 const TOC = styled.div`
   margin-top: 20px;
   padding: 0 16px;
-  span {
-    line-height: 132%;
-  }
+
   div:first-child {
     height: 44px;
-    padding: 10px 16px 10px 16px;
-    background-color: rgba(0, 0, 0, 1);
+    padding: 10px 16px;
+    background-color: black;
     font-size: 20px;
     font-weight: 800;
-    line-height: 24px;
-    color: rgba(255, 255, 255, 1);
+    color: white;
   }
 
-  div:nth-child(2) {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    background-color: rgb(248, 248, 248);
-    font-size: 18px;
-    font-weight: 600;
+  span {
     line-height: 132%;
   }
 `;
@@ -651,21 +686,39 @@ const ContentWrapperProgress = styled.div`
   line-height: 132%;
 `;
 
-const LoaderContainer = styled.div`
+// 로딩 오버레이 스타일
+const LoaderOverlay = styled.div`
+  position: fixed;
+  top: 52px; /* 로고헤더 높이가 76px이므로, 바로 아래부터 시작 */
+  left: 0;
+  width: 100%;
+  /* 높이를 굳이 100%까지 덮어도 되고, 원하는 범위만큼으로 조정 가능 */
+  /* height: calc(100% - 76px); */
+  z-index: 9999;
+  background: #ffffff; /* 혹은 반투명: 'rgba(255,255,255,0.8)' 등 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
+  /* 사용자가 뒤 배경을 클릭 가능하게 할지 여부
+     - pointer-events: none;  => 클릭이 뒤로 전달됨
+     - pointer-events: auto;  => 오버레이가 클릭을 막음
+  */
+  pointer-events: auto;
+
+  /* 스크롤 할 필요가 없다면 오버레이 내부만 overflow: hidden; 가능 */
 `;
 
 const Spinner = styled.div`
-  width: 50px;
-  height: 50px;
+  width: 24px;
+  height: 24px;
   border: 4px solid #f3f3f3;
   border-top: 4px solid #007bff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
+  margin-top: 12px;
 
   @keyframes spin {
     0% {
@@ -735,4 +788,24 @@ const SkeletonText = styled.div`
   background: #e0e0e0;
   border-radius: 5px;
   animation: shimmer 1.5s infinite;
+`;
+
+const FloatingButton = styled.button`
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000; /* 본문 위에 보이도록 충분히 높은 값 */
+  padding: 14px 18px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    background-color: #0056b3;
+  }
 `;

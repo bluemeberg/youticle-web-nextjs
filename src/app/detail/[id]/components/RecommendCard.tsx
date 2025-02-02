@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 interface RecommendCardProps extends DataProps {
   icon: React.ReactNode;
   path: string;
+  source: string;
 }
 
 const RecommendCard = (props: RecommendCardProps) => {
@@ -27,9 +28,18 @@ const RecommendCard = (props: RecommendCardProps) => {
       });
     }
     setTopicState(props);
-    const navigatePath =
-      props.path === "editor" ? `/editor/${video_id}` : `/detail/${video_id}`;
-    router.push(navigatePath);
+    // 1) 기존 path 분기 + 새 "studio" 분기 추가
+    if (props.path === "studio") {
+      // 예: "/studio/:id" 경로로 이동,
+      // API 소스가 'editor'인지 'briefing'인지도 함께 query param으로
+      const sourceParam = props.source === "editor" ? "editor" : "briefing";
+      router.push(`/studio/${props.video_id}?source=${sourceParam}`);
+    } else if (props.path === "editor") {
+      router.push(`/editor/${props.video_id}`);
+    } else {
+      // default = "detail"
+      router.push(`/detail/${props.video_id}`);
+    }
   };
 
   return (

@@ -27,10 +27,13 @@ export const createOrFetchUser = async (email: string, name: string) => {
 
 // 유저 정보 가져오기
 export const getUserByEmail = async (
-  email: string,
-  name: string
+  email: string | null,
+  name: string | null
 ): Promise<{ id: number }> => {
-  const url = `${API_BASE_URL}/users/${encodeURIComponent(email)}`;
+  const safeEmail = email ?? "";
+  const safeName = name ?? "익명 사용자";
+
+  const url = `${API_BASE_URL}/users/${encodeURIComponent(safeEmail)}`;
 
   try {
     const response = await fetch(url, {
@@ -46,7 +49,7 @@ export const getUserByEmail = async (
       return data;
     } else if (response.status === 404) {
       console.error("User not found. Creating new user...");
-      const newUser = await createOrFetchUser(email, name);
+      const newUser = await createOrFetchUser(safeEmail, safeName);
       console.log("New user created:", newUser);
       return newUser;
     } else {

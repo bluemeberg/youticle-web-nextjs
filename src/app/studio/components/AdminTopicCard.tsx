@@ -68,8 +68,8 @@ const AdminTopicCard = (props: TopicCardProps) => {
     console.log("Current Path:", pathname); // 현재 경로 디버깅 로그
     if (pathname === "/editor") {
       router.push(`/editor/${video_id}`);
-    } else if (pathname === "/admin") {
-      router.push(`/admin/${video_id}`);
+    } else if (pathname === "/studio") {
+      router.push(`/studio/${video_id}`);
     } else {
       router.push(`/detail/${video_id}`);
     }

@@ -148,13 +148,22 @@ const RecommendDimmed = ({
     ? `<span class='highlight'>유티클 투데이</span>에서&nbsp;<span class='highlight'>${section}</span>&nbsp;아티클도 확인하기!`
     : `<span class='highlight'>유티클 투데이</span>에서&nbsp;다음 <span class='highlight'>${section}</span>&nbsp;아티클 확인하기!`;
 
-  const EDITOR_TITLE = pathname.includes("/editor")
-    ? matchedEditor
-      ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터의 다른 <span class='highlight'>${section} </span>아티클 확인하기`
-      : "다른 에디터의 아티클을 확인해보세요."
-    : matchedEditor
-    ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터가 업로드한 <span class='highlight'>${section} </span>아티클도 확인해보세요!`
-    : "다른 에디터의 아티클을 확인해보세요.";
+  let EDITOR_TITLE = "";
+
+  if (pathname.includes("/studio")) {
+    // 관리자 페이지: 여러 에디터들 관련 안내
+    EDITOR_TITLE = `<span class='highlight'>다른 에디터</span>가 업로드한 <span class='highlight'>${section} 아티클</span>도 확인해보세요!`;
+  } else if (pathname.includes("/editor")) {
+    // 에디터 페이지
+    EDITOR_TITLE = matchedEditor
+      ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터의 다른 <span class='highlight'>${section}</span> 아티클 확인하기`
+      : "다른 에디터의 아티클을 확인해보세요.";
+  } else {
+    // default = detail 등
+    EDITOR_TITLE = matchedEditor
+      ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터가 업로드한 <span class='highlight'>${section}</span> 아티클도 확인해보세요!`
+      : "다른 에디터의 아티클을 확인해보세요.";
+  }
 
   const handleYouticleTodayButtonClick = (buttonName: string) => {
     if (typeof window !== "undefined" && window.gtag) {
@@ -176,7 +185,89 @@ const RecommendDimmed = ({
 
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>
-      {pathname.includes("/detail") ? (
+      {pathname.includes("/studio") ? (
+        <>
+          {matchedEditor ? (
+            <>
+              <SubEditorContainer>
+                {!pathname.includes("/studio") ? (
+                  <EditorImage
+                    src={matchedEditor.image}
+                    alt={matchedEditor.name}
+                    isSelected={false} // 선택 여부는 필요에 따라 수정
+                  />
+                ) : (
+                  <></>
+                )}
+                <EditorRecommendTitle
+                  dangerouslySetInnerHTML={{ __html: EDITOR_TITLE }}
+                />
+              </SubEditorContainer>
+              {filteredAndSortedEditorData.slice(0, 4).map((item, index) => {
+                const topicIcon = YOUTUBE_TOPICS.find(
+                  (topic) => topic.topic === item.section
+                )?.icon;
+                return (
+                  <RecommendCard
+                    key={index}
+                    icon={topicIcon}
+                    path="studio"
+                    source="editor"
+                    {...item}
+                  />
+                );
+              })}
+              {/* <ButtonContainer>
+                <ServiceButton
+                  $variant="secondary"
+                  onClick={() => {
+                    router.push("/editor");
+                  }}
+                >
+                  에디터 픽 아티클 더 알아보기
+                </ServiceButton>
+              </ButtonContainer> */}
+            </>
+          ) : (
+            <></>
+          )}
+          <SubContainer>
+            <RecommendTitle
+              dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }}
+            />
+            <CountdownTimer />
+          </SubContainer>
+          <SubRecommendTitle>
+            <span>📌 유티클 투데이란? </span> <br />
+            유티클 AI 알고리즘을 통해 오늘 업로드된 {section} 영상 중 참여도
+            높은 영상을 선정하여 자동 요약된 아티클로 제공합니다.
+          </SubRecommendTitle>
+          {filteredAndSortedData.slice(0, 4).map((item, index) => {
+            const topicIcon = YOUTUBE_TOPICS.find(
+              (topic) => topic.topic === item.section
+            )?.icon;
+            return (
+              <RecommendCard
+                key={index}
+                icon={topicIcon}
+                path="studio"
+                source="briefing"
+                {...item}
+              />
+            );
+          })}
+          {/* <ButtonContainer>
+            <ServiceButton
+              $variant="secondary"
+              onClick={() => {
+                router.push("/");
+              }}
+            >
+              유티클 투데이 더 알아보기
+            </ServiceButton>
+          </ButtonContainer> */}
+        </>
+      ) : pathname.includes("/detail") ? (
         <>
           <SubContainer>
             <RecommendTitle
@@ -198,6 +289,7 @@ const RecommendDimmed = ({
                 key={index}
                 icon={topicIcon}
                 path="detail"
+                source=""
                 {...item}
               />
             );
@@ -206,7 +298,6 @@ const RecommendDimmed = ({
             <ServiceButton
               $variant="secondary"
               onClick={() => {
-                handleYouticleTodayButtonClick("Youticle Today Button");
                 router.push("/");
               }}
             >
@@ -216,11 +307,15 @@ const RecommendDimmed = ({
           {matchedEditor ? (
             <>
               <SubEditorContainer>
-                <EditorImage
-                  src={matchedEditor.image}
-                  alt={matchedEditor.name}
-                  isSelected={false} // 선택 여부는 필요에 따라 수정
-                />
+                {!pathname.includes("/studio") ? (
+                  <EditorImage
+                    src={matchedEditor.image}
+                    alt={matchedEditor.name}
+                    isSelected={false} // 선택 여부는 필요에 따라 수정
+                  />
+                ) : (
+                  <></>
+                )}
                 <EditorRecommendTitle
                   dangerouslySetInnerHTML={{ __html: EDITOR_TITLE }}
                 />
@@ -234,6 +329,7 @@ const RecommendDimmed = ({
                     key={index}
                     icon={topicIcon}
                     path="editor"
+                    source=""
                     {...item}
                   />
                 );
@@ -242,7 +338,6 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
-                    handleEditorPickButtonClick("Editor Pick Button");
                     router.push("/editor");
                   }}
                 >
@@ -259,11 +354,15 @@ const RecommendDimmed = ({
           {matchedEditor ? (
             <>
               <SubEditorContainer>
-                <EditorImage
-                  src={matchedEditor.image}
-                  alt={matchedEditor.name}
-                  isSelected={false} // 선택 여부는 필요에 따라 수정
-                />
+                {!pathname.includes("/studio") ? (
+                  <EditorImage
+                    src={matchedEditor.image}
+                    alt={matchedEditor.name}
+                    isSelected={false} // 선택 여부는 필요에 따라 수정
+                  />
+                ) : (
+                  <></>
+                )}
                 <EditorRecommendTitle
                   dangerouslySetInnerHTML={{ __html: EDITOR_TITLE }}
                 />
@@ -277,6 +376,7 @@ const RecommendDimmed = ({
                     key={index}
                     icon={topicIcon}
                     path="editor"
+                    source=""
                     {...item}
                   />
                 );
@@ -285,7 +385,6 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
-                    handleEditorPickButtonClick("Editor Pick Button");
                     router.push("/editor");
                   }}
                 >
@@ -312,6 +411,7 @@ const RecommendDimmed = ({
                     key={index}
                     icon={topicIcon}
                     path="detail"
+                    source=""
                     {...item}
                   />
                 );
@@ -320,7 +420,6 @@ const RecommendDimmed = ({
                 <ServiceButton
                   $variant="secondary"
                   onClick={() => {
-                    handleYouticleTodayButtonClick("Youticle Today Button");
                     router.push("/");
                   }}
                 >
@@ -351,6 +450,7 @@ const RecommendDimmed = ({
                     key={index}
                     icon={topicIcon}
                     path="detail"
+                    source=""
                     {...item}
                   />
                 );

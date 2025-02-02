@@ -75,9 +75,8 @@ const Contents = ({
     subscribedSubjects.length === 0 && user.name !== "";
 
   const hasDimmedItem =
-    detailData.summary_data.section.some((_, index) => index >= 3) &&
+    detailData.summary_data.section.some((_, index) => index >= 1) &&
     user.name === "";
-
   // const [wrapperHeight, setWrapperHeight] = useState(0);
 
   // useEffect(() => {

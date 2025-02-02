@@ -10,6 +10,7 @@ import { userState } from "@/store/user";
 
 import { usePathname } from "next/navigation";
 import Footer from "@/components/Footer";
+import RecommendDimmed from "@/detail/[id]/components/RecommendDimmed";
 
 const DIMMED_TITLE = `✨ 초기 무료 구독자에게만 제공되는 혜택`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;
@@ -237,16 +238,16 @@ const AdminDimmedArea = ({
       {user.name == "" && (
         <>
           {" "}
-          <SubsKeywordInfo>이미 구독중이라면? </SubsKeywordInfo>
+          <SubsKeywordInfo>이미 아티클을 생성했다면? </SubsKeywordInfo>
           <GoogleLogin variant="link" text="로그인해서 아티클 내용 마저 읽기" />
         </>
       )}
-      <Footer />
-      {/* <RecommendDimmed
+      {/* <Footer /> */}
+      <RecommendDimmed
         section={section}
         videoId={videoId}
         isUnsubscribedSection={isUnsubscribedSection}
-      /> */}
+      />
       {/* {!isUnsubscribedSection && <Divider />} */}
     </Container>
   );

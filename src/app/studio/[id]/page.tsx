@@ -35,7 +35,7 @@ interface DetailPageProps {
 // Main page component
 export default async function AdminDetailPage({ params, searchParams }: any) {
   const { id } = params;
-  const { task_id } = searchParams;
+  const { source, task_id } = searchParams;
 
   //   console.log(id);
   //   // Server-side data fetching using fetch with no-store
@@ -55,15 +55,27 @@ export default async function AdminDetailPage({ params, searchParams }: any) {
   //   if (!detailData) {
   //     return <NotFoundPage />;
   //   }
+  // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+  const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
-  // task_id가 없는 경우 ClientSide 렌더링
   if (!task_id) {
     const EDITOR_ARTICLE_API_LOCAL_URL =
       "http://0.0.0.0:8000/editor/all/article";
 
     const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
 
-    const response = await fetch(`https://youticle.shop/editor/article/${id}`);
+    // task_id가 없는 경우 ClientSide 렌더링
+    let apiUrl = "";
+    if (source === "editor") {
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/editor/article/${id}`;
+    } else if (source === "briefing") {
+      // default = briefing
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/briefing/top_videos/${id}`;
+    } else {
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/editor/article/${id}`;
+    }
+
+    const response = await fetch(apiUrl);
     if (!response.ok) {
       return <NotFoundPage />;
     }

@@ -5,6 +5,7 @@ import { useSetRecoilState, useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { auth } from "@/firebase";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getUserByEmail } from "@/api/apiClient";
 
 interface GoogleLoginProps {
   variant: "button" | "link";
@@ -19,10 +20,12 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ variant, text }) => {
   const signInGoogle = async () => {
     try {
       const { user } = await signInWithPopup(auth, provider);
+      const data = await getUserByEmail(user.email, user.displayName);
       setUser({
         name: user.displayName,
         email: user.email,
         picture: user.photoURL,
+        id: data.id,
       });
     } catch (e) {
       console.error(e);

@@ -21,6 +21,8 @@ interface User {
 }
 
 const SERVICE_TITLE = "📌 나만의 아티클 생성하기";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const AdminIntroduce = () => {
   const router = useRouter();
@@ -80,11 +82,11 @@ const AdminIntroduce = () => {
 
       // id가 URL 형태라면 파싱하여 videoId만 추출
       const videoId = extractVideoId(id);
-      //   router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+      //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
 
       // 영상 요약 호출하기
       const response = await fetch(
-        `https://youticle.shop/editor/process/${encodeURIComponent(
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
           videoId
         )}?user_id=${encodeURIComponent(user.id)}`,
         {
@@ -115,7 +117,7 @@ const AdminIntroduce = () => {
       //     const result = await response.json();
       //   }
       //   setData(result); // 응답 데이터 설정
-      router.push(`/admin/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
+      router.push(`/studio/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
     } catch (err) {
       //   if (err instanceof Error) {
       //     if (err.name === "AbortError") {
@@ -161,7 +163,7 @@ const AdminIntroduce = () => {
     const videoId = extractVideoId(id);
     try {
       const response = await fetch(
-        `https://youticle.shop/editor/article/${videoId}`,
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/article/${videoId}`,
         {
           method: "GET",
           headers: {
@@ -225,7 +227,7 @@ const AdminIntroduce = () => {
           setData(articleData); // 상태 업데이트
           lastData = articleData; // 마지막 데이터 업데이트
           clearInterval(polling); // 폴링 중단
-          router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+          router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
         }
       } catch (error) {
         console.error("폴링 중 오류:", error);
@@ -279,13 +281,13 @@ const AdminIntroduce = () => {
 
       // id가 URL 형태라면 파싱하여 videoId만 추출
       const videoId = extractVideoId(id);
-      //   router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+      //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
 
       try {
         console.log("hello");
         // 영상 요약 호출하기
         const response = await fetch(
-          `https://youticle.shop/editor/process/${encodeURIComponent(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
             videoId
           )}?user_id=${encodeURIComponent(data.id)}`,
           {
@@ -300,7 +302,7 @@ const AdminIntroduce = () => {
           throw new Error(`HTTP 오류: ${response.status}`);
         }
         const { task_id } = await response.json(); // `task_id` 반환
-        router.push(`/admin/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
+        router.push(`/studio/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
 
         // const result = await response.json();
         // if (result === "success") {
@@ -319,7 +321,7 @@ const AdminIntroduce = () => {
         //   const result = await response.json();
         // }
         // setData(result); // 응답 데이터 설정
-        // router.push(`/admin/${videoId}`); // ID 포함 URL로 이동
+        // router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
       } catch (err) {
         if (err instanceof Error) {
           if (err.name === "AbortError") {

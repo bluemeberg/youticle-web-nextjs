@@ -15,6 +15,7 @@ import ShareIcon from "@/assets/share.svg";
 import Toast from "./Toast";
 import { isDesktop } from "react-device-detect";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getUserByEmail } from "@/api/apiClient";
 
 interface LogoHeaderProps {
   title?: string;
@@ -37,7 +38,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
     pathname.startsWith("/editor/") ||
     pathname.startsWith("/samplePage") ||
     pathname.startsWith("/keyword/") ||
-    pathname.startsWith("/admin/");
+    pathname.startsWith("/studio/");
 
   const isUnsubscribeOrModifyPage =
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
@@ -69,6 +70,8 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
       router.push("/unsubscribe");
     } else if (pathname.endsWith("/subject/modify")) {
       router.push("/");
+    } else if (pathname.includes("/studio")) {
+      router.push("/studio");
     } else {
       router.back();
     }
@@ -98,7 +101,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
 
   const goHome = () => {
     if (pathname.startsWith("/editor/")) goToPage("/editor");
-    else if (pathname.startsWith("/admin/")) goToPage("/admin");
+    else if (pathname.startsWith("/studio/")) goToPage("/studio");
     else if (pathname.startsWith("/samplePage")) goToPage("/my");
     else if (pathname.startsWith("/keyword/")) goToPage("/my");
     else goToPage("/today");
@@ -109,10 +112,12 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   const GoogleLogin = async () => {
     try {
       const { user } = await signInWithPopup(auth, provider);
+      const data = await getUserByEmail(user.email, user.displayName);
       setUser({
         name: user.displayName,
         email: user.email,
         picture: user.photoURL,
+        id: data.id,
       });
     } catch (e) {
       console.error(e);
@@ -165,7 +170,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   useEffect(() => {
     setIsClientDesktop(isDesktop);
   }, []);
-
+  console.log("로그인", user);
   return (
     <>
       <Container
@@ -201,7 +206,7 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
           <>
             {!pathname.includes("/detail") &&
               !pathname.startsWith("/editor/") &&
-              !pathname.startsWith("/admin/") &&
+              !pathname.startsWith("/studio/") &&
               user.picture === "" && (
                 <MenuIcon onClick={handleMenuClick}></MenuIcon>
               )}

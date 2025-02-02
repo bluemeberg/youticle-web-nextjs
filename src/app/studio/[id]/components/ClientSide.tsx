@@ -13,6 +13,7 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
+import ThreadModal from "./ThreadModal";
 
 interface ClientSideProps {
   id: string;
@@ -115,12 +116,35 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   // }, [id]);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const sections = detailData.summary_data.section || [];
+  // 접혔을 때와 펼쳤을 때의 maxHeight를 관리 (문자열 단위 "px")
+  const [maxHeight, setMaxHeight] = useState("0px");
+
+  // 1) 처음/갱신 시 목차 전체 높이를 측정하여 expanded 상태에 따라 maxHeight를 설정
+  useEffect(() => {
+    if (contentRef.current) {
+      // 실제 콘텐츠 전체 높이
+      const fullHeight = contentRef.current.scrollHeight;
+
+      if (isExpanded) {
+        // 펼친 상태: 전체 높이로 설정
+        setMaxHeight(`${fullHeight}px`);
+      } else {
+        // 접힌 상태: 5개 정도만 보여줄 높이를 임의로 계산
+        // (정밀 계산 필요하면 5개 항목 높이만큼 미리 측정해야 함)
+        // 간단히 "200px"처럼 고정값을 써도 됨
+        setMaxHeight("260px");
+      }
+    }
+  }, [isExpanded, sections]);
 
   // // 목차 데이터를 최대 5개까지만 표시
-  // const visibleSections = isExpanded
-  //   ? detailData.summary_data.section
-  //   : detailData.summary_data.section.slice(0, 5);
-
+  const visibleSections =
+    sections.length <= 5
+      ? sections
+      : isExpanded
+      ? sections
+      : sections.slice(0, 5);
   const toggleView = () => {
     setIsExpanded((prev) => !prev);
   };
@@ -142,11 +166,28 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     setContentHeight(calculateHeight());
   }, [isExpanded, detailData]);
 
+  // (2) 모달 열림 상태
+  const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
+
+  // (3) "스레드 생성하기" 버튼 클릭 핸들러
+  const handleOpenThreadModal = () => {
+    setIsThreadModalOpen(true);
+  };
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
         title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
       />
+
+      {/* (5) 모달 렌더링 */}
+      {isThreadModalOpen && (
+        <ThreadModal
+          videoId={id}
+          onClose={() => setIsThreadModalOpen(false)}
+          section={detailData.section}
+        />
+      )}
       <PageInfo ref={scrollRef}>
         <Category>{detailData.section}</Category>
         <Title>{detailData.summary_data.headline_title}</Title>
@@ -189,16 +230,15 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
       <TOC>
         <div>목차</div>
-        <ContentWrapper
-          ref={contentRef}
-          $height={contentHeight}
-          $isExpanded={isExpanded}
-        >
-          {detailData.summary_data.section.map(({ title }, index) => (
+        {/* 실제 목차 목록 컨테이너 */}
+        <ContentWrapper ref={contentRef} style={{ maxHeight }}>
+          {sections.map(({ title }, index) => (
             <span key={index}>{title}</span>
           ))}
         </ContentWrapper>
-        {detailData.summary_data.section.length > 5 && (
+
+        {/* 3) 5개 초과일 때만 토글 버튼 노출 */}
+        {sections.length > 5 && (
           <ToggleButton onClick={toggleView}>
             {isExpanded ? "간단히 보기" : "더 보기"}
           </ToggleButton>
@@ -211,6 +251,10 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         handleTocItemClick={handleTocItemClick}
         taskStatus="Success"
       />
+      {/* (2) 하단 플로팅 버튼 */}
+      <FloatingButton onClick={handleOpenThreadModal}>
+        스레드 생성하기
+      </FloatingButton>
     </Container>
   );
 };
@@ -309,49 +353,6 @@ const Preview = styled.div<{ $isFixed: boolean }>`
   }
 `;
 
-const TOC = styled.div`
-  margin-top: 20px;
-  padding: 0 16px;
-  span {
-    line-height: 132%;
-  }
-  div:first-child {
-    height: 44px;
-    padding: 10px 16px 10px 16px;
-    background-color: rgba(0, 0, 0, 1);
-    font-size: 20px;
-    font-weight: 800;
-    line-height: 24px;
-    color: rgba(255, 255, 255, 1);
-  }
-
-  div:nth-child(2) {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    background-color: rgb(248, 248, 248);
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 132%;
-  }
-`;
-
-const ToggleButton = styled.button`
-  margin-top: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  background-color: transparent;
-  color: #007bff;
-  border: none;
-  cursor: pointer;
-  align-self: flex-start;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
 const VideoContainer = styled.div<{ $isFixed: boolean; $isDesktop: boolean }>`
   position: ${(props) => (props.$isFixed ? "fixed" : "static")};
   top: ${(props) => (props.$isFixed ? "52px" : "auto")};
@@ -399,11 +400,26 @@ const OverviewTitle = styled.div`
   margin-left: 16px;
 `;
 
-const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
+const TOC = styled.div`
+  margin-top: 20px;
+  padding: 0 16px;
+
+  div:first-child {
+    /* '목차' 블록 스타일 */
+    height: 44px;
+    padding: 10px 16px;
+    background-color: black;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+  }
+`;
+
+const ContentWrapper = styled.div`
+  /* 여기서 max-height를 동적으로 변경할 예정 */
   overflow: hidden;
-  height: ${({ $height }) => $height};
-  transition: height 0.3s ease;
-  padding: 20px;
+  transition: max-height 0.3s ease;
+  /* 나머지 스타일은 필요에 맞게 */
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -411,4 +427,52 @@ const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
   font-size: 18px;
   font-weight: 600;
   line-height: 132%;
+  padding: 20px;
+`;
+
+const ToggleButton = styled.button`
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: transparent;
+  color: #007bff;
+  border: none;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+// (6) 모달 열기 버튼 스타일
+const ThreadCreateButton = styled.button`
+  display: block;
+  margin: 24px auto;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: #007bff;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+const FloatingButton = styled.button`
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000; /* 본문 위에 보이도록 충분히 높은 값 */
+  padding: 14px 18px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    background-color: #0056b3;
+  }
 `;

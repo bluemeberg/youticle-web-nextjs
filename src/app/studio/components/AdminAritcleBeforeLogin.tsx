@@ -24,12 +24,13 @@ interface Editor {
   image: string;
   keywords: string[];
 }
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
   const [isFixed, setIsFixed] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const user = useRecoilValue(userState); // 로그인 여부 확인
-  console.log(user, "유저정보");
   const editors: Editor[] = [
     {
       id: "1",
@@ -83,7 +84,7 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
   useEffect(() => {
     // 로그인된 상태에서 아카이브 데이터를 가져오는 로직
     if (user.email) {
-      fetch(`https://youticle.shop/editor/admin/videos/${user.id}`, {
+      fetch(`${NEXT_PUBLIC_API_BASE_URL}/editor/admin/videos/${user.id}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       })
@@ -133,84 +134,148 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
     });
   }, [archiveData]);
   console.log(sortedFilteredData);
+  // 탭 상태: 'feed' | 'archive'
+  const [activeTab, setActiveTab] = useState<"all" | "archive" | "today">(
+    "all"
+  );
+  // (A) 새 useEffect: user.email 변경 시, 로그아웃 판단 -> 탭 전환
+  useEffect(() => {
+    if (!user.email && activeTab === "archive") {
+      // 로그아웃 되었고, 현재 탭이 archive면 => "all"로 돌림
+      setActiveTab("all");
+    }
+  }, [user.email, activeTab]);
+  // 'today' 탭에서 선택된 필터(키워드)
+  const [selectedKeyword, setSelectedKeyword] = useState<string>("전체");
+  console.log(activeTab);
+  const TODAY_KEYWORDS = [
+    { label: "전체", icon: "🌐" },
+    { label: "주식", icon: "📈" },
+    { label: "부동산", icon: "🏢" },
+    { label: "가상자산", icon: "💰" },
+    { label: "비즈니스/사업", icon: "🏭" },
+    { label: "IT/테크", icon: "💻" },
+    { label: "인공지능", icon: "🤖" },
+    { label: "건강", icon: "⚕️" },
+    { label: "연애/결혼", icon: "💒" },
+    // ... 총 19개...
+  ];
+
   return (
     <>
-      {/* <EditorListContainer ref={listRef}>
-        <EditorListContainerSub>
-          <EditorList isFixed={isFixed}>
-            {editors.map((editor) => (
-              <EditorItem key={editor.id}>
-                <EditorImage
-                  src={editor.image}
-                  alt={editor.name}
-                  isSelected={selectedEditor === editor.name}
-                  onClick={() =>
-                    setSelectedEditor(
-                      selectedEditor === editor.name ? null : editor.name
-                    )
-                  }
-                />
-                <EditorName isSelected={selectedEditor === editor.name}>
-                  {editor.name}
-                </EditorName>
-              </EditorItem>
-            ))}
-          </EditorList>
-        </EditorListContainerSub>
-      </EditorListContainer> */}
-      {user.email !== "" && archiveData.length > 0 && (
-        <ArchiveContainer>
-          <ArchiveHeader>
-            <UserThumbnail src={user.picture} alt={`${user.name} Thumbnail`} />
-            <ArchiveTitle>{user.name}님의 아카이브</ArchiveTitle>
-          </ArchiveHeader>
-          <ArchiveList>
-            {sortedFilteredData.map((item) => {
-              const topicIcon = YOUTUBE_TOPICS.find(
-                (topic) => topic.topic === item.section
-              )?.icon;
+      {/* 탭 영역 */}
+      {user.email !== "" && (
+        <TabContainer>
+          <TabButton
+            isActive={activeTab === "all"}
+            onClick={() => setActiveTab("all")}
+          >
+            에디터 픽
+          </TabButton>
+          {/* <TabButton
+          isActive={activeTab === "today"}
+          onClick={() => setActiveTab("today")}
+        >
+          오늘의 아티클
+        </TabButton> */}
+          <TabButton
+            isActive={activeTab === "archive"}
+            onClick={() => setActiveTab("archive")}
+          >
+            내 아카이브
+          </TabButton>
+        </TabContainer>
+      )}
+      {/* 탭별 안내 문구 */}
+      {activeTab === "all" && (
+        <TabDescription>
+          에디터가 작성/업로드한 아티클들이 표시됩니다.
+        </TabDescription>
+      )}
+      {/* {activeTab === "today" && (
+        <>
+          <TabDescription>
+            오늘 새로 업로드된 유튜브 영상을 기반으로 생성된 아티클 목록입니다.
+          </TabDescription>
+          <TodayFilterContainer>
+            {TODAY_KEYWORDS.map((item) => {
+              const isSelected = selectedKeyword === item.label;
               return (
+                <TodayFilterItem
+                  key={item.label}
+                  isSelected={isSelected}
+                  onClick={() => setSelectedKeyword(item.label)}
+                >
+                  <span style={{ marginRight: 4 }}>{item.icon}</span>
+                  {item.label}
+                </TodayFilterItem>
+              );
+            })}
+          </TodayFilterContainer>
+        </>
+      )} */}
+      {user.email !== "" &&
+        archiveData.length > 0 &&
+        activeTab === "archive" && (
+          <ArchiveContainer>
+            <ArchiveHeader>
+              <UserThumbnail
+                src={user.picture}
+                alt={`${user.name} Thumbnail`}
+              />
+              <ArchiveTitle>{user.name}님의 아카이브</ArchiveTitle>
+            </ArchiveHeader>
+            <ArchiveList>
+              {sortedFilteredData.map((item) => {
+                const topicIcon = YOUTUBE_TOPICS.find(
+                  (topic) => topic.topic === item.section
+                )?.icon;
+                return (
+                  <AdminTopicCard
+                    key={item.video_id}
+                    icon={topicIcon}
+                    subjects={[]}
+                    {...item}
+                  />
+                );
+              })}
+            </ArchiveList>
+          </ArchiveContainer>
+        )}
+
+      {activeTab === "all" && (
+        <EditorContainer>
+          {filteredData.map((item, index) => {
+            const topicIcon = YOUTUBE_TOPICS.find(
+              (topic) => topic.topic === item.section
+            )?.icon;
+            // item.section에 해당하는 에디터 찾기
+            const editor = editors.find((editor) =>
+              editor.keywords.includes(item.section)
+            );
+            // editor가 존재하면 image를 가져오고, 없으면 기본 이미지 사용
+            const editorImage = editor ? editor.image : "/images/default.png";
+            return (
+              <div key={item.video_id}>
+                {/* 추가 이미지 컴포넌트 */}
+                <EditorThumbnail
+                  image={editorImage}
+                  name={editor?.name || "Unknown"}
+                  date={item.article_date}
+                />
                 <AdminTopicCard
                   key={item.video_id}
                   icon={topicIcon}
                   subjects={[]}
                   {...item}
                 />
-              );
-            })}
-          </ArchiveList>
-        </ArchiveContainer>
+              </div>
+            );
+          })}
+        </EditorContainer>
       )}
 
-      <EditorContainer>
-        {filteredData.map((item, index) => {
-          const topicIcon = YOUTUBE_TOPICS.find(
-            (topic) => topic.topic === item.section
-          )?.icon;
-          // item.section에 해당하는 에디터 찾기
-          const editor = editors.find((editor) =>
-            editor.keywords.includes(item.section)
-          );
-          // editor가 존재하면 image를 가져오고, 없으면 기본 이미지 사용
-          const editorImage = editor ? editor.image : "/images/default.png";
-          return (
-            <div key={item.video_id}>
-              {/* 추가 이미지 컴포넌트 */}
-              <EditorThumbnail
-                image={editorImage}
-                name={editor?.name || "Unknown"}
-                date={item.article_date}
-              />
-              <AdminTopicCard
-                key={item.video_id}
-                icon={topicIcon}
-                subjects={[]}
-                {...item}
-              />
-            </div>
-          );
-        })}
-      </EditorContainer>
+      {/* (3) 오늘의 아티클 */}
     </>
   );
 };
@@ -231,9 +296,72 @@ const Container = styled.div`
   overflow-y: scroll;
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  /* 기존에 margin: 16px; 대신, 상단에 고정될 수 있도록
+     혹은 다른 컴포넌트 바로 아래에 자연스럽게 붙도록 조정 */
+  margin-top: 12px;
+  border-bottom: 1px solid #e7e7e7; /* 탭 구분선 */
+  background-color: #ffffff; /* 상단 바 배경 */
+`;
+/** 탭 클릭 시 짧은 안내문을 보여줄 스타일 */
+const TabDescription = styled.div`
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #666;
+  background-color: #fafafa;
+  border-bottom: 1px solid #eee;
+`;
+const TabButton = styled.button<{ isActive: boolean }>`
+  flex: 1;
+  padding: 12px 0; /* 세로 패딩만 주어 버튼 형태로 보이게 */
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+
+  /* 폰트, 색상 */
+  font-size: 16px;
+  font-weight: 600;
+  color: ${({ isActive }) => (isActive ? "#007bff" : "#888")};
+
+  /* 밑줄 인디케이터 */
+  border-bottom: 3px solid
+    ${({ isActive }) => (isActive ? "#007bff" : "transparent")};
+  transition: color 0.2s ease, border-bottom 0.2s ease;
+
+  &:hover {
+    color: #007bff;
+  }
+`;
 const EditorContainer = styled.div`
   margin-top: 6px;
   background-color: #f9f9f9;
+`;
+const TodayFilterContainer = styled.div`
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+  margin-top: 8px;
+  scrollbar-width: none; /* firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+`;
+
+const TodayFilterItem = styled.div<{ isSelected: boolean }>`
+  min-width: 64px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background-color: ${({ isSelected }) => (isSelected ? "#007bff" : "#f4f6f8")};
+  color: ${({ isSelected }) => (isSelected ? "#fff" : "#333")};
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0; /* 가로 스크롤시 버튼 너비 고정 */
 `;
 
 const ArticleDate = styled.div`
