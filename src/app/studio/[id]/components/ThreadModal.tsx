@@ -145,6 +145,28 @@ export default function ThreadModal({
     // onClose();
   };
 
+  const shareToThreads = async (threadContent: string) => {
+    try {
+      // ✅ 1. 클립보드에 텍스트 복사
+      await navigator.clipboard.writeText(threadContent);
+      console.log("스레드 내용이 클립보드에 복사되었습니다.");
+
+      // ✅ 2. Safari 공유하기 API 실행
+      if (navigator.share) {
+        await navigator.share({
+          title: "Threads에 게시하기",
+          text: threadContent, // ✅ 공유할 텍스트
+          url: "https://threads.net", // ✅ Threads 앱 실행 가능하도록 설정
+        });
+
+        console.log("공유 메뉴가 열렸습니다.");
+      } else {
+        alert("이 브라우저에서는 공유 기능이 지원되지 않습니다.");
+      }
+    } catch (error) {
+      console.error("공유 오류:", error);
+    }
+  };
   return (
     <Overlay>
       <ModalBox>
@@ -178,6 +200,11 @@ export default function ThreadModal({
               <p>로딩 중...</p>
             ) : (
               <SectionList>
+                <button
+                  onClick={() => shareToThreads("여기에 복사할 스레드 내용")}
+                >
+                  📢 Threads에 공유하기
+                </button>
                 {threadTexts.map((item, idx) => (
                   <SectionItem key={idx}>
                     <HeaderRow>
