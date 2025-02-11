@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-import styled from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import TopicCard from "./TopicCard";
 import { DataProps } from "@/types/dataProps";
 import TodayIcon from "@/assets/today.svg";
-import { YOUTUBE_TOPICS } from "@/constants/topic";
+// import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
 import CountdownTimer from "@/common/CountdownTimer";
 import SortOptions from "@/common/SortOptions";
@@ -24,6 +24,30 @@ interface YoutubeTodayProps {
   subjects: string[]; // 추가된 subjects prop
 }
 
+const YOUTUBE_TOPICS = [
+  { topic: "전체", icon: "🌐" },
+  { topic: "주식", icon: "📈" },
+  { topic: "부동산", icon: "🏢" },
+  { topic: "가상자산", icon: "💰" },
+  { topic: "경제", icon: "💵" },
+  { topic: "정치", icon: "🏛️" },
+  { topic: "비즈니스/사업", icon: "💼" },
+  { topic: "건강", icon: "🩺" },
+  { topic: "피트니스", icon: "🏋️" },
+  { topic: "연애/결혼", icon: "❤️" },
+  { topic: "육아", icon: "👶" },
+  { topic: "뷰티/메이크업", icon: "💄" },
+  { topic: "여자 패션", icon: "👗" },
+  { topic: "남자 패션", icon: "👔" },
+  { topic: "요리", icon: "🍳" },
+  { topic: "IT/테크", icon: "💻" },
+  { topic: "인공지능", icon: "🤖" },
+  { topic: "자동차", icon: "🚗" },
+  { topic: "여행", icon: "✈️" },
+  { topic: "과학", icon: "🔬" },
+  { topic: "역사", icon: "📜" },
+];
+
 const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
   const setSelectedTopic = useSetRecoilState(topicState);
@@ -36,6 +60,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const setUnsubscribedData = useSetRecoilState(unsubscribedDataState);
   const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
   const user = useRecoilValue(userState);
+  const [isRendered, setIsRendered] = useState(false); // 애니메이션을 위한 상태
 
   // 미구독 데이터 필터링
   const unsubscribedData = data.filter(
@@ -75,6 +100,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   useEffect(() => {
     // 클라이언트 측에서만 데이터를 세팅 (서버와 클라이언트의 데이터를 일치시키기 위해 초기 데이터 사용)
     setClientData(data);
+    setTimeout(() => setIsRendered(true), 100); // 애니메이션 트리거
   }, [data]);
 
   // Unsubscribe 페이지로 이동하며 미구독 데이터를 전달하는 함수
@@ -193,19 +219,32 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
         handleClickIcon={handleClickIcon}
         variant="default"
       />
-      {filteredAndSortedData.map((item, index) => {
-        const topicIcon = YOUTUBE_TOPICS.find(
-          (topic) => topic.topic === item.section
-        )?.icon;
-        return (
-          <TopicCard
-            key={item.video_id}
-            icon={topicIcon}
-            subjects={subjects}
-            {...item}
-          />
-        );
-      })}
+      {/* 🛠 애니메이션 추가 */}
+      <TopicCardWrapper $isRendered={isRendered}>
+        <EditorContainer>
+          {filteredAndSortedData.map((item, index) => {
+            const topicInfo = YOUTUBE_TOPICS.find(
+              (topic) => topic.topic === item.section
+            );
+            const isSubscribed = subjects.includes(item.section);
+
+            return (
+              <>
+                <Section isSubscribed={isSubscribed}>
+                  {topicInfo?.icon} {topicInfo?.topic || item.section}
+                </Section>
+                <TopicCard
+                  key={item.video_id}
+                  icon={topicInfo?.icon}
+                  subjects={subjects}
+                  {...item}
+                />
+              </>
+            );
+          })}
+        </EditorContainer>
+      </TopicCardWrapper>
+
       {/* {subjects.length > 0 && (
         <UnSubsArticleInfo>
           <UnSubsArticleInfoDescription>
@@ -223,6 +262,30 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
 };
 
 export default YoutubeToday;
+
+/* 🛠 스타일 추가 */
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const TopicCardWrapper = styled.div<{ $isRendered: boolean }>`
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: ${({ $isRendered }) =>
+    $isRendered &&
+    css`
+      ${fadeIn} 0.6s ease-in-out forwards
+    `};
+`;
 
 const Container = styled.div`
   width: 100%;
@@ -254,6 +317,28 @@ const ToggleButtonContainer = styled.div`
   display: flex;
   gap: 8px; /* 버튼 간 간격 */
 `;
+
+const Section = styled.div<{ isSubscribed: boolean }>`
+  display: inline-flex; /* 텍스트 크기에 맞게 가로폭을 설정 */
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background-color: #f9fafc;
+  padding: 6px 8px; /* 내부 여백 */
+  border-radius: 4px; /* 둥근 테두리 */
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  overflow: hidden; /* 내용이 넘칠 경우 숨김 */
+  text-overflow: ellipsis; /* 넘치는 텍스트 말줄임표 처리 */
+  box-sizing: border-box; /* 패딩 포함한 크기 계산 */
+  color: ${({ isSubscribed }) =>
+    isSubscribed ? "#007BFF" : "#80858a"}; /* 구독 여부에 따른 색상 */
+  height: 32px;
+  border: 1px solid
+    ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")}; /* 구독 여부에 따른 테두리 */
+  margin-left: 8px;
+  margin-top: 12px;
+`;
+
 const TodayTitle = styled.span<{
   $isSubs?: boolean;
 }>`
@@ -335,4 +420,11 @@ const ToggleButton = styled.button<{ isActive: boolean }>`
   border: none;
   border-radius: 4px;
   cursor: pointer;
+`;
+
+const EditorContainer = styled.div`
+  padding-top: 12px;
+  border-radius: 8px;
+  margin-top: 4px;
+  background-color: #f9f9f9;
 `;

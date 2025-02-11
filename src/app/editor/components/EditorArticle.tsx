@@ -9,7 +9,6 @@ import { timeAgo } from "../../utils/formatter";
 import EditorCard from "./EditorCard";
 import { off } from "process";
 import TopicCard from "@/components/TopicCard";
-import { YOUTUBE_TOPICS } from "@/constants/topic";
 interface EditorArticleProps {
   data: EditorDataProps[];
 }
@@ -20,6 +19,30 @@ interface Editor {
   image: string;
   keywords: string[];
 }
+
+const YOUTUBE_TOPICS = [
+  { topic: "전체", icon: "🌐" },
+  { topic: "주식", icon: "📈" },
+  { topic: "부동산", icon: "🏢" },
+  { topic: "가상자산", icon: "💰" },
+  { topic: "경제", icon: "💵" },
+  { topic: "정치", icon: "🏛️" },
+  { topic: "비즈니스/사업", icon: "💼" },
+  { topic: "건강", icon: "🩺" },
+  { topic: "피트니스", icon: "🏋️" },
+  { topic: "연애/결혼", icon: "❤️" },
+  { topic: "육아", icon: "👶" },
+  { topic: "뷰티/메이크업", icon: "💄" },
+  { topic: "여자 패션", icon: "👗" },
+  { topic: "남자 패션", icon: "👔" },
+  { topic: "요리", icon: "🍳" },
+  { topic: "IT/테크", icon: "💻" },
+  { topic: "인공지능", icon: "🤖" },
+  { topic: "자동차", icon: "🚗" },
+  { topic: "여행", icon: "✈️" },
+  { topic: "과학", icon: "🔬" },
+  { topic: "역사", icon: "📜" },
+];
 
 const EditorArticle = ({ data }: EditorArticleProps) => {
   const [isFixed, setIsFixed] = useState(false);
@@ -126,16 +149,21 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
 
       <EditorContainer>
         {filteredData.map((item, index) => {
-          const topicIcon = YOUTUBE_TOPICS.find(
+          const topicInfo = YOUTUBE_TOPICS.find(
             (topic) => topic.topic === item.section
-          )?.icon;
+          );
           return (
-            <TopicCard
-              key={item.video_id}
-              icon={topicIcon}
-              subjects={[]}
-              {...item}
-            />
+            <>
+              <Section>
+                {topicInfo?.icon} {topicInfo?.topic || item.section}
+              </Section>
+              <TopicCard
+                key={item.video_id}
+                icon={topicInfo?.icon}
+                subjects={[]}
+                {...item}
+              />
+            </>
           );
         })}
       </EditorContainer>
@@ -161,6 +189,9 @@ const Container = styled.div`
 
 const EditorContainer = styled.div`
   margin-top: 12px;
+  border-radius: 8px;
+  margin-top
+  background-color: #f9f9f9;
 `;
 
 const ArticleDate = styled.div`
@@ -241,3 +272,22 @@ const EditorName = styled.span<{ isSelected: boolean }>`
 `;
 
 export default EditorArticle;
+
+const Section = styled.div`
+  display: inline-flex; /* 텍스트 크기에 맞게 가로폭을 설정 */
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background-color: #f9fafc;
+  padding: 6px 8px; /* 내부 여백 */
+  border-radius: 4px; /* 둥근 테두리 */
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  overflow: hidden; /* 내용이 넘칠 경우 숨김 */
+  text-overflow: ellipsis; /* 넘치는 텍스트 말줄임표 처리 */
+  box-sizing: border-box; /* 패딩 포함한 크기 계산 */
+  color: #80858a; /* 구독 여부에 따른 색상 */
+  height: 32px;
+  border: 1px solid #c4c4c4; /* 구독 여부에 따른 테두리 */
+  margin-left: 8px;
+  margin-top: 12px;
+`;

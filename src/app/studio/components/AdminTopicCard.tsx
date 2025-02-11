@@ -1,7 +1,7 @@
 "use client"; // 클라이언트 컴포넌트임을 명시
 
 import { useRouter, usePathname } from "next/navigation";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
@@ -62,6 +62,8 @@ const AdminTopicCard = (props: TopicCardProps) => {
   } = props;
 
   const handleNavigate = () => {
+    if (isLoading) return; // 중복 클릭 방지
+    setIsLoading(true);
     setTopicState(props);
 
     // 현재 경로 확인 및 동적 라우팅
@@ -83,9 +85,15 @@ const AdminTopicCard = (props: TopicCardProps) => {
   // YOUTUBE_TOPICS에서 해당 섹션에 맞는 icon과 topic 가져오기
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
+  const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
 
   return (
     <Container onClick={handleNavigate}>
+      {isLoading && (
+        <LoadingOverlay>
+          <Spinner />
+        </LoadingOverlay>
+      )}
       <CardHeader>
         {/* <Section isSubscribed={isSubscribed}>
             {topicInfo?.icon} {topicInfo?.topic || section}
@@ -344,4 +352,43 @@ const Subscriber = styled.span`
   line-height: 16.8px;
   color: #696868;
   margin-right: 8px;
+`;
+
+/* 🛠 로딩 스타일 추가 */
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+`;
+
+const Spinner = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingOverlay = styled.div`
+  /* background: rgba(234, 234, 234, 0.5); */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  animation: ${fadeIn} 0.3s ease-in-out;
+  padding: 4px;
 `;

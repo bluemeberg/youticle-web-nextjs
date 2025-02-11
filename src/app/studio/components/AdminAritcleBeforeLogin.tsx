@@ -48,7 +48,7 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
       id: "3",
       name: "유썸 메디컬",
       image: "/images/유썸메디컬.png",
-      keywords: ["건강"],
+      keywords: ["건강", "뷰티/메이크업", "육아"],
     },
     {
       id: "4",

@@ -14,6 +14,7 @@ import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
+import { useRouter } from "next/navigation";
 
 interface ClientSide2Props {
   id: string;
@@ -206,6 +207,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const handleOpenThreadModal = () => {
     setIsThreadModalOpen(true);
   };
+
+  const router = useRouter();
+  const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
+  const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+
   return (
     <Container $isFixed={isFixed}>
       {/* 상태에 따른 콘텐츠 렌더링 */}
@@ -215,7 +221,27 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
 
       <LogoHeader
         title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
+        onBack={() => {
+          setIsLeaving(true); // 로딩 유지
+          setTimeout(() => {
+            router.back();
+          }, 500);
+        }}
       />
+      {/* 로딩 오버레이 */}
+      {isLeaving && (
+        <LoaderOverlay>
+          <Spinner />
+          <p>이전 페이지로 이동 중...</p>
+        </LoaderOverlay>
+      )}
+      {/* 로딩 오버레이 */}
+      {isLeavingHome && (
+        <LoaderOverlay>
+          <Spinner />
+          <p>홈으로 이동 중..</p>
+        </LoaderOverlay>
+      )}
       {/* 상태 메시지 및 로딩 표시 */}
       {isArticleLoading && (
         <LoaderOverlay>
@@ -785,7 +811,7 @@ const ProgressBar = styled.div<{ progress: number }>`
 const SkeletonText = styled.div`
   width: 80%;
   height: 20px;
-  background: #e0e0e0;
+  background: #e0e0e0 !important;
   border-radius: 5px;
   animation: shimmer 1.5s infinite;
 `;

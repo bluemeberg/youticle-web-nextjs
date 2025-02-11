@@ -1,7 +1,7 @@
 "use client"; // 클라이언트 컴포넌트임을 명시
 
 import { useRouter, usePathname } from "next/navigation";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
@@ -62,15 +62,20 @@ const TopicCard = (props: TopicCardProps) => {
   } = props;
 
   const handleNavigate = () => {
+    if (isLoading) return; // 중복 클릭 방지
+
+    setIsLoading(true);
     setTopicState(props);
 
     // 현재 경로 확인 및 동적 라우팅
     console.log("Current Path:", pathname); // 현재 경로 디버깅 로그
-    if (pathname === "/editor") {
-      router.push(`/editor/${video_id}`);
-    } else {
-      router.push(`/detail/${video_id}`);
-    }
+    setTimeout(() => {
+      if (pathname === "/editor") {
+        router.push(`/editor/${video_id}`);
+      } else {
+        router.push(`/detail/${video_id}`);
+      }
+    }, 800); // 로딩 인터랙션을 위한 지연 (UI에서 확인 가능)
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
   const specialSections = ["주식"]; // 특정 주제 섹션 목록
@@ -81,13 +86,19 @@ const TopicCard = (props: TopicCardProps) => {
   // YOUTUBE_TOPICS에서 해당 섹션에 맞는 icon과 topic 가져오기
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
+  const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
 
   return (
     <Container onClick={handleNavigate}>
+      {isLoading && (
+        <LoadingOverlay>
+          <Spinner />
+        </LoadingOverlay>
+      )}
       <CardHeader>
-        <Section isSubscribed={isSubscribed}>
+        {/* <Section isSubscribed={isSubscribed}>
           {topicInfo?.icon} {topicInfo?.topic || section}
-        </Section>
+        </Section> */}
         {section === "주식" &&
         (summary_data?.key_points ||
           summary_data?.headline_sub_title === "") ? (
@@ -155,12 +166,60 @@ export default TopicCard;
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  margin-left: 16px;
-  margin-right: 16px;
-  margin-top: 20px;
-  gap: 10px;
-  background: rgba(255, 255, 255, 1);
-  border-bottom: 1px solid #d9d9d9;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0; /* 경계 테두리 */
+  border-radius: 8px; /* 둥근 모서리 */
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-left: 8px;
+  margin-right: 8px;
+  margin-top: 8px;
+  &:hover {
+    transform: translateY(-4px); /* 호버 시 위로 살짝 이동 */
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 강조 */
+  }
+`;
+
+/* 🛠 로딩 스타일 추가 */
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+`;
+
+const Spinner = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingOverlay = styled.div`
+  /* background: rgba(234, 234, 234, 0.5); */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  animation: ${fadeIn} 0.3s ease-in-out;
+  padding: 4px;
 `;
 
 const CardHeader = styled.div`
@@ -170,6 +229,7 @@ const CardHeader = styled.div`
   padding-bottom: 8px;
   align-items: flex-start; /* Section을 왼쪽 정렬 */
   width: 100%; /* 부모의 가로폭을 채움 */
+  margin-bottom: 12px;
 `;
 
 const ShortSummary = styled.div`
@@ -222,6 +282,7 @@ const Title = styled.span`
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
+  margin-top: 4px;
 `;
 
 const BodyTitle = styled.span`
@@ -302,7 +363,7 @@ const ChannelInfo = styled.div`
   gap: 9px;
   height: 36px;
   margin-top: 12px;
-  margin-bottom: 24px;
+  /* margin-bottom: 24px; */
 `;
 
 const ProfileImage = styled.img`

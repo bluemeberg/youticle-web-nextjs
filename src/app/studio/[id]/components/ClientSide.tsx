@@ -14,6 +14,7 @@ import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
+import { useRouter } from "next/navigation";
 
 interface ClientSideProps {
   id: string;
@@ -173,13 +174,36 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const handleOpenThreadModal = () => {
     setIsThreadModalOpen(true);
   };
+  const router = useRouter();
+  const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
+  const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
 
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
         title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
+        onBack={() => {
+          console.log("hello, back start");
+          setIsLeaving(true); // 로딩 유지
+          setTimeout(() => {
+            router.back();
+          }, 1500);
+        }}
       />
-
+      {/* 로딩 오버레이 */}
+      {isLeaving && (
+        <LoaderOverlay>
+          <Spinner />
+          <p>이전 페이지로 이동 중...</p>
+        </LoaderOverlay>
+      )}
+      {/* 로딩 오버레이 */}
+      {isLeavingHome && (
+        <LoaderOverlay>
+          <Spinner />
+          <p>홈으로 이동 중..</p>
+        </LoaderOverlay>
+      )}
       {/* (5) 모달 렌더링 */}
       {isThreadModalOpen && (
         <ThreadModal
@@ -474,5 +498,38 @@ const FloatingButton = styled.button`
 
   &:hover {
     background-color: #0056b3;
+  }
+`;
+
+// 로딩 오버레이 스타일
+const LoaderOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+
+  /* 스크롤 할 필요가 없다면 오버레이 내부만 overflow: hidden; 가능 */
+`;
+const Spinner = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 `;

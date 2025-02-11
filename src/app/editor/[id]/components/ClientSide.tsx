@@ -13,6 +13,7 @@ import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
+import { useRouter } from "next/navigation";
 
 interface ClientSideProps {
   id: string;
@@ -139,12 +140,40 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   useEffect(() => {
     setContentHeight(calculateHeight());
   }, [isExpanded, detailData]);
-
+  const router = useRouter();
+  const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
+  const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
         title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
+        onBack={() => {
+          setIsLeaving(true); // 로딩 유지
+          setTimeout(() => {
+            router.back();
+          }, 500);
+        }}
+        onBackHome={() => {
+          setIsLeavingHome(true); // 로딩 유지
+          setTimeout(() => {
+            router.push("/");
+          }, 500);
+        }}
       />
+      {/* 로딩 오버레이 */}
+      {isLeaving && (
+        <LoaderOverlay>
+          <Spinner />
+          <LoadingText>이전 페이지로 이동 중...</LoadingText>
+        </LoaderOverlay>
+      )}
+      {/* 로딩 오버레이 */}
+      {isLeavingHome && (
+        <LoaderOverlay>
+          <Spinner />
+          <LoadingText>홈으로 이동 중..</LoadingText>
+        </LoaderOverlay>
+      )}
       <PageInfo ref={scrollRef}>
         <Category>{detailData.section}</Category>
         <Title>{detailData.summary_data.headline_title}</Title>
@@ -216,7 +245,7 @@ export default ClientSide;
 const Container = styled.div<{ $isFixed: boolean }>`
   display: flex;
   flex-direction: column;
-  font-family: "Pretendard Variable";
+  font-family: "Pretendard Varisable";
   padding-top: 76px;
   background-color: white;
 `;
@@ -407,4 +436,41 @@ const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
   font-size: 18px;
   font-weight: 600;
   line-height: 132%;
+`;
+// 로딩 오버레이 스타일
+const LoaderOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  /* 스크롤 할 필요가 없다면 오버레이 내부만 overflow: hidden; 가능 */
+`;
+const Spinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 5px solid white;
+  border-top: 5px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.div`
+  color: white;
+  margin-top: 10px;
+  font-size: 16px;
 `;

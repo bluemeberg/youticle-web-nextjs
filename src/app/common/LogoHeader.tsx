@@ -19,9 +19,11 @@ import { getUserByEmail } from "@/api/apiClient";
 
 interface LogoHeaderProps {
   title?: string;
+  onBack?: () => void; // 뒤로가기 핸들러 추가
+  onBackHome?: () => void;
 }
 
-const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
+const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   const user = useRecoilValue(userState);
   const setUser = useSetRecoilState(userState);
   const player = useRecoilValue(playerState);
@@ -59,6 +61,12 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
         event_label: "Back Button",
         page_path: pathname,
       });
+    }
+
+    if (onBack) {
+      console.log("hello, back");
+      onBack(); // 부모 컴포넌트에서 정의된 핸들러 실행
+      return;
     }
 
     if (pathname.includes("/detail/")) {
@@ -151,6 +159,11 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
         page_path: pathname,
       });
     }
+    if (onBackHome) {
+      console.log("hello, back home");
+      onBackHome(); // 부모 컴포넌트에서 정의된 핸들러 실행
+      return;
+    }
     router.push("/");
   };
 
@@ -170,7 +183,17 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
   useEffect(() => {
     setIsClientDesktop(isDesktop);
   }, []);
-  console.log("로그인", user);
+  const [loadingPage, setLoadingPage] = useState(false);
+  const [loadingText, setLoadingText] = useState(""); // 로딩 메시지 상태 추가
+  const handleMenuNavigation = (url: string, loadingMessage?: string) => {
+    setLoadingText(loadingMessage || "로딩 중..."); // 로딩 메시지 설정
+    setLoadingPage(true); // 로딩 상태 활성화
+    setTimeout(() => {
+      router.push(url);
+      setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
+    }, 1000); // UI 자연스럽게 변경을 위해 0.8초 딜레이
+  };
+
   return (
     <>
       <Container
@@ -212,11 +235,25 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
               )}
             {menuOpen && (
               <MenuDropdown>
-                <MenuItem onClick={() => goToPage("/")}>유티클 투데이</MenuItem>
-                <MenuItem onClick={() => goToPage("/editor")}>
+                <MenuItem
+                  onClick={() =>
+                    handleMenuNavigation("/", "유티클 투데이 로딩 중...")
+                  }
+                >
+                  유티클 투데이
+                </MenuItem>{" "}
+                <MenuItem
+                  onClick={() =>
+                    handleMenuNavigation("/editor", "에디터 픽 로딩 중...")
+                  }
+                >
                   에디터 픽
                 </MenuItem>
-                <MenuItem onClick={() => goToPage("/about")}>
+                <MenuItem
+                  onClick={() =>
+                    handleMenuNavigation("/about", "유티클 소개 로딩 중...")
+                  }
+                >
                   유티클 소개
                 </MenuItem>
                 {/* <MenuItem onClick={() => goToPage("/my")}>
@@ -233,6 +270,13 @@ const LogoHeader = ({ title = "" }: LogoHeaderProps) => {
                   {user.picture !== "" ? "로그아웃" : "로그인하기"}
                 </MenuItem>
               </MenuDropdown>
+            )}
+            {/* 로딩 중일 때 화면 중앙에 표시되는 안내 메시지 */}
+            {loadingPage && (
+              <LoadingOverlay>
+                <LoadingSpinner />
+                <LoadingText>{loadingText}</LoadingText>
+              </LoadingOverlay>
             )}
             {user.picture !== "" && (
               <ProfileImage onClick={handleClickProfile}>
@@ -380,4 +424,41 @@ const MenuItem = styled.div`
   position: absolute;
   right: 0px;
   color: black;
+`;
+
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 5px solid white;
+  border-top: 5px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.div`
+  color: white;
+  margin-top: 10px;
+  font-size: 16px;
 `;

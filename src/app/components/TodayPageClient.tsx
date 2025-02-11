@@ -50,14 +50,12 @@ export default function LandingPageClient({ apiData }: LandingPageClientProps) {
   return (
     <Container $isLogin={user.name !== ""}>
       <LogoHeader />
-      {isLoading ? (
-        <LoadingContainer>로딩 중...</LoadingContainer>
-      ) : (
-        <>
-          <ServiceIntroduce subjects={subscribedSubjects} />
-          <YoutubeToday data={apiData} subjects={subscribedSubjects} />
-        </>
-      )}
+
+      <>
+        <ServiceIntroduce subjects={subscribedSubjects} />
+        <YoutubeToday data={apiData} subjects={subscribedSubjects} />
+      </>
+
       <Footer />
     </Container>
   );
