@@ -215,9 +215,9 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   return (
     <Container $isFixed={isFixed}>
       {/* 상태에 따른 콘텐츠 렌더링 */}
-      {taskStatus === "PENDING" && (
+      {/* {taskStatus === "PENDING" && (
         <StatusMessage>작업을 준비 중입니다...</StatusMessage>
-      )}
+      )} */}
 
       <LogoHeader
         title={isFixed ? `${detailData.summary_data.headline_title}` : ""}
@@ -242,7 +242,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           <p>홈으로 이동 중..</p>
         </LoaderOverlay>
       )}
-      {/* 상태 메시지 및 로딩 표시 */}
       {isArticleLoading && (
         <LoaderOverlay>
           <Spinner />
@@ -252,6 +251,8 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           </ProgressBarContainer>
         </LoaderOverlay>
       )}
+      {/* 상태 메시지 및 로딩 표시 */}
+
       {taskStatus === "START" && detailData && (
         <FadeInContainer>
           <PageInfo ref={scrollRef}>
@@ -712,28 +713,24 @@ const ContentWrapperProgress = styled.div`
   line-height: 132%;
 `;
 
-// 로딩 오버레이 스타일
 const LoaderOverlay = styled.div`
-  position: fixed;
-  top: 52px; /* 로고헤더 높이가 76px이므로, 바로 아래부터 시작 */
-  left: 0;
+  position: fixed; /* 스크롤 시에도 상단 고정 */
+  top: 52px; /* 로고 헤더 아래에 고정 */
+  left: 50%; /* 중앙 정렬 */
+  transform: translateX(-50%); /* 중앙 정렬 */
   width: 100%;
-  /* 높이를 굳이 100%까지 덮어도 되고, 원하는 범위만큼으로 조정 가능 */
-  /* height: calc(100% - 76px); */
-  z-index: 9999;
-  background: #ffffff; /* 혹은 반투명: 'rgba(255,255,255,0.8)' 등 */
+  max-width: 430px; /* 아티클 컨테이너 초과 방지 */
+  height: auto;
+  min-height: 120px; /* 최소 높이 설정 */
+  background: rgba(255, 255, 255, 0.9); /* 반투명 배경 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  /* 사용자가 뒤 배경을 클릭 가능하게 할지 여부
-     - pointer-events: none;  => 클릭이 뒤로 전달됨
-     - pointer-events: auto;  => 오버레이가 클릭을 막음
-  */
-  pointer-events: auto;
-
-  /* 스크롤 할 필요가 없다면 오버레이 내부만 overflow: hidden; 가능 */
+  border-radius: 0 0 12px 12px; /* 하단 모서리 둥글게 */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 그림자 효과 */
+  z-index: 9999; /* 컨텐츠 위에 표시 */
+  pointer-events: auto; /* 클릭 막음 */
 `;
 
 const Spinner = styled.div`

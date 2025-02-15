@@ -1,5 +1,6 @@
 "use client";
 
+import { url } from "inspector";
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
@@ -145,8 +146,10 @@ export default function ThreadModal({
     // onClose();
   };
 
-  const shareToThreads = async (threadContent: string) => {
+  const shareToThreads = async (threadContent: string, url: string) => {
     try {
+      const fullContent = `${threadContent}\n📌 참조\n${url}`;
+
       // ✅ 1. 클립보드에 텍스트 복사
       await navigator.clipboard.writeText(threadContent);
       console.log("스레드 내용이 클립보드에 복사되었습니다.");
@@ -155,7 +158,7 @@ export default function ThreadModal({
       if (navigator.share) {
         await navigator.share({
           title: "Threads에 게시하기",
-          text: threadContent, // ✅ 공유할 텍스트
+          text: fullContent, // ✅ 공유할 텍스트
           url: "https://threads.net", // ✅ Threads 앱 실행 가능하도록 설정
         });
 
@@ -167,6 +170,15 @@ export default function ThreadModal({
       console.error("공유 오류:", error);
     }
   };
+  // ✅ 사용 예시
+  const threadContent = `스레드가 길어져서 아래 내용들은 하단 링크 참조해줘!
+6. 🎪 인생의 역동성과 중요한 선택들
+7. 💬 행복을 찾는 여정과 그 중요성
+8. 🏆 경력의 중간 단계와 유산의 중요성
+9. 🌊 인생의 파도와 변화의 수용
+10. 🧭 인생의 방향성과 목표 설정`;
+
+  const threadUrl = "https://www.youticle.io/studio/L75_uw9sZe8";
   return (
     <Overlay>
       <ModalBox>
@@ -201,7 +213,7 @@ export default function ThreadModal({
             ) : (
               <SectionList>
                 <button
-                  onClick={() => shareToThreads("여기에 복사할 스레드 내용")}
+                  onClick={() => shareToThreads(threadContent, threadUrl)}
                 >
                   📢 Threads에 공유하기
                 </button>
