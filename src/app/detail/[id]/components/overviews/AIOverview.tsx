@@ -12,7 +12,7 @@ interface AIOverviewProps {
 
 const AIOverview: React.FC<AIOverviewProps> = ({ overview }) => (
   <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
 
     <SectionTitle>AI 트렌드</SectionTitle>
     <Description>
@@ -31,7 +31,7 @@ const AIOverview: React.FC<AIOverviewProps> = ({ overview }) => (
       <BrandCard key={index}>
         <BrandName>{tech.technology_name}</BrandName>
         <BrandDescription>{tech.technology_description}</BrandDescription>
-        <ProductCardTitle>📌 주요 특징</ProductCardTitle>
+        <ProductCardTitle>주요 특징</ProductCardTitle>
         {tech.usage_tips.map((tip, idx) => (
           <ProductCard key={idx}>
             <ProductName>{tip.tip_title}</ProductName>
@@ -158,7 +158,7 @@ const ProductUsageTip = styled.p`
 
 const OverviewContainer = styled.div`
   padding: 0 16px;
-  margin-top: 20px;
+  margin-top: 80px;
 `;
 
 const SectionTitle = styled.h2`

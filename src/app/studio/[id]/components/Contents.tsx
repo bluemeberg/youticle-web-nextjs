@@ -1,7 +1,7 @@
 "use client"; // Ensure this is a client component
 
 import styled from "styled-components";
-import { DataProps } from "@/types/dataProps";
+import { DataProps, RealEstateAnalysis } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
@@ -9,12 +9,37 @@ import { fetchSubscribedSubjects } from "../../../api/apiClient";
 import TocItem from "@/detail/[id]/components/TocItem";
 import Recommend from "@/detail/[id]/components/Recommend";
 import AdminTocItem from "./AdminTocItem";
+import StockOverview from "@/detail/[id]/components/overviews/StockOverview";
+import HealthOverview from "@/detail/[id]/components/overviews/HealthOverview";
+import { HealthFocus, MethodSpotlight, LifeStyleTips } from "@/types/dataProps";
+import EconomyOverview from "@/detail/[id]/components/overviews/EconomyOverview";
+import RealEstateOverview from "@/detail/[id]/components/overviews/RealEstateOverview";
+import BeautyOverview from "@/detail/[id]/components/overviews/BeautyOverview";
+import AIOverview from "@/detail/[id]/components/overviews/AIOverview";
+import CryptoOverview from "@/detail/[id]/components/overviews/CryptoOverview";
+import BusinessOverview from "@/detail/[id]/components/overviews/BusinessOverview";
 
 interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
   handleTocItemClick: (starTime: number) => void;
   taskStatus: string;
+}
+
+interface RealEstateOverviewProps {
+  overview: {
+    market_analysis?: string;
+    real_estate_analysis?: RealEstateAnalysis[];
+    investment_strategy?: string;
+  };
+}
+
+interface HealthOverviewProps {
+  overview: {
+    health_focus?: HealthFocus[];
+    method_spotlight?: MethodSpotlight[];
+    lifestyle_tips?: LifeStyleTips[];
+  };
 }
 
 const Contents = ({
@@ -166,6 +191,79 @@ const Contents = ({
             )
           )}
       </ContentWrapper>
+      {user.name !== "" && taskStatus === "Success" && (
+        <HilightContainer>
+          {user.name !== "" &&
+            detailData.section === "주식" &&
+            detailData.summary_data.overview && (
+              <StockOverview overview={detailData.summary_data.overview} />
+            )}
+          {user.name !== "" &&
+            detailData.section === "건강" &&
+            typeof detailData.summary_data.overview === "object" &&
+            detailData.summary_data.overview !== null && (
+              <HealthOverview
+                overview={
+                  detailData.summary_data
+                    .overview as HealthOverviewProps["overview"]
+                }
+              />
+            )}
+
+          {/* {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "경제" &&
+            detailData.summary_data.overview && (
+              <EconomyOverview overview={detailData.summary_data.overview} />
+            )} */}
+
+          {user.name !== "" &&
+            !isUnsubscribedSection &&
+            detailData.section === "부동산" &&
+            typeof detailData.summary_data.overview === "object" &&
+            detailData.summary_data.overview !== null && (
+              <RealEstateOverview
+                overview={
+                  detailData.summary_data
+                    .overview as RealEstateOverviewProps["overview"]
+                }
+              />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "뷰티/메이크업" &&
+            detailData.summary_data.overview && (
+              <BeautyOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "인공지능" &&
+            detailData.summary_data.overview && (
+              <AIOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "비즈니스/사업" &&
+            detailData.summary_data.overview && (
+              <BusinessOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "가상자산" &&
+            detailData.summary_data.overview && (
+              <CryptoOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {/* 패션 섹션 */}
+          {/* {(detailData.section === "남자 패션" ||
+            detailData.section === "여자 패션") &&
+            detailData.summary_data.overview &&
+            user.name !== "" &&
+            !isUnsubscribedSection && (
+              <FashionOverview overview={detailData.summary_data.overview} />
+            )} */}
+        </HilightContainer>
+      )}
       {!hasDimmedItem && taskStatus === "Success" ? (
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
@@ -208,4 +306,8 @@ const RecommendWrapper = styled.div<{
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 20px;
   padding-right: 20px;
+`;
+
+const HilightContainer = styled.div`
+  margin-top: 40px;
 `;

@@ -55,7 +55,6 @@ const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
-    console.log("썸네일", thumbnails);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>

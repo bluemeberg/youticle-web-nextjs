@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useEffect, useState, useRef, useMemo } from "react";
-import styled from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import { EditorDataProps } from "@/types/dataProps";
 import { EDITOR_YOUTUBE_TOPICS } from "@/constants/editorTopic";
 import { timeAgo } from "../../utils/formatter";
@@ -65,6 +65,7 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
   ];
   const [selectedEditor, setSelectedEditor] = useState<string | null>(null);
   const [archiveData, setArchiveData] = useState<EditorDataProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const handleEditorScroll = () => {
@@ -93,10 +94,13 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
           if (Array.isArray(data)) {
             setArchiveData(data);
           }
+          setTimeout(() => setIsLoading(false), 500); // 로딩 후 애니메이션
         })
         .catch((error) => {
           console.error("Failed to fetch archive data:", error);
         });
+    } else {
+      setTimeout(() => setIsLoading(false), 500);
     }
   }, [user]);
 
@@ -225,53 +229,76 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
               />
               <ArchiveTitle>{user.name}님의 아카이브</ArchiveTitle>
             </ArchiveHeader>
-            <ArchiveList>
-              {sortedFilteredData.map((item) => {
-                const topicIcon = YOUTUBE_TOPICS.find(
-                  (topic) => topic.topic === item.section
-                )?.icon;
-                return (
-                  <AdminTopicCard
-                    key={item.video_id}
-                    icon={topicIcon}
-                    subjects={[]}
-                    {...item}
-                  />
-                );
-              })}
-            </ArchiveList>
+
+            {isLoading ? (
+              <SkeletonContainer>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <SkeletonCard key={index} />
+                ))}
+              </SkeletonContainer>
+            ) : (
+              <FadeInContainer>
+                <ArchiveList>
+                  {sortedFilteredData.map((item) => {
+                    const topicIcon = YOUTUBE_TOPICS.find(
+                      (topic) => topic.topic === item.section
+                    )?.icon;
+                    return (
+                      <AdminTopicCard
+                        key={item.video_id}
+                        icon={topicIcon}
+                        subjects={[]}
+                        {...item}
+                      />
+                    );
+                  })}
+                </ArchiveList>
+              </FadeInContainer>
+            )}
           </ArchiveContainer>
         )}
 
       {activeTab === "all" && (
         <EditorContainer>
-          {filteredData.map((item, index) => {
-            const topicIcon = YOUTUBE_TOPICS.find(
-              (topic) => topic.topic === item.section
-            )?.icon;
-            // item.section에 해당하는 에디터 찾기
-            const editor = editors.find((editor) =>
-              editor.keywords.includes(item.section)
-            );
-            // editor가 존재하면 image를 가져오고, 없으면 기본 이미지 사용
-            const editorImage = editor ? editor.image : "/images/default.png";
-            return (
-              <div key={item.video_id}>
-                {/* 추가 이미지 컴포넌트 */}
-                <EditorThumbnail
-                  image={editorImage}
-                  name={editor?.name || "Unknown"}
-                  date={item.article_date}
-                />
-                <AdminTopicCard
-                  key={item.video_id}
-                  icon={topicIcon}
-                  subjects={[]}
-                  {...item}
-                />
-              </div>
-            );
-          })}
+          {isLoading ? (
+            <SkeletonContainer>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </SkeletonContainer>
+          ) : (
+            <FadeInContainer>
+              {filteredData.map((item, index) => {
+                const topicIcon = YOUTUBE_TOPICS.find(
+                  (topic) => topic.topic === item.section
+                )?.icon;
+                // item.section에 해당하는 에디터 찾기
+                const editor = editors.find((editor) =>
+                  editor.keywords.includes(item.section)
+                );
+                // editor가 존재하면 image를 가져오고, 없으면 기본 이미지 사용
+                const editorImage = editor
+                  ? editor.image
+                  : "/images/default.png";
+                return (
+                  <div key={item.video_id}>
+                    {/* 추가 이미지 컴포넌트 */}
+                    <EditorThumbnail
+                      image={editorImage}
+                      name={editor?.name || "Unknown"}
+                      date={item.article_date}
+                    />
+                    <AdminTopicCard
+                      key={item.video_id}
+                      icon={topicIcon}
+                      subjects={[]}
+                      {...item}
+                    />
+                  </div>
+                );
+              })}
+            </FadeInContainer>
+          )}
         </EditorContainer>
       )}
 
@@ -296,6 +323,34 @@ const Container = styled.div`
   overflow-y: scroll;
 `;
 
+/** 🎨 애니메이션 */
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const FadeInContainer = styled.div`
+  animation: ${fadeIn} 0.6s ease-in-out;
+`;
+
+/** 📌 상단 고정 애니메이션 */
+const smoothFixed = keyframes`
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+`;
+
 const TabContainer = styled.div`
   display: flex;
   /* 기존에 margin: 16px; 대신, 상단에 고정될 수 있도록
@@ -303,6 +358,7 @@ const TabContainer = styled.div`
   margin-top: 12px;
   border-bottom: 1px solid #e7e7e7; /* 탭 구분선 */
   background-color: #ffffff; /* 상단 바 배경 */
+  animation: ${smoothFixed} 0.4s ease-in-out;
 `;
 /** 탭 클릭 시 짧은 안내문을 보여줄 스타일 */
 const TabDescription = styled.div`
@@ -503,6 +559,29 @@ const UserThumbnail = styled.img`
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #ddd;
+`;
+
+/** 💠 Skeleton UI */
+const SkeletonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+`;
+
+/** 💡 Shimmer 효과 */
+const shimmer = keyframes`
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+`;
+
+const SkeletonCard = styled.div`
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.5s infinite;
+  border-radius: 8px;
 `;
 
 export default AdminArticleBeforeLogin;

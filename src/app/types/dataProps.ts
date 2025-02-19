@@ -138,6 +138,33 @@ export interface UsageTip {
   tip_description: string;
 }
 
+export interface HealthFocus {
+  focus_name: string;
+  focus_description: string;
+}
+
+export interface MethodSpotlight {
+  method_name: string;
+  method_description: string;
+  key_benefits: KeyBenefits[];
+}
+
+export interface KeyBenefits {
+  benefit_name: string;
+  benefit_description: string;
+}
+
+export interface LifeStyleTips {
+  tip_title: string;
+  tip_description: string;
+  recommended_step: RecommendStep[];
+}
+
+export interface RecommendStep {
+  step_name: string;
+  usage_instruction: string;
+}
+
 export interface Stock {
   stock_name: string;
   company_description: string;
@@ -156,7 +183,7 @@ export interface InvestmentStrategy {
 export interface RealEstateAnalysis {
   real_estate_area: string;
   area_description: string;
-  analysis: string;
+  analysis: string[];
 }
 
 export interface BeautyTrend {

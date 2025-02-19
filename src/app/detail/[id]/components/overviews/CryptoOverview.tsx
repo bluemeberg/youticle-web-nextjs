@@ -50,7 +50,7 @@ export default CryptoOverview;
 
 const OverviewContainer = styled.div`
   padding: 0 16px;
-  margin-top: 20px;
+  margin-top: 80px;
 `;
 
 const OverviewTitle = styled.div`

@@ -21,8 +21,8 @@ interface User {
 }
 
 const SERVICE_TITLE = "📌 나만의 아티클 생성하기";
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const AdminIntroduce = () => {
   const router = useRouter();
@@ -45,6 +45,7 @@ const AdminIntroduce = () => {
   const fetchSummaryEditorVideo = async () => {
     if (!user.email) {
       // 로그인이 안 되어 있다면 로그인 모달 표시
+      console.log("heelo");
       setShowLoginModal(true);
       return;
     }
@@ -53,9 +54,9 @@ const AdminIntroduce = () => {
     const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
 
     setIsLoading(true);
-    setLoadingMessage("아티클을 생성 중입니다.");
+    setLoadingMessage("아티클 구조 설계 중...");
     setLoadingMessage2(
-      "최대 1분이 소요될 수 있습니다. \n페이지를 이탈하지 말아주세요!🙋"
+      "영상 길이에 따라 최대 1분이 소요될 수 있습니다. \n페이지를 떠나셔도 생성은 계속 진행돼요😀"
     );
     try {
       console.log("hello");
@@ -375,7 +376,7 @@ const AdminIntroduce = () => {
         <LoadingOverlay>
           <LoadingSpinner />
           <LoadingMessage>{loadingMessage}</LoadingMessage>
-          <LoadingMessage>{loadingMessage2}</LoadingMessage>
+          <SubMessage>{loadingMessage2}</SubMessage>
         </LoadingOverlay>
       )}
 
@@ -522,6 +523,15 @@ const LoadingMessage = styled.p`
   color: #fff;
   line-height: 132%;
   white-space: pre-line; // \n을 줄바꿈으로 처리
+`;
+
+const SubMessage = styled.p`
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 132%;
+  color: #fff;
+  text-align: center;
+  white-space: pre-line;
 `;
 
 const ModalOverlay = styled.div`

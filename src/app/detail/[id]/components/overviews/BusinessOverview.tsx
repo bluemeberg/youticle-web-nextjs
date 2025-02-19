@@ -14,148 +14,147 @@ interface BusinessOverviewProps {
   };
 }
 
-const BusinessOverview: React.FC<BusinessOverviewProps> = ({ overview }) => (
-  <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
-    <SectionTitle>비즈니스 트렌드</SectionTitle>
-    <Description>
-      유튜브 영상에서 설명된 비즈니스 업계의 최신 트렌드를 소개합니다.
-    </Description>
-    {overview.business_trends?.map((trend, index) => (
-      <Card key={index}>
-        <TrendTitle>{trend.trend_name}</TrendTitle>
-        <TrendDescription>{trend.trend_description}</TrendDescription>
-      </Card>
-    ))}
+const BusinessOverview: React.FC<BusinessOverviewProps> = ({ overview }) => {
+  return (
+    <OverviewContainer>
+      {/* 상단 하이라이트 */}
+      <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
 
-    <SectionTitle>전략적 인사이트</SectionTitle>
-    <Description>
-      비즈니스 성장과 성과 향상을 위한 전략적 인사이트를 제공합니다.
-    </Description>
-    {overview.strategic_insights?.map((insight, index) => (
-      <BrandCard key={index}>
-        <BrandName>{insight.strategy_name}</BrandName>
-        <BrandDescription>{insight.strategy_description}</BrandDescription>
-        <ProductCardTitle>📌 주요 팁</ProductCardTitle>
-        {insight.application_tips.map((tip, idx) => (
-          <TipContainer key={idx}>
-            <TipTitle>{tip.tip_title}</TipTitle>
-            <TipDescription>{tip.tip_description}</TipDescription>
-            {tip.related_tools.map((tool, toolIdx) => (
-              <>
-                <ToolTitle>💡 {tool.tool_name}</ToolTitle>
-                <TipDescription>{tool.tool_usage_description}</TipDescription>
-              </>
-            ))}
-          </TipContainer>
+      {/* 비즈니스 트렌드 */}
+      <SectionBlock>
+        <SectionTitle>비즈니스 트렌드</SectionTitle>
+        <SectionDesc>
+          유튜브 영상에서 설명된 주요 트렌드와 시장 변화를 간단히 정리했습니다.
+        </SectionDesc>
+        {overview.business_trends?.map((trend, index) => (
+          <TrendCard key={index}>
+            <TrendName>{trend.trend_name}</TrendName>
+            <TrendDesc>{trend.trend_description}</TrendDesc>
+          </TrendCard>
         ))}
-      </BrandCard>
-    ))}
-  </OverviewContainer>
-);
+      </SectionBlock>
+
+      {/* 전략적 인사이트 */}
+      <SectionBlock>
+        <SectionTitle>전략적 인사이트</SectionTitle>
+        <SectionDesc>
+          트렌드에 맞춰 성장 기회를 모색할 수 있는 핵심 전략을 살펴보세요.
+        </SectionDesc>
+        {overview.strategic_insights?.map((insight, i) => (
+          <InsightCard key={i}>
+            <InsightTitle>{insight.strategy_name}</InsightTitle>
+            <InsightDesc>{insight.strategy_description}</InsightDesc>
+
+            {/* 주요 팁 */}
+            {insight.application_tips.length > 0 && (
+              <TipsHeader>주요 팁</TipsHeader>
+            )}
+            {insight.application_tips.map((tip, idx) => (
+              <TipItem key={idx}>
+                <TipTitle>{tip.tip_title}</TipTitle>
+                <TipDesc>{tip.tip_description}</TipDesc>
+              </TipItem>
+            ))}
+          </InsightCard>
+        ))}
+      </SectionBlock>
+    </OverviewContainer>
+  );
+};
 
 export default BusinessOverview;
+
+/* ================== Styled Components ================== */
 const OverviewContainer = styled.div`
   padding: 0 16px;
-  margin-top: 20px;
-`;
-const TrendTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 132%;
+  margin-top: 80px;
 `;
 
-const OverviewTitle = styled.div`
+const OverviewTitle = styled.h2`
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 `;
 
-const TrendDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  line-height: 128%;
+const SectionBlock = styled.div`
+  margin-bottom: 36px;
 `;
 
-const BrandCard = styled.div`
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 8px;
 `;
 
-const BrandName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const Description = styled.p`
+const SectionDesc = styled.p`
   font-size: 14px;
   color: #666;
-  margin-bottom: 12px;
-  line-height: 128%;
+  margin-bottom: 16px;
+  line-height: 1.4;
 `;
 
-const BrandDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 128%;
-`;
-
-const ProductCardTitle = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 20px;
-`;
-
-const TipTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-`;
-
-const ToolTitle = styled.h3`
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 20px;
-`;
-
-const TipDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  line-height: 132%;
-`;
-
-const TipContainer = styled.div`
-  background-color: #f7f7f7;
-  padding: 20px;
-  margin-top: 8px;
-  border-radius: 6px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  margin-top: 12px;
-  &:nth-of-type(2) {
-    margin-top: 48px;
-  }
-  &:nth-of-type(3) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
-  &:nth-of-type(4) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
-`;
-
-const Card = styled.div`
+const TrendCard = styled.div`
   background-color: #f0f4ff;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
+`;
+
+const TrendName = styled.h4`
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+const TrendDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+`;
+
+const InsightCard = styled.div`
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+`;
+
+const InsightTitle = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+`;
+
+const InsightDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+  margin-bottom: 12px;
+`;
+
+const TipsHeader = styled.div`
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 8px;
+`;
+
+const TipItem = styled.div`
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+`;
+
+const TipTitle = styled.h5`
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+const TipDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
 `;

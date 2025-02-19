@@ -88,6 +88,7 @@ const DimmedArea = ({
       "2️⃣ 브랜드 제품 소개",
       "3️⃣ 스타일링 꿀팁",
     ],
+    "비즈니스/사업": () => ["1️⃣ 비즈니스 트렌드", "2️⃣ 전략적 인사이트"],
     부동산: () => ["1️⃣ 시장 분석", "2️⃣ 지역 분석", "3️⃣ 투자 전략"],
     경제: () => ["1️⃣ 경제 트렌드", "2️⃣ 시장 분석", "3️⃣ 투자 전략"],
     "여자 패션": () => [
@@ -101,6 +102,8 @@ const DimmedArea = ({
       "3️⃣ 스타일링 팁",
     ],
     인공지능: () => ["1️⃣ AI 트렌드", "2️⃣ AI 적용 기술"],
+    건강: () => ["1️⃣ 건강 포커스", "2️⃣ 방법/접근 방식", "3️⃣ 라이프스타일 팁"],
+
     // 경제: () => ["1️⃣ 경제 동향", "2️⃣ 재무 분석", "3️⃣ 세계 시장 전망"],
     // 기타 섹션
     default: () => [],
@@ -108,9 +111,11 @@ const DimmedArea = ({
 
   const currentInsights = (
     isEditorPath
-      ? insightsBySection.default
+      ? overview && insightsBySection[section] // 에디터 페이지면서 overview가 있으면 section에 맞는 인사이트
+        ? insightsBySection[section]
+        : insightsBySection.default // overview가 없으면 기본 인사이트 사용
       : insightsBySection[section] || insightsBySection.default
-  )().filter(Boolean);
+  )().filter(Boolean); // 일반 페이지에서는 해당 섹션이 없으면 기본값 사용
 
   const [dimmedHeight, setDimmedHeight] = useState<number>(0);
   const dimmedRef = useRef<HTMLDivElement>(null);
@@ -133,6 +138,37 @@ const DimmedArea = ({
   //   };
   // }, []);
   const contentNumberNotLogin = Math.ceil(toc.length / 2);
+  // 설문 응답 처리 로직 (서버 전송이나 GA 이벤트 가능)
+  const handleSurveyAnswer = async (answer: string) => {
+    setSurveyAnswer(answer);
+    console.log("사용자가 선택한 설문 답변:", answer);
+    // 필요하다면 이벤트 전송
+    // ex) window.gtag("event", "survey_answer", { answer });
+    // (B) DB 저장용 API 호출
+    try {
+      const response = await fetch(
+        "http://0.0.0.0:8000/editor/first-impressions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video_id: videoId, // props로 받은 videoId
+            reaction: answer,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to post impression", response.statusText);
+      } else {
+        console.log("Impression saved successfully!");
+      }
+    } catch (err) {
+      console.error("Error posting impression:", err);
+    }
+  };
+  // 간단 이모티콘 설문(원클릭) 응답 상태
+  const [surveyAnswer, setSurveyAnswer] = useState<string | null>(null);
 
   const handleButtonClick = () => {
     if (typeof window !== "undefined" && window.gtag) {
@@ -142,6 +178,7 @@ const DimmedArea = ({
         value: 1,
       });
     }
+
     // section 값을 쿼리 파라미터로 전달
     const targetUrl =
       isUnsubscribedSection && subscribedSubjects.length !== 0
@@ -170,8 +207,44 @@ const DimmedArea = ({
         ) : isEditorPath ? ( // editor 경로에 따른 조건 추가
           <>
             <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
+            {/* (2) 첫 인상 이모티콘 설문 컨테이너 */}
+            {!user.name && ( // 비로그인 상태에서만 표시 예시
+              <OneClickSurveyContainer>
+                <SurveyHeader>
+                  현재까지 보신 내용의 첫 인상은 어떠셨나요?
+                </SurveyHeader>
+                <EmoticonRow>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("유익했어요!")}
+                    disabled={!!surveyAnswer} // 응답 후 비활성 (옵션)
+                  >
+                    😀
+                  </EmoticonButton>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("무난했어요!!")}
+                    disabled={!!surveyAnswer}
+                  >
+                    😐
+                  </EmoticonButton>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("더 봐야할것 같아요!")}
+                    disabled={!!surveyAnswer}
+                  >
+                    😞
+                  </EmoticonButton>
+                </EmoticonRow>
+
+                {surveyAnswer && (
+                  <SurveyFeedback>
+                    선택하신 답변: <strong>{surveyAnswer}</strong>
+                    <br />
+                    <em>소중한 의견 감사합니다!</em>
+                  </SurveyFeedback>
+                )}
+              </OneClickSurveyContainer>
+            )}
             <LogoTitleSubs>
-              &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 양질의
+              이제 &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 양질의
               인사이트를 빠르게 확인해보세요!🙋
               <br />
             </LogoTitleSubs>
@@ -182,9 +255,45 @@ const DimmedArea = ({
         ) : (
           <>
             <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
+            {/* (2) 첫 인상 이모티콘 설문 컨테이너 */}
+            {!user.name && ( // 비로그인 상태에서만 표시 예시
+              <OneClickSurveyContainer>
+                <SurveyHeader>
+                  현재까지 보신 내용의 첫 인상은 어떠셨나요?
+                </SurveyHeader>
+                <EmoticonRow>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("유익했어요!")}
+                    disabled={!!surveyAnswer} // 응답 후 비활성 (옵션)
+                  >
+                    😀
+                  </EmoticonButton>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("무난했어요!!")}
+                    disabled={!!surveyAnswer}
+                  >
+                    😐
+                  </EmoticonButton>
+                  <EmoticonButton
+                    onClick={() => handleSurveyAnswer("더 봐야할것 같아요!")}
+                    disabled={!!surveyAnswer}
+                  >
+                    😞
+                  </EmoticonButton>
+                </EmoticonRow>
+
+                {surveyAnswer && (
+                  <SurveyFeedback>
+                    선택하신 답변: <strong>{surveyAnswer}</strong>
+                    <br />
+                    <em>소중한 의견 감사합니다!</em>
+                  </SurveyFeedback>
+                )}
+              </OneClickSurveyContainer>
+            )}
             <LogoTitleSubs>
-              &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 최신 트렌드
-              정보를 매일 받아보세요!🙋 <br />
+              이제 &lsquo;{section}&rsquo; 키워드 무료 구독하고 <br /> 최신
+              트렌드 정보를 매일 받아보세요!🙋 <br />
             </LogoTitleSubs>
             {/* <LogoTitleSubs>
               해당 키워드 구독 시 전문 확인 가능합니다.
@@ -197,6 +306,34 @@ const DimmedArea = ({
           </>
         )}
       </Info>
+      {/* 
+      {!user.name && (
+        <SurveyContainer>
+          <SurveyTitle>아티클 사전 설문조사</SurveyTitle>
+          <SurveyDescription>
+            현재까지 보신 내용, <strong>첫인상은 어떠셨나요?</strong>
+          </SurveyDescription>
+
+          <SurveyOptions>
+            <SurveyOption onClick={() => handleSurveyAnswer("매우 흥미롭다")}>
+              매우 흥미롭다
+            </SurveyOption>
+            <SurveyOption onClick={() => handleSurveyAnswer("보통이다")}>
+              보통이다
+            </SurveyOption>
+            <SurveyOption onClick={() => handleSurveyAnswer("별로다")}>
+              별로다
+            </SurveyOption>
+          </SurveyOptions>
+
+          {surveyAnswer && (
+            <SurveyResult>
+              선택하신 답변: <strong>{surveyAnswer}</strong>
+            </SurveyResult>
+          )}
+        </SurveyContainer>
+      )} */}
+
       <TOC>
         <div>
           {" "}
@@ -326,7 +463,7 @@ const Container = styled.div<{ $height: number; $isUnsubscribed: boolean }>`
 const LogoTitle = styled.div`
   font-size: 22px;
   font-weight: 700;
-  margin-bottom: 40px;
+  margin-bottom: 8px;
   font-family: "Pretendard Variable";
 `;
 
@@ -334,7 +471,8 @@ const LogoTitleSubs = styled.div`
   font-size: 18px;
   font-weight: 700;
   line-height: 132%;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
+  margin-top: 12px;
   text-align: center;
 `;
 
@@ -432,6 +570,7 @@ const Info = styled.div`
   align-items: center;
   gap: 4px;
   margin-top: 20px;
+  width: 100%;
   span {
     font-size: 20px;
     font-weight: 700;
@@ -599,4 +738,108 @@ const InsightItem = styled.div<{ section: string }>`
       flex-direction : row !important;
     }
   `}
+`;
+
+/* 설문 관련 Styled Components 추가 */
+const SurveyContainer = styled.div`
+  width: 90%;
+  max-width: 560px;
+  background-color: #f2f2f2;
+  margin-top: 16px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  padding: 16px;
+`;
+
+const SurveyTitle = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+`;
+
+const SurveyDescription = styled.div`
+  font-size: 16px;
+  margin-bottom: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const SurveyOptions = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const SurveyOption = styled.button`
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  &:hover {
+    background-color: #e6e6e6;
+  }
+`;
+
+const SurveyResult = styled.div`
+  margin-top: 12px;
+  font-size: 14px;
+  color: #333;
+`;
+const OneClickSurveyContainer = styled.div`
+  width: 90%;
+  max-width: 560px;
+  background-color: #e9f4ff;
+  margin-top: 12px;
+  margin-bottom: 52px;
+  border-radius: 8px;
+  padding: 32px 24px;
+  text-align: center;
+`;
+
+const SurveyHeader = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+`;
+
+const EmoticonRow = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+`;
+
+const EmoticonButton = styled.button`
+  font-size: 28px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+  &:hover {
+    background-color: #e6e6e6;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+`;
+
+const SurveyFeedback = styled.div`
+  margin-top: 12px;
+  font-size: 14px;
+  color: #333;
+  line-height: 132%;
+  strong {
+    font-weight: 700;
+  }
+  em {
+    font-style: normal;
+    color: #666;
+    margin-left: 8px;
+  }
 `;

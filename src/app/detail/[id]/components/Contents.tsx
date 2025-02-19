@@ -3,7 +3,7 @@
 import styled from "styled-components";
 import TocItem from "./TocItem";
 import Recommend from "./Recommend";
-import { DataProps } from "@/types/dataProps";
+import { DataProps, RealEstateAnalysis } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +23,14 @@ interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
   handleTocItemClick: (starTime: number) => void;
+}
+
+interface RealEstateOverviewProps {
+  overview: {
+    market_analysis?: string;
+    real_estate_analysis?: RealEstateAnalysis[];
+    investment_strategy?: string;
+  };
 }
 
 const Contents = ({
@@ -176,8 +184,14 @@ const Contents = ({
           {user.name !== "" &&
             !isUnsubscribedSection &&
             detailData.section === "부동산" &&
-            detailData.summary_data.overview && (
-              <RealEstateOverview overview={detailData.summary_data.overview} />
+            typeof detailData.summary_data.overview === "object" &&
+            detailData.summary_data.overview !== null && (
+              <RealEstateOverview
+                overview={
+                  detailData.summary_data
+                    .overview as RealEstateOverviewProps["overview"]
+                }
+              />
             )}
 
           {user.name !== "" &&
@@ -243,7 +257,7 @@ const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 16px;
 `;
 
 const RecommendWrapper = styled.div<{

@@ -13,7 +13,7 @@ interface StockOverviewProps {
 
 const StockOverview: React.FC<StockOverviewProps> = ({ overview }) => (
   <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
     <SectionTitle>시장 분석</SectionTitle>
     <Description>
       이 정보는 유튜브 영상에서 제공된 시장 동향과 관련된 내용입니다.
@@ -49,7 +49,7 @@ export default StockOverview;
 
 const OverviewContainer = styled.div`
   padding: 0 16px;
-  margin-top: 20px;
+  margin-top: 80px;
 `;
 
 const OverviewTitle = styled.div`

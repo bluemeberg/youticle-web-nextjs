@@ -7,7 +7,7 @@ interface RealEstateOverviewProps {
   overview: {
     market_analysis?: string;
     real_estate_analysis?: RealEstateAnalysis[];
-    investment_strategy_real_estate?: string;
+    investment_strategy?: string;
   };
 }
 
@@ -15,7 +15,7 @@ const RealEstateOverview: React.FC<RealEstateOverviewProps> = ({
   overview,
 }) => (
   <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
 
     <SectionTitle>시장 분석</SectionTitle>
     <Description>유튜브 영상에서 제공된 부동산 시장 분석입니다.</Description>
@@ -30,7 +30,10 @@ const RealEstateOverview: React.FC<RealEstateOverviewProps> = ({
             <StockCard key={index}>
               <StockName>{realEstate.real_estate_area}</StockName>
               <StockDescription>{realEstate.area_description}</StockDescription>
-              <StockAnalysisText>{realEstate.analysis}</StockAnalysisText>
+              {/* 분석: 배열로 여러 단락 */}
+              {realEstate.analysis.map((analysisText, i) => (
+                <StockAnalysisText key={i}>{analysisText}</StockAnalysisText>
+              ))}
             </StockCard>
           ))}
         </>
@@ -38,7 +41,7 @@ const RealEstateOverview: React.FC<RealEstateOverviewProps> = ({
 
     <SectionTitle>투자 전략</SectionTitle>
     <Description>부동산 관련 투자 전략을 제공합니다.</Description>
-    <Analysis>{overview.investment_strategy_real_estate}</Analysis>
+    <Analysis>{overview.investment_strategy}</Analysis>
   </OverviewContainer>
 );
 
@@ -73,7 +76,7 @@ const SectionTitle = styled.h2`
 
 const Analysis = styled.p`
   font-size: 16px;
-  line-height: 132%;
+  line-height: 148%;
   background-color: #f0f4ff;
   padding: 16px 12px;
   border-radius: 4px;
@@ -105,6 +108,7 @@ const StockAnalysisText = styled.p`
   font-size: 16px;
   color: #000;
   line-height: 132%;
+  margin-top: 16px;
 `;
 
 const Description = styled.p`

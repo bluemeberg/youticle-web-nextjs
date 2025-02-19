@@ -49,6 +49,9 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
 
+  // 🎨 소프트한 렌더링을 위한 상태
+  const [fadeInComplete, setFadeInComplete] = useState(false);
+
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
     setVideoPlayer(event.target);
     setIsLoading(false);
@@ -144,6 +147,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
     }
   }, [isExpanded, detailData]);
 
+  // 📌 페이지 로딩 후 애니메이션 시작
+  useEffect(() => {
+    setTimeout(() => setFadeInComplete(true), 300);
+  }, []);
+
   //   // 상태 변화 시 높이 재계산
   //   useEffect(() => {
   //     setContentHeight(calculateHeight());
@@ -170,11 +178,21 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             setDetailData(data.meta?.youtube_article);
             break;
           case "PROGRESS":
-            setProgress(50);
+            setProgress(40);
             setDetailData(data.meta?.youtube_article);
             break;
           case "PROGRESS1":
-            setProgress(75);
+            setProgress(60);
+            setDetailData((prev: any) => ({
+              ...prev,
+              summary_data: {
+                ...prev.summary_data,
+                section: data.meta.result.flatMap((item: any) => item),
+              },
+            }));
+            break;
+          case "PROGRESS2":
+            setProgress(80);
             setDetailData((prev: any) => ({
               ...prev,
               summary_data: {
@@ -213,7 +231,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
 
   return (
-    <Container $isFixed={isFixed}>
+    <Container $isFixed={isFixed} className={fadeInComplete ? "fadeIn" : ""}>
       {/* 상태에 따른 콘텐츠 렌더링 */}
       {/* {taskStatus === "PENDING" && (
         <StatusMessage>작업을 준비 중입니다...</StatusMessage>
@@ -242,15 +260,17 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           <p>홈으로 이동 중..</p>
         </LoaderOverlay>
       )}
+
       {isArticleLoading && (
         <LoaderOverlay>
           <Spinner />
-          <p>{taskMessage}</p>
+          <Message>{taskMessage}</Message>
           <ProgressBarContainer>
             <ProgressBar progress={progress} />
           </ProgressBarContainer>
         </LoaderOverlay>
       )}
+
       {/* 상태 메시지 및 로딩 표시 */}
 
       {taskStatus === "START" && detailData && (
@@ -258,7 +278,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           <PageInfo ref={scrollRef}>
             <Category>{detailData.section}</Category>
             {/* Title은 제외 */}
-            <SkeletonText />
+            <SkeletonCard />
             <UploadContainer>
               <Upload>업로드 {timeAgo(detailData.upload_date)}</Upload> *
               <Upload>{detailData.duration}</Upload>
@@ -295,12 +315,16 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           />
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            <SkeletonText />
+            <SkeletonCard />
           </Preview>
 
           <TOC>
-            목차
-            <SkeletonText />
+            <div>목차</div>
+            <SkeletonContainer>
+              {Array.from({ length: 1 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </SkeletonContainer>{" "}
           </TOC>
         </FadeInContainer>
       )}
@@ -332,11 +356,70 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           </Preview>
           <TOC>
             <div>목차</div>
-            <SkeletonText />
+            <SkeletonContainer>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </SkeletonContainer>
           </TOC>
         </FadeInContainer>
       )}
       {taskStatus === "PROGRESS1" && detailData && (
+        <FadeInContainer>
+          <PageInfo ref={scrollRef}>
+            <Category>{detailData.section}</Category>
+            {/* Title은 제외 */}
+            <Title>{detailData.summary_data.headline_title}</Title>
+            <UploadContainer>
+              <Upload>업로드 {timeAgo(detailData.upload_date)}</Upload> *
+              <Upload>{detailData.duration}</Upload>
+            </UploadContainer>
+          </PageInfo>
+          <VideoCard
+            thumbnail={detailData.thumbnail}
+            title={detailData.title} // title은 포함
+            channelName={detailData.channel_details.channel_name}
+            subscriber={detailData.channel_details.channel_subscribers}
+            upload_date={detailData.upload_date}
+            description={detailData.summary_data.channel_overview} // description은 제외
+            channel_thumbnail={detailData.channel_details.channel_thumbnail}
+          />
+
+          <OverviewTitle>📹 영상 소개</OverviewTitle>
+          <Preview $isFixed={isFixed}>
+            {formatSummary(detailData.summary_data.short_summary)}
+          </Preview>
+          {/* 목차 영역 */}
+          <TOC>
+            <div>목차</div>
+            <ContentWrapper
+              ref={contentRef}
+              $height={contentHeight}
+              $isExpanded={false}
+            >
+              {detailData.summary_data?.section?.map(
+                ({ title }: any, index: number) => (
+                  <span key={index}>{title}</span>
+                )
+              )}
+            </ContentWrapper>
+
+            {detailData.summary_data?.section?.length > 5 && (
+              <ToggleButton onClick={toggleView}>
+                {isExpanded ? "간단히 보기" : "더 보기"}
+              </ToggleButton>
+            )}
+          </TOC>
+
+          <Contents
+            detailData={detailData}
+            thumbnails={thumbnails}
+            handleTocItemClick={handleTocItemClick}
+            taskStatus={taskStatus}
+          />
+        </FadeInContainer>
+      )}
+      {taskStatus === "PROGRESS2" && detailData && (
         <FadeInContainer>
           <PageInfo ref={scrollRef}>
             <Category>{detailData.section}</Category>
@@ -514,13 +597,18 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
 };
 
 export default ClientSide2;
-
+/** 💡 애니메이션 */
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 const Container = styled.div<{ $isFixed: boolean }>`
   display: flex;
   flex-direction: column;
   font-family: "Pretendard Variable";
   padding-top: 76px;
   background-color: white;
+  animation: ${fadeIn} 0.6s ease-in-out;
 `;
 
 const PageInfo = styled.div`
@@ -787,6 +875,11 @@ const SlideInContainer = styled.div`
     }
   }
 `;
+const Message = styled.div`
+  padding-right: 20px;
+  padding-left: 20px;
+  line-height: 132%;
+`;
 
 const ProgressBarContainer = styled.div`
   width: 90%;
@@ -805,12 +898,27 @@ const ProgressBar = styled.div<{ progress: number }>`
   transition: width 0.3s ease;
 `;
 
-const SkeletonText = styled.div`
-  width: 80%;
-  height: 20px;
-  background: #e0e0e0 !important;
-  border-radius: 5px;
-  animation: shimmer 1.5s infinite;
+/** 💡 Shimmer 효과 */
+const shimmer = keyframes`
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+`;
+
+/** 💠 Skeleton UI */
+const SkeletonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+`;
+
+const SkeletonCard = styled.div`
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.5s infinite;
+  border-radius: 8px;
 `;
 
 const FloatingButton = styled.button`
