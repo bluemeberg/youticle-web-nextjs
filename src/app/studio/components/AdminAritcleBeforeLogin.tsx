@@ -27,10 +27,12 @@ interface Editor {
 // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
-const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
+const AdminArticleBeforeLogin = () => {
   const [isFixed, setIsFixed] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const user = useRecoilValue(userState); // 로그인 여부 확인
+  const [data, setData] = useState<EditorDataProps[]>([]);
+
   const editors: Editor[] = [
     {
       id: "1",
@@ -68,6 +70,30 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/all/article`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+        if (!response.ok) throw new Error("API request failed");
+
+        const result = await response.json();
+        setData(result);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching articles:", error);
+      } finally {
+        // setTimeout(() => setIsLoading(false), 5000);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  useEffect(() => {
     const handleEditorScroll = () => {
       if (listRef.current) {
         const offsetTop = listRef.current.getBoundingClientRect().top;
@@ -100,7 +126,7 @@ const AdminArticleBeforeLogin = ({ data }: EditorArticleProps) => {
           console.error("Failed to fetch archive data:", error);
         });
     } else {
-      setTimeout(() => setIsLoading(false), 500);
+      // setTimeout(() => setIsLoading(false), 500);
     }
   }, [user]);
 

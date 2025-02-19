@@ -24,12 +24,12 @@ interface EditorPageClientProps {
   apiData: EditorDataProps[]; // 서버에서 전달된 데이터
 }
 
-export default function AdminPageClient({ apiData }: EditorPageClientProps) {
+export default function AdminPageClient() {
   return (
     <Container>
       <LogoHeader />
       <AdminIntroduce />
-      <AdminArticleBeforeLogin data={apiData} />
+      <AdminArticleBeforeLogin />
       <Footer />
     </Container>
   );
