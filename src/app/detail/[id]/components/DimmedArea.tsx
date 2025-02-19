@@ -147,7 +147,7 @@ const DimmedArea = ({
     // (B) DB 저장용 API 호출
     try {
       const response = await fetch(
-        "http://0.0.0.0:8000/editor/first-impressions",
+        "https://youticle.shop/editor/first-impressions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
