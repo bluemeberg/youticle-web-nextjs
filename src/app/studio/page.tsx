@@ -1,5 +1,6 @@
 import AdminPageClient from "./components/AdminPageClient"; // 클라이언트 컴포넌트
 import { Suspense } from "react";
+import TabAdminPageClient from "./components/TabAdminPageClient";
 
 export default async function AdminPage() {
   // Server-side data fetching using fetch with no-store
@@ -23,7 +24,8 @@ export default async function AdminPage() {
   // // 데이터를 클라이언트 컴포넌트에 전달
   return (
     <Suspense>
-      <AdminPageClient />
+      {/* <AdminPageClient /> */}
+      <TabAdminPageClient />
     </Suspense>
   );
 }
