@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { DataProps, RealEstateAnalysis } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { fetchSubscribedSubjects } from "../../../api/apiClient";
 import TocItem from "@/detail/[id]/components/TocItem";
 import Recommend from "@/detail/[id]/components/Recommend";
@@ -18,6 +18,7 @@ import BeautyOverview from "@/detail/[id]/components/overviews/BeautyOverview";
 import AIOverview from "@/detail/[id]/components/overviews/AIOverview";
 import CryptoOverview from "@/detail/[id]/components/overviews/CryptoOverview";
 import BusinessOverview from "@/detail/[id]/components/overviews/BusinessOverview";
+import EditorCameo from "./Cameo";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -155,39 +156,54 @@ const Contents = ({
               },
               index
             ) => (
-              <AdminTocItem
-                key={index}
-                ref={
-                  index ===
-                  (user.name === "" || isUnsubscribedSection
-                    ? contentNumberNotLogin - 1
-                    : detailData.summary_data.section.length - 1)
-                    ? tocItemsRef
-                    : null
-                }
-                section={detailData.section}
-                videoId={detailData.video_id}
-                title={title}
-                start={Math.floor(Number(start_time))}
-                summary={detail_contents}
-                thumbnails={clientThumbnails[index]}
-                partialDimmed={
-                  index === contentNumberNotLogin - 2 && user.name === ""
-                }
-                explanation_keyword={explanation_keyword}
-                explanation_description={explanation_description}
-                dimmed={index >= contentNumberNotLogin - 1 && user.name === ""}
-                tocItemHeight={tocItemHeight}
-                toc={detailData.summary_data.section}
-                onClick={() =>
-                  handleTocItemClick(Math.floor(Number(start_time)))
-                }
-                isLoggedOut={user.name === ""}
-                isUnsubscribedSection={isUnsubscribedSection}
-                isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
-                subscribedSubjects={subscribedSubjects}
-                overview={detailData.summary_data.overview}
-              />
+              <React.Fragment key={index}>
+                <AdminTocItem
+                  key={index}
+                  ref={
+                    index ===
+                    (user.name === "" || isUnsubscribedSection
+                      ? contentNumberNotLogin - 1
+                      : detailData.summary_data.section.length - 1)
+                      ? tocItemsRef
+                      : null
+                  }
+                  section={detailData.section}
+                  videoId={detailData.video_id}
+                  title={title}
+                  start={Math.floor(Number(start_time))}
+                  summary={detail_contents}
+                  thumbnails={clientThumbnails[index]}
+                  partialDimmed={
+                    index === contentNumberNotLogin - 2 && user.name === ""
+                  }
+                  explanation_keyword={explanation_keyword}
+                  explanation_description={explanation_description}
+                  dimmed={
+                    index >= contentNumberNotLogin - 1 && user.name === ""
+                  }
+                  tocItemHeight={tocItemHeight}
+                  toc={detailData.summary_data.section}
+                  onClick={() =>
+                    handleTocItemClick(Math.floor(Number(start_time)))
+                  }
+                  isLoggedOut={user.name === ""}
+                  isUnsubscribedSection={isUnsubscribedSection}
+                  isNoSubscribedSubjects={isNoSubscribedSubjects} // 새로운 상태 전달
+                  subscribedSubjects={subscribedSubjects}
+                  overview={detailData.summary_data.overview}
+                />
+                {/* 👇 세 번째( index===2 ) 뒤에 에디터 등장
+                {index === 2 && (
+                  <EditorCameo
+                    message="안녕하세요, 유티클 에디터입니다!
+여기까지 살펴본 내용에서 금리 인상에 따른 채권 매력도 상승과,
+주식 시장의 변동성을 어떻게 자산 배분으로 대응하는지가 핵심이었어요.
+다음에는 장기 채권 투자 성공 사례나 일본 시장과의 비교 등을 통해
+장기적 안목이 왜 중요한지 구체적으로 알아볼 거예요.
+조금만 더 집중하시면, 여러분만의 포트폴리오 전략을 만드는 멋진 팁을 얻으실 수 있답니다!"
+                  />
+                )} */}
+              </React.Fragment>
             )
           )}
       </ContentWrapper>

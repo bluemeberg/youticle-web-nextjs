@@ -11,6 +11,7 @@ export interface DataProps {
   subscribers: number;
   score: number;
   summary_data: SummaryData;
+
   channel_details: ChannelDetails;
 }
 
@@ -237,6 +238,23 @@ export interface SummaryData {
   section: Section[];
   channel_overview: string;
   overview?: Overview; // Make overview optional
+  comment_insight?: CommentInsight; // ✅ comment_insight 속성 추가
+  five_lines_summary?: string[]; // ✅ five_lines_summary 속성 추가
+}
+// 🟡 새로운 comment_insight 타입 정의
+export interface CommentInsight {
+  "1st": string;
+  "1st_comments": CommentObj[];
+  "2nd": string;
+  "2nd_comments": CommentObj[];
+  "3rd": string;
+  "3rd_comments": CommentObj[];
+}
+
+export interface CommentObj {
+  comment: string;
+  likeCount: string;
+  updatedAt: string;
 }
 
 export interface KeyPoint {

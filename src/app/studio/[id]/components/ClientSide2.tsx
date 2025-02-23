@@ -15,6 +15,7 @@ import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
+import CommentsInsightSection from "./CommentInsightSection";
 
 interface ClientSide2Props {
   id: string;
@@ -30,8 +31,8 @@ interface SectionData {
   explanation_description?: string;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
@@ -174,10 +175,14 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
         // 상태에 따른 progress bar 업데이트
         switch (data.status) {
           case "START":
-            setProgress(25);
+            setProgress(10);
             setDetailData(data.meta?.youtube_article);
             break;
           case "PROGRESS":
+            setProgress(25);
+            setDetailData(data.meta?.youtube_article);
+            break;
+          case "COMMENT_UPDATE":
             setProgress(40);
             setDetailData(data.meta?.youtube_article);
             break;
@@ -220,6 +225,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
     return () => clearInterval(interval);
   }, [taskId]);
   console.log(taskStatus);
+  console.log(detailData);
   const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
   // (3) "스레드 생성하기" 버튼 클릭 핸들러
   const handleOpenThreadModal = () => {
@@ -229,6 +235,8 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const router = useRouter();
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+  const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+  const [isInsightVisible, setIsInsightVisible] = useState(false);
 
   return (
     <Container $isFixed={isFixed} className={fadeInComplete ? "fadeIn" : ""}>
@@ -284,7 +292,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               <Upload>{detailData.duration}</Upload>
             </UploadContainer>
           </PageInfo>
-          <VideoContainer
+          {/* <VideoContainer
             ref={videoContainerRef}
             $isFixed={isFixed}
             $isDesktop={isDesktop}
@@ -303,7 +311,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
                   : "none",
               }}
             />
-          </VideoContainer>
+          </VideoContainer> */}
           <VideoCard
             thumbnail={detailData.thumbnail}
             title={detailData.title} // title은 포함
@@ -352,8 +360,26 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
 
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(detailData.summary_data.short_summary)}
+            {formatSummary(
+              removeMarkTags(detailData.summary_data.short_summary)
+            )}
           </Preview>
+          {/** 5줄 핵심 요약 배치 **/}
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map(
+                (point: any, idx: any) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
           <TOC>
             <div>목차</div>
             <SkeletonContainer>
@@ -364,6 +390,81 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           </TOC>
         </FadeInContainer>
       )}
+
+      {taskStatus === "COMMENT_UPDATE" && detailData && (
+        <FadeInContainer>
+          <PageInfo ref={scrollRef}>
+            <Category>{detailData.section}</Category>
+            {/* Title은 제외 */}
+            <Title>{detailData.summary_data.headline_title}</Title>
+            <UploadContainer>
+              <Upload>업로드 {timeAgo(detailData.upload_date)}</Upload> *
+              <Upload>{detailData.duration}</Upload>
+            </UploadContainer>
+          </PageInfo>
+          <VideoCard
+            thumbnail={detailData.thumbnail}
+            title={detailData.title} // title은 포함
+            channelName={detailData.channel_details.channel_name}
+            subscriber={detailData.channel_details.channel_subscribers}
+            upload_date={detailData.upload_date}
+            description={detailData.summary_data.channel_overview} // description은 제외
+            channel_thumbnail={detailData.channel_details.channel_thumbnail}
+          />
+          <OverviewTitle>📹 영상 소개</OverviewTitle>
+          <Preview $isFixed={isFixed}>
+            {formatSummary(
+              removeMarkTags(detailData.summary_data.short_summary)
+            )}
+          </Preview>
+          {/** 5줄 핵심 요약 배치 **/}
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map(
+                (point: any, idx: any) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+          {/* 댓글 분석 섹션 추가 */}
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2>
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={detailData.summary_data.comment_insight}
+              isLoggedIn={true}
+            />
+          )}{" "}
+          <TOC>
+            <div>목차</div>
+            <SkeletonContainer>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </SkeletonContainer>
+          </TOC>
+        </FadeInContainer>
+      )}
+
       {taskStatus === "PROGRESS1" && detailData && (
         <FadeInContainer>
           <PageInfo ref={scrollRef}>
@@ -384,12 +485,53 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             description={detailData.summary_data.channel_overview} // description은 제외
             channel_thumbnail={detailData.channel_details.channel_thumbnail}
           />
-
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(detailData.summary_data.short_summary)}
+            {formatSummary(
+              removeMarkTags(detailData.summary_data.short_summary)
+            )}
           </Preview>
           {/* 목차 영역 */}
+          {/** 5줄 핵심 요약 배치 **/}
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map(
+                (point: any, idx: any) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+          {/* 댓글 분석 섹션 추가 */}
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2>
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={detailData.summary_data.comment_insight}
+              isLoggedIn={true}
+            />
+          )}{" "}
+          <Divider />
+          {/* (B) "아티클 본문" 타이틀 추가 */}
+          <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
             <div>목차</div>
             <ContentWrapper
@@ -410,7 +552,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               </ToggleButton>
             )}
           </TOC>
-
           <Contents
             detailData={detailData}
             thumbnails={thumbnails}
@@ -439,12 +580,52 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             description={detailData.summary_data.channel_overview} // description은 제외
             channel_thumbnail={detailData.channel_details.channel_thumbnail}
           />
-
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(detailData.summary_data.short_summary)}
+            {formatSummary(
+              removeMarkTags(detailData.summary_data.short_summary)
+            )}
           </Preview>
-          {/* 목차 영역 */}
+          {/* 목차 영역 */} {/** 5줄 핵심 요약 배치 **/}
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map(
+                (point: any, idx: any) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+          {/* 댓글 분석 섹션 추가 */}
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2>
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={detailData.summary_data.comment_insight}
+              isLoggedIn={true}
+            />
+          )}{" "}
+          <Divider />
+          {/* (B) "아티클 본문" 타이틀 추가 */}
+          <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
             <div>목차</div>
             <ContentWrapper
@@ -465,7 +646,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               </ToggleButton>
             )}
           </TOC>
-
           <Contents
             detailData={detailData}
             thumbnails={thumbnails}
@@ -505,7 +685,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               }}
             />
           </VideoContainer>
-
           <VideoCard
             thumbnail={detailData.thumbnail}
             title={detailData.title}
@@ -515,12 +694,52 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             description={detailData.summary_data.channel_overview}
             channel_thumbnail={detailData.channel_details.channel_thumbnail}
           />
-
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(detailData.summary_data.short_summary)}
+            {formatSummary(
+              removeMarkTags(detailData.summary_data.short_summary)
+            )}
           </Preview>
-
+          {/** 5줄 핵심 요약 배치 **/}
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map(
+                (point: any, idx: any) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+          {/* 댓글 분석 섹션 추가 */}
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2>
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={detailData.summary_data.comment_insight}
+              isLoggedIn={true}
+            />
+          )}{" "}
+          <Divider />
+          {/* (B) "아티클 본문" 타이틀 추가 */}
+          <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
             <div>목차</div>
             <ContentWrapper
@@ -690,7 +909,7 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 
   span.line-break {
     font-weight: 400;
-    line-height: 160%;
+    line-height: 148%;
     margin-bottom: 8px;
   }
 `;
@@ -769,7 +988,7 @@ const Loader = styled.div`
 `;
 
 const OverviewTitle = styled.div`
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   margin-top: 40px;
   margin-left: 16px;
@@ -935,6 +1154,92 @@ const FloatingButton = styled.button`
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+/** ⬇️ 5줄 핵심 요약 섹션 추가 */
+const FiveLineSummarySection = styled.div`
+  margin: 0 16px 32px 16px;
+  padding: 20px;
+  background-color: #f7faff;
+  /* border-radius: 8px; */
+  border: 1px solid #b4c2ff;
+`;
+
+const Divider = styled.div`
+  /* 굵은 구분선 */
+  height: 2px;
+  background-color: #e0e0e0;
+  margin: 48px 16px;
+`;
+
+const FiveLineTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+`;
+
+const FiveLineList = styled.ul`
+  /* list-style-type: "• "; */
+  li {
+    font-size: 16px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+`;
+
+/** 본문 시작 타이틀 추가 */
+const MainBodyTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 16px 12px;
+`;
+
+const FiveLineListWrapper = styled.div`
+  display: flex;
+`;
+
+const FiveLineListWrapperIndex = styled.div`
+  margin-top: 4px;
+  margin-right: 4px;
+`;
+
+/* 🔹 스타일 */
+const CommentAnalysisWrapper = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  /* border-radius: 8px; */
+  margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
+`;
+
+const AnalysisTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const AnalysisDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.2;
+  color: #444;
+  margin-top: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const ToggleButton2 = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
 
   &:hover {
     background-color: #0056b3;

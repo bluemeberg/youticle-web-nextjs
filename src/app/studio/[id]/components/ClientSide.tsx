@@ -15,6 +15,7 @@ import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
+import CommentsInsightSection from "./CommentInsightSection";
 
 interface ClientSideProps {
   id: string;
@@ -177,6 +178,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const router = useRouter();
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+  const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+
+  const [isInsightVisible, setIsInsightVisible] = useState(false);
 
   return (
     <Container $isFixed={isFixed}>
@@ -236,7 +240,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           }}
         />
       </VideoContainer>
-
       <VideoCard
         thumbnail={detailData.thumbnail}
         title={detailData.title}
@@ -246,12 +249,57 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         description={detailData.summary_data.channel_overview}
         channel_thumbnail={detailData.channel_details.channel_thumbnail}
       />
-
       <OverviewTitle>📹 영상 소개</OverviewTitle>
       <Preview $isFixed={isFixed}>
-        {formatSummary(detailData.summary_data.short_summary)}
+        {/* {formatSummary(detailData.summary_data.short_summary)} */}
+        {formatSummary(removeMarkTags(detailData.summary_data.short_summary))}
       </Preview>
-
+      {/** 5줄 핵심 요약 배치 **/}
+      <FiveLineSummarySection>
+        <FiveLineTitle>📌 바쁜 사람들을 위한 TL;DR 요약 5가지</FiveLineTitle>
+        <FiveLineList>
+          {(detailData.summary_data.five_lines_summary ?? []).map(
+            (point, idx) => (
+              <FiveLineListWrapper key={idx}>
+                <FiveLineListWrapperIndex>
+                  {NUMBER_EMOJIS[idx]}
+                </FiveLineListWrapperIndex>
+                <li key={idx}> {formatSummary(point)}</li>
+              </FiveLineListWrapper>
+            )
+          )}
+        </FiveLineList>
+      </FiveLineSummarySection>
+      {/* 댓글 분석 섹션 추가 */}
+      <CommentAnalysisWrapper>
+        <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+        <AnalysisDesc>
+          AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한 주요
+          감상 포인트를 정리했습니다. 시청자들은 어떤 의견을 남겼을까요?
+        </AnalysisDesc>
+        <ToggleButton2 onClick={() => setIsInsightVisible(!isInsightVisible)}>
+          {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+        </ToggleButton2>
+      </CommentAnalysisWrapper>
+      {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+      {isInsightVisible && (
+        <CommentsInsightSection
+          data={
+            detailData.summary_data.comment_insight ?? {
+              "1st": "",
+              "1st_comments": [],
+              "2nd": "",
+              "2nd_comments": [],
+              "3rd": "",
+              "3rd_comments": [],
+            }
+          }
+          isLoggedIn={true}
+        />
+      )}{" "}
+      <Divider />
+      {/* (B) "아티클 본문" 타이틀 추가 */}
+      <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
       <TOC>
         <div>목차</div>
         {/* 실제 목차 목록 컨테이너 */}
@@ -268,7 +316,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </ToggleButton>
         )}
       </TOC>
-
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
@@ -356,7 +403,7 @@ const Preview = styled.div<{ $isFixed: boolean }>`
   margin-top: ${(props) => (props.$isFixed ? "12px" : "12px")};
   margin-left: 16px;
   margin-right: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   div {
     display: flex;
     flex-direction: column;
@@ -377,7 +424,7 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 
   span.line-break {
     font-weight: 400;
-    line-height: 160%;
+    line-height: 148%;
     margin-bottom: 8px;
   }
 `;
@@ -423,14 +470,14 @@ const Loader = styled.div`
 `;
 
 const OverviewTitle = styled.div`
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   margin-top: 40px;
   margin-left: 16px;
 `;
 
 const TOC = styled.div`
-  margin-top: 20px;
+  margin-top: 12px;
   padding: 0 16px;
 
   div:first-child {
@@ -536,5 +583,92 @@ const Spinner = styled.div`
     100% {
       transform: rotate(360deg);
     }
+  }
+`;
+
+/** ⬇️ 5줄 핵심 요약 섹션 추가 */
+const FiveLineSummarySection = styled.div`
+  margin: 0 16px 32px 16px;
+  padding: 20px;
+  background-color: #f7faff;
+  /* border-radius: 8px; */
+  border: 1px solid #b4c2ff;
+`;
+
+const Divider = styled.div`
+  /* 굵은 구분선 */
+  height: 2px;
+  background-color: #e0e0e0;
+  margin: 24px 16px;
+`;
+
+const FiveLineTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+`;
+
+const FiveLineList = styled.ul`
+  /* list-style-type: "• "; */
+  li {
+    font-size: 16px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+`;
+
+/** 본문 시작 타이틀 추가 */
+const MainBodyTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 16px 12px;
+`;
+
+const FiveLineListWrapper = styled.div`
+  display: flex;
+`;
+
+const FiveLineListWrapperIndex = styled.div`
+  margin-top: 4px;
+  margin-right: 4px;
+`;
+
+/* 🔹 스타일 */
+const CommentAnalysisWrapper = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  /* border-radius: 8px; */
+  margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
+`;
+
+const AnalysisTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const AnalysisDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.2;
+  color: #444;
+  margin-top: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const ToggleButton2 = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+
+  &:hover {
+    background-color: #0056b3;
   }
 `;
