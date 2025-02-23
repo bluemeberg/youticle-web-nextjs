@@ -41,7 +41,7 @@ const VideoCard = ({
           </MetaData>
         </ChannelInfo>
       </InfoContainer>
-      <DescriptionBubble>{description}</DescriptionBubble>
+      <DescriptionBubble>{removeMarkTags(description)}</DescriptionBubble>
     </CardContainer>
   );
 };
