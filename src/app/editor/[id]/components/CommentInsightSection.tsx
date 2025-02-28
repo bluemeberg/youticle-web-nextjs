@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { formatSummary, removeMarkTags, timeAgo } from "@/utils/formatter";
+import { fetchSubscribedSubjects } from "@/api/apiClient";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { userState } from "@/store/user";
 
 interface CommentObj {
   comment: string;
@@ -148,7 +151,7 @@ const SubInfo = styled.div`
   /* justify-content: space-between; */
   margin-top: 12px;
   span {
-    margin-right: 6px;
+    margin-right: 12px;
   }
 `;
 const CommentItem = styled.li`

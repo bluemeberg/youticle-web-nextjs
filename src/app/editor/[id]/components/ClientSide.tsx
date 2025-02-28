@@ -14,6 +14,10 @@ import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
 import VideoCard from "@/detail/[id]/components/VideoCard";
 import { useRouter } from "next/navigation";
+import { userState } from "@/store/user";
+import { fetchSubscribedSubjects } from "@/api/apiClient";
+import CommentsInsightSection from "./CommentInsightSection";
+import CommentsInsightSectionDimmed from "./CommentInsightDimmed";
 
 interface ClientSideProps {
   id: string;
@@ -143,6 +147,48 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const router = useRouter();
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+
+  const [isInsightVisible, setIsInsightVisible] = useState(false);
+  const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+  const user = useRecoilValue(userState);
+  const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
+  const [maxHeight, setMaxHeight] = useState("0px");
+  const sections = detailData.summary_data.section || [];
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (user.name !== "") {
+        const subjects = await fetchSubscribedSubjects(user.email, user.name);
+        console.log("로그인 후 구독한 키워드", subjects);
+        setSubscribedSubjects(subjects); // 구독한 주제 설정
+        // if (subjects.length === 0) {
+        //   setShowPopup(true); // Show popup if no subscribed subjects
+        // }
+      }
+    };
+    fetchSubjects();
+  }, [user]);
+  // 1) 처음/갱신 시 목차 전체 높이를 측정하여 expanded 상태에 따라 maxHeight를 설정
+  useEffect(() => {
+    if (contentRef.current) {
+      // 실제 콘텐츠 전체 높이
+      const fullHeight = contentRef.current.scrollHeight;
+
+      if (isExpanded) {
+        // 펼친 상태: 전체 높이로 설정
+        setMaxHeight(`${fullHeight}px`);
+      } else {
+        // 접힌 상태: 5개 정도만 보여줄 높이를 임의로 계산
+        // (정밀 계산 필요하면 5개 항목 높이만큼 미리 측정해야 함)
+        // 간단히 "200px"처럼 고정값을 써도 됨
+        setMaxHeight("260px");
+      }
+    }
+  }, [isExpanded, sections]);
+  // 미구독이면 true, 구독이면 false
+  const isUnsubscribedSection =
+    !subscribedSubjects.includes(detailData.section) && user.name !== "";
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -198,7 +244,6 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           }}
         />
       </VideoContainer>
-
       <VideoCard
         thumbnail={detailData.thumbnail}
         title={detailData.title}
@@ -212,25 +257,110 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       <Preview $isFixed={isFixed}>
         {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
+      {/* 5줄 요약 */}
+      {detailData.summary_data.five_lines_summary &&
+        detailData.summary_data.five_lines_summary.length > 0 && (
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {detailData.summary_data.five_lines_summary.map((point, idx) => (
+                <FiveLineListWrapper key={idx}>
+                  <FiveLineListWrapperIndex>
+                    {NUMBER_EMOJIS[idx]}
+                  </FiveLineListWrapperIndex>
+                  <li> {formatSummary(point)}</li>
+                </FiveLineListWrapper>
+              ))}
+            </FiveLineList>
+          </FiveLineSummarySection>
+        )}
+      {detailData.summary_data.comment_insight &&
+        Object.keys(detailData.summary_data.comment_insight).length > 0 && (
+          <>
+            <CommentAnalysisWrapper>
+              <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+              <AnalysisDesc>
+                AI가 댓글을 분석해 <strong>{detailData.section}</strong>과
+                관련한 주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+                남겼을까요?
+              </AnalysisDesc>
+              <ToggleButton2
+                onClick={() => setIsInsightVisible(!isInsightVisible)}
+              >
+                {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+              </ToggleButton2>
+            </CommentAnalysisWrapper>
+            {/* user 정보가 있고 구독중인 키워드라면 commentInsight 활성화 */}
 
+            {/* user 정보가 있고 구독중인 키워드가 없다면 commentInsightDimmed 활성화 */}
+
+            {/* user 정보가 없다면 commentInsightDimmed 활성화 */}
+
+            {isInsightVisible && (
+              <>
+                {user.name !== "" &&
+                subscribedSubjects.includes(detailData.section) ? (
+                  // ✅ 유저 정보 존재 + 구독한 키워드 있음 → 전체 공개
+                  <CommentsInsightSection
+                    data={detailData.summary_data.comment_insight}
+                    isLoggedIn={true}
+                  />
+                ) : user.name !== "" && subscribedSubjects.length === 0 ? (
+                  // ✅ 유저 정보 존재 + 구독한적 없음 → 일부 차단 & 구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={true}
+                    isUnsubscribed={true} // 🚨 미구독 상태 전달
+                    isNeverSubscribed={true}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                ) : user.name !== "" &&
+                  subscribedSubjects.length > 0 &&
+                  !subscribedSubjects.includes(detailData.section) ? (
+                  // ✅ 유저 정보 존재 + 구독한 키워드 없음 → 일부 차단 & 구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={true}
+                    isUnsubscribed={true} // 🚨 미구독 상태 전달
+                    isNeverSubscribed={false}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                ) : (
+                  // ✅ 유저 정보 없음 (비로그인 상태) → 전체 차단 & 로그인/구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={false}
+                    isUnsubscribed={true} // 🚨 구독한 적 없음 정보 전달
+                    isNeverSubscribed={true}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
       <TOC>
         <div>목차</div>
-        <ContentWrapper
-          ref={contentRef}
-          $height={contentHeight}
-          $isExpanded={isExpanded}
-        >
-          {detailData.summary_data.section.map(({ title }, index) => (
+        {/* 실제 목차 목록 컨테이너 */}
+        <ContentWrapper ref={contentRef} style={{ maxHeight }}>
+          {sections.map(({ title }, index) => (
             <span key={index}>{title}</span>
           ))}
         </ContentWrapper>
-        {detailData.summary_data.section.length > 5 && (
+
+        {/* 3) 5개 초과일 때만 토글 버튼 노출 */}
+        {sections.length > 5 && (
           <ToggleButton onClick={toggleView}>
             {isExpanded ? "간단히 보기" : "더 보기"}
           </ToggleButton>
         )}
       </TOC>
-
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
@@ -337,9 +467,7 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 const TOC = styled.div`
   margin-top: 20px;
   padding: 0 16px;
-  span {
-    line-height: 132%;
-  }
+
   div:first-child {
     height: 44px;
     padding: 10px 16px 10px 16px;
@@ -348,17 +476,6 @@ const TOC = styled.div`
     font-weight: 800;
     line-height: 24px;
     color: rgba(255, 255, 255, 1);
-  }
-
-  div:nth-child(2) {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    background-color: rgb(248, 248, 248);
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 132%;
   }
 `;
 
@@ -424,11 +541,11 @@ const OverviewTitle = styled.div`
   margin-left: 16px;
 `;
 
-const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
+const ContentWrapper = styled.div`
+  /* 여기서 max-height를 동적으로 변경할 예정 */
   overflow: hidden;
-  height: ${({ $height }) => $height};
-  transition: height 0.3s ease;
-  padding: 20px;
+  transition: max-height 0.3s ease;
+  /* 나머지 스타일은 필요에 맞게 */
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -436,7 +553,9 @@ const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
   font-size: 18px;
   font-weight: 600;
   line-height: 132%;
+  padding: 20px;
 `;
+
 // 로딩 오버레이 스타일
 const LoaderOverlay = styled.div`
   position: fixed;
@@ -473,4 +592,91 @@ const LoadingText = styled.div`
   color: white;
   margin-top: 10px;
   font-size: 16px;
+`;
+
+/* 🔹 스타일 */
+const CommentAnalysisWrapper = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  /* border-radius: 8px; */
+  margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
+`;
+
+const AnalysisTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const AnalysisDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.2;
+  color: #444;
+  margin-top: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const ToggleButton2 = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+
+/** ⬇️ 5줄 핵심 요약 섹션 추가 */
+const FiveLineSummarySection = styled.div`
+  margin: 0 16px 32px 16px;
+  padding: 20px;
+  background-color: #f7faff;
+  /* border-radius: 8px; */
+  border: 1px solid #b4c2ff;
+`;
+
+const Divider = styled.div`
+  /* 굵은 구분선 */
+  height: 2px;
+  background-color: #e0e0e0;
+  margin: 24px 16px;
+`;
+
+const FiveLineTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+`;
+
+const FiveLineList = styled.ul`
+  /* list-style-type: "• "; */
+  li {
+    font-size: 16px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+`;
+
+/** 본문 시작 타이틀 추가 */
+const MainBodyTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 16px 12px;
+`;
+
+const FiveLineListWrapper = styled.div`
+  display: flex;
+`;
+
+const FiveLineListWrapperIndex = styled.div`
+  margin-top: 4px;
+  margin-right: 4px;
 `;

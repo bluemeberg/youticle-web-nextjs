@@ -252,11 +252,11 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       <OverviewTitle>📹 영상 소개</OverviewTitle>
       <Preview $isFixed={isFixed}>
         {/* {formatSummary(detailData.summary_data.short_summary)} */}
-        {formatSummary(removeMarkTags(detailData.summary_data.short_summary))}
+        {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
       {/** 5줄 핵심 요약 배치 **/}
       <FiveLineSummarySection>
-        <FiveLineTitle>📌 바쁜 사람들을 위한 TL;DR 요약 5가지</FiveLineTitle>
+        <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
         <FiveLineList>
           {(detailData.summary_data.five_lines_summary ?? []).map(
             (point, idx) => (
@@ -271,32 +271,39 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         </FiveLineList>
       </FiveLineSummarySection>
       {/* 댓글 분석 섹션 추가 */}
-      <CommentAnalysisWrapper>
-        <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
-        <AnalysisDesc>
-          AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한 주요
-          감상 포인트를 정리했습니다. 시청자들은 어떤 의견을 남겼을까요?
-        </AnalysisDesc>
-        <ToggleButton2 onClick={() => setIsInsightVisible(!isInsightVisible)}>
-          {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
-        </ToggleButton2>
-      </CommentAnalysisWrapper>
-      {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
-      {isInsightVisible && (
-        <CommentsInsightSection
-          data={
-            detailData.summary_data.comment_insight ?? {
-              "1st": "",
-              "1st_comments": [],
-              "2nd": "",
-              "2nd_comments": [],
-              "3rd": "",
-              "3rd_comments": [],
-            }
-          }
-          isLoggedIn={true}
-        />
-      )}{" "}
+      {detailData.summary_data.comment_insight && (
+        <>
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2>
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={
+                detailData.summary_data.comment_insight ?? {
+                  "1st": "",
+                  "1st_comments": [],
+                  "2nd": "",
+                  "2nd_comments": [],
+                  "3rd": "",
+                  "3rd_comments": [],
+                }
+              }
+              isLoggedIn={true}
+            />
+          )}{" "}
+        </>
+      )}
       <Divider />
       {/* (B) "아티클 본문" 타이틀 추가 */}
       <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
