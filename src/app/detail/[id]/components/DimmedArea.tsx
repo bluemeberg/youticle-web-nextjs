@@ -819,6 +819,9 @@ const EmoticonButton = styled.button`
   border-radius: 50%;
   width: 60px;
   height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   &:hover {
     background-color: #e6e6e6;
