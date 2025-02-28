@@ -284,6 +284,20 @@ const DimmedOverlay = styled.div`
   top: 0px;
   background-color: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  /* ✅ 마스크 효과로 부드러운 페이드 처리 */
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 1),
+    rgba(255, 255, 255, 1)
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 1),
+    rgba(255, 255, 255, 1)
+  );
+
   /* text-align: center; */
   display: flex;
   justify-content: center;
