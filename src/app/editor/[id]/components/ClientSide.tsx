@@ -285,7 +285,19 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
                 남겼을까요?
               </AnalysisDesc>
               <ToggleButton2
-                onClick={() => setIsInsightVisible(!isInsightVisible)}
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.gtag) {
+                    window.gtag("event", "comment_toggle_click", {
+                      event_category: "engagement",
+                      event_label: isInsightVisible
+                        ? "Collapse Comment Insight"
+                        : "Expand Comment Insight",
+                      value: 1,
+                    });
+                  }
+
+                  setIsInsightVisible(!isInsightVisible);
+                }}
               >
                 {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
               </ToggleButton2>

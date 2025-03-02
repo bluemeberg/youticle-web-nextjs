@@ -191,7 +191,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     setTimeout(() => {
       router.push(url);
       setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
-    }, 1000); // UI 자연스럽게 변경을 위해 0.8초 딜레이
+    }, 2000); // UI 자연스럽게 변경을 위해 0.8초 딜레이
   };
 
   return (
