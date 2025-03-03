@@ -1,178 +1,218 @@
-// components/overviews/AIOverview.tsx
+// components/overviews/AiOverviewExtended.tsx
 import React from "react";
-import { AITrend, RelatedTechnology } from "@/types/dataProps";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 
-interface AIOverviewProps {
+interface TargetAudience {
+  label: string;
+  description: string;
+}
+
+interface AiTrend {
+  trend_name: string;
+  trend_description: string;
+}
+
+interface UsageTip {
+  tip_title: string;
+  tip_description: string;
+}
+
+interface RelatedTech {
+  technology_name: string;
+  technology_description: string;
+  usage_tips: UsageTip[];
+}
+
+interface AiOverviewExtendedProps {
   overview: {
-    ai_trends?: AITrend[];
-    related_technologies?: RelatedTechnology[];
+    target_audience?: TargetAudience[];
+    ai_trends?: AiTrend[];
+    related_technologies?: RelatedTech[];
   };
 }
 
-const AIOverview: React.FC<AIOverviewProps> = ({ overview }) => (
-  <OverviewContainer>
-    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
+const AiOverviewExtended: React.FC<AiOverviewExtendedProps> = ({
+  overview,
+}) => {
+  return (
+    <Container>
+      <Title>✨ 유티클 인사이트</Title>
 
-    <SectionTitle>AI 트렌드</SectionTitle>
-    <Description>
-      유튜브 영상에서 설명된 AI 기술의 발전 동향을 소개합니다.
-    </Description>
-    {overview.ai_trends?.map((trend, index) => (
-      <Card key={index}>
-        <TrendTitle>{trend.trend_name}</TrendTitle>
-        <TrendDescription>{trend.trend_description}</TrendDescription>
-      </Card>
-    ))}
+      {/* (A) 타겟 오디언스 */}
+      {overview.target_audience && overview.target_audience.length > 0 && (
+        <Section>
+          <SectionTitle>누가 보면 좋을까요?</SectionTitle>
+          <SectionDesc>
+            이 영상에서 소개된 AI 정보가 특히 유용한 대상입니다.
+          </SectionDesc>
 
-    <SectionTitle>AI 적용 기술</SectionTitle>
-    <Description>영상에 소개된 AI 기술을 설명합니다.</Description>
-    {overview.related_technologies?.map((tech, index) => (
-      <BrandCard key={index}>
-        <BrandName>{tech.technology_name}</BrandName>
-        <BrandDescription>{tech.technology_description}</BrandDescription>
-        <ProductCardTitle>주요 특징</ProductCardTitle>
-        {tech.usage_tips.map((tip, idx) => (
-          <ProductCard key={idx}>
-            <ProductName>{tip.tip_title}</ProductName>
-            <ProductDescription>{tip.tip_description}</ProductDescription>
-          </ProductCard>
-        ))}
-      </BrandCard>
-    ))}
-  </OverviewContainer>
-);
+          {overview.target_audience.map((aud, idx) => (
+            <AudienceBlock key={idx}>
+              <AudienceLabel>{aud.label}</AudienceLabel>
+              <AudienceDesc>{aud.description}</AudienceDesc>
+            </AudienceBlock>
+          ))}
+        </Section>
+      )}
 
-export default AIOverview;
+      {/* (B) AI 트렌드 */}
+      {overview.ai_trends && overview.ai_trends.length > 0 && (
+        <Section>
+          <SectionTitle>AI 트렌드</SectionTitle>
+          <SectionDesc>
+            영상을 통해 주목받은 최신 AI 흐름을 간단히 정리했어요.
+          </SectionDesc>
 
-const Card = styled.div`
-  background-color: #f0f4ff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
+          {overview.ai_trends.map((trend, idx) => (
+            <TrendBlock key={idx}>
+              <TrendName>{trend.trend_name}</TrendName>
+              <TrendDesc>{trend.trend_description}</TrendDesc>
+            </TrendBlock>
+          ))}
+        </Section>
+      )}
+
+      {/* (C) 관련 기술 */}
+      {overview.related_technologies &&
+        overview.related_technologies.length > 0 && (
+          <Section>
+            <SectionTitle>관련 기술</SectionTitle>
+            <SectionDesc>
+              영상에서 언급된 주요 AI 도구 및 기술을 살펴봅니다.
+            </SectionDesc>
+
+            {overview.related_technologies.map((tech, idx) => (
+              <TechBlock key={idx}>
+                <TechName>{tech.technology_name}</TechName>
+                <TechDesc>{tech.technology_description}</TechDesc>
+
+                {tech.usage_tips.length > 0 && (
+                  <>
+                    <TipsHeader>사용 팁</TipsHeader>
+                    {tech.usage_tips.map((tip, tIdx) => (
+                      <TipItem key={tIdx}>
+                        <TipTitle>{tip.tip_title}</TipTitle>
+                        <TipDesc>{tip.tip_description}</TipDesc>
+                      </TipItem>
+                    ))}
+                  </>
+                )}
+              </TechBlock>
+            ))}
+          </Section>
+        )}
+    </Container>
+  );
+};
+
+export default AiOverviewExtended;
+
+/* ===== Styled ===== */
+const Container = styled.div`
+  padding: 0 16px;
+  margin-top: 80px;
 `;
 
-const OverviewTitle = styled.div`
+const Title = styled.h2`
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 32px;
 `;
 
-const TrendTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 132%;
+const Section = styled.div`
+  margin-bottom: 36px;
 `;
 
-const TrendDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  line-height: 128%;
-`;
-
-const BrandCard = styled.div`
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 8px;
 `;
 
-const Description = styled.p`
+const SectionDesc = styled.p`
   font-size: 14px;
   color: #666;
-  margin-bottom: 12px;
-  line-height: 128%;
+  margin-bottom: 16px;
+  line-height: 1.4;
 `;
 
-const BrandName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const BrandDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 120%;
-`;
-
-const ProductCard = styled.div`
-  background-color: #f9f9f9;
-  border-radius: 8px;
+/* target_audience */
+const AudienceBlock = styled.div`
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
   padding: 12px;
-  margin-top: 12px;
+  margin-bottom: 12px;
 `;
-
-const ProductCardTitle = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 20px;
-`;
-
-const ProductName = styled.h4`
-  font-size: 14px;
+const AudienceLabel = styled.h4`
+  font-size: 15px;
   font-weight: 700;
+  margin-bottom: 4px;
 `;
-
-const ProductDescription = styled.p`
+const AudienceDesc = styled.p`
   font-size: 14px;
   color: #555;
-  margin-top: 8px;
-  line-height: 128%;
+  line-height: 1.4;
 `;
 
-const TipCard = styled.div`
+/* ai_trends */
+const TrendBlock = styled.div`
   background-color: #f0f4ff;
   border-radius: 8px;
   padding: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 `;
-
-const TipTitle = styled.h3`
+const TrendName = styled.h4`
   font-size: 16px;
   font-weight: 600;
+  margin-bottom: 4px;
 `;
-
-const TipDescription = styled.p`
+const TrendDesc = styled.p`
   font-size: 14px;
   color: #555;
-  margin-top: 4px;
+  line-height: 1.4;
+`;
+
+/* related_technologies */
+const TechBlock = styled.div`
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
   margin-bottom: 12px;
-  line-height: 120%;
 `;
-
-const ProductUsageTip = styled.p`
-  font-size: 13px;
-  color: #555;
-  margin-top: 16px;
-  line-height: 132%;
-  strong {
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: #000;
-  }
-`;
-
-const OverviewContainer = styled.div`
-  padding: 0 16px;
-  margin-top: 80px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 18px;
+const TechName = styled.h4`
+  font-size: 16px;
   font-weight: 700;
   margin-bottom: 4px;
-  margin-top: 12px;
-  &:nth-of-type(2) {
-    margin-top: 48px;
-  }
-  &:nth-of-type(3) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
-  &:nth-of-type(4) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
+`;
+const TechDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 12px;
+  line-height: 1.4;
+`;
+
+const TipsHeader = styled.div`
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+`;
+
+const TipItem = styled.div`
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+`;
+
+const TipTitle = styled.h5`
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+const TipDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
 `;

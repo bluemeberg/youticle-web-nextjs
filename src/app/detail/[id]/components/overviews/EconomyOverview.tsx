@@ -18,7 +18,7 @@ interface EconomyOverviewProps {
 
 const EconomyOverview: React.FC<EconomyOverviewProps> = ({ overview }) => (
   <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
+    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
 
     <SectionTitle>경제 트렌드</SectionTitle>
     <Description>

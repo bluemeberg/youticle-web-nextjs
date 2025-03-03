@@ -19,6 +19,10 @@ import AIOverview from "@/detail/[id]/components/overviews/AIOverview";
 import CryptoOverview from "@/detail/[id]/components/overviews/CryptoOverview";
 import BusinessOverview from "@/detail/[id]/components/overviews/BusinessOverview";
 import EditorCameo from "./Cameo";
+import ItTechOverview from "@/detail/[id]/components/overviews/ItTechOverview";
+import RelationshipOverview from "@/detail/[id]/components/overviews/RelationshipOverview";
+import TravelOverviewUnified from "@/detail/[id]/components/overviews/TravelOverview";
+import HealthOverviewBusinessStyle from "@/detail/[id]/components/overviews/HealthOverview";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -34,15 +38,92 @@ interface RealEstateOverviewProps {
     investment_strategy?: string;
   };
 }
-
-interface HealthOverviewProps {
+// 1) Type Definitions
+interface TargetAudience {
+  label: string;
+  description: string;
+}
+interface HealthTrend {
+  trend_name: string;
+  trend_description: string;
+}
+interface AppTip {
+  tip_title: string;
+  tip_description: string;
+}
+interface HealthStrategy {
+  strategy_name: string;
+  strategy_description: string;
+  application_tips: AppTip[];
+}
+interface HealthOverviewBusinessProps {
   overview: {
-    health_focus?: HealthFocus[];
-    method_spotlight?: MethodSpotlight[];
-    lifestyle_tips?: LifeStyleTips[];
+    target_audience?: TargetAudience[];
+    health_trends?: HealthTrend[];
+    health_strategic_insights?: HealthStrategy[];
+  };
+}
+interface Audience {
+  label: string;
+  description: string;
+}
+interface TechTrend {
+  trend_name: string;
+  trend_description: string;
+}
+interface ApplicationTip {
+  tip_title: string;
+  tip_description: string;
+}
+interface TechStrategy {
+  technology_name: string;
+  technology_description: string;
+  usage_tips: ApplicationTip[];
+}
+interface ItTechOverviewProps {
+  overview: {
+    target_audience?: Audience[];
+    tech_trends?: TechTrend[];
+    tech_strategic_insights?: TechStrategy[];
   };
 }
 
+interface RelTrend {
+  trend_name: string;
+  trend_description: string;
+}
+interface ActionTip {
+  tip_title: string;
+  tip_description: string;
+}
+interface InsightItem {
+  insight_name: string;
+  insight_description: string;
+  action_tips: ActionTip[];
+}
+
+interface RelationshipOverviewProps {
+  overview: {
+    target_audience?: Audience[];
+    relationship_trends?: RelTrend[];
+    practical_insights?: InsightItem[];
+  };
+}
+
+interface TravelItem {
+  place_type: string;
+  place_name: string;
+  cost_info: string;
+  key_features: string;
+  how_to_go: string;
+  tips: string;
+}
+
+interface TravelOverviewUnifiedProps {
+  overview: {
+    travel_items?: TravelItem[]; // 🔹 travel_items가 undefined일 수 있음
+  };
+}
 const Contents = ({
   detailData,
   thumbnails,
@@ -218,10 +299,10 @@ const Contents = ({
             detailData.section === "건강" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
-              <HealthOverview
+              <HealthOverviewBusinessStyle
                 overview={
                   detailData.summary_data
-                    .overview as HealthOverviewProps["overview"]
+                    .overview as HealthOverviewBusinessProps["overview"]
                 }
               />
             )}
@@ -269,6 +350,38 @@ const Contents = ({
               <CryptoOverview overview={detailData.summary_data.overview} />
             )}
 
+          {user.name !== "" &&
+            detailData.section === "IT/테크" &&
+            detailData.summary_data.overview && (
+              <ItTechOverview
+                overview={
+                  detailData.summary_data
+                    .overview as ItTechOverviewProps["overview"]
+                }
+              />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "연애/결혼" &&
+            detailData.summary_data.overview && (
+              <RelationshipOverview
+                overview={
+                  detailData.summary_data
+                    .overview as RelationshipOverviewProps["overview"]
+                }
+              />
+            )}
+
+          {user.name !== "" &&
+            detailData.section === "여행" &&
+            detailData.summary_data.overview && (
+              <TravelOverviewUnified
+                overview={
+                  detailData.summary_data
+                    .overview as TravelOverviewUnifiedProps["overview"]
+                }
+              />
+            )}
           {/* 패션 섹션 */}
           {/* {(detailData.section === "남자 패션" ||
             detailData.section === "여자 패션") &&

@@ -1,191 +1,259 @@
-// components/overviews/BeautyOverview.tsx
+// components/overviews/BeautyOverviewMerged.tsx
 import React from "react";
-import { BeautyTrend, BrandSpotlight, StylingTip } from "@/types/dataProps";
+import styled from "styled-components";
 
-interface BeautyOverviewProps {
+interface TargetAudience {
+  label: string;
+  description: string;
+}
+interface BeautyTrend {
+  trend_name: string;
+  trend_description: string;
+}
+interface RecommendedProduct {
+  product_name: string;
+  product_usage_tip: string;
+}
+interface BrandItem {
+  product_name: string;
+  product_description: string;
+  tip_title: string;
+  tip_description: string;
+  recommended_product: RecommendedProduct[];
+}
+interface BrandSuggestion {
+  brand_name: string;
+  brand_description: string;
+  items: BrandItem[];
+}
+interface BeautyOverviewMergedProps {
   overview: {
+    target_audience?: TargetAudience[];
     beauty_trends?: BeautyTrend[];
-    brand_spotlight?: BrandSpotlight[];
-    styling_tips?: StylingTip[];
+    brand_suggestions?: BrandSuggestion[];
   };
 }
-import styled, { keyframes } from "styled-components";
-const BeautyOverview: React.FC<BeautyOverviewProps> = ({ overview }) => (
-  <OverviewContainer>
-    <OverviewTitle>✨ 하이라이트</OverviewTitle>
-    <SectionTitle>뷰티 트렌드</SectionTitle>
-    <Description>
-      유튜브 영상에서 소개된 최신 뷰티 트렌드를 제공합니다.
-    </Description>
-    {overview.beauty_trends?.map((trend, index) => (
-      <Card key={index}>
-        <TrendTitle>{trend.trend_name}</TrendTitle>
-        <TrendDescription>{trend.trend_description}</TrendDescription>
-      </Card>
-    ))}
 
-    <SectionTitle>브랜드 스포트라이트</SectionTitle>
-    <Description>영상에서 주목받은 브랜드와 제품을 소개합니다.</Description>
-    {overview.brand_spotlight?.map((brand, index) => (
-      <BrandCard key={index}>
-        <BrandName>{brand.brand_name}</BrandName>
-        <BrandDescription>{brand.brand_description}</BrandDescription>
-        {brand.highlighted_products.map((product, idx) => (
-          <ProductCard key={idx}>
-            <ProductName>{product.product_name}</ProductName>
-            <ProductDescription>
-              {product.product_description}
-            </ProductDescription>
-          </ProductCard>
-        ))}
-      </BrandCard>
-    ))}
+const BeautyOverviewMerged: React.FC<BeautyOverviewMergedProps> = ({
+  overview,
+}) => {
+  return (
+    <Container>
+      <Title>✨ 유티클 인사이트</Title>
 
-    <SectionTitle>스타일링 팁</SectionTitle>
-    <Description>영상에 나온 뷰티 제품 활용 팁을 소개합니다.</Description>
-    {overview.styling_tips?.map((tip, index) => (
-      <TipCard key={index}>
-        <TipTitle>{tip.tip_title}</TipTitle>
-        <TipDescription>{tip.tip_description}</TipDescription>
-        {tip.recommended_product.map((product, idx) => (
-          <ProductUsageTip key={idx}>
-            <strong>{product.product_name}</strong> <br />
-            {product.product_usage_tip}
-          </ProductUsageTip>
-        ))}
-      </TipCard>
-    ))}
-  </OverviewContainer>
-);
+      {/* Target Audience */}
+      {overview.target_audience && overview.target_audience.length > 0 && (
+        <Section>
+          <SectionTitle>누가 보면 좋을까요?</SectionTitle>
+          <SectionDesc>
+            영상 정보를 유용하게 쓸 수 있는 타겟 유형을 소개합니다.
+          </SectionDesc>
+          {overview.target_audience.map((aud, idx) => (
+            <AudienceBlock key={idx}>
+              <AudienceLabel>{aud.label}</AudienceLabel>
+              <AudienceDesc>{aud.description}</AudienceDesc>
+            </AudienceBlock>
+          ))}
+        </Section>
+      )}
 
-export default BeautyOverview;
+      {/* Beauty Trends */}
+      {overview.beauty_trends && overview.beauty_trends.length > 0 && (
+        <Section>
+          <SectionTitle>뷰티 트렌드</SectionTitle>
+          <SectionDesc>영상에서 다뤄진 주요 트렌드를 정리했습니다.</SectionDesc>
+          {overview.beauty_trends.map((trend, idx) => (
+            <TrendBlock key={idx}>
+              <TrendName>{trend.trend_name}</TrendName>
+              <TrendDesc>{trend.trend_description}</TrendDesc>
+            </TrendBlock>
+          ))}
+        </Section>
+      )}
 
-const Card = styled.div`
-  background-color: #f0f4ff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
+      {/* Brand Suggestions */}
+      {overview.brand_suggestions && overview.brand_suggestions.length > 0 && (
+        <Section>
+          <SectionTitle>브랜드 & 제품 소개</SectionTitle>
+          <SectionDesc>
+            브랜드별 대표 제품과 함께, 활용 팁을 하나의 흐름으로 정리했습니다.
+          </SectionDesc>
+
+          {overview.brand_suggestions.map((brand, bIdx) => (
+            <BrandBlock key={bIdx}>
+              <BrandName>{brand.brand_name}</BrandName>
+              <BrandDesc>{brand.brand_description}</BrandDesc>
+
+              {brand.items.map((item, iIdx) => (
+                <ItemBlock key={iIdx}>
+                  <ProductName>{item.product_name}</ProductName>
+                  <ProductDesc>{item.product_description}</ProductDesc>
+
+                  <TipTitle>💡 사용 팁</TipTitle>
+                  <TipDesc>{item.tip_description}</TipDesc>
+
+                  {/* {item.recommended_product.map((rp, rIdx) => (
+                    <RecommendedBlock key={rIdx}>
+                      <RecommendedName>{rp.product_name}</RecommendedName>
+                      <RecommendedUsage>
+                        {rp.product_usage_tip}
+                      </RecommendedUsage>
+                    </RecommendedBlock>
+                  ))} */}
+                </ItemBlock>
+              ))}
+            </BrandBlock>
+          ))}
+        </Section>
+      )}
+    </Container>
+  );
+};
+
+export default BeautyOverviewMerged;
+
+/* ========== Styled ========== */
+const Container = styled.div`
+  padding: 0 16px;
+  margin-top: 80px;
 `;
-const OverviewTitle = styled.div`
+
+const Title = styled.h2`
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 32px;
 `;
 
-const TrendTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 132%;
+const Section = styled.div`
+  margin-bottom: 36px;
 `;
 
-const TrendDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  line-height: 128%;
-`;
-
-const BrandCard = styled.div`
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 8px;
 `;
 
-const Description = styled.p`
+const SectionDesc = styled.p`
   font-size: 14px;
   color: #666;
   margin-bottom: 16px;
+  line-height: 1.4;
 `;
 
-const BrandName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const BrandDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 128%;
-`;
-
-const ProductCard = styled.div`
-  background-color: #f9f9f9;
-  border-radius: 8px;
+/* target_audience */
+const AudienceBlock = styled.div`
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
   padding: 12px;
-  margin-top: 12px;
+  margin-bottom: 12px;
 `;
 
-const ProductCardTitle = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 20px;
-`;
-
-const ProductName = styled.h4`
-  font-size: 14px;
+const AudienceLabel = styled.h4`
+  font-size: 15px;
   font-weight: 700;
+  margin-bottom: 4px;
 `;
 
-const ProductDescription = styled.p`
+const AudienceDesc = styled.p`
   font-size: 14px;
   color: #555;
-  margin-top: 8px;
-  line-height: 128%;
+  line-height: 132%;
 `;
 
-const TipCard = styled.div`
+/* beauty_trends */
+const TrendBlock = styled.div`
   background-color: #f0f4ff;
   border-radius: 8px;
   padding: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 `;
 
-const TipTitle = styled.h3`
+const TrendName = styled.h4`
   font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+const TrendDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+`;
+
+/* brand_suggestions */
+const BrandBlock = styled.div`
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+`;
+
+const BrandName = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+`;
+
+const BrandDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 12px;
+  line-height: 132%;
+`;
+
+const ItemBlock = styled.div`
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+`;
+
+const ProductName = styled.h5`
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+`;
+
+const ProductDesc = styled.p`
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 8px;
+  line-height: 132%;
+  margin-top: 4px;
+`;
+
+const TipTitle = styled.h5`
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 16px;
+`;
+
+const TipDesc = styled.p`
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 8px;
+  line-height: 132%;
+  margin-top: 4px;
+`;
+
+const RecommendedBlock = styled.div`
+  background-color: #fff;
+  margin-top: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  padding: 8px;
+`;
+
+const RecommendedName = styled.h6`
+  font-size: 13px;
   font-weight: 600;
 `;
 
-const TipDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  margin-bottom: 12px;
-  line-height: 120%;
-`;
-
-const ProductUsageTip = styled.p`
+const RecommendedUsage = styled.p`
   font-size: 13px;
   color: #555;
-  margin-top: 16px;
-  line-height: 132%;
-  strong {
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: #000;
-  }
-`;
-
-const OverviewContainer = styled.div`
-  padding: 0 16px;
-  margin-top: 20px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  margin-top: 12px;
-  &:nth-of-type(2) {
-    margin-top: 48px;
-  }
-  &:nth-of-type(3) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
-  &:nth-of-type(4) {
-    margin-top: 48px; // Different margin for the third SectionTitle
-  }
+  margin-top: 4px;
 `;

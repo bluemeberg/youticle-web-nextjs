@@ -255,21 +255,25 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
       {/** 5줄 핵심 요약 배치 **/}
-      <FiveLineSummarySection>
-        <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
-        <FiveLineList>
-          {(detailData.summary_data.five_lines_summary ?? []).map(
-            (point, idx) => (
-              <FiveLineListWrapper key={idx}>
-                <FiveLineListWrapperIndex>
-                  {NUMBER_EMOJIS[idx]}
-                </FiveLineListWrapperIndex>
-                <li key={idx}> {formatSummary(point)}</li>
-              </FiveLineListWrapper>
-            )
-          )}
-        </FiveLineList>
-      </FiveLineSummarySection>
+      {detailData.summary_data.five_lines_summary && (
+        <>
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {(detailData.summary_data.five_lines_summary ?? []).map(
+                (point, idx) => (
+                  <FiveLineListWrapper key={idx}>
+                    <FiveLineListWrapperIndex>
+                      {NUMBER_EMOJIS[idx]}
+                    </FiveLineListWrapperIndex>
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+        </>
+      )}
       {/* 댓글 분석 섹션 추가 */}
       {detailData.summary_data.comment_insight && (
         <>

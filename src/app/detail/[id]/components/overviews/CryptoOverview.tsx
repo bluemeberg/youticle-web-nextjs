@@ -13,7 +13,7 @@ interface CryptoOverviewProps {
 
 const CryptoOverview: React.FC<CryptoOverviewProps> = ({ overview }) => (
   <OverviewContainer>
-    <OverviewTitle>✨ 가상자산 하이라이트</OverviewTitle>
+    <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
 
     <SectionTitle>시장 분석</SectionTitle>
     <Description>

@@ -8,7 +8,7 @@ export default async function Editorpage() {
   const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";
 
   // Fetch both APIs in parallel using Promise.all
-  const response1 = await fetch(EDITOR_ARTICLE_API_URL, {
+  const response1 = await fetch(EDITOR_ARTICLE_API_LOCAL_URL, {
     method: "GET",
     cache: "no-store",
   });

@@ -88,7 +88,11 @@ const DimmedArea = ({
       "2️⃣ 브랜드 제품 소개",
       "3️⃣ 스타일링 꿀팁",
     ],
-    "비즈니스/사업": () => ["1️⃣ 비즈니스 트렌드", "2️⃣ 전략적 인사이트"],
+    "비즈니스/사업": () => [
+      "1️⃣ 누가 보면 좋은 영상인가요?",
+      "2️⃣ 비즈니스 트렌드",
+      "3️⃣ 전략적 인사이트",
+    ],
     부동산: () => ["1️⃣ 시장 분석", "2️⃣ 지역 분석", "3️⃣ 투자 전략"],
     경제: () => ["1️⃣ 경제 트렌드", "2️⃣ 시장 분석", "3️⃣ 투자 전략"],
     "여자 패션": () => [
@@ -101,9 +105,26 @@ const DimmedArea = ({
       "2️⃣ 브랜드 스포트라이트",
       "3️⃣ 스타일링 팁",
     ],
-    인공지능: () => ["1️⃣ AI 트렌드", "2️⃣ AI 적용 기술"],
-    건강: () => ["1️⃣ 건강 포커스", "2️⃣ 방법/접근 방식", "3️⃣ 라이프스타일 팁"],
-
+    인공지능: () => [
+      "1️⃣ 누가 보면 좋을까요?",
+      "2️⃣ AI 트렌드",
+      "3️⃣ AI 적용 기술",
+    ],
+    건강: () => [
+      "1️⃣ 누가 보면 좋을까요?",
+      "2️⃣ 건강 트렌드",
+      "3️⃣ 전략적 건강 팁",
+    ],
+    "연애/결혼": () => [
+      "1️⃣ 누가 보면 좋을까요?",
+      "2️⃣ 연애·결혼 트렌드",
+      "3️⃣ 실용적 인사이트",
+    ],
+    "IT/테크": () => [
+      "1️⃣ 누가 보면 좋을까요?",
+      "2️⃣ 테크 트렌드",
+      "3️⃣ 전략적 테크 인사이트",
+    ],
     // 경제: () => ["1️⃣ 경제 동향", "2️⃣ 재무 분석", "3️⃣ 세계 시장 전망"],
     // 기타 섹션
     default: () => [],
@@ -699,7 +720,7 @@ const InsightsContainer = styled.div`
 `;
 
 const InsightsTitle = styled.div`
-  font-size: 18px !important;
+  font-size: 20px !important;
   font-weight: 800 !important;
   /* color: #0033cc !important; 강조된 파란색 */
   background-color: #f9f9f9 !important;
@@ -718,7 +739,7 @@ const InsightsList = styled.div`
 const InsightItem = styled.div<{ section: string }>`
   padding: 0px 0px !important;
   background-color: #f9f9f9 !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 600 !important;
   line-height: 1.5 !important; /* 줄바꿈 시 간격 조정 */
   color: #333333 !important;

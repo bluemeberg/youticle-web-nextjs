@@ -1,14 +1,16 @@
 // components/overviews/BusinessOverview.tsx
 import React from "react";
-import {
-  BusinessTrend,
-  StrategicInsight,
-  ApplicationTip,
-  RelatedTool,
-} from "@/types/dataProps";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
+import { BusinessTrend, StrategicInsight } from "@/types/dataProps";
+
+interface TargetAudience {
+  label: string;
+  description: string;
+}
+
 interface BusinessOverviewProps {
   overview: {
+    target_audience?: TargetAudience[];
     business_trends?: BusinessTrend[];
     strategic_insights?: StrategicInsight[];
   };
@@ -19,6 +21,22 @@ const BusinessOverview: React.FC<BusinessOverviewProps> = ({ overview }) => {
     <OverviewContainer>
       {/* 상단 하이라이트 */}
       <OverviewTitle>✨ 유티클 인사이트</OverviewTitle>
+
+      {/* 타겟 오디언스 */}
+      {overview.target_audience && overview.target_audience.length > 0 && (
+        <SectionBlock>
+          <SectionTitle>누가 보면 좋은 영상인가요?</SectionTitle>
+          <SectionDesc>
+            영상에서 소개된 기업/트렌드가 특히 도움이 될 이들을 정리했습니다.
+          </SectionDesc>
+          {overview.target_audience.map((aud, idx) => (
+            <AudienceCard key={idx}>
+              <AudienceLabel>{aud.label}</AudienceLabel>
+              <AudienceDesc>{aud.description}</AudienceDesc>
+            </AudienceCard>
+          ))}
+        </SectionBlock>
+      )}
 
       {/* 비즈니스 트렌드 */}
       <SectionBlock>
@@ -47,14 +65,16 @@ const BusinessOverview: React.FC<BusinessOverviewProps> = ({ overview }) => {
 
             {/* 주요 팁 */}
             {insight.application_tips.length > 0 && (
-              <TipsHeader>주요 팁</TipsHeader>
+              <>
+                <TipsHeader>주요 팁</TipsHeader>
+                {insight.application_tips.map((tip, idx) => (
+                  <TipItem key={idx}>
+                    <TipTitle>{tip.tip_title}</TipTitle>
+                    <TipDesc>{tip.tip_description}</TipDesc>
+                  </TipItem>
+                ))}
+              </>
             )}
-            {insight.application_tips.map((tip, idx) => (
-              <TipItem key={idx}>
-                <TipTitle>{tip.tip_title}</TipTitle>
-                <TipDesc>{tip.tip_description}</TipDesc>
-              </TipItem>
-            ))}
           </InsightCard>
         ))}
       </SectionBlock>
@@ -93,6 +113,28 @@ const SectionDesc = styled.p`
   line-height: 1.4;
 `;
 
+/* 타겟 오디언스 카드 */
+const AudienceCard = styled.div`
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+`;
+
+const AudienceLabel = styled.h4`
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+`;
+
+const AudienceDesc = styled.p`
+  font-size: 14px;
+  color: #555;
+  line-height: 1.3;
+`;
+
+/* 비즈니스 트렌드 */
 const TrendCard = styled.div`
   background-color: #f0f4ff;
   border-radius: 8px;
@@ -112,6 +154,7 @@ const TrendDesc = styled.p`
   line-height: 1.4;
 `;
 
+/* 전략적 인사이트 */
 const InsightCard = styled.div`
   background-color: #fff;
   border: 1px solid #e0e0e0;
