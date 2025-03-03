@@ -330,6 +330,7 @@ const Container = styled.header<{
       $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white"};
     font-weight: 700;
     font-size: 20px;
+    font-family: "Pretendard Variable";
   }
 
   @media screen and (min-width: 430px) {
