@@ -162,18 +162,25 @@ const CommentsInsightSectionDimmed: React.FC<CommentsInsightProps> = ({
               <>
                 <LogoTitle>유튜브를 읽다, YouTicle</LogoTitle>
                 <DimmedMessage>
-                  🙋시청자의 핵심 의견과 깊은 인사이트를 <br />
-                  모두 보려면 ‘{section}’ 키워드 구독이 필요해요!
+                  시청자들의 반응이 궁금하다면?🤔
                   <br />
+                  <br />이 영상에 달린 수십 개의 댓글 속에서 <br />
+                  <em>예상치 못한 의견</em>부터 <br />{" "}
+                  <em>{section} 관련 꿀팁</em>까지 숨어 있어요👀
                 </DimmedMessage>
                 <DimmeHookMessage>
+                  {section} 키워드 무료 구독으로 <br /> 댓글 전문 열람과 추가
+                  인사이트를 <br />
+                  확인해보세요!👇
+                </DimmeHookMessage>
+                {/* <DimmeHookMessage>
                   💡 초기 무료 구독자에게만 제공되는 혜택 <br />
                   <DimmedSubMessage>
                     1️⃣ 매일 구독한 키워드의 YouTicle 뉴스레터 제공! <br />
                     2️⃣ 시청자 인사이트, 아티클 전문 열람 가능! <br />
                     3️⃣ 내 관심 키워드 최대 3개 구독 가능!
                   </DimmedSubMessage>
-                </DimmeHookMessage>
+                </DimmeHookMessage> */}
                 <SubscribeButton onClick={handleButtonClick}>
                   {section} 키워드 무료 구독하러가기
                 </SubscribeButton>
@@ -272,7 +279,7 @@ const DimmedWrapper = styled.div`
   mask-size: 100% 100%; */
   mask-repeat: no-repeat;
   overflow: hidden;
-  min-height: 400px;
+  min-height: 440px;
 `;
 
 /** (B) DimmedOverlay: 하단 오버레이 + 구독 안내 버튼 */
@@ -315,18 +322,23 @@ const DimmedMessage = styled.div`
   font-size: 16px;
   margin-bottom: 32px;
   line-height: 132%;
-  font-weight: 600;
+  font-weight: 500;
   width: 100%;
   padding-left: 20px;
   padding-right: 20px;
   text-align: center;
+  /* 예상치 못한 의견과 주식 관련 꿀팁 부분 italic 적용 */
+  em {
+    font-style: italic;
+    font-weight: 700;
+  }
 `;
 
 const DimmeHookMessage = styled.div`
   font-size: 16px;
   margin-bottom: 20px;
   line-height: 132%;
-  font-weight: 600;
+  font-weight: 500;
   width: 100%;
   padding-left: 20px;
   padding-right: 20px;
@@ -336,8 +348,8 @@ const DimmeHookMessage = styled.div`
 const SubscribeButton = styled.button`
   background-color: #007bff;
   color: #fff;
-  width: 96%;
-  height: 60px;
+  width: 80%;
+  /* height: 52px; */
   font-size: 16px;
   font-weight: 700;
   line-height: 22px;
@@ -354,8 +366,8 @@ const SubscribeButton = styled.button`
 const SubscribeChangeButton = styled.button`
   background-color: #000;
   color: #fff;
-  width: 96%;
-  height: 60px;
+  width: 88%;
+  height: 52px;
   font-size: 16px;
   font-weight: 700;
   line-height: 22px;

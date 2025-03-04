@@ -167,8 +167,6 @@ const Contents = ({
   const isUnsubscribedSection =
     !subscribedSubjects.includes(detailData.section) && user.name !== "";
 
-  console.log(isUnsubscribedSection, "구독여부");
-  console.log("height", tocItemHeight);
   // 구독한 주제가 있으면 false, 미구독상태이면 true
   const isNoSubscribedSubjects =
     subscribedSubjects.length === 0 && user.name !== "";
@@ -288,7 +286,7 @@ const Contents = ({
             }
           )}
       </ContentWrapper>
-      {user.name !== "" && (
+      {user.name !== "" && !isUnsubscribedSection && (
         <HilightContainer>
           {user.name !== "" &&
             detailData.section === "주식" &&
@@ -296,6 +294,7 @@ const Contents = ({
               <StockOverview overview={detailData.summary_data.overview} />
             )}
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "건강" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
@@ -315,6 +314,7 @@ const Contents = ({
             )} */}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "부동산" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
@@ -327,6 +327,7 @@ const Contents = ({
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "뷰티/메이크업" &&
             detailData.summary_data.overview && (
               <BeautyOverviewMerged
@@ -335,24 +336,28 @@ const Contents = ({
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "인공지능" &&
             detailData.summary_data.overview && (
               <AiOverviewExtended overview={detailData.summary_data.overview} />
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "비즈니스/사업" &&
             detailData.summary_data.overview && (
               <BusinessOverview overview={detailData.summary_data.overview} />
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "가상자산" &&
             detailData.summary_data.overview && (
               <CryptoOverview overview={detailData.summary_data.overview} />
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "IT/테크" &&
             detailData.summary_data.overview && (
               <ItTechOverview
@@ -364,6 +369,7 @@ const Contents = ({
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "연애/결혼" &&
             detailData.summary_data.overview && (
               <RelationshipOverview
@@ -375,6 +381,7 @@ const Contents = ({
             )}
 
           {user.name !== "" &&
+            !isUnsubscribedSection &&
             detailData.section === "여행" &&
             detailData.summary_data.overview && (
               <TravelOverviewUnified

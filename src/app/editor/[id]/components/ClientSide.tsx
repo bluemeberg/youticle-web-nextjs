@@ -640,7 +640,7 @@ const ToggleButton2 = styled.button`
   font-weight: 600;
   cursor: pointer;
   margin-top: 16px;
-
+  font-size: 14px;
   &:hover {
     background-color: #0056b3;
   }

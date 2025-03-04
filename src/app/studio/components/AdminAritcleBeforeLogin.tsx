@@ -44,7 +44,7 @@ const AdminArticleBeforeLogin = () => {
       id: "2",
       name: "유썸 비즈",
       image: "/images/유썸비즈.png",
-      keywords: ["비즈니스/사업"],
+      keywords: ["비즈니스/사업", "여행"],
     },
     {
       id: "3",

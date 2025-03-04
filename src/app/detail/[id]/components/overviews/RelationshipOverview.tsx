@@ -32,7 +32,7 @@ const RelationshipOverview: React.FC<RelationshipOverviewProps> = ({
 }) => {
   return (
     <Container>
-      <Title>✨ 연애·결혼 인사이트</Title>
+      <Title>✨ 유티클 인사이트</Title>
 
       {/* 타겟 오디언스 */}
       {overview.target_audience && overview.target_audience.length > 0 && (
@@ -118,7 +118,7 @@ const Section = styled.div`
 const SectionTitle = styled.h3`
   font-size: 18px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 `;
 
 const SectionDesc = styled.p`
