@@ -28,6 +28,10 @@ import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
+import { userState } from "@/store/user";
+import { fetchSubscribedSubjects } from "@/api/apiClient";
+import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
+import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
 
 interface ClientSideProps {
   id: string;
@@ -144,6 +148,22 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const router = useRouter();
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+  const [isInsightVisible, setIsInsightVisible] = useState(false);
+  const user = useRecoilValue(userState);
+  const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (user.name !== "") {
+        const subjects = await fetchSubscribedSubjects(user.email, user.name);
+        console.log("로그인 후 구독한 키워드", subjects);
+        setSubscribedSubjects(subjects); // 구독한 주제 설정
+        // if (subjects.length === 0) {
+        //   setShowPopup(true); // Show popup if no subscribed subjects
+        // }
+      }
+    };
+    fetchSubjects();
+  }, [user]);
 
   return (
     <Container $isFixed={isFixed}>
@@ -215,7 +235,89 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       <Preview $isFixed={isFixed}>
         {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
+      {detailData.summary_data.comment_insight &&
+        Object.keys(detailData.summary_data.comment_insight).length > 0 && (
+          <>
+            <CommentAnalysisWrapper>
+              <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+              <AnalysisDesc>
+                AI가 댓글을 분석해 <strong>{detailData.section}</strong>과
+                관련한 주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+                남겼을까요?
+              </AnalysisDesc>
+              <ToggleButton2
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.gtag) {
+                    window.gtag("event", "comment_toggle_click", {
+                      event_category: "engagement",
+                      event_label: isInsightVisible
+                        ? "Collapse Comment Insight"
+                        : "Expand Comment Insight",
+                      value: 1,
+                    });
+                  }
 
+                  setIsInsightVisible(!isInsightVisible);
+                }}
+              >
+                {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+              </ToggleButton2>
+            </CommentAnalysisWrapper>
+            {/* user 정보가 있고 구독중인 키워드라면 commentInsight 활성화 */}
+
+            {/* user 정보가 있고 구독중인 키워드가 없다면 commentInsightDimmed 활성화 */}
+
+            {/* user 정보가 없다면 commentInsightDimmed 활성화 */}
+
+            {isInsightVisible && (
+              <>
+                {user.name !== "" &&
+                subscribedSubjects.includes(detailData.section) ? (
+                  // ✅ 유저 정보 존재 + 구독한 키워드 있음 → 전체 공개
+                  <CommentsInsightSection
+                    data={detailData.summary_data.comment_insight}
+                    isLoggedIn={true}
+                  />
+                ) : user.name !== "" && subscribedSubjects.length === 0 ? (
+                  // ✅ 유저 정보 존재 + 구독한적 없음 → 일부 차단 & 구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={true}
+                    isUnsubscribed={true} // 🚨 미구독 상태 전달
+                    isNeverSubscribed={true}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                ) : user.name !== "" &&
+                  subscribedSubjects.length > 0 &&
+                  !subscribedSubjects.includes(detailData.section) ? (
+                  // ✅ 유저 정보 존재 + 구독한 키워드 없음 → 일부 차단 & 구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={true}
+                    isUnsubscribed={true} // 🚨 미구독 상태 전달
+                    isNeverSubscribed={false}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                ) : (
+                  // ✅ 유저 정보 없음 (비로그인 상태) → 전체 차단 & 로그인/구독 유도
+                  <CommentsInsightSectionDimmed
+                    data={detailData.summary_data.comment_insight}
+                    section={detailData.section}
+                    isLoggedIn={false}
+                    isUnsubscribed={true} // 🚨 구독한 적 없음 정보 전달
+                    isNeverSubscribed={true}
+                    videoId={detailData.video_id}
+                    subscribedSubjects={subscribedSubjects}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
       <TOC>
         <div>목차</div>
         <div>
@@ -446,4 +548,91 @@ const LoadingText = styled.div`
   color: white;
   margin-top: 10px;
   font-size: 16px;
+`;
+
+/* 🔹 스타일 */
+const CommentAnalysisWrapper = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  /* border-radius: 8px; */
+  margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
+`;
+
+const AnalysisTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const AnalysisDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.2;
+  color: #444;
+  margin-top: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const ToggleButton2 = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  font-size: 14px;
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+
+/** ⬇️ 5줄 핵심 요약 섹션 추가 */
+const FiveLineSummarySection = styled.div`
+  margin: 0 16px 32px 16px;
+  padding: 20px;
+  background-color: #f7faff;
+  /* border-radius: 8px; */
+  border: 1px solid #b4c2ff;
+`;
+
+const Divider = styled.div`
+  /* 굵은 구분선 */
+  height: 2px;
+  background-color: #e0e0e0;
+  margin: 24px 16px;
+`;
+
+const FiveLineTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+`;
+
+const FiveLineList = styled.ul`
+  /* list-style-type: "• "; */
+  li {
+    font-size: 16px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+`;
+
+/** 본문 시작 타이틀 추가 */
+const MainBodyTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 16px 12px;
+`;
+
+const FiveLineListWrapper = styled.div`
+  display: flex;
+`;
+
+const FiveLineListWrapperIndex = styled.div`
+  margin-top: 4px;
+  margin-right: 4px;
 `;
