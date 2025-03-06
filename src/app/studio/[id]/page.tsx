@@ -56,8 +56,8 @@ export default async function AdminDetailPage({ params, searchParams }: any) {
   //     return <NotFoundPage />;
   //   }
 
-  const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-  // const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+  // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+  const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
   if (!task_id) {
     const EDITOR_ARTICLE_API_LOCAL_URL =
