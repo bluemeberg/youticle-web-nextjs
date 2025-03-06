@@ -9,6 +9,7 @@ import { dataState } from "@/store/data";
 import { userState } from "@/store/user";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { getUserByEmail } from "@/api/apiClient";
+import { tree } from "../../../../node_modules/next/dist/build/templates/app-page";
 
 interface ServiceIntroduceProps {
   subjects: string[]; // 추가된 subjects prop
@@ -21,8 +22,8 @@ interface User {
 }
 
 const SERVICE_TITLE = "📌 나만의 아티클 생성하기";
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const AdminIntroduce = () => {
   const router = useRouter();
@@ -39,17 +40,57 @@ const AdminIntroduce = () => {
 
   const [showLoginModal, setShowLoginModal] = useState(false); // 로그인 모달 상태
   const [data, setData] = useState<any>(null); // 응답 데이터 상태
-  console.log(data);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
+
+  /**
+   * 🎯 유튜브 URL에서 Video ID 추출 함수 (모든 경우 포함)
+   */
+  const extractVideoId = (urlOrId: string): string | null => {
+    try {
+      const url = new URL(urlOrId);
+
+      if (url.hostname === "youtu.be") {
+        return url.pathname.slice(1); // youtu.be/xxx 형태
+      }
+
+      if (url.hostname.includes("youtube.com")) {
+        if (url.pathname === "/watch") {
+          return url.searchParams.get("v"); // watch?v=xxx
+        }
+        if (url.pathname.startsWith("/live/")) {
+          return url.pathname.split("/")[2]; // live/xxx 형태
+        }
+      }
+
+      return null; // 유효하지 않은 경우 null 반환
+    } catch (error) {
+      console.log("추출");
+      return null; // URL 형식이 아니면 그대로 반환 (직접 ID 입력한 경우)
+    }
+  };
 
   // API 요청 함수
   const fetchSummaryEditorVideo = async () => {
     if (!user.email) {
       // 로그인이 안 되어 있다면 로그인 모달 표시
-      console.log("heelo");
       setShowLoginModal(true);
       return;
     }
 
+    if (!id.trim()) {
+      setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
+      setShowErrorModal(true);
+      return;
+    }
+
+    const videoId = extractVideoId(id);
+    if (!videoId) {
+      setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
+      setShowErrorModal(true);
+      return;
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
 
@@ -58,33 +99,37 @@ const AdminIntroduce = () => {
     setLoadingMessage2(
       "영상 길이에 따라 최대 1분이 소요될 수 있습니다. \n페이지를 떠나셔도 생성은 계속 진행돼요😀"
     );
+
     try {
-      console.log("hello");
-      const extractVideoId = (urlOrId: any) => {
-        try {
-          const url = new URL(urlOrId);
+      // const extractVideoId = (urlOrId: any) => {
+      //   try {
+      //     const url = new URL(urlOrId);
 
-          // youtu.be 형식일 경우 pathname에서 ID 추출
-          if (url.hostname === "youtu.be") {
-            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-          }
+      //     // youtu.be 형식일 경우 pathname에서 ID 추출
+      //     if (url.hostname === "youtu.be") {
+      //       return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+      //     }
 
-          // youtube.com 형식일 경우 v 파라미터 값 추출
-          if (url.hostname.includes("youtube.com")) {
-            return url.searchParams.get("v") || urlOrId;
-          }
+      //     if (url.hostname.includes("youtube.com")) {
+      //       if (url.pathname === "/watch") {
+      //         return url.searchParams.get("v"); // watch?v=xxx
+      //       }
+      //       if (url.pathname.startsWith("/live/")) {
+      //         return url.pathname.split("/")[2]; // live/xxx 형태
+      //       }
+      //     }
 
-          return urlOrId; // 다른 경우 그대로 반환
-        } catch (error) {
-          // URL 형식이 아니면 그대로 반환
-          return urlOrId;
-        }
-      };
+      //     return null; // 유효하지 않은 경우 null 반환
+      //   } catch (error) {
+      //     // URL 형식이 아니면 그대로 반환
+      //     return urlOrId;
+      //   }
+      // };
 
-      // id가 URL 형태라면 파싱하여 videoId만 추출
-      const videoId = extractVideoId(id);
-      //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
-
+      // // id가 URL 형태라면 파싱하여 videoId만 추출
+      // const videoId = extractVideoId(id);
+      // //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
+      console.log("추출", videoId);
       // 영상 요약 호출하기
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
@@ -99,7 +144,14 @@ const AdminIntroduce = () => {
         }
       );
       if (!response.ok) {
-        throw new Error(`HTTP 오류: ${response.status}`);
+        if (response.status === 400) {
+          const errorData = await response.json();
+          setErrorMessage(errorData.detail); // 🎯 에러 메시지 저장
+          setShowErrorModal(true); // 🎯 에러 모달 표시
+        } else {
+          throw new Error(`HTTP 오류: ${response.status}`);
+        }
+        return;
       }
       const { task_id } = await response.json(); // `task_id` 반환
       //   if (result === "success") {
@@ -249,43 +301,53 @@ const AdminIntroduce = () => {
         id: data.id,
       });
 
+      if (!id.trim()) {
+        setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
+        setShowErrorModal(true);
+        return;
+      }
+
+      const videoId = extractVideoId(id);
+      if (!videoId) {
+        setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
+        setShowErrorModal(true);
+        return;
+      }
       // 구독 주제가 없을 때 주제 등록
       setIsLoading(true); // 로딩 시작
-      setLoadingMessage("아티클을 생성 중입니다");
+      setLoadingMessage("아티클 구조 설계 중...");
       setLoadingMessage2(
-        "최대 1분이 소요될 수 있습니다. \n페이지를 이탈하지 말아주세요!🙋"
+        "영상 길이에 따라 최대 1분이 소요될 수 있습니다. \n페이지를 떠나셔도 생성은 계속 진행돼요😀"
       );
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
-      console.log("hello1");
 
-      const extractVideoId = (urlOrId: any) => {
-        try {
-          const url = new URL(urlOrId);
+      // const extractVideoId = (urlOrId: any) => {
+      //   try {
+      //     const url = new URL(urlOrId);
 
-          // youtu.be 형식일 경우 pathname에서 ID 추출
-          if (url.hostname === "youtu.be") {
-            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-          }
+      //     // youtu.be 형식일 경우 pathname에서 ID 추출
+      //     if (url.hostname === "youtu.be") {
+      //       return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
+      //     }
 
-          // youtube.com 형식일 경우 v 파라미터 값 추출
-          if (url.hostname.includes("youtube.com")) {
-            return url.searchParams.get("v") || urlOrId;
-          }
+      //     // youtube.com 형식일 경우 v 파라미터 값 추출
+      //     if (url.hostname.includes("youtube.com")) {
+      //       return url.searchParams.get("v") || urlOrId;
+      //     }
 
-          return urlOrId; // 다른 경우 그대로 반환
-        } catch (error) {
-          // URL 형식이 아니면 그대로 반환
-          return urlOrId;
-        }
-      };
+      //     return urlOrId; // 다른 경우 그대로 반환
+      //   } catch (error) {
+      //     // URL 형식이 아니면 그대로 반환
+      //     return urlOrId;
+      //   }
+      // };
 
       // id가 URL 형태라면 파싱하여 videoId만 추출
-      const videoId = extractVideoId(id);
+      // const videoId = extractVideoId(id);
       //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
 
       try {
-        console.log("hello");
         // 영상 요약 호출하기
         const response = await fetch(
           `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
@@ -300,7 +362,14 @@ const AdminIntroduce = () => {
           }
         );
         if (!response.ok) {
-          throw new Error(`HTTP 오류: ${response.status}`);
+          if (response.status === 400) {
+            const errorData = await response.json();
+            setErrorMessage(errorData.detail); // 🎯 에러 메시지 저장
+            setShowErrorModal(true); // 🎯 에러 모달 표시
+          } else {
+            throw new Error(`HTTP 오류: ${response.status}`);
+          }
+          return;
         }
         const { task_id } = await response.json(); // `task_id` 반환
         router.push(`/studio/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
@@ -324,17 +393,17 @@ const AdminIntroduce = () => {
         // setData(result); // 응답 데이터 설정
         // router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
       } catch (err) {
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            console.error("요청 시간이 초과되었습니다.");
-            startPollingEditorArticle(id);
-          } else {
-            console.error("요청 실패:", err.message);
-            startPollingEditorArticle(id);
-          }
-        } else {
-          console.error("알 수 없는 오류:", err);
-        }
+        // if (err instanceof Error) {
+        //   if (err.name === "AbortError") {
+        //     console.error("요청 시간이 초과되었습니다.");
+        //     startPollingEditorArticle(id);
+        //   } else {
+        //     console.error("요청 실패:", err.message);
+        //     startPollingEditorArticle(id);
+        //   }
+        // } else {
+        //   console.error("알 수 없는 오류:", err);
+        // }
       } finally {
         setIsLoading(false); // 로딩 종료
         clearTimeout(timeoutId); // 타임아웃 클리어
@@ -389,6 +458,20 @@ const AdminIntroduce = () => {
               나만의 아티클을 생성하려면 로그인해주세요.
             </InfoDescription>
             <GoogleLogin onLoginSuccess={handleLoginSuccess} />
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* 에러 모달 */}
+      {showErrorModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalClose onClick={() => setShowErrorModal(false)}>×</ModalClose>
+            <InfoMessage>❌ 아티클 생성 실패</InfoMessage>
+            <InfoDescription>{errorMessage}</InfoDescription>
+            <ModalButton onClick={() => setShowErrorModal(false)}>
+              확인
+            </ModalButton>
           </ModalContent>
         </ModalOverlay>
       )}
@@ -544,6 +627,7 @@ const ModalOverlay = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1;
 `;
 
 const ModalContent = styled.div`

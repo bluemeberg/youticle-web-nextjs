@@ -31,8 +31,8 @@ interface SectionData {
   explanation_description?: string;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
@@ -157,6 +157,9 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   //   useEffect(() => {
   //     setContentHeight(calculateHeight());
   //   }, [isExpanded, detailData]);
+
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   useEffect(() => {
     const pollTaskStatus = async () => {
       try {
@@ -212,20 +215,31 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             setIsArticleLoading(false);
             clearInterval(interval); // 폴링 중단
             break;
+          case "FAILURE":
+            setErrorMessage(
+              "해당 영상에서 아티클을 생성할 수 없습니다. \n다른 영상을 선택해주세요."
+            );
+            setShowErrorModal(true);
+            clearInterval(interval); // 폴링 중단
+            break;
           default:
             break;
         }
       } catch (error) {
         console.error("Error polling task:", error);
         setTaskMessage("작업 상태를 가져오는 중 오류가 발생했습니다.");
+        setErrorMessage(
+          "해당 영상에서 아티클 생성하는데 오류가 발생했습니다.😭 \n다시 시도했을 때도 안된다면 다른 영상으로 진행해주세요🤔"
+        );
+        setShowErrorModal(true);
+        clearInterval(interval); // 폴링 중단
       }
     };
 
     const interval = setInterval(pollTaskStatus, 2000); // 2초 간격으로 폴링
     return () => clearInterval(interval);
   }, [taskId]);
-  console.log(taskStatus);
-  console.log(detailData);
+
   const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
   // (3) "스레드 생성하기" 버튼 클릭 핸들러
   const handleOpenThreadModal = () => {
@@ -237,6 +251,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
   const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
   const [isInsightVisible, setIsInsightVisible] = useState(false);
+  /** 🔴 에러 팝업 확인 시 /studio로 이동 */
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    router.push("/studio");
+  };
 
   return (
     <Container $isFixed={isFixed} className={fadeInComplete ? "fadeIn" : ""}>
@@ -828,6 +847,17 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           )}
         </SlideInContainer>
       )}
+      {/* ❌ 에러 팝업 */}
+      {showErrorModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalClose onClick={handleErrorModalClose}>×</ModalClose>
+            <InfoMessage>⚠️ 아티클 생성 실패</InfoMessage>
+            <InfoDescription>{errorMessage}</InfoDescription>
+            <ModalButton onClick={handleErrorModalClose}>확인</ModalButton>
+          </ModalContent>
+        </ModalOverlay>
+      )}
       {/* 초기 데이터 렌더링 */}
       {/* {detailData && detailData.thumbnail && (
         <VideoCard
@@ -1292,4 +1322,63 @@ const ToggleButton2 = styled.button`
   &:hover {
     background-color: #0056b3;
   }
+`;
+
+/** ✅ 추가된 스타일 */
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ModalContent = styled.div`
+  background-color: white;
+  padding: 20px 16px;
+  border-radius: 4px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+`;
+
+const ModalClose = styled.button`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+`;
+
+const ModalButton = styled.button`
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 16px 8px;
+  border-radius: 4px;
+  margin-top: 20px;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const InfoMessage = styled.p`
+  color: #333;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 12px;
+`;
+
+const InfoDescription = styled.p`
+  font-size: 16px;
+  line-height: 1.5;
 `;

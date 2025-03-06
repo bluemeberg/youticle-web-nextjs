@@ -64,7 +64,6 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     }
 
     if (onBack) {
-      console.log("hello, back");
       onBack(); // 부모 컴포넌트에서 정의된 핸들러 실행
       return;
     }
@@ -190,8 +189,8 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     setLoadingPage(true); // 로딩 상태 활성화
     setTimeout(() => {
       router.push(url);
-      setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
-    }, 4000); // UI 자연스럽게 변경을 위해 0.8초 딜레이
+      // setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
+    }, 500); // UI 자연스럽게 변경을 위해 0.8초 딜레이
   };
 
   return (

@@ -196,7 +196,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         onBack={() => {
           setIsLeaving(true); // 로딩 유지
           setTimeout(() => {
-            router.back();
+            router.push("/editor");
           }, 500);
         }}
         onBackHome={() => {

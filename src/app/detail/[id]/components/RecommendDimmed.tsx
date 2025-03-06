@@ -95,16 +95,21 @@ const RecommendDimmed = ({
 
   const filteredAndSortedEditorData = useMemo(() => {
     const filteredData = editorVideos.filter(
-      (item) => item.section === section && item.video_id !== videoId
+      (item) =>
+        item.section === section &&
+        item.video_id !== videoId &&
+        Object.keys(item.summary_data).length !== 0 // summary_data가 빈 객체인 경우 제외
     );
+
     const sortedData = filteredData.sort((a, b) => {
       // upload_date를 Date 객체로 변환 후 비교
       const dateA = new Date(a.upload_date).getTime();
       const dateB = new Date(b.upload_date).getTime();
       return dateB - dateA;
     });
+
     return sortedData;
-  }, [editorVideos]);
+  }, [editorVideos, section, videoId]);
 
   const editors: Editor[] = [
     {

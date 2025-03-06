@@ -100,9 +100,10 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
   const filteredData = useMemo(() => {
     const filtered =
       selectedEditor === null
-        ? data
+        ? data.filter((item) => Object.keys(item.summary_data).length !== 0) // summary_data가 빈 객체면 제외
         : data.filter(
             (item) =>
+              Object.keys(item.summary_data).length !== 0 && // summary_data가 빈 객체면 제외
               item.section &&
               editors.some(
                 (editor) =>
@@ -112,7 +113,6 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
                   )
               )
           );
-
     // 복사본 생성 후 정렬
     return [...filtered].sort((a, b) => {
       const dateA = new Date(a.upload_date).getTime();
