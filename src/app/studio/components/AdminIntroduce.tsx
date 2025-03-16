@@ -1,19 +1,13 @@
 "use client";
 
-import styled from "styled-components";
-import TodayIcon from "@/assets/today.svg";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
-import { useSetRecoilState, useRecoilValue } from "recoil";
-import { dataState } from "@/store/data";
-import { userState } from "@/store/user";
+import styled, { keyframes } from "styled-components";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
+import { useSetRecoilState, useRecoilValue } from "recoil";
+import { userState } from "@/store/user";
 import { getUserByEmail } from "@/api/apiClient";
-import { tree } from "../../../../node_modules/next/dist/build/templates/app-page";
-
-interface ServiceIntroduceProps {
-  subjects: string[]; // 추가된 subjects prop
-}
+// import { dataState } from "@/store/data";  // If needed
 
 interface User {
   email: string;
@@ -21,116 +15,77 @@ interface User {
   photoURL: string;
 }
 
-const SERVICE_TITLE = "📌 나만의 아티클 생성하기";
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// API base URL
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
-const AdminIntroduce = () => {
+export default function AdminIntroduce() {
   const router = useRouter();
-  const setApiData = useSetRecoilState(dataState);
+  // const setApiData = useSetRecoilState(dataState); // If you need data store
   const setUser = useSetRecoilState(userState);
-  const user = useRecoilValue(userState); // 로그인 여부 확인
-  const [url, setUrl] = useState("");
+  const user = useRecoilValue(userState);
+
+  /** 영상 URL/ID 입력 */
+  const [id, setId] = useState<string>("");
+  /** 로딩, 에러, 모달 */
   const [isLoading, setIsLoading] = useState(false);
-  const [id, setId] = useState<string>(""); // 입력받은 id 상태
-  const [section] = useState<string>("주식"); // 고정된 section 값
-  console.log(id);
-  const [loadingMessage, setLoadingMessage] = useState(""); // 로딩 메시지 상태
-  const [loadingMessage2, setLoadingMessage2] = useState(""); // 로딩 메시지 상태
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [loadingMessage2, setLoadingMessage2] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [showLoginModal, setShowLoginModal] = useState(false); // 로그인 모달 상태
-  const [data, setData] = useState<any>(null); // 응답 데이터 상태
-  const [errorMessage, setErrorMessage] = useState<string>("");
-
-  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
-
-  /**
-   * 🎯 유튜브 URL에서 Video ID 추출 함수 (모든 경우 포함)
-   */
+  /** [1] 유튜브 URL → Video ID 추출 */
   const extractVideoId = (urlOrId: string): string | null => {
     try {
       const url = new URL(urlOrId);
-
       if (url.hostname === "youtu.be") {
-        return url.pathname.slice(1); // youtu.be/xxx 형태
+        // e.g. youtu.be/XXXX
+        return url.pathname.slice(1);
       }
-
       if (url.hostname.includes("youtube.com")) {
         if (url.pathname === "/watch") {
-          return url.searchParams.get("v"); // watch?v=xxx
+          return url.searchParams.get("v");
         }
         if (url.pathname.startsWith("/live/")) {
-          return url.pathname.split("/")[2]; // live/xxx 형태
+          return url.pathname.split("/")[2];
         }
       }
-
-      return null; // 유효하지 않은 경우 null 반환
+      return null;
     } catch (error) {
-      console.log("추출");
-      return null; // URL 형식이 아니면 그대로 반환 (직접 ID 입력한 경우)
+      return null; // If not a valid URL, user might be directly pasting ID
     }
   };
 
-  // API 요청 함수
+  /** [2] 메인 영상 생성 함수 */
   const fetchSummaryEditorVideo = async () => {
+    // (A) 로그인 여부
     if (!user.email) {
-      // 로그인이 안 되어 있다면 로그인 모달 표시
       setShowLoginModal(true);
       return;
     }
-
+    // (B) URL/ID 유효성
     if (!id.trim()) {
       setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
       setShowErrorModal(true);
       return;
     }
-
     const videoId = extractVideoId(id);
     if (!videoId) {
       setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
       setShowErrorModal(true);
       return;
     }
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
 
+    // (C) 로딩 시작
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
     setIsLoading(true);
     setLoadingMessage("아티클 구조 설계 중...");
     setLoadingMessage2(
-      "영상 길이에 따라 최대 1분이 소요될 수 있습니다. \n페이지를 떠나셔도 생성은 계속 진행돼요😀"
+      "영상 길이에 따라 최대 1분이 소요될 수 있습니다.\n페이지를 떠나도 생성은 계속 진행됩니다😀"
     );
 
     try {
-      // const extractVideoId = (urlOrId: any) => {
-      //   try {
-      //     const url = new URL(urlOrId);
-
-      //     // youtu.be 형식일 경우 pathname에서 ID 추출
-      //     if (url.hostname === "youtu.be") {
-      //       return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-      //     }
-
-      //     if (url.hostname.includes("youtube.com")) {
-      //       if (url.pathname === "/watch") {
-      //         return url.searchParams.get("v"); // watch?v=xxx
-      //       }
-      //       if (url.pathname.startsWith("/live/")) {
-      //         return url.pathname.split("/")[2]; // live/xxx 형태
-      //       }
-      //     }
-
-      //     return null; // 유효하지 않은 경우 null 반환
-      //   } catch (error) {
-      //     // URL 형식이 아니면 그대로 반환
-      //     return urlOrId;
-      //   }
-      // };
-
-      // // id가 URL 형태라면 파싱하여 videoId만 추출
-      // const videoId = extractVideoId(id);
-      // //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
-      console.log("추출", videoId);
-      // 영상 요약 호출하기
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
           videoId
@@ -138,309 +93,94 @@ const AdminIntroduce = () => {
         {
           method: "GET",
           headers: {
-            accept: "application/json", // JSON 응답 요청
+            accept: "application/json",
           },
-          signal: controller.signal, // AbortController를 통한 타임아웃
+          signal: controller.signal,
         }
       );
       if (!response.ok) {
         if (response.status === 400) {
           const errorData = await response.json();
-          setErrorMessage(errorData.detail); // 🎯 에러 메시지 저장
-          setShowErrorModal(true); // 🎯 에러 모달 표시
+          setErrorMessage(errorData.detail);
+          setShowErrorModal(true);
         } else {
           throw new Error(`HTTP 오류: ${response.status}`);
         }
         return;
       }
-      const { task_id } = await response.json(); // `task_id` 반환
-      //   if (result === "success") {
-      //     const response = await fetch(
-      //       `http://0.0.0.0:8000/editor/article/${id}`,
-      //       {
-      //         method: "GET",
-      //         headers: {
-      //           accept: "application/json",
-      //         },
-      //       }
-      //     );
-      //     if (!response.ok) {
-      //       throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
-      //     }
-      //     const result = await response.json();
-      //   }
-      //   setData(result); // 응답 데이터 설정
-      router.push(`/studio/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
+
+      // (D) task_id가 있으면 해당 편집 화면으로 이동
+      const { task_id } = await response.json();
+      router.push(`/studio/${videoId}?task_id=${task_id}`);
     } catch (err) {
-      //   if (err instanceof Error) {
-      //     if (err.name === "AbortError") {
-      //       console.error("요청 시간이 초과되었습니다.");
-      //       startPollingEditorArticle(id);
-      //     } else {
-      //       console.error("요청 실패:", err.message);
-      //       startPollingEditorArticle(id);
-      //     }
-      //   } else {
-      //     console.error("알 수 없는 오류:", err);
-      //   }
+      console.error("요청 실패:", err);
+      setErrorMessage("🚨 아티클 생성 중 문제가 발생했습니다.");
+      setShowErrorModal(true);
     } finally {
-      setIsLoading(false); // 로딩 종료
-      clearTimeout(timeoutId); // 타임아웃 클리어
-      setLoadingMessage(""); // 메시지 초기화
-      setLoadingMessage2(""); // 메시지 초기화
+      setIsLoading(false);
+      clearTimeout(timeoutId);
+      setLoadingMessage("");
+      setLoadingMessage2("");
     }
   };
 
-  const fetchEditorArticle = async (id: string): Promise<any> => {
-    const extractVideoId = (urlOrId: any) => {
-      try {
-        const url = new URL(urlOrId);
-
-        // youtu.be 형식일 경우 pathname에서 ID 추출
-        if (url.hostname === "youtu.be") {
-          return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-        }
-
-        // youtube.com 형식일 경우 v 파라미터 값 추출
-        if (url.hostname.includes("youtube.com")) {
-          return url.searchParams.get("v") || urlOrId;
-        }
-
-        return urlOrId; // 다른 경우 그대로 반환
-      } catch (error) {
-        // URL 형식이 아니면 그대로 반환
-        return urlOrId;
-      }
-    };
-    // id가 URL 형태라면 파싱하여 videoId만 추출
-    const videoId = extractVideoId(id);
-    try {
-      const response = await fetch(
-        `${NEXT_PUBLIC_API_BASE_URL}/editor/article/${videoId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error("API 호출 실패");
-      return await response.json();
-    } catch (error) {
-      console.error("API 호출 에러:", error);
-      throw error; // 에러를 상위로 전달
-    }
-  };
-
-  // 폴링 함수
-  const startPollingEditorArticle = (id: string, interval: number = 1000) => {
-    const maxAttempts = 60; // 최대 시도 횟수 (예: 60초 동안 시도)
-    let attempts = 0;
-    let lastData: any = null; // 마지막으로 설정된 데이터를 추적
-
-    const polling = setInterval(async () => {
-      attempts++;
-      if (attempts > maxAttempts) {
-        console.error("최대 시도 횟수를 초과했습니다. 폴링을 중단합니다.");
-        clearInterval(polling);
-        return;
-      }
-      const extractVideoId = (urlOrId: any) => {
-        try {
-          const url = new URL(urlOrId);
-
-          // youtu.be 형식일 경우 pathname에서 ID 추출
-          if (url.hostname === "youtu.be") {
-            return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-          }
-
-          // youtube.com 형식일 경우 v 파라미터 값 추출
-          if (url.hostname.includes("youtube.com")) {
-            return url.searchParams.get("v") || urlOrId;
-          }
-
-          return urlOrId; // 다른 경우 그대로 반환
-        } catch (error) {
-          // URL 형식이 아니면 그대로 반환
-          return urlOrId;
-        }
-      };
-      // id가 URL 형태라면 파싱하여 videoId만 추출
-      const videoId = extractVideoId(id);
-      try {
-        console.log(`폴링 시도 ${attempts}...`);
-        const articleData = await fetchEditorArticle(id);
-
-        if (
-          articleData &&
-          JSON.stringify(articleData) !== JSON.stringify(lastData)
-        ) {
-          console.log("데이터 수신 성공:", articleData);
-          setData(articleData); // 상태 업데이트
-          lastData = articleData; // 마지막 데이터 업데이트
-          clearInterval(polling); // 폴링 중단
-          router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
-        }
-      } catch (error) {
-        console.error("폴링 중 오류:", error);
-      }
-    }, interval);
-  };
-
-  const handleLoginSuccess = async (user: User) => {
+  /** [3] 로그인 성공 시 */
+  const handleLoginSuccess = async (loginUser: User) => {
     setShowLoginModal(false);
-    if (user.email !== "") {
-      // 사용자 정보 등록 및 가져오기
-      const data = await getUserByEmail(user.email, user.displayName);
+    if (!loginUser.email) return;
 
-      setUser({
-        name: user.displayName,
-        email: user.email,
-        picture: user.photoURL,
-        id: data.id,
-      });
+    // (A) DB 내 유저 확인/등록
+    const data = await getUserByEmail(loginUser.email, loginUser.displayName);
+    setUser({
+      name: loginUser.displayName,
+      email: loginUser.email,
+      picture: loginUser.photoURL,
+      id: data.id,
+    });
 
-      if (!id.trim()) {
-        setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
-        setShowErrorModal(true);
-        return;
-      }
-
-      const videoId = extractVideoId(id);
-      if (!videoId) {
-        setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
-        setShowErrorModal(true);
-        return;
-      }
-      // 구독 주제가 없을 때 주제 등록
-      setIsLoading(true); // 로딩 시작
-      setLoadingMessage("아티클 구조 설계 중...");
-      setLoadingMessage2(
-        "영상 길이에 따라 최대 1분이 소요될 수 있습니다. \n페이지를 떠나셔도 생성은 계속 진행돼요😀"
-      );
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 60초 타임아웃
-
-      // const extractVideoId = (urlOrId: any) => {
-      //   try {
-      //     const url = new URL(urlOrId);
-
-      //     // youtu.be 형식일 경우 pathname에서 ID 추출
-      //     if (url.hostname === "youtu.be") {
-      //       return url.pathname.slice(1); // 첫 번째 '/' 이후의 값 반환
-      //     }
-
-      //     // youtube.com 형식일 경우 v 파라미터 값 추출
-      //     if (url.hostname.includes("youtube.com")) {
-      //       return url.searchParams.get("v") || urlOrId;
-      //     }
-
-      //     return urlOrId; // 다른 경우 그대로 반환
-      //   } catch (error) {
-      //     // URL 형식이 아니면 그대로 반환
-      //     return urlOrId;
-      //   }
-      // };
-
-      // id가 URL 형태라면 파싱하여 videoId만 추출
-      // const videoId = extractVideoId(id);
-      //   router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
-
-      try {
-        // 영상 요약 호출하기
-        const response = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
-            videoId
-          )}?user_id=${encodeURIComponent(data.id)}`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json", // JSON 응답 요청
-            },
-            signal: controller.signal, // AbortController를 통한 타임아웃
-          }
-        );
-        if (!response.ok) {
-          if (response.status === 400) {
-            const errorData = await response.json();
-            setErrorMessage(errorData.detail); // 🎯 에러 메시지 저장
-            setShowErrorModal(true); // 🎯 에러 모달 표시
-          } else {
-            throw new Error(`HTTP 오류: ${response.status}`);
-          }
-          return;
-        }
-        const { task_id } = await response.json(); // `task_id` 반환
-        router.push(`/studio/${videoId}?task_id=${task_id}`); // ID 포함 URL로 이동
-
-        // const result = await response.json();
-        // if (result === "success") {
-        //   const response = await fetch(
-        //     `http://0.0.0.0:8000/editor/article/${videoId}`,
-        //     {
-        //       method: "GET",
-        //       headers: {
-        //         accept: "application/json",
-        //       },
-        //     }
-        //   );
-        //   if (!response.ok) {
-        //     throw new Error(`첫 번째 요청 실패: HTTP ${response.status}`);
-        //   }
-        //   const result = await response.json();
-        // }
-        // setData(result); // 응답 데이터 설정
-        // router.push(`/studio/${videoId}`); // ID 포함 URL로 이동
-      } catch (err) {
-        // if (err instanceof Error) {
-        //   if (err.name === "AbortError") {
-        //     console.error("요청 시간이 초과되었습니다.");
-        //     startPollingEditorArticle(id);
-        //   } else {
-        //     console.error("요청 실패:", err.message);
-        //     startPollingEditorArticle(id);
-        //   }
-        // } else {
-        //   console.error("알 수 없는 오류:", err);
-        // }
-      } finally {
-        setIsLoading(false); // 로딩 종료
-        clearTimeout(timeoutId); // 타임아웃 클리어
-        setLoadingMessage("");
-        setLoadingMessage2("");
-      }
+    // (B) 자동 진행
+    if (!id.trim()) {
+      setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
+      setShowErrorModal(true);
+      return;
     }
+    const videoId = extractVideoId(id);
+    if (!videoId) {
+      setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
+      setShowErrorModal(true);
+      return;
+    }
+    // 영상 요청
+    fetchSummaryEditorVideo();
   };
 
   return (
-    <Container>
-      <ContentBox>
-        <TitleContainer>
-          {/* <TodayIcon /> */}
-          <ServiceTitle>{SERVICE_TITLE}</ServiceTitle>
-        </TitleContainer>
-        <Announcement>
-          <Title>
-            양질의 유튜브 영상 링크 입력하고, 나만의 아티클 생성하기!
-          </Title>
-        </Announcement>
-      </ContentBox>
+    <Wrapper>
+      <GuideText>양질의 유튜브 영상 링크를 입력해보세요!</GuideText>
+      <RegisterCard>
+        {/* 안내 문구 (GuideText) */}
+        {/* (A) 입력 영역 */}
+        <InputRow>
+          <UrlInput
+            placeholder="https://www.youtube.com/watch?v=abcd1234"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+          />
+        </InputRow>
+        <Guide>
+          유튜브 URL을 복사해서 붙여넣거나, 공유 버튼으로 생성된 링크를
+          입력하세요.
+        </Guide>
 
-      <InputContainer>
-        <Input
-          type="text"
-          placeholder="https://www.youtube.com/watch?v=abcd1234"
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-        />
-      </InputContainer>
-      <Guide>
-        유튜브 URL을 복사해서 붙여넣거나, 공유 버튼으로 생성된 링크를
-        입력하세요.
-      </Guide>
-      <Button onClick={fetchSummaryEditorVideo}>아티클 생성하기</Button>
-      {/* 입력 가이드 */}
+        {/* (B) 버튼 영역 */}
+        <ButtonRow>
+          <RegisterButton onClick={fetchSummaryEditorVideo}>
+            아티클 생성하기
+          </RegisterButton>
+        </ButtonRow>
+      </RegisterCard>
+
+      {/* (C) 로딩 오버레이 */}
       {isLoading && (
         <LoadingOverlay>
           <LoadingSpinner />
@@ -449,20 +189,21 @@ const AdminIntroduce = () => {
         </LoadingOverlay>
       )}
 
+      {/* (D) 로그인 모달 */}
       {showLoginModal && (
         <ModalOverlay>
           <ModalContent>
             <ModalClose onClick={() => setShowLoginModal(false)}>×</ModalClose>
             <InfoMessage>🙋 로그인이 필요합니다.</InfoMessage>
             <InfoDescription>
-              나만의 아티클을 생성하려면 로그인해주세요.
+              나만의 아티클 생성을 위해 로그인해주세요.
             </InfoDescription>
             <GoogleLogin onLoginSuccess={handleLoginSuccess} />
           </ModalContent>
         </ModalOverlay>
       )}
 
-      {/* 에러 모달 */}
+      {/* (E) 에러 모달 */}
       {showErrorModal && (
         <ModalOverlay>
           <ModalContent>
@@ -475,113 +216,101 @@ const AdminIntroduce = () => {
           </ModalContent>
         </ModalOverlay>
       )}
-    </Container>
+    </Wrapper>
   );
-};
+}
 
-export default AdminIntroduce;
+/* =============== Styled =============== */
 
-// 스타일 정의
-const Container = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
+/** 최상위 Wrapper (배경 + 레이아웃) */
+const Wrapper = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
   background-color: #f0f4ff;
   font-family: "Pretendard Variable";
-  width: 100%;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 16px;
 `;
 
-const ContentBox = styled.div`
-  background-color: #f0f4ff;
-  padding-left: 16px;
-  padding-right: 16px;
-  padding-bottom: 12px;
-  padding-top: 28px;
-  margin-top: 4px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+/** 카드 (RegisterCard) */
+const RegisterCard = styled.div`
+  border-radius: 8px;
+  margin-bottom: 20px;
+  /* padding: 16px; */
+  /* box-shadow: 0 2px 5#141212c05); */
+  /* margin: 0 16px; */
 `;
 
-const TitleContainer = styled.div`
-  display: flex;
-  align-items: center;
+/** 안내 문구 (GuideText) */
+const GuideText = styled.p`
+  font-size: 16px;
+  color: #000;
   margin-bottom: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  margin-top: 16px;
 `;
 
-const ServiceTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #000;
-  margin-left: 4px;
-`;
-
-const Announcement = styled.div``;
-
-const Title = styled.h2`
-  font-size: 16px;
-  font-weight: 400;
-  color: #000;
-  line-height: 128%;
-  font-family: "Pretendard Variable";
-`;
-
-const InputContainer = styled.div`
+/** 입력 영역 (InputRow) */
+const InputRow = styled.div`
   display: flex;
-  flex-direction: row;
-  max-width: 480px;
-  margin: 16px 16px 4px 16px;
+  flex-direction: column;
+  gap: 0;
 `;
-
-const Input = styled.input`
+const UrlInput = styled.input`
   flex: 1;
-  padding: 20px;
-  font-size: 16px;
+  padding: 16px;
+  font-size: 15px;
   border: 1px solid #ddd;
-  border-radius: 5px 0 0 5px;
+  border-radius: 4px;
 `;
 
-const Button = styled.button`
+/** 가이드 문구 (Guide) */
+const Guide = styled.p`
+  font-size: 12px;
+  color: #616161;
+  margin-top: 6px;
+`;
+
+/** 버튼 영역 (ButtonRow) + 버튼 (RegisterButton) */
+const ButtonRow = styled.div`
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+`;
+const RegisterButton = styled.button`
+  flex: 1;
   background-color: #007bff;
-  color: #ffffff;
-  padding: 10px 20px;
-  font-size: 16px;
+  color: #fff;
+  font-weight: 700;
   border: none;
   border-radius: 4px;
-  margin-left: 16px;
-  margin-right: 16px;
-  cursor: pointer;
-  height: 60px;
+  padding: 14px;
   font-size: 16px;
-  font-weight: 700;
-  line-height: 22px;
-  margin-bottom: 20px;
+  margin-top: 16px;
+  cursor: pointer;
+
   &:hover {
     background-color: #0056b3;
   }
 `;
 
-const Guide = styled.p`
-  font-size: 12px;
-  color: #616161;
-  margin-bottom: 32px;
-  margin-left: 16px;
-`;
+/** 로딩 오버레이 */
 const LoadingOverlay = styled.div`
   position: fixed;
   top: 0;
-  max-width: 430px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
+  max-width: 430px;
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 `;
-
 const LoadingSpinner = styled.div`
   border: 5px solid #f3f3f3;
   border-top: 5px solid #007bff;
@@ -598,25 +327,24 @@ const LoadingSpinner = styled.div`
     }
   }
 `;
-
 const LoadingMessage = styled.p`
   margin-top: 20px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #fff;
   line-height: 132%;
-  white-space: pre-line; // \n을 줄바꿈으로 처리
+  white-space: pre-line;
 `;
-
 const SubMessage = styled.p`
   margin-top: 12px;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 132%;
   color: #fff;
   text-align: center;
   white-space: pre-line;
 `;
 
+/** 모달 공통 */
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -627,64 +355,53 @@ const ModalOverlay = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1;
+  z-index: 1000;
 `;
-
 const ModalContent = styled.div`
-  background-color: white;
-  padding: 20px 16px 20px 16px;
-  border-radius: 4px;
-  text-align: center;
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: 20px 16px;
   max-width: 400px;
   width: 90%;
+  text-align: center;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
 `;
-
-const InfoDescription = styled.div`
-  font-weight: 400;
-  margin-bottom: 20px;
-  text-align: left;
-  margin-top: 8px;
-  line-height: 132%;
-  span {
-    font-weight: 700;
-  }
-`;
-
 const ModalClose = styled.button`
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   background: none;
   border: none;
-  font-size: 24px;
-  cursor: pointer;
+  font-size: 20px;
   color: #666;
-`;
-
-const ModalButton = styled.button`
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 16px 8px;
-  border-radius: 4px;
-  margin-top: 20px;
-  width: 100%;
-  font-size: 16px;
-  font-weight: 700;
   cursor: pointer;
 `;
-
-// 안내성 모달 텍스트 및 아이콘 구분
 const InfoMessage = styled.p`
   color: #333;
   margin-top: 10px;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   margin-bottom: 12px;
   line-height: 132%;
+`;
+const InfoDescription = styled.p`
+  font-size: 14px;
+  line-height: 1.4;
+  color: #666;
+  margin-bottom: 20px;
+  text-align: left;
+`;
+const ModalButton = styled.button`
+  background-color: #007bff;
+  color: white;
+  font-weight: 700;
+  border: none;
+  border-radius: 4px;
+  padding: 14px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 16px;
+  &:hover {
+    background-color: #0056b3;
+  }
 `;

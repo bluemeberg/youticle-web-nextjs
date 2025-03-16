@@ -32,7 +32,7 @@ export default EditorThumbnail;
 const ThumbnailContainer = styled.div`
   display: flex;
   align-items: center;
-  margin-top: 40px;
+  padding-top: 32px;
   margin-left: 16px;
   gap: 12px; /* 썸네일과 텍스트 사이 여백 */
   margin-bottom: 16px;

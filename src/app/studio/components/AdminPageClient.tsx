@@ -19,6 +19,8 @@ import { off } from "process";
 import { useRouter } from "next/navigation";
 import AdminIntroduce from "./AdminIntroduce";
 import AdminArticleBeforeLogin from "./AdminAritcleBeforeLogin";
+import TabAdminPageClient from "./TabAdminPageClient";
+import TabMainPageClient from "./TabMainPageClient";
 
 interface EditorPageClientProps {
   apiData: EditorDataProps[]; // 서버에서 전달된 데이터
@@ -28,8 +30,9 @@ export default function AdminPageClient() {
   return (
     <Container>
       <LogoHeader />
-      <AdminIntroduce />
-      <AdminArticleBeforeLogin />
+      {/* <AdminIntroduce />
+      <AdminArticleBeforeLogin /> */}
+      <TabMainPageClient />
       <Footer />
     </Container>
   );
