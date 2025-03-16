@@ -46,6 +46,9 @@ interface PreviousResponse {
   previous_channels: PreviousChannel[];
 }
 
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+
 const ArchiveChannelPage: React.FC = () => {
   const router = useRouter();
   const [currentChannels, setCurrentChannels] = useState<CurrentChannel[]>([]);
@@ -60,13 +63,13 @@ const ArchiveChannelPage: React.FC = () => {
       try {
         // 현재 구독 채널 API
         const resCurrent = await fetch(
-          `http://0.0.0.0:8000/editor/user_channels/archive/current/${userId}`
+          `${NEXT_PUBLIC_API_BASE_URL}/user_channels/archive/current/${userId}`
         );
         const dataCurrent: CurrentResponse = await resCurrent.json();
 
         // 이전 등록 채널 API
         const resPrev = await fetch(
-          `http://0.0.0.0:8000/editor/user_channels/archive/history/${userId}`
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${userId}`
         );
         const dataPrev: PreviousResponse = await resPrev.json();
 

@@ -22,6 +22,9 @@ interface ChannelData {
   history_type: string;
 }
 
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+
 const ChannelFeedSection: React.FC = () => {
   const [channels, setChannels] = useState<ChannelData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -31,7 +34,7 @@ const ChannelFeedSection: React.FC = () => {
     const fetchChannels = async () => {
       try {
         const response = await fetch(
-          "http://0.0.0.0:8000/editor/user_channels/history_feed"
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/history_feed`
         );
         if (!response.ok) throw new Error("Failed to fetch channel data");
 

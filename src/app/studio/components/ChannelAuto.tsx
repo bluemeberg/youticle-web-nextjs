@@ -11,7 +11,8 @@ import { getUserByEmail } from "@/api/apiClient";
 import { parseSubscribersCount, timeAgo } from "@/utils/formatter";
 import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 // 채널 정보 인터페이스
 interface ChannelData {
