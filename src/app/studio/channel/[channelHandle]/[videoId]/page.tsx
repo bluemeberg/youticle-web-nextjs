@@ -31,6 +31,8 @@ interface StudioVideoDetailPageProps {
 //     description: `채널 ${channelHandle}의 영상 아티클 상세보기`,
 //   };
 // }
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 // 메인 페이지
 export default async function StudioVideoDetailPage({
@@ -48,11 +50,11 @@ export default async function StudioVideoDetailPage({
     let apiUrl = "";
     console.log(source);
     if (source === "editor") {
-      apiUrl = `https://youticle.shop/editor/article/${videoId}`;
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/editor/article/${videoId}`;
     } else if (source === "briefing") {
-      apiUrl = `https://youticle.shop/briefing/top_videos/${videoId}`;
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/briefing/top_videos/${videoId}`;
     } else {
-      apiUrl = `http://0.0.0.0:8000/editor/user_channels/video/${videoId}`;
+      apiUrl = `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/video/${videoId}`;
     }
 
     const response = await fetch(apiUrl, { cache: "no-store" });

@@ -32,7 +32,8 @@ interface ArticleData {
   };
 }
 
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 export default function ChannelDetailPage() {
   const router = useRouter();

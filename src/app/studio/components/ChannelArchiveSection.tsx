@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useRouter } from "next/navigation";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { userState } from "@/store/user";
 
 interface VideoItem {
   title: string;
@@ -56,20 +58,20 @@ const ArchiveChannelPage: React.FC = () => {
     []
   );
   const [loading, setLoading] = useState(true);
+  const user = useRecoilValue(userState);
 
   useEffect(() => {
-    const userId = 3; // 임의 예시
     const fetchData = async () => {
       try {
         // 현재 구독 채널 API
         const resCurrent = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/user_channels/archive/current/${userId}`
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/current/${user.id}`
         );
         const dataCurrent: CurrentResponse = await resCurrent.json();
-
+        console.log(dataCurrent);
         // 이전 등록 채널 API
         const resPrev = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${userId}`
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${user.id}`
         );
         const dataPrev: PreviousResponse = await resPrev.json();
 
@@ -85,7 +87,7 @@ const ArchiveChannelPage: React.FC = () => {
   }, []);
 
   if (loading) return <LoadingMessage>로딩 중...</LoadingMessage>;
-
+  console.log(currentChannels);
   // (1) 현재 구독 채널, (2) 이전 등록 채널 둘 다 없을 때 UX 안내
   const noCurrentChannels = currentChannels.length === 0;
   const noPreviousChannels = previousChannels.length === 0;
