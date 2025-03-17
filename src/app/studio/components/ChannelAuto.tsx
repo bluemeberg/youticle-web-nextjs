@@ -93,9 +93,11 @@ export default function ChannelAutoArticleSection() {
     const timeoutId = setTimeout(() => controller.abort(), 300000); // 최대 5분
 
     setIsLoading(true);
-    setLoadingMessage("아티클 구조 설계 중...");
+    setLoadingMessage(
+      "✨ 지금은 최초 등록이므로 최신 영상의 아티클을 즉시 생성 중이에요."
+    );
     setLoadingMessage2(
-      "최대 1분 소요될 수 있어요.\n페이지를 떠나도 생성이 계속 진행됩니다."
+      "※ 다음부터는 매일 아침 7시에 자동으로 새 영상을 감지하여 아티클로 만들어드려요."
     );
 
     try {
@@ -203,6 +205,24 @@ export default function ChannelAutoArticleSection() {
         picture: loginUser.photoURL,
         id: data.id,
       });
+
+      // ✅ 채널 존재 여부 확인
+      const res = await fetch(
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${data.id}`
+      );
+      const json = await res.json();
+      const existingChannel = json[0];
+
+      if (existingChannel) {
+        // 이미 등록된 채널이 있다면 등록 불가 안내
+        setRegisteredChannel(existingChannel); // 기존 채널 UI에 표시
+        setErrorMessage(
+          `이미 등록된 채널이 있습니다: "${existingChannel.title}".\n채널 변경 을 원하시면 "채널 변경하기" 기능을 이용해주세요.`
+        );
+        setShowErrorModal(true);
+        return;
+      }
+
       if (!channelInput.trim()) {
         setErrorMessage("채널 핸들이나 URL을 입력해주세요.");
         setShowErrorModal(true);
@@ -212,9 +232,11 @@ export default function ChannelAutoArticleSection() {
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 최대 5분
 
       setIsLoading(true);
-      setLoadingMessage("아티클 구조 설계 중...");
+      setLoadingMessage(
+        "✨ 지금은 최초 등록이므로 최신 영상의 아티클을 즉시 생성 중이에요."
+      );
       setLoadingMessage2(
-        "최대 1분 소요될 수 있어요.\n페이지를 떠나도 생성이 계속 진행됩니다."
+        "※ 다음부터는 매일 아침 7시에 자동으로 새 영상을 감지하여 아티클로 만들어드려요."
       );
 
       try {
@@ -286,9 +308,15 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
-  // 초기 로드
   useEffect(() => {
-    if (!user.id) return;
+    if (!user.id) {
+      // 로그아웃 또는 user 상태 초기화되면 등록 채널 정보도 초기화
+      setRegisteredChannel(null);
+      setTodayArticles([]);
+      return;
+    }
+
+    // 로그인 상태라면 데이터 가져오기
     fetchRegisteredChannel();
     fetchTodayArticles(user.id);
   }, [user.id]);
@@ -463,8 +491,8 @@ export default function ChannelAutoArticleSection() {
         <LoadingOverlay>
           <LoadingBox>
             <Spinner />
-            <p>{loadingMessage}</p>
-            <p>{loadingMessage2}</p>
+            <LoadingMessage>{loadingMessage}</LoadingMessage>
+            <SubMessage>{loadingMessage2}</SubMessage>
           </LoadingBox>
         </LoadingOverlay>
       )}
@@ -472,7 +500,7 @@ export default function ChannelAutoArticleSection() {
       {showErrorModal && (
         <ModalOverlay>
           <ErrorModal>
-            <ErrorTitle>⚠️ 에러 발생</ErrorTitle>
+            <ErrorTitle>⚠️ 안내</ErrorTitle>
             <ErrorMessageText>{errorMessage}</ErrorMessageText>
             <ErrorCloseButton onClick={() => setShowErrorModal(false)}>
               닫기
@@ -913,6 +941,23 @@ const LoadingOverlay = styled.div`
 
 const LoadingBox = styled.div`
   text-align: center;
+  width: 80%;
+`;
+const LoadingMessage = styled.p`
+  margin-top: 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  line-height: 132%;
+  white-space: pre-line;
+`;
+const SubMessage = styled.p`
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 132%;
+  color: #000;
+  text-align: center;
+  white-space: pre-line;
 `;
 
 const Spinner = styled.div`
@@ -961,7 +1006,7 @@ const ErrorModal = styled.div`
 const ErrorTitle = styled.div`
   font-size: 18px;
   font-weight: bold;
-  color: #ff3b3b;
+  color: #000;
   margin-bottom: 12px;
 `;
 
@@ -973,7 +1018,7 @@ const ErrorMessageText = styled.p`
 `;
 
 const ErrorCloseButton = styled.button`
-  background-color: #ff3b3b;
+  background-color: #000;
   color: white;
   border: none;
   border-radius: 4px;
@@ -981,9 +1026,10 @@ const ErrorCloseButton = styled.button`
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  width: 100%;
 
   &:hover {
-    background-color: #e82e2e;
+    background-color: #676767;
   }
 `;
 

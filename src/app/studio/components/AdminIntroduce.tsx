@@ -304,7 +304,7 @@ const LoadingOverlay = styled.div`
   width: 100%;
   max-width: 430px;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.85);
   z-index: 1000;
   display: flex;
   flex-direction: column;

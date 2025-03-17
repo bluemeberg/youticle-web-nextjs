@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
-import { parseSubscribersCount } from "@/utils/formatter";
+import { parseSubscribersCount, removeMarkTags } from "@/utils/formatter";
 import { useRecoilValue } from "recoil";
 import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 
@@ -100,7 +100,7 @@ const ChannelFeedSection: React.FC = () => {
                   </CardBody>
                 </ChannelCardWrapper>
                 <Intro>
-                  {channel.channel_overview ||
+                  {removeMarkTags(channel.channel_overview) ||
                     channel.channel_description ||
                     "채널 설명이 없습니다."}
                 </Intro>

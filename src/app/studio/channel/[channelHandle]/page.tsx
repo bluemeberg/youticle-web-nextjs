@@ -7,6 +7,7 @@ import LogoHeader from "@/common/LogoHeader";
 import {
   parseSubscribersCount,
   parseVideoCountcribersCount,
+  removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
 
@@ -65,7 +66,13 @@ export default function ChannelDetailPage() {
     fetchChannelDetail();
   }, [channelHandle]);
 
-  if (loading) return <Wrapper>로딩 중...</Wrapper>;
+  if (loading)
+    return (
+      <Wrapper>
+        <LoadingSpinner />
+        <LoadingText>채널 정보를 불러오는 중입니다...</LoadingText>
+      </Wrapper>
+    );
   if (!channel) return <Wrapper>채널 정보를 불러오지 못했습니다.</Wrapper>;
 
   return (
@@ -84,7 +91,7 @@ export default function ChannelDetailPage() {
             </Subscriber>
           </ChannelText>
         </ChannelInfo>
-        <Desc>{channel.overview || channel.description}</Desc>
+        <Desc>{removeMarkTags(channel.overview) || channel.description}</Desc>
       </Card>
       <SubContainer>
         <SectionTitle>📌 오늘 생성된 아티클</SectionTitle>
@@ -274,4 +281,26 @@ const NoArticleMsg = styled.div`
   background-color: #f9f9f9;
   border-radius: 6px;
   border: 1px solid #eee;
+`;
+
+const LoadingSpinner = styled.div`
+  margin: 120px auto;
+  width: 36px;
+  height: 36px;
+  border: 4px solid #ccc;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+const LoadingText = styled.div`
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #777;
 `;
