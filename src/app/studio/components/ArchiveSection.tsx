@@ -47,7 +47,7 @@ export default ArchiveSection;
 /* ================= Styled ================= */
 
 const ArchiveContainer = styled.div`
-  padding: 16px;
+  padding: 16px 8px;
   background: #f9f9f9;
   border-radius: 8px;
 `;
@@ -56,18 +56,24 @@ const ArchiveTitle = styled.h2`
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 8px;
+  margin-left: 8px;
+  margin-right: 8px;
 `;
 
 const ArchiveDescription = styled.p`
   font-size: 14px;
   color: #666;
   margin-bottom: 16px;
+  margin-left: 8px;
+  margin-right: 8px;
 `;
 
 const SubTabBar = styled.div`
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  margin-left: 8px;
+  margin-right: 8px;
 `;
 
 const SubTabButton = styled.button<{ isActive: boolean }>`

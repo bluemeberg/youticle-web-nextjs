@@ -331,7 +331,7 @@ const LoadingMessage = styled.p`
   margin-top: 20px;
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: #000;
   line-height: 132%;
   white-space: pre-line;
 `;
@@ -339,7 +339,7 @@ const SubMessage = styled.p`
   margin-top: 12px;
   font-size: 14px;
   line-height: 132%;
-  color: #fff;
+  color: #000;
   text-align: center;
   white-space: pre-line;
 `;

@@ -31,6 +31,7 @@ interface CurrentChannel {
 }
 
 interface PreviousChannel {
+  channel_title: string;
   channel_handle: string;
   channel_id: string;
   channel_thumbnail: string;
@@ -111,7 +112,7 @@ const ArchiveChannelPage: React.FC = () => {
       {/* ===== (1) 현재 구독 채널 ===== */}
       {!noCurrentChannels && (
         <>
-          <SubSectionTitle>현재 구독 채널</SubSectionTitle>
+          <SubSectionTitleCurrent>현재 구독 채널</SubSectionTitleCurrent>
           {currentChannels.map((chan) => (
             <ChannelCard key={chan.channel_handle}>
               <ChannelHeader>
@@ -123,7 +124,7 @@ const ArchiveChannelPage: React.FC = () => {
                 />
                 <ChannelInfo>
                   <ChannelName>{chan.channel_title}</ChannelName>
-                  <ChannelName>{chan.channel_handle}</ChannelName>
+                  <ChannelHandle>{chan.channel_handle}</ChannelHandle>
                   <SubText>
                     등록 시작:{" "}
                     {new Date(chan.subscribed_at).toLocaleDateString()}
@@ -226,7 +227,8 @@ const ArchiveChannelPage: React.FC = () => {
                   alt={chan.channel_handle}
                 />
                 <ChannelInfo>
-                  <ChannelName>{chan.channel_handle}</ChannelName>
+                  <ChannelName>{chan.channel_title}</ChannelName>
+                  <ChannelHandle>{chan.channel_handle}</ChannelHandle>
                   <SubText>
                     구독기간:{" "}
                     {new Date(chan.subscribed_at).toLocaleDateString()} ~{" "}
@@ -302,8 +304,19 @@ const ArchiveDescription = styled.p`
 const SubSectionTitle = styled.h3`
   font-size: 16px;
   font-weight: bold;
-  margin: 24px 0 12px;
+  margin: 40px 0 12px;
   color: #222;
+  margin-left: 8px;
+  margin-right: 8px;
+`;
+
+const SubSectionTitleCurrent = styled.h3`
+  font-size: 16px;
+  font-weight: bold;
+  margin: 32px 0 12px;
+  color: #222;
+  margin-left: 8px;
+  margin-right: 8px;
 `;
 
 /* 빈 화면일 때 UX 안내 */
@@ -335,6 +348,8 @@ const ChannelCard = styled.div`
   padding: 16px;
   margin-bottom: 20px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+  margin-left: 8px;
 `;
 
 const ChannelHeader = styled.div`
@@ -358,14 +373,19 @@ const ChannelInfo = styled.div`
 
 const ChannelName = styled.div`
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
   color: #333;
+`;
+const ChannelHandle = styled.div`
+  font-weight: 600;
+  font-size: 14px;
+  color: #888;
 `;
 
 const SubText = styled.div`
   font-size: 13px;
   color: #888;
-  margin-top: 2px;
+  margin-top: 8px;
 `;
 
 /** 아티클 영역 */
@@ -493,4 +513,5 @@ const NoArticleMsg = styled.div`
   background-color: #f9f9f9;
   border-radius: 6px;
   border: 1px solid #eee;
+  line-height: 132%;
 `;

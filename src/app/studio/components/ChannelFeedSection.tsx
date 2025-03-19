@@ -39,7 +39,20 @@ const ChannelFeedSection: React.FC = () => {
         if (!response.ok) throw new Error("Failed to fetch channel data");
 
         const data: ChannelData[] = await response.json();
-        setChannels(data);
+        // ✅ 중복 제거 로직: channel_handle 기준 가장 최근 것만 남김
+        const seen = new Map<string, ChannelData>();
+        for (const item of data) {
+          if (!seen.has(item.channel_handle)) {
+            seen.set(item.channel_handle, item); // 처음 나온 핸들만 추가
+          }
+        }
+
+        // 최신순 보장하려면 Map -> Array 후 다시 정렬
+        const uniqueChannels = Array.from(seen.values()).sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setChannels(uniqueChannels);
       } catch (error) {
         console.error("Error fetching channels:", error);
       } finally {

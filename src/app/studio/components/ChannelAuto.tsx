@@ -8,7 +8,11 @@ import { userState } from "@/store/user";
 import { useRouter } from "next/navigation";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { getUserByEmail } from "@/api/apiClient";
-import { parseSubscribersCount, timeAgo } from "@/utils/formatter";
+import {
+  parseSubscribersCount,
+  removeMarkTags,
+  timeAgo,
+} from "@/utils/formatter";
 import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 
 // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
@@ -71,7 +75,9 @@ export default function ChannelAutoArticleSection() {
   const [isEditing, setIsEditing] = useState(false);
   // 오늘 생성된 아티클
   const [todayArticles, setTodayArticles] = useState<VideoData[]>([]);
-
+  // **(추가)** 카카오 알림톡 번호 입력 모달
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(""); // 입력받을 번호
   // 1) 로그인 후 채널 등록(모달 로직)
   const handleRegister = () => {
     if (!user.email) {
@@ -205,14 +211,13 @@ export default function ChannelAutoArticleSection() {
         picture: loginUser.photoURL,
         id: data.id,
       });
-
+      // (A) phone이 없는 경우 => showPhoneModal=true
       // ✅ 채널 존재 여부 확인
       const res = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${data.id}`
       );
       const json = await res.json();
       const existingChannel = json[0];
-
       if (existingChannel) {
         // 이미 등록된 채널이 있다면 등록 불가 안내
         setRegisteredChannel(existingChannel); // 기존 채널 UI에 표시
@@ -223,62 +228,97 @@ export default function ChannelAutoArticleSection() {
         return;
       }
 
-      if (!channelInput.trim()) {
-        setErrorMessage("채널 핸들이나 URL을 입력해주세요.");
-        setShowErrorModal(true);
-        return;
+      if (!data.phone) {
+        setShowPhoneModal(true);
+      } else {
+        // 이미 폰번호 있으면 즉시 등록 진행
+        handleRegisterAfterLogin();
       }
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 최대 5분
 
-      setIsLoading(true);
-      setLoadingMessage(
-        "✨ 지금은 최초 등록이므로 최신 영상의 아티클을 즉시 생성 중이에요."
-      );
-      setLoadingMessage2(
-        "※ 다음부터는 매일 아침 7시에 자동으로 새 영상을 감지하여 아티클로 만들어드려요."
-      );
+      // if (!channelInput.trim()) {
+      //   setErrorMessage("채널 핸들이나 URL을 입력해주세요.");
+      //   setShowErrorModal(true);
+      //   return;
+      // }
 
-      try {
-        const response = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/channel/${encodeURIComponent(
-            channelInput
-          )}?user_id=${data.id}`,
-          {
-            method: "GET",
-            headers: { accept: "application/json" },
-            signal: controller.signal,
-          }
-        );
-        if (!response.ok) {
-          if (response.status === 400) {
-            const errData = await response.json();
-            setErrorMessage(errData.detail);
-            setShowErrorModal(true);
-          } else {
-            throw new Error(`HTTP 오류: ${response.status}`);
-          }
-          return;
-        }
-        const { task_id, video_id } = await response.json();
-        router.push(
-          `/studio/channel/${channelInput}/${video_id}?task_id=${task_id}`
-        );
-      } catch (err) {
-        console.error("등록 오류:", err);
-        setErrorMessage("채널 등록 중 문제가 발생했습니다.");
-        setShowErrorModal(true);
-      } finally {
-        setIsLoading(false);
-        clearTimeout(timeoutId);
-        setLoadingMessage("");
-        setLoadingMessage2("");
-      }
+      // const controller = new AbortController();
+      // const timeoutId = setTimeout(() => controller.abort(), 300000); // 최대 5분
+
+      // setIsLoading(true);
+      // setLoadingMessage(
+      //   "✨ 지금은 최초 등록이므로 최신 영상의 아티클을 즉시 생성 중이에요."
+      // );
+      // setLoadingMessage2(
+      //   "※ 다음부터는 매일 아침 7시에 자동으로 새 영상을 감지하여 아티클로 만들어드려요."
+      // );
+
+      // try {
+      //   const response = await fetch(
+      //     `${NEXT_PUBLIC_API_BASE_URL}/editor/process/channel/${encodeURIComponent(
+      //       channelInput
+      //     )}?user_id=${data.id}`,
+      //     {
+      //       method: "GET",
+      //       headers: { accept: "application/json" },
+      //       signal: controller.signal,
+      //     }
+      //   );
+      //   if (!response.ok) {
+      //     if (response.status === 400) {
+      //       const errData = await response.json();
+      //       setErrorMessage(errData.detail);
+      //       setShowErrorModal(true);
+      //     } else {
+      //       throw new Error(`HTTP 오류: ${response.status}`);
+      //     }
+      //     return;
+      //   }
+      //   const { task_id, video_id } = await response.json();
+      //   router.push(
+      //     `/studio/channel/${channelInput}/${video_id}?task_id=${task_id}`
+      //   );
+      // } catch (err) {
+      //   console.error("등록 오류:", err);
+      //   setErrorMessage("채널 등록 중 문제가 발생했습니다.");
+      //   setShowErrorModal(true);
+      // } finally {
+      //   setIsLoading(false);
+      //   clearTimeout(timeoutId);
+      //   setLoadingMessage("");
+      //   setLoadingMessage2("");
+      // }
     } catch (err) {
       console.error("로그인 후 사용자 정보 업데이트 실패:", err);
     }
   };
+  // (A) 폰번호 저장 함수 (API 예시)
+  const savePhoneNumberAndRegister = async () => {
+    const trimmed = phoneNumber.trim();
+    const isValidPhone = /^010-\d{4}-\d{4}$/.test(trimmed); // 간단한 유효성 검사 (010-0000-0000)
 
+    if (!trimmed || !isValidPhone) {
+      setErrorMessage("올바른 휴대폰 번호를 입력해주세요. 예: 010-1234-5678");
+      setShowErrorModal(true);
+      return;
+    }
+    try {
+      // 예: POST /api/users/phone
+      const res = await fetch(`${NEXT_PUBLIC_API_BASE_URL}/users/phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, phone_number: phoneNumber }), // ✅ 수정됨
+      });
+      if (!res.ok) throw new Error("폰번호 저장 실패");
+      // 성공 시:
+      setShowPhoneModal(false);
+      // 이제 채널 등록 진행
+      handleRegisterAfterLogin();
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("전화번호 저장 중 오류가 발생했습니다.");
+      setShowErrorModal(true);
+    }
+  };
   // 오늘 아티클 가져오기
   const fetchTodayArticles = async (userId: number) => {
     try {
@@ -324,7 +364,8 @@ export default function ChannelAutoArticleSection() {
   // Overview가 없으면 description 160자만 표시
   const truncateOrOverview = () => {
     if (!registeredChannel) return "";
-    if (registeredChannel.overview) return registeredChannel.overview;
+    if (registeredChannel.overview)
+      return removeMarkTags(registeredChannel.overview);
     const desc = registeredChannel.description || "";
     if (desc.length <= 160) return desc;
     return desc.slice(0, 160) + "...";
@@ -498,7 +539,7 @@ export default function ChannelAutoArticleSection() {
       )}
 
       {showErrorModal && (
-        <ModalOverlay>
+        <ErrorModalOverlay>
           <ErrorModal>
             <ErrorTitle>⚠️ 안내</ErrorTitle>
             <ErrorMessageText>{errorMessage}</ErrorMessageText>
@@ -506,7 +547,7 @@ export default function ChannelAutoArticleSection() {
               닫기
             </ErrorCloseButton>
           </ErrorModal>
-        </ModalOverlay>
+        </ErrorModalOverlay>
       )}
 
       {showLoginModal && (
@@ -518,6 +559,28 @@ export default function ChannelAutoArticleSection() {
               채널 등록 전 Google 로그인 해주세요.
             </InfoDescription>
             <GoogleLogin onLoginSuccess={handleLoginSuccess} />
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* (A) 폰번호 입력 모달 */}
+      {showPhoneModal && (
+        <ModalOverlay>
+          <ModalContent>
+            {/* <ModalClose onClick={() => setShowPhoneModal(false)}>×</ModalClose> */}
+            <InfoMessage>카카오톡 알림을 위한 번호</InfoMessage>
+            <InfoDescription>
+              매일 아침 7시에 채널 신규 영상의 요약 내용을 카톡 알림으로
+              전달드릴게요!
+            </InfoDescription>
+            <PhoneInput
+              placeholder="010-0000-0000"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+            <RegisterButton onClick={savePhoneNumberAndRegister}>
+              확인
+            </RegisterButton>
           </ModalContent>
         </ModalOverlay>
       )}
@@ -992,6 +1055,19 @@ const ModalOverlay = styled.div`
   z-index: 10000;
 `;
 
+const ErrorModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20000;
+`;
+
 const ErrorModal = styled.div`
   background-color: #fff;
   padding: 20px 16px;
@@ -1072,7 +1148,15 @@ const InfoDescription = styled.p`
   line-height: 132%;
   color: #666;
 `;
-
+const PhoneInput = styled.input`
+  width: 80%;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 8px;
+`;
 // // 4. 스타일 추가
 // const ToggleHintButton = styled.button`
 //   font-size: 13px;

@@ -243,6 +243,16 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
                 </MenuItem>{" "}
                 <MenuItem
                   onClick={() =>
+                    handleMenuNavigation(
+                      "/studio",
+                      "유티클 스튜디오 로딩 중..."
+                    )
+                  }
+                >
+                  유티클 스튜디오
+                </MenuItem>
+                <MenuItem
+                  onClick={() =>
                     handleMenuNavigation("/editor", "에디터 픽 로딩 중...")
                   }
                 >

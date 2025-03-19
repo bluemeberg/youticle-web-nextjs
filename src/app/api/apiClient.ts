@@ -29,7 +29,7 @@ export const createOrFetchUser = async (email: string, name: string) => {
 export const getUserByEmail = async (
   email: string | null,
   name: string | null
-): Promise<{ id: number }> => {
+): Promise<{ id: number; phone: string | null }> => {
   const safeEmail = email ?? "";
   const safeName = name ?? "익명 사용자";
 

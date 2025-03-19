@@ -10,6 +10,7 @@ import ArticleCreateSection from "./ArticleCreateSection";
 import ArchiveSection from "./ArchiveSection";
 import { useSetRecoilState, useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
+import { useRouter } from "next/navigation";
 
 /**
  * 상단 메인 탭 두 개:
@@ -23,10 +24,19 @@ export default function TabMainPageClient() {
   const user = useRecoilValue(userState);
   // 로그인 안 된 상태라면 'myLibrary' 탭 숨기고, 항상 'videoArticle' 탭만 표시
   console.log(user);
-
+  const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
+  const router = useRouter();
   return (
     <PageContainer>
-      <LogoHeader />
+      <LogoHeader
+        onBackHome={() => {
+          console.log("heelo");
+          setIsLeavingHome(true); // 로딩 유지
+          setTimeout(() => {
+            router.push("/");
+          }, 500);
+        }}
+      />
 
       {/* 메인 탭 (Pill 스타일) */}
       {!!user.email && (
@@ -50,6 +60,12 @@ export default function TabMainPageClient() {
         {mainTab === "videoArticle" && <ArticleCreateSection />}
         {mainTab === "myLibrary" && <ArchiveSection />}
       </MainTabContent>
+      {isLeavingHome && (
+        <LoaderOverlay>
+          <Spinner />
+          <LoadingText>홈으로 이동 중..</LoadingText>
+        </LoaderOverlay>
+      )}
     </PageContainer>
   );
 }
@@ -97,4 +113,41 @@ const MainTabButton = styled.button<{ isActive: boolean }>`
 const MainTabContent = styled.div`
   flex: 1;
   background-color: #fafafa;
+`;
+// 로딩 오버레이 스타일
+const LoaderOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  /* 스크롤 할 필요가 없다면 오버레이 내부만 overflow: hidden; 가능 */
+`;
+const Spinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 5px solid white;
+  border-top: 5px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.div`
+  color: white;
+  margin-top: 10px;
+  font-size: 16px;
 `;
