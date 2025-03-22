@@ -1,4 +1,5 @@
 "use client";
+import Script from "next/script";
 
 import styled from "styled-components";
 import GlobalStyle from "./styles/GlobalStyles";
@@ -49,6 +50,10 @@ export default function RootLayout({
               gtag('config', 'G-VN0ZH9YB60', { debug_mode: true });
             `,
           }}
+        />
+        <Script
+          src="https://apis.google.com/js/api.js"
+          strategy="beforeInteractive"
         />
       </head>
       <body>

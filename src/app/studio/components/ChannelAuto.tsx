@@ -375,6 +375,57 @@ export default function ChannelAutoArticleSection() {
 
   // 2. 토글 핸들러 함수 추가
   const toggleHintImages = () => setShowHintImages((prev) => !prev);
+
+  const [mySubscriptions, setMySubscriptions] = useState<any[]>([]);
+
+  const fetchSubscriptions = async (accessToken: string) => {
+    try {
+      const res = await fetch(
+        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      setMySubscriptions(data.items || []);
+      return data.items;
+    } catch (error) {
+      console.error("YouTube 구독 목록 불러오기 오류:", error);
+      return [];
+    }
+  };
+
+  const initGapiAndSignIn = async () => {
+    try {
+      await new Promise((resolve) => gapi.load("client:auth2", resolve));
+
+      await gapi.client.init({
+        apiKey: "AIzaSyDHHDk8IJroeVc0sfNnsw23bDoevZoDtPg",
+        clientId:
+          "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com",
+        discoveryDocs: [
+          "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
+        ],
+        scope: "https://www.googleapis.com/auth/youtube.readonly",
+      });
+
+      const authInstance = gapi.auth2.getAuthInstance();
+      const user = await authInstance.signIn();
+
+      const accessToken = user.getAuthResponse().access_token;
+      const subs = await fetchSubscriptions(accessToken);
+
+      console.log("🟡 내 구독 채널 목록:", subs);
+      // 👉 subs 배열을 리스트로 띄우고 싶으면 상태로 저장해서 UI 구성 가능
+    } catch (error) {
+      console.error("GAPI 로그인/초기화 실패:", error);
+      setErrorMessage("YouTube 로그인 또는 구독 목록 불러오기 실패");
+      setShowErrorModal(true);
+    }
+  };
   // UI
   return (
     <SectionWrapper>
@@ -382,7 +433,6 @@ export default function ChannelAutoArticleSection() {
         매일 오전 7시에 등록하신 유튜브 채널의 새 영상을 아티클 형태로
         받아보세요!
       </GuideText>
-
       {/* 채널 등록 여부에 따라 UI 분기 */}
       {registeredChannel ? (
         <RegisteredContainer>
@@ -523,10 +573,8 @@ export default function ChannelAutoArticleSection() {
           </ButtonRow>
         </RegisterCard>
       )}
-
       {/* 채널 이력 피드 */}
       <ChannelFeedSection />
-
       {/* 로딩/에러 모달 */}
       {isLoading && (
         <LoadingOverlay>
@@ -537,7 +585,6 @@ export default function ChannelAutoArticleSection() {
           </LoadingBox>
         </LoadingOverlay>
       )}
-
       {showErrorModal && (
         <ErrorModalOverlay>
           <ErrorModal>
@@ -549,7 +596,6 @@ export default function ChannelAutoArticleSection() {
           </ErrorModal>
         </ErrorModalOverlay>
       )}
-
       {showLoginModal && (
         <ModalOverlay>
           <ModalContent>
@@ -562,7 +608,6 @@ export default function ChannelAutoArticleSection() {
           </ModalContent>
         </ModalOverlay>
       )}
-
       {/* (A) 폰번호 입력 모달 */}
       {showPhoneModal && (
         <ModalOverlay>
@@ -584,6 +629,13 @@ export default function ChannelAutoArticleSection() {
           </ModalContent>
         </ModalOverlay>
       )}
+      {/* // ✅ 버튼 UI 추가: 채널 등록 영역 아래 혹은 원하는 위치에 추가 */}
+      <ButtonRow>
+        <RegisterButton onClick={handleRegister}>채널 등록하기</RegisterButton>
+        <RegisterButton onClick={initGapiAndSignIn}>
+          내 구독 채널 가져오기
+        </RegisterButton>
+      </ButtonRow>
     </SectionWrapper>
   );
 }
