@@ -14,17 +14,22 @@ interface GoogleLoginProps {
 const GoogleLogin: React.FC<GoogleLoginProps> = ({ onLoginSuccess }) => {
   const setUser = useSetRecoilState(userState);
   const provider = new GoogleAuthProvider();
+  // provider.addScope("https://www.googleapis.com/auth/youtube.readonly");
 
   const signInGoogle = async () => {
     try {
-      const { user } = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      // [4] Firebase가 발급한 credential에서 accessToken 추출
+      // const credential = GoogleAuthProvider.credentialFromResult(result);
+      // const accessToken = credential?.accessToken;
+      // console.log(accessToken);
       setUser({
-        name: user.displayName,
-        email: user.email,
-        picture: user.photoURL,
+        name: result.user.displayName,
+        email: result.user.email,
+        picture: result.user.photoURL,
       });
       if (onLoginSuccess) {
-        onLoginSuccess(user); // 로그인 성공 시 콜백 호출
+        onLoginSuccess(result.user); // 로그인 성공 시 콜백 호출
       }
     } catch (e) {
       console.error("Error during login:", e);

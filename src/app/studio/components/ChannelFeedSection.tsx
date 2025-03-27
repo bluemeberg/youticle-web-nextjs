@@ -65,7 +65,7 @@ const ChannelFeedSection: React.FC = () => {
 
   return (
     <FeedContainer>
-      <FeedTitle>채널 등록 이력</FeedTitle>
+      <FeedTitle> 다른 유저들은 이런 채널을 모니터링 중이에요</FeedTitle>
       <Description>사용자가 등록하거나 변경한 채널 목록입니다.</Description>
 
       {loading ? (
@@ -140,6 +140,7 @@ const FeedContainer = styled.div`
 const FeedTitle = styled.h2`
   font-size: 18px;
   font-weight: 700;
+  margin-top: 20px;
 `;
 
 const Description = styled.p`

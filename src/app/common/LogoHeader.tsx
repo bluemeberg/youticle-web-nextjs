@@ -115,15 +115,24 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   };
 
   const provider = new GoogleAuthProvider();
+  // provider.addScope("https://www.googleapis.com/auth/youtube.readonly");
 
   const GoogleLogin = async () => {
     try {
-      const { user } = await signInWithPopup(auth, provider);
-      const data = await getUserByEmail(user.email, user.displayName);
+      // const { user } = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      // [4] Firebase가 발급한 credential에서 accessToken 추출
+      // const credential = GoogleAuthProvider.credentialFromResult(result);
+      // const accessToken = credential?.accessToken;
+      // console.log(accessToken);
+      const data = await getUserByEmail(
+        result.user.email,
+        result.user.displayName
+      );
       setUser({
-        name: user.displayName,
-        email: user.email,
-        picture: user.photoURL,
+        name: result.user.displayName,
+        email: result.user.email,
+        picture: result.user.photoURL,
         id: data.id,
       });
     } catch (e) {
@@ -192,7 +201,6 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       // setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
     }, 500); // UI 자연스럽게 변경을 위해 0.8초 딜레이
   };
-
   return (
     <>
       <Container

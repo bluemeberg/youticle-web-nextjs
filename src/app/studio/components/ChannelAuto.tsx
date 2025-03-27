@@ -14,6 +14,7 @@ import {
   timeAgo,
 } from "@/utils/formatter";
 import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
+import ChannelFeedSectionWithTabs from "./ChannelFeedSectionTabs";
 
 // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
@@ -50,6 +51,12 @@ interface User {
   email: string;
   displayName: string;
   photoURL: string;
+}
+
+interface TokenResponse {
+  access_token?: string;
+  expires_in?: number;
+  // Add other properties as needed
 }
 
 export default function ChannelAutoArticleSection() {
@@ -398,35 +405,193 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
-  const initGapiAndSignIn = async () => {
+  async function fetchMyYoutubeChannelInfo(accessToken: string) {
+    const res = await fetch(
+      "https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&mine=true",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    const data = await res.json();
+    console.log("내 유튜브 채널 정보:", data);
+    // data.items[0].snippet.title, data.items[0].snippet.thumbnails, ...
+  }
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    // 마운트될 때 localStorage나 sessionStorage에서 저장해둔 토큰/만료시각 로드
+    const savedToken = sessionStorage.getItem("myYoutubeToken");
+    const savedExpire = sessionStorage.getItem("myYoutubeTokenExpire");
+    if (savedToken && savedExpire && Date.now() < Number(savedExpire)) {
+      setAccessToken(savedToken);
+      setTokenExpiresAt(Number(savedExpire));
+    }
+  }, []);
+  // UI
+  const GOOGLE_CLIENT_ID =
+    "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com";
+
+  async function handleLoadSubscriptions() {
+    // 1) 저장된 토큰 && 아직 유효기간 남았으면 → 바로 요청
+    console.log(Date.now());
+    if (accessToken && tokenExpiresAt && Date.now() < tokenExpiresAt) {
+      fetchSubscriptions(accessToken);
+      return;
+    }
+    // 2) 아니면 → GIS 팝업
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "https://www.googleapis.com/auth/youtube.readonly",
+      callback: (resp: TokenResponse) => {
+        if (resp.access_token) {
+          // 토큰/만료 계산
+          const now = Date.now();
+          const expireMs = now + (resp.expires_in ?? 3600) * 1000; // expires_in(초) → ms
+
+          // 세션 스토리지 등에 저장
+          sessionStorage.setItem("myYoutubeToken", resp.access_token);
+          sessionStorage.setItem("myYoutubeTokenExpire", String(expireMs));
+
+          setAccessToken(resp.access_token);
+          setTokenExpiresAt(expireMs);
+
+          // 그 다음 실제 API 요청
+          fetchSubscriptions(resp.access_token);
+        }
+      },
+    });
+    tokenClient.requestAccessToken();
+  }
+
+  const handleGoogleSignInForSubscriptions = () => {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: `
+      https://www.googleapis.com/auth/youtube.readonly
+    `
+        .replace(/\s+/g, " ")
+        .trim(), // (권장) 개행/중복 스페이스 제거
+      callback: async (tokenResponse: TokenResponse) => {
+        if (tokenResponse.access_token) {
+          const accessToken = tokenResponse.access_token;
+          fetchMyYoutubeChannelInfo(accessToken);
+          fetchUserInfo(tokenResponse.access_token);
+          fetchSubscriptions(tokenResponse.access_token);
+          const playlists = await fetchMyPlaylists(accessToken);
+          const likedVideos = await fetchLikedVideos(accessToken);
+          const watchLater = await fetchWatchLaterVideos(accessToken);
+          // 필요시 상태 저장
+          // setMySubscriptions(subs);
+          console.log("📂 플레이리스트 목록:", playlists);
+          console.log("👍 좋아요한 영상들:", likedVideos);
+          console.log("⏱ 나중에 볼 영상:", watchLater);
+        } else {
+          setErrorMessage("토큰 발급 실패");
+          setShowErrorModal(true);
+        }
+      },
+    });
+    tokenClient.requestAccessToken();
+  };
+  const fetchWatchLaterVideos = async (accessToken: string) => {
     try {
-      await new Promise((resolve) => gapi.load("client:auth2", resolve));
-
-      await gapi.client.init({
-        apiKey: "AIzaSyDHHDk8IJroeVc0sfNnsw23bDoevZoDtPg",
-        clientId:
-          "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com",
-        discoveryDocs: [
-          "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
-        ],
-        scope: "https://www.googleapis.com/auth/youtube.readonly",
-      });
-
-      const authInstance = gapi.auth2.getAuthInstance();
-      const user = await authInstance.signIn();
-
-      const accessToken = user.getAuthResponse().access_token;
-      const subs = await fetchSubscriptions(accessToken);
-
-      console.log("🟡 내 구독 채널 목록:", subs);
-      // 👉 subs 배열을 리스트로 띄우고 싶으면 상태로 저장해서 UI 구성 가능
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlists?part=snippet&maxResults=25&playlistId=WL`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      console.log(response);
+      const data = await response.json();
+      console.log("🎬 나중에 볼 동영상 리스트:", data.items);
+      return data.items;
     } catch (error) {
-      console.error("GAPI 로그인/초기화 실패:", error);
-      setErrorMessage("YouTube 로그인 또는 구독 목록 불러오기 실패");
-      setShowErrorModal(true);
+      console.error("Watch Later 리스트 불러오기 실패:", error);
+      return [];
     }
   };
-  // UI
+  const fetchMyPlaylists = async (accessToken: string) => {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=50`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+      console.log("📂 내가 가진 플레이리스트 목록:", data.items);
+      return data.items;
+    } catch (error) {
+      console.error("내 플레이리스트 목록 가져오기 실패:", error);
+      return [];
+    }
+  };
+
+  const [userInfo, setUserInfo] = useState<any | null>(null);
+
+  // (B) 유저 정보 가져오기
+  const fetchUserInfo = async (accessToken: string) => {
+    try {
+      const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const info = await res.json();
+      console.log("🔎 User Info:", info); // { email, name, picture, ... }
+      setUserInfo(info);
+      return info;
+    } catch (error) {
+      console.error("유저 정보 불러오기 실패:", error);
+      return null;
+    }
+  };
+  const fetchLikedVideos = async (accessToken: string) => {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=LL&maxResults=25`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+      console.log("👍 좋아요한 영상들:", data.items);
+      return data.items;
+    } catch (error) {
+      console.error("좋아요한 영상들 가져오기 실패:", error);
+      return [];
+    }
+  };
+
+  const handleGoogleSignInForWatchLater = () => {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "https://www.googleapis.com/auth/youtube.readonly",
+      callback: async (tokenResponse: TokenResponse) => {
+        if (tokenResponse.access_token) {
+          fetchWatchLaterVideos(tokenResponse.access_token); // ✅ accessToken 넘기기
+        } else {
+          setErrorMessage("토큰 발급 실패");
+          setShowErrorModal(true);
+        }
+      },
+    });
+    tokenClient.requestAccessToken();
+  };
+  console.log(mySubscriptions);
   return (
     <SectionWrapper>
       <GuideText>
@@ -574,7 +739,7 @@ export default function ChannelAutoArticleSection() {
         </RegisterCard>
       )}
       {/* 채널 이력 피드 */}
-      <ChannelFeedSection />
+      <ChannelFeedSectionWithTabs />
       {/* 로딩/에러 모달 */}
       {isLoading && (
         <LoadingOverlay>
@@ -631,8 +796,10 @@ export default function ChannelAutoArticleSection() {
       )}
       {/* // ✅ 버튼 UI 추가: 채널 등록 영역 아래 혹은 원하는 위치에 추가 */}
       <ButtonRow>
-        <RegisterButton onClick={handleRegister}>채널 등록하기</RegisterButton>
-        <RegisterButton onClick={initGapiAndSignIn}>
+        <RegisterButton onClick={handleGoogleSignInForWatchLater}>
+          나중에 볼 영상 가져오기
+        </RegisterButton>
+        <RegisterButton onClick={handleLoadSubscriptions}>
           내 구독 채널 가져오기
         </RegisterButton>
       </ButtonRow>

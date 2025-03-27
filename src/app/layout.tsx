@@ -52,8 +52,8 @@ export default function RootLayout({
           }}
         />
         <Script
-          src="https://apis.google.com/js/api.js"
-          strategy="beforeInteractive"
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
         />
       </head>
       <body>

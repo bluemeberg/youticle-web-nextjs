@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 // 하위 섹션들
 import ChannelAutoArticleSection from "./ChannelAuto";
+import ChannelAutoArticleSectionWithSubs from "./channelComponents/ChannelAutoArticleSectionWithSubs";
 import SingleVideoArticleSection from "./SingleVideoSection";
 // import PlaylistAutoArticleSection from "./PlaylistAutoArticleSection";
 
@@ -27,19 +28,21 @@ const ArticleCreateSection: React.FC = () => {
           isActive={subTab === "singleVideo"}
           onClick={() => setSubTab("singleVideo")}
         >
-          🎬 영상 아티클
+          유튜브 영상 아티클
         </SubTabButton>
         <SubTabButton
           isActive={subTab === "channelAuto"}
           onClick={() => setSubTab("channelAuto")}
         >
-          🔖 채널 모니터링
+          유튜브 채널 모니터링
         </SubTabButton>
       </SubTabBar>
 
       <SubTabContent>
         {subTab === "singleVideo" && <SingleVideoArticleSection />}
-        {subTab === "channelAuto" && <ChannelAutoArticleSection />}
+        {/* {subTab === "channelAuto" && <ChannelAutoArticleSection />} */}
+        {subTab === "channelAuto" && <ChannelAutoArticleSectionWithSubs />}
+
         {/*subTab === "playlistAuto" && <PlaylistAutoArticleSection />*/}
       </SubTabContent>
     </Container>
