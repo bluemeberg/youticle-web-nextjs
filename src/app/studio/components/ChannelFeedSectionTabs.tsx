@@ -276,7 +276,7 @@ export default function ChannelFeedSectionWithTabs() {
               );
               // 채널 카드를 클릭하면 subscription 채널 상세페이지로 이동
               const handleClick = () => {
-                router.push(`/studio/subscriptions/${channel.channel_handle}`);
+                router.push(`/studio/channel/${channel.channel_handle}`);
               };
               return (
                 <div key={channel.id}>

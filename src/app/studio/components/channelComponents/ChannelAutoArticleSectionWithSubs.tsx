@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
-import ChannelFeedSection from "../ChannelFeedSection";
+import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
-import { useRouter } from "next/navigation";
+import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { getUserByEmail } from "@/api/apiClient";
 import {
@@ -13,12 +13,18 @@ import {
   removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
-import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 import ChannelFeedSectionWithTabs from "../ChannelFeedSectionTabs";
-
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-
-// ----------------- 타입 선언 -----------------
+import {
+  FaBell,
+  FaPlayCircle,
+  FaClipboardList,
+  FaUserCheck,
+} from "react-icons/fa";
+import Image from "next/image";
+import heroImage from "/public/images/What유티클2.png";
+import howStepImage1 from "/public/images/How유티클.png";
+import howStepImage2 from "/public/images/How유티클.png";
+/** 채널 정보 타입 */
 interface ChannelData {
   id: string;
   user_id: number;
@@ -35,6 +41,7 @@ interface ChannelData {
   created_at: string;
 }
 
+/** 영상 정보 타입 */
 interface VideoData {
   video_id: string;
   title: string;
@@ -51,20 +58,23 @@ interface User {
   displayName: string;
   photoURL: string;
 }
+
 interface TokenResponse {
   access_token?: string;
   expires_in?: number;
-  // Add other properties as needed
 }
 
-// ----------------- 메인 컴포넌트 -----------------
+/** API Endpoint */
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+
+/** 메인 컴포넌트 */
 export default function ChannelAutoArticleSection() {
   const router = useRouter();
   const user = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
   const setFeedRefresh = useSetRecoilState(channelFeedRefreshTrigger);
 
-  // 채널 등록/변경 및 오늘 생성된 아티클 상태
+  // 채널 입력 및 등록/변경 상태
   const [channelInput, setChannelInput] = useState("");
   const [registeredChannel, setRegisteredChannel] =
     useState<ChannelData | null>(null);
@@ -78,19 +88,23 @@ export default function ChannelAutoArticleSection() {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [loadingMessage2, setLoadingMessage2] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+
+  // 카카오톡 번호 등록 모달
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+
+  // 채널 변경 모달 (내 구독 채널 목록 or 직접입력)
   const [showChangeModal, setShowChangeModal] = useState(false);
 
-  // 채널 직접 입력 폼 토글 (신규 사용자용)
+  // 신규 사용자용, 채널 직접 입력 창 토글
   const [showManualForm, setShowManualForm] = useState(false);
   const handleManualButton = () => setShowManualForm((prev) => !prev);
-
   const GOOGLE_CLIENT_ID =
     "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com";
-  // ----------------- 채널 등록/변경 로직 -----------------
+  // ========= 채널 등록 로직 =========
   const handleRegister = () => {
     if (!user.email) {
+      // 로그인 안됐으면 모달 표시
       setShowLoginModal(true);
       return;
     }
@@ -103,8 +117,10 @@ export default function ChannelAutoArticleSection() {
       setShowErrorModal(true);
       return;
     }
+    // 최초 등록 시 최신 영상 아티클 즉시 생성 (최대 5분)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 300000);
+
     setIsLoading(true);
     setLoadingMessage(
       "✨ 지금은 최초 등록이므로 최신 영상의 아티클을 즉시 생성 중이에요."
@@ -112,6 +128,7 @@ export default function ChannelAutoArticleSection() {
     setLoadingMessage2(
       "※ 다음부터는 매일 아침 7시에 자동으로 새 영상을 감지하여 아티클로 만들어드려요."
     );
+
     try {
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/process/channel/${encodeURIComponent(
@@ -134,11 +151,12 @@ export default function ChannelAutoArticleSection() {
         return;
       }
       const { task_id, video_id } = await response.json();
+      // 등록 후 바로 해당 영상의 아티클 편집 화면으로 이동
       router.push(
         `/studio/channel/${channelInput}/${video_id}?task_id=${task_id}`
       );
     } catch (err) {
-      console.error("등록 오류:", err);
+      console.error("채널 등록 오류:", err);
       setErrorMessage("채널 등록 중 문제가 발생했습니다.");
       setShowErrorModal(true);
     } finally {
@@ -149,6 +167,7 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
+  // ========= 채널 변경 로직 =========
   const handleUpdateChannel = async () => {
     if (!channelInput.trim() || !registeredChannel) {
       setErrorMessage("변경할 채널 핸들을 입력해주세요!");
@@ -158,6 +177,7 @@ export default function ChannelAutoArticleSection() {
     setIsLoading(true);
     setLoadingMessage("채널 정보를 업데이트 중...");
     setLoadingMessage2("다음날 오전 7시부터 신규 채널을 모니터링합니다!");
+
     try {
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/update/${
@@ -173,9 +193,13 @@ export default function ChannelAutoArticleSection() {
       if (!response.ok) {
         throw new Error("채널 변경 실패");
       }
+      // 등록 채널 다시 조회
       await fetchRegisteredChannel();
+      // 오늘 생성된 아티클도 새로고침
       await fetchTodayArticles(user.id);
+      // 피드 갱신
       setFeedRefresh((prev) => prev + 1);
+
       setIsEditing(false);
       setChannelInput("");
     } catch (err) {
@@ -189,7 +213,7 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
-  // API 호출 로직: 채널 변경 (새 채널 핸들 사용)
+  // 실제 변경 API (모달에서 구독채널 직접 선택/입력)
   const performChannelUpdate = async (newHandle: string) => {
     if (!newHandle.trim() || !registeredChannel) {
       setErrorMessage("변경할 채널 핸들을 입력해주세요.");
@@ -212,10 +236,13 @@ export default function ChannelAutoArticleSection() {
           headers: { accept: "application/json" },
         }
       );
-      if (!response.ok) throw new Error("채널 변경 실패");
+      if (!response.ok) {
+        throw new Error("채널 변경 실패");
+      }
       await fetchRegisteredChannel();
       await fetchTodayArticles(user.id);
       setFeedRefresh((prev) => prev + 1);
+
       setIsEditing(false);
       setChannelInput("");
     } catch (err) {
@@ -228,19 +255,17 @@ export default function ChannelAutoArticleSection() {
       setLoadingMessage2("");
     }
   };
+
   const handleCancelChange = () => {
     setIsEditing(false);
     setChannelInput("");
   };
 
-  // ----------------- 로그인 & 폰번호 등록 -----------------
-  const handleLoginSuccess = async (loginUser: {
-    email: string;
-    displayName: string;
-    photoURL: string;
-  }) => {
+  // ========= 로그인 + 폰번호 등록 =========
+  const handleLoginSuccess = async (loginUser: User) => {
     setShowLoginModal(false);
     try {
+      // DB에서 유저 등록 or 조회
       const data = await getUserByEmail(loginUser.email, loginUser.displayName);
       setUserState({
         name: loginUser.displayName,
@@ -248,26 +273,32 @@ export default function ChannelAutoArticleSection() {
         picture: loginUser.photoURL,
         id: data.id,
       });
+
+      // 이미 채널이 있는지 확인
       const res = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${data.id}`
       );
       const json = await res.json();
       const existingChannel = json[0];
       if (existingChannel) {
+        // 이미 채널이 등록되어 있다면 등록 불가 안내
         setRegisteredChannel(existingChannel);
         setErrorMessage(
-          `이미 '${existingChannel.title}' 채널이 등록되어 있습니다.\n채널 변경을 원하신다면 &quot;채널 변경하기&quot; 버튼을 이용해주세요.`
+          `이미 '${existingChannel.title}' 채널이 등록되어 있습니다.\n채널 변경을 원하신다면 "채널 변경하기" 버튼을 이용해주세요.`
         );
         setShowErrorModal(true);
         return;
       }
+
+      // 폰번호 없으면 -> 폰번호 입력 모달
       if (!data.phone) {
         setShowPhoneModal(true);
       } else {
+        // 폰번호 있다면 곧바로 채널 등록 진행
         handleRegisterAfterLogin();
       }
     } catch (err) {
-      console.error("로그인 후 사용자 데이터 업데이트 오류:", err);
+      console.error("로그인 후 사용자 정보 업데이트 실패:", err);
     }
   };
 
@@ -285,6 +316,7 @@ export default function ChannelAutoArticleSection() {
         body: JSON.stringify({ user_id: user.id, phone_number: trimmed }),
       });
       if (!res.ok) throw new Error("폰번호 저장 실패");
+
       setShowPhoneModal(false);
       handleRegisterAfterLogin();
     } catch (err) {
@@ -294,7 +326,7 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
-  // ----------------- 오늘 아티클 & 채널 조회 -----------------
+  // ========= 오늘 아티클 & 채널 조회 =========
   const fetchTodayArticles = async (userId: number) => {
     try {
       const res = await fetch(
@@ -324,6 +356,7 @@ export default function ChannelAutoArticleSection() {
 
   useEffect(() => {
     if (!user.id) {
+      // 로그아웃 or user reset
       setRegisteredChannel(null);
       setTodayArticles([]);
       return;
@@ -332,43 +365,14 @@ export default function ChannelAutoArticleSection() {
     fetchTodayArticles(user.id);
   }, [user.id]);
 
+  // 등록된 채널 개요 (overview -> description)
   const truncateOrOverview = () => {
     if (!registeredChannel) return "";
     if (registeredChannel.overview)
       return removeMarkTags(registeredChannel.overview);
+
     const desc = registeredChannel.description || "";
     return desc.length <= 160 ? desc : desc.slice(0, 160) + "...";
-  };
-
-  // ----------------- GIS 및 유튜브 API 연동 -----------------
-
-  const [mySubscriptions, setMySubscriptions] = useState<any[]>([]);
-  const [userInfo, setUserInfo] = useState<any | null>(null);
-
-  // 1. 상태 추가
-  const [showHintImages, setShowHintImages] = useState(false);
-
-  // 2. 토글 핸들러 함수 추가
-  const toggleHintImages = () => setShowHintImages((prev) => !prev);
-
-  const fetchSubscriptions = async (token: string) => {
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      const data = await res.json();
-      setMySubscriptions(data.items || []);
-      return data.items;
-    } catch (error) {
-      console.error("YouTube 구독 목록 불러오기 오류:", error);
-      return [];
-    }
   };
 
   async function fetchAllSubscriptions(token: string): Promise<any[]> {
@@ -394,114 +398,21 @@ export default function ChannelAutoArticleSection() {
     } while (nextPageToken);
     return allSubs;
   }
-
-  async function fetchMyYoutubeChannelInfo(token: string) {
-    const res = await fetch(
-      "https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&mine=true",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      }
-    );
-    const data = await res.json();
-    console.log("내 유튜브 채널 정보:", data);
-  }
-
-  function handleGoogleSignInForWatchLater() {
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/youtube.readonly",
-      callback: (resp: any) => {
-        if (resp.access_token) {
-          fetchWatchLaterVideos(resp.access_token);
-        } else {
-          alert("토큰 발급 실패");
-        }
-      },
-    });
-    tokenClient.requestAccessToken();
-  }
-
-  async function fetchWatchLaterVideos(token: string) {
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/playlists?part=snippet&maxResults=25&playlistId=WL",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      const data = await res.json();
-      console.log("🎬 나중에 볼 동영상 리스트:", data.items);
-      return data.items;
-    } catch (error) {
-      console.error("Watch Later 불러오기 오류:", error);
-      return [];
-    }
-  }
-
-  async function fetchMyPlaylists(token: string) {
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=50",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      const data = await res.json();
-      console.log("📂 내 플레이리스트 목록:", data.items);
-      return data.items;
-    } catch (error) {
-      console.error("플레이리스트 불러오기 오류:", error);
-      return [];
-    }
-  }
-
-  async function fetchLikedVideos(token: string) {
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=LL&maxResults=25",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      const data = await res.json();
-      console.log("👍 좋아요한 영상들:", data.items);
-      return data.items;
-    } catch (error) {
-      console.error("좋아요 영상 불러오기 오류:", error);
-      return [];
-    }
-  }
-
-  async function fetchUserInfo(token: string) {
-    try {
-      const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const info = await res.json();
-      console.log("🔎 User Info:", info);
-      return info;
-    } catch (error) {
-      console.error("유저 정보 불러오기 오류:", error);
-      return null;
-    }
-  }
-
   /** 구독 채널 불러오기 */
   async function handleGoogleSignInForSubscriptions() {
+    // sessionStorage에서 토큰과 만료 시각을 가져옵니다.
+    const storedToken = sessionStorage.getItem("myYoutubeToken");
+    const storedTokenExpire = sessionStorage.getItem("myYoutubeTokenExpire");
+    const now = Date.now();
+
+    // 토큰이 존재하고 만료 시각이 아직 미래라면 바로 구독 채널 정보를 불러옵니다.
+    if (storedToken && storedTokenExpire && now < Number(storedTokenExpire)) {
+      const subscriptions = await fetchAllSubscriptions(storedToken);
+      sessionStorage.setItem("mySubscriptions", JSON.stringify(subscriptions));
+      router.push("/studio/subscriptions");
+      return;
+    }
+
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/youtube.readonly",
@@ -531,31 +442,62 @@ export default function ChannelAutoArticleSection() {
     });
     tokenClient.requestAccessToken();
   }
+  const [showHintImages, setShowHintImages] = useState(false);
 
-  // ----------------- 실제 렌더링 -----------------
+  // 2. 토글 핸들러 함수 추가
+  const toggleHintImages = () => setShowHintImages((prev) => !prev);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // 비디오가 뷰포트에 들어왔을 때 재생하도록 IntersectionObserver 사용
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // 뷰포트에 들어오면 자동 재생
+            videoElement.play().catch((err) => {
+              console.error("비디오 자동 재생 실패:", err);
+            });
+            observer.unobserve(videoElement);
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 뷰포트의 50% 이상 보일 때 재생
+      }
+    );
+
+    observer.observe(videoElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   return (
     <SectionWrapper>
-      {/* 등록된 채널이 없는 경우: 신규 사용자용 소개 섹션 */}
-      <HeaderContainer>
-        <KeyCopy>
-          관심 채널 영상, 다 챙겨보기 힘드셨나요?
-          <br />
-          이제 핵심만 빠르게 받아보세요!
-        </KeyCopy>
-      </HeaderContainer>
+      {/* ================= Hero + Landing Sections (New) ================= */}
       {!registeredChannel && (
         <>
-          <MonitorSection>
-            <MonitorTitle>👇 채널 모니터링, 지금 바로 시작하기</MonitorTitle>
+          {/* Hero Section */}
+          <HeaderContainer>
+            <HeroTitle>유튜브 채널 요약 & 알림 서비스</HeroTitle>
+            <HeroSubtitle>
+              중요한 영상을 빠르게 텍스트 아티클로 확인하고,
+              <br />
+              신규 영상 자동 요약 알림까지 받아보세요!
+            </HeroSubtitle>
+            {/* [모니터링 시작하기] 섹션 */}
             <ButtonGroup>
               <BlueButton onClick={handleGoogleSignInForSubscriptions}>
-                유튜브 구독 채널 등록하기
+                유튜브 구독 채널 불러오기
               </BlueButton>
               <GrayButton onClick={handleManualButton}>
                 채널 직접 입력하기
               </GrayButton>
             </ButtonGroup>
-            {/* 직접 입력 폼: 입력창과 버튼을 같은 행에 배치 */}
             {showManualForm && (
               <ManualInputContainer>
                 <ManualTitle>채널 핸들이나 URL을 입력해주세요</ManualTitle>
@@ -578,7 +520,9 @@ export default function ChannelAutoArticleSection() {
                     아래 가이드 이미지처럼, 채널 이름 아래쪽에 보이는{" "}
                     <em>@...</em> 문구가 바로 핸들명입니다.
                   </HintDesc>
+                  {/* 펼치기 토글 등은 필요 시 추가 */}
                   <ToggleHintButton onClick={toggleHintImages}>
+                    {" "}
                     {showHintImages ? "접기 ▲" : "가이드 이미지 보기 ▼"}
                   </ToggleHintButton>
                   {showHintImages && (
@@ -596,67 +540,174 @@ export default function ChannelAutoArticleSection() {
                 </HintBox>
               </ManualInputContainer>
             )}
-          </MonitorSection>
+            {/* <HeroImageWrapper>
+              <Image
+                src={heroImage}
+                alt="Hero"
+                placeholder="blur"
+                style={{ width: "80%", maxWidth: 400, height: "auto" }}
+              />
+            </HeroImageWrapper> */}
+            <HeroVideoWrapper>
+              <Video
+                ref={videoRef}
+                src="/videos/output3.mp4" // 최적화된 비디오 파일 (예: FFmpeg로 압축한 MP4)
+                poster="/images/What유티클2.png" // 로딩 전 보여줄 포스터 이미지
+                autoPlay
+                muted
+                loop
+                // preload="metadata" // 초기 로드 시 메타데이터만 미리 로드
+              />
+            </HeroVideoWrapper>
+          </HeaderContainer>
+
+          {/* =========== Landing Section =========== */}
           <LandingSection>
+            {/* (A) Why Section */}
+            {/* <SectionHeading>
+              <EmojiIcon>🤔</EmojiIcon> 왜 필요할까요?
+            </SectionHeading> */}
+            <WhySection>
+              <SectionTitle>🤔 왜 필요할까요?</SectionTitle>
+
+              <WhyText>
+                구독 중인 채널 영상이 쌓이는데, 막상 다 챙겨보긴 어렵죠.
+                <br />
+                유티클은 매일 아침 새 영상을 간편히 요약해주고,
+                <br />
+                놓친 영상도 아카이브에 저장해 언제든 다시 볼 수 있게 해줍니다.
+              </WhyText>
+            </WhySection>
+
+            {/* (B) What Section (주요 기능) */}
+            {/* What (Features) Section */}
+            <FeaturesSection>
+              <SectionTitle>💡 무엇을 할 수 있나요?</SectionTitle>
+              <FeaturesGrid>
+                <FeatureCard>
+                  <IconWrapper>
+                    <FaPlayCircle size={32} color="#007bff" />
+                  </IconWrapper>
+                  <CardTitle>개별 영상 아티클 변환</CardTitle>
+                  <CardDesc>
+                    관심 있는 영상을 선택하면
+                    <br />
+                    핵심만 추린 요약본을 즉시 생성!
+                  </CardDesc>
+                </FeatureCard>
+                <FeatureCard>
+                  <IconWrapper>
+                    <FaBell size={32} color="#007bff" />
+                  </IconWrapper>
+                  <CardTitle>신규 영상 자동 알림</CardTitle>
+                  <CardDesc>
+                    매일 아침 채널에 새로 올라온 영상을
+                    <br />
+                    자동 감지 후 카톡으로 안내!
+                  </CardDesc>
+                </FeatureCard>
+                <FeatureCard>
+                  <IconWrapper>
+                    <FaClipboardList size={32} color="#007bff" />
+                  </IconWrapper>
+                  <CardTitle>아카이브</CardTitle>
+                  <CardDesc>
+                    바빠서 못 봤던 영상도
+                    <br />
+                    언제든 다시 찾아볼 수 있어요.
+                  </CardDesc>
+                </FeatureCard>
+                <FeatureCard>
+                  <IconWrapper>
+                    <FaUserCheck size={32} color="#007bff" />
+                  </IconWrapper>
+                  <CardTitle>간단한 사용법</CardTitle>
+                  <CardDesc>
+                    Google 계정만 있으면
+                    <br />
+                    채널 등록 후 바로 이용 가능!
+                  </CardDesc>
+                </FeatureCard>
+              </FeaturesGrid>
+            </FeaturesSection>
+
+            {/* (C) How Section */}
+            <HowSection>
+              <SectionTitle>⚙️ 어떻게 이용하나요?</SectionTitle>
+
+              <StepsRow>
+                <StepBox>
+                  <StepIcon>1</StepIcon>
+                  <StepText>Google 계정으로 로그인</StepText>
+                  <StepImageBox>
+                    <Image
+                      src={howStepImage1}
+                      alt="단계1 예시"
+                      style={{ width: "100%", height: "auto" }}
+                    />
+                  </StepImageBox>
+                </StepBox>
+
+                <StepBox>
+                  <StepIcon>2</StepIcon>
+                  <StepText>관심 채널 직접 입력 or 구독 채널 불러오기</StepText>
+                  <StepImageBox>
+                    <Image
+                      src={howStepImage2}
+                      alt="단계2 예시"
+                      style={{ width: "100%", height: "auto" }}
+                    />
+                  </StepImageBox>
+                </StepBox>
+
+                <StepBox>
+                  <StepIcon>3</StepIcon>
+                  <StepText>개별 영상 요약 or 채널 전체 등록</StepText>
+                </StepBox>
+
+                <StepBox>
+                  <StepIcon>4</StepIcon>
+                  <StepText>카톡 알림 &amp; 아카이브로 편리하게 확인</StepText>
+                </StepBox>
+              </StepsRow>
+            </HowSection>
+
+            {/* (D) Testimonials Section */}
             <SectionHeading>
-              <EmojiIcon>🤔</EmojiIcon> 유튜브 채널 모니터링 왜 필요할까요?
+              <EmojiIcon>✨</EmojiIcon> 사용자 후기
             </SectionHeading>
-            <InfoCard>
-              <CardTitle>
-                &ldquo;구독 중인 채널의 영상 시청을 자꾸 미루지 않나요?&rdquo;
-              </CardTitle>
-              <CardDesc>
-                좋아하는 채널 영상이라도 전부 시청하긴 쉽지 않죠.
-                <br />
-                핵심만 빠르게 파악하고, 궁금한 부분은 영상으로 확인하세요!
-              </CardDesc>
-            </InfoCard>
-            <SectionHeading>
-              <EmojiIcon>💡</EmojiIcon> 유티클이 무엇을 해주나요?
-            </SectionHeading>
-            <InfoCard>
-              <CardTitle>
-                &ldquo;매일 신규 영상을 대신 정리해서 카톡으로
-                전달드립니다.&rdquo;
-              </CardTitle>
-              <CardDesc>
-                매일 아침 7시에 새 영상 요약본을 카톡으로 받아보세요.
-                <br />
-                놓친 영상도 아카이브에 자동 저장되어 언제든 다시 꺼내볼 수
-                있어요.
-              </CardDesc>
-            </InfoCard>
-            <SectionHeading>
-              <EmojiIcon>⚙️</EmojiIcon> 어떻게 이용하나요?
-            </SectionHeading>
-            <InfoCard>
-              <CardTitle>“사용법은 간단해요.”</CardTitle>
-              <CardDesc>
-                1) 유튜브 데이터 권한 연동
-                <br />
-                2) 구독 채널 불러오기 (채널 직접 입력도 가능)
-                <br />
-                3) 모니터링할 채널 등록하기
-                <br />
-                4) 휴대폰 번호 등록 후 카톡 알림 받기
-              </CardDesc>
-            </InfoCard>
-            <SectionHeading>
-              <EmojiIcon>✨</EmojiIcon> 바쁘신가요? 걱정하지 마세요!
-            </SectionHeading>
-            <InfoCard>
-              <CardTitle>“아카이브로 언제든 다시 확인 가능”</CardTitle>
-              <CardDesc>
-                당일에 시간이 없어도, 요약본은 아카이브에 저장됩니다.
-                <br />
-                나중에 확인하고 싶을 때 언제든 꺼내보세요.
-              </CardDesc>
-            </InfoCard>
+            <TestimonialGrid>
+              <TestimonialCard>
+                <Quote>“영상 시청 시간이 확 줄었어요!”</Quote>
+                <Author>- 홍길동</Author>
+              </TestimonialCard>
+              <TestimonialCard>
+                <Quote>“카톡으로 요약본이 오니까 너무 편해요.”</Quote>
+                <Author>- 김철수</Author>
+              </TestimonialCard>
+              <TestimonialCard>
+                <Quote>“아카이브 덕에 예전 영상도 쉽게 찾아봅니다.”</Quote>
+                <Author>- 이영희</Author>
+              </TestimonialCard>
+            </TestimonialGrid>
+
+            {/* (E) Final CTA */}
+            <FinalCTASection>
+              <CTAContainer>
+                <CTATitle>지금 바로 시작해보세요!</CTATitle>
+                <CTAText>
+                  관심 채널 영상, 다 챙겨보기 힘들다면
+                  <br />
+                  영상 요약과 자동 알림으로 시간을 절약하세요.
+                </CTAText>
+                <CTAButton>회원가입 / 로그인</CTAButton>
+              </CTAContainer>
+            </FinalCTASection>
           </LandingSection>
         </>
       )}
 
-      {/* 등록된 채널이 있을 경우: 채널 등록 현황 UI */}
+      {/* ================= 등록된 채널 UI ================= */}
       {registeredChannel && (
         <RegisteredContainer>
           {registeredChannel.banner && (
@@ -682,7 +733,10 @@ export default function ChannelAutoArticleSection() {
                 </SubCount>
               </ChannelInfo>
             </ChannelRow>
+
             <ChannelDesc>{truncateOrOverview()}</ChannelDesc>
+
+            {/* 오늘 생성된 아티클 */}
             <TodayArticleSection>
               <TodaySectionTitle>📌 오늘 생성된 아티클</TodaySectionTitle>
               {todayArticles.length === 0 ? (
@@ -717,6 +771,7 @@ export default function ChannelAutoArticleSection() {
                 ))
               )}
             </TodayArticleSection>
+
             {!isEditing ? (
               <ButtonRow>
                 <GrayButton onClick={() => setShowChangeModal(true)}>
@@ -752,10 +807,10 @@ export default function ChannelAutoArticleSection() {
         </RegisteredContainer>
       )}
 
-      {/* 5) 다른 유저들이 등록한 채널 목록 */}
+      {/* 다른 유저들 채널 목록 */}
       <ChannelFeedSectionWithTabs />
 
-      {/* 로딩/에러/로그인/폰번호 모달 */}
+      {/* 로딩 오버레이 */}
       {isLoading && (
         <LoadingOverlay>
           <LoadingBox>
@@ -766,6 +821,7 @@ export default function ChannelAutoArticleSection() {
         </LoadingOverlay>
       )}
 
+      {/* 에러 모달 */}
       {showErrorModal && (
         <ModalOverlay>
           <ModalContent>
@@ -778,6 +834,7 @@ export default function ChannelAutoArticleSection() {
         </ModalOverlay>
       )}
 
+      {/* 로그인 모달 */}
       {showLoginModal && (
         <ModalOverlay>
           <ModalContent>
@@ -791,6 +848,7 @@ export default function ChannelAutoArticleSection() {
         </ModalOverlay>
       )}
 
+      {/* 폰번호 입력 모달 */}
       {showPhoneModal && (
         <ModalOverlay>
           <ModalContent>
@@ -809,7 +867,8 @@ export default function ChannelAutoArticleSection() {
           </ModalContent>
         </ModalOverlay>
       )}
-      {/* 채널 변경 모달 (두 가지 선택지를 제공) */}
+
+      {/* 채널 변경 모달 */}
       {showChangeModal && (
         <ChangeChannelModal
           onClose={() => setShowChangeModal(false)}
@@ -820,28 +879,51 @@ export default function ChannelAutoArticleSection() {
   );
 }
 
-// ----------------- GIS 및 유튜브 API 관련 함수 -----------------
+/* ------------------ ChangeChannelModal 컴포넌트 ------------------ */
+interface ChangeChannelModalProps {
+  onClose: () => void;
+  onUpdateChannel: (newHandle: string) => void;
+}
 
-// ----------------- 스타일 정의 -----------------
+/* ------------------ Styled Components ------------------ */
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
 const SectionWrapper = styled.div`
-  width: 100%;
-  max-width: 600px;
+  max-width: 960px;
   margin: 0 auto;
-  padding-bottom: 40px;
-`;
-
-/** ---- 헤더 (키 카피) ---- */
-const HeaderContainer = styled.div`
-  margin: 24px 16px;
-  text-align: center;
+  padding: 0 16px 80px;
   animation: ${fadeIn} 0.5s ease-in-out;
 `;
 
+/** Hero / Landing Header */
+const HeaderContainer = styled.div`
+  margin: 24px 16px;
+  margin-top: 40px;
+  align-items: center;
+  text-align: center;
+  animation: ${fadeIn} 0.5s ease-in-out;
+`;
+const HeroTitle = styled.h1`
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #000;
+`;
+const HeroSubtitle = styled.p`
+  font-size: 16px;
+  line-height: 1.4;
+  color: #444;
+  margin-bottom: 24px;
+`;
+const HeroImageWrapper = styled.div`
+  flex: 1;
+  display: flex;
+  margin-top: 60px;
+  justify-content: center;
+`;
 const KeyCopy = styled.h2`
   font-size: 20px;
   font-weight: 700;
@@ -849,12 +931,11 @@ const KeyCopy = styled.h2`
   margin-bottom: 12px;
 `;
 
-/** ---- 모니터링 섹션 ---- */
+/** 모니터링 섹션 */
 const MonitorSection = styled.section`
   background-color: #f7faff;
   padding: 16px;
-  margin: 0 16px;
-  margin-bottom: 24px;
+  margin: 0 16px 24px;
   border-radius: 8px;
   border: 1px solid #e2e2e2;
   animation: ${fadeIn} 0.5s ease-in-out;
@@ -874,37 +955,37 @@ const ButtonGroup = styled.div`
   gap: 8px;
 `;
 
-/** 파란 버튼 & 회색 버튼 */
+/** 버튼들 */
 const BlueButton = styled.button`
   background-color: #007bff;
   color: #fff;
+  font-weight: 700;
+  font-size: 16px;
   border: none;
   border-radius: 6px;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 700;
+  padding: 14px 20px;
   cursor: pointer;
   &:hover {
     background-color: #005caf;
   }
 `;
 
-const GrayButton = styled.button`
-  background-color: #f0f0f5;
-  color: #333;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 700;
-  width: 100%;
-  cursor: pointer;
-  &:hover {
-    background-color: #dedee3;
-  }
-`;
+// const GrayButton = styled.button`
+//   background-color: #f0f0f5;
+//   color: #333;
+//   font-weight: 700;
+//   font-size: 15px;
+//   border: 1px solid #ccc;
+//   border-radius: 6px;
+//   padding: 14px;
+//   width: 100%;
+//   cursor: pointer;
+//   &:hover {
+//     background-color: #dedee3;
+//   }
+// `;
 
-/** 직접 입력 폼 (입력창과 버튼을 한 줄에 배치) */
+/** 직접 입력 폼 */
 const ManualInputContainer = styled.div`
   margin-top: 16px;
   background: #fff;
@@ -913,7 +994,19 @@ const ManualInputContainer = styled.div`
   padding: 12px;
   animation: ${fadeIn} 0.3s ease;
 `;
+// Styled Components
+const HeroVideoWrapper = styled.div`
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+`;
 
+const Video = styled.video`
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  /* 필요에 따라 min-height를 설정할 수 있습니다 */
+`;
 const ManualTitle = styled.div`
   font-size: 14px;
   font-weight: 700;
@@ -934,11 +1027,41 @@ const ChannelInput = styled.input`
   border-radius: 4px;
 `;
 
-const SmallGuide = styled.p`
-  margin-top: 6px;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.4;
+const RegisterButtonColumn = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 4px;
+  padding: 14px;
+  font-size: 15px;
+  cursor: pointer;
+  &:hover {
+    background-color: #005caf;
+  }
+`;
+
+const HintBox = styled.div`
+  background: #f8f9fa;
+  border: 1px solid #d8dee2;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-top: 12px;
+`;
+
+const HintTitle = styled.h4`
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #333;
+`;
+
+const HintDesc = styled.p`
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  margin-bottom: 10px;
+
   strong {
     color: #000;
   }
@@ -948,11 +1071,56 @@ const SmallGuide = styled.p`
   }
 `;
 
-/** ---- 랜딩 섹션 (WHY / WHAT / HOW / PLUS) ---- */
+const ToggleHintButton = styled.button`
+  font-size: 13px;
+  font-weight: 600;
+  color: #007bff;
+  background: none;
+  border: none;
+  margin-top: 6px;
+  padding: 0;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+const HintImageScrollContainer = styled.div`
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-top: 10px;
+  padding-bottom: 4px;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+  }
+`;
+
+const HintImage = styled.img`
+  width: 70%;
+  max-width: 260px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+`;
+/** ------ Landing Section (Why / What / How / Testimonials / Final CTA) ------ */
 const LandingSection = styled.section`
   margin: 24px 16px;
 `;
-
+const WhySection = styled.section`
+  margin-top: 60px;
+`;
+const SectionTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #000;
+  text-align: center;
+`;
 const SectionHeading = styled.h3`
   margin-top: 48px;
   margin-bottom: 8px;
@@ -967,7 +1135,14 @@ const SectionHeading = styled.h3`
 const EmojiIcon = styled.span`
   font-size: 18px;
 `;
-
+const WhyText = styled.p`
+  font-size: 16px;
+  line-height: 1.6;
+  color: #444;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+`;
 const InfoCard = styled.div`
   background-color: #fff;
   border: 1px solid #eee;
@@ -978,7 +1153,7 @@ const InfoCard = styled.div`
 `;
 
 const CardTitle = styled.h4`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #222;
   line-height: 1.4;
@@ -991,8 +1166,134 @@ const CardDesc = styled.p`
   line-height: 1.32;
   white-space: pre-line;
 `;
+const FeaturesSection = styled.section`
+  margin-top: 80px;
+`;
+/** What Section - Features */
+const FeaturesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+`;
+const FeatureCard = styled.div`
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  transition: 0.2s;
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+`;
 
-/** ---- 등록된 채널 섹션 ---- */
+const HowSection = styled.section`
+  margin-top: 60px;
+`;
+const StepsRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 24px;
+  text-align: center;
+`;
+const StepBox = styled.div`
+  /* width: 220px; */
+  /* background: #f8f9fa; */
+  border-radius: 8px;
+  padding: 16px;
+  margin: 0 auto;
+`;
+const StepIcon = styled.div`
+  background: #007bff;
+  color: #fff;
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+const StepText = styled.p`
+  font-size: 16px;
+  color: #000;
+  margin-bottom: 12px;
+`;
+const StepImageBox = styled.div`
+  margin-top: 8px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+const IconWrapper = styled.div`
+  margin-bottom: 12px;
+`;
+
+const TestimonialGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 24px;
+`;
+
+const TestimonialCard = styled.div`
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+`;
+const Quote = styled.p`
+  font-size: 14px;
+  font-style: italic;
+  color: #333;
+  margin-bottom: 12px;
+`;
+const Author = styled.div`
+  font-size: 13px;
+  color: #777;
+`;
+
+const FinalCTASection = styled.section`
+  margin-top: 40px;
+  padding: 24px 16px;
+  background: #f0f0f5;
+  border-radius: 8px;
+  text-align: center;
+`;
+const CTAContainer = styled.div`
+  max-width: 480px;
+  margin: 0 auto;
+`;
+const CTATitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+`;
+const CTAText = styled.p`
+  font-size: 14px;
+  color: #444;
+  line-height: 1.4;
+  margin-bottom: 20px;
+`;
+const CTAButton = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  padding: 14px 24px;
+  cursor: pointer;
+  &:hover {
+    background-color: #005caf;
+  }
+`;
+
+/** ------ 등록된 채널 UI ------ */
 const RegisteredContainer = styled.div`
   position: relative;
   margin-bottom: 16px;
@@ -1007,7 +1308,6 @@ const BannerArea = styled.div<BannerProps>`
     bannerUrl ? `url(${bannerUrl}) center/cover no-repeat` : "#ccc"};
   position: relative;
 `;
-
 const BannerOverlay = styled.div`
   position: absolute;
   inset: 0;
@@ -1028,7 +1328,6 @@ const ChannelRow = styled.div`
   display: flex;
   align-items: center;
 `;
-
 const ThumbWrapper = styled.div`
   width: 54px;
   height: 54px;
@@ -1036,13 +1335,11 @@ const ThumbWrapper = styled.div`
   overflow: hidden;
   margin-right: 12px;
 `;
-
 const ChannelThumb = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
 `;
-
 const ChannelInfo = styled.div`
   display: flex;
   flex-direction: column;
@@ -1054,18 +1351,15 @@ const ChannelTitle = styled.h4`
   margin-bottom: 4px;
   color: #222;
 `;
-
 const ChannelHandle = styled.span`
   font-size: 13px;
   color: #666;
 `;
-
 const SubCount = styled.div`
   margin-top: 4px;
   font-size: 13px;
   color: #666;
 `;
-
 const ChannelDesc = styled.div`
   margin-top: 12px;
   font-size: 13px;
@@ -1076,7 +1370,6 @@ const ChannelDesc = styled.div`
 const TodayArticleSection = styled.div`
   margin-top: 24px;
 `;
-
 const TodaySectionTitle = styled.h5`
   font-size: 14px;
   font-weight: 700;
@@ -1093,7 +1386,6 @@ const EmptyToday = styled.div`
   border-radius: 6px;
   text-align: center;
 `;
-
 const EmptyMsg = styled.p`
   font-size: 13px;
   color: #666;
@@ -1117,23 +1409,19 @@ const ArticleCard = styled.div`
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
   }
 `;
-
 const ArticleInfo = styled.div`
   flex: 1;
 `;
-
 const ArticleTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #222;
 `;
-
 const ArticleMeta = styled.div`
   margin-top: 4px;
   font-size: 12px;
   color: #888;
 `;
-
 const ArticleThumb = styled.img`
   width: 100px;
   height: 64px;
@@ -1148,7 +1436,8 @@ const ButtonRow = styled.div`
   display: flex;
   gap: 8px;
 `;
-const ChangeButton = styled.button`
+
+const GrayButton = styled.button`
   flex: 1;
   background-color: #f0f0f5;
   color: #333;
@@ -1157,13 +1446,13 @@ const ChangeButton = styled.button`
   border-radius: 6px;
   padding: 12px 16px;
   cursor: pointer;
+  font-size: 16px;
   transition: all 0.2s ease-in-out;
-
   &:hover {
     background-color: #e4e4eb;
   }
 `;
-/** 채널 변경 섹션 */
+
 const EditSection = styled.div`
   margin-top: 16px;
   background: #fafafa;
@@ -1171,7 +1460,6 @@ const EditSection = styled.div`
   border-radius: 6px;
   padding: 12px;
 `;
-
 const EditLabel = styled.div`
   display: inline-block;
   background: #e0f2ff;
@@ -1182,7 +1470,6 @@ const EditLabel = styled.div`
   border-radius: 12px;
   margin-bottom: 8px;
 `;
-
 const NoticeMessage = styled.p`
   background: #f7f7f7;
   font-size: 13px;
@@ -1193,26 +1480,22 @@ const NoticeMessage = styled.p`
   border-radius: 4px;
   margin-bottom: 12px;
 `;
-
 const InputRow = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
 `;
-
 const UrlInput = styled.input`
   padding: 12px;
   font-size: 13px;
   border: 1px solid #ddd;
   border-radius: 4px;
 `;
-
 const EditGuide = styled.p`
   margin-top: 4px;
   font-size: 12px;
   color: #616161;
 `;
-
 const ApplyButton = styled.button`
   flex: 1;
   background: #007bff;
@@ -1223,7 +1506,6 @@ const ApplyButton = styled.button`
   padding: 12px;
   cursor: pointer;
 `;
-
 const CancelButton = styled.button`
   flex: 1;
   background: #e0e0e0;
@@ -1235,56 +1517,7 @@ const CancelButton = styled.button`
   cursor: pointer;
 `;
 
-/** 등록 전 직접 입력 폼에서 Input 옆에 배치할 버튼용 Row */
-
-const RegisterCard = styled.div`
-  margin: 0 16px;
-  border-radius: 8px;
-`;
-
-const ChannelInputWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const RegisterGuide = styled.p`
-  margin-top: 6px;
-  font-size: 12px;
-  color: #616161;
-`;
-
-const RegisterButtonColumn = styled.button`
-  /* flex: 1; */
-  background-color: #007bff;
-  color: #fff;
-  font-weight: 700;
-  border: none;
-  border-radius: 4px;
-  padding: 14px;
-  font-size: 15px;
-  cursor: pointer;
-  &:hover {
-    background-color: #005caf;
-  }
-`;
-
-const RegisterButton = styled.button`
-  flex: 1;
-  /* margin-top: 12px; */
-  background-color: #007bff;
-  color: #fff;
-  font-weight: 700;
-  border: none;
-  border-radius: 4px;
-  padding: 14px;
-  font-size: 15px;
-  cursor: pointer;
-  &:hover {
-    background-color: #005caf;
-  }
-`;
-
-/** ---- 로딩/에러 모달 ---- */
+/** 로딩/에러/로그인/폰번호 모달 */
 const LoadingOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -1300,12 +1533,10 @@ const LoadingOverlay = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
 const LoadingBox = styled.div`
   width: 80%;
   text-align: center;
 `;
-
 const LoadingMessage = styled.p`
   margin-top: 20px;
   font-size: 16px;
@@ -1314,7 +1545,6 @@ const LoadingMessage = styled.p`
   line-height: 1.4;
   white-space: pre-line;
 `;
-
 const SubMessage = styled.p`
   margin-top: 10px;
   font-size: 13px;
@@ -1323,7 +1553,6 @@ const SubMessage = styled.p`
   white-space: pre-line;
   text-align: center;
 `;
-
 const Spinner = styled.div`
   margin: 0 auto 16px;
   width: 32px;
@@ -1361,7 +1590,6 @@ const ModalContent = styled.div`
   text-align: center;
   position: relative;
 `;
-
 const ModalClose = styled.button`
   position: absolute;
   top: 4px;
@@ -1372,14 +1600,12 @@ const ModalClose = styled.button`
   color: #666;
   cursor: pointer;
 `;
-
 const InfoMessage = styled.h3`
   font-size: 16px;
   font-weight: 700;
   color: #333;
   margin-bottom: 12px;
 `;
-
 const InfoDescription = styled.p`
   margin-bottom: 12px;
   font-size: 13px;
@@ -1387,7 +1613,6 @@ const InfoDescription = styled.p`
   line-height: 1.4;
   white-space: pre-line;
 `;
-
 const CloseButton = styled.button`
   background: #000;
   color: #fff;
@@ -1398,7 +1623,6 @@ const CloseButton = styled.button`
   padding: 8px 14px;
   cursor: pointer;
 `;
-
 const PhoneInput = styled.input`
   margin-top: 8px;
   width: 80%;
@@ -1407,85 +1631,23 @@ const PhoneInput = styled.input`
   border-radius: 4px;
   font-size: 14px;
 `;
-const HintBox = styled.div`
-  background: #f8f9fa; /* 은은한 연회색 톤 */
-  border: 1px solid #d8dee2; /* 더 부드러운 테두리 */
-  border-radius: 8px;
-  padding: 14px 18px;
-  /* margin: 0 16px 16px; */
-  margin-top: 12px;
-`;
-
-const HintTitle = styled.h4`
-  font-size: 14px;
+const RegisterButton = styled.button`
+  flex: 1;
+  background-color: #007bff;
+  color: #fff;
   font-weight: 700;
-  margin-bottom: 6px;
-  color: #333;
-`;
-
-const HintDesc = styled.p`
-  font-size: 13px;
-  line-height: 1.5;
-  color: #555;
-  margin-bottom: 10px;
-
-  strong {
-    color: #000;
-  }
-
-  em {
-    font-style: italic;
-    color: #777;
-  }
-`;
-
-const ToggleHintButton = styled.button`
-  font-size: 13px;
-  font-weight: 600;
-  color: #007bff;
-  background: none;
   border: none;
-  margin-top: 6px;
-  padding: 0;
+  border-radius: 4px;
+  padding: 14px;
+  font-size: 16px;
+  margin-top: 16px;
   cursor: pointer;
 
   &:hover {
-    text-decoration: underline;
+    background-color: #0056b3;
   }
 `;
-
-const HintImageScrollContainer = styled.div`
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  margin-top: 10px;
-  padding-bottom: 4px;
-
-  &::-webkit-scrollbar {
-    height: 6px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-  }
-`;
-
-const HintImage = styled.img`
-  width: 70%;
-  max-width: 260px;
-  border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-`;
-// ------------------------------------------------------------------
-// 위 컴포넌트는 기존 채널 등록 전후의 UI 및 GIS(구글 아이덴티티 서비스)를 통한 유튜브 API 연동
-// 기능(구독 채널, 좋아요 영상, 나중에 볼 영상 등)을 모두 포함하고 있습니다.
-// 등록된 채널이 있으면 HeaderContainer, MonitorSection, LandingSection을 숨기고,
-// 대신 등록된 채널 정보를 보여줍니다.
-// 또한, "채널 직접 입력하기"를 선택하면 입력창 오른쪽에 "채널 불러오기" 버튼이 함께 나타납니다.
-// ------------------------------------------------------------------
-
-// ---------------------- ChangeChannelModal 컴포넌트 ----------------------
+/* ------------------ ChangeChannelModal ------------------ */
 interface ChangeChannelModalProps {
   onClose: () => void;
   onUpdateChannel: (newHandle: string) => void;
@@ -1497,7 +1659,7 @@ function ChangeChannelModal({
   const [activeMethod, setActiveMethod] = useState<"subs" | "manual">("subs");
   const [manualHandle, setManualHandle] = useState("");
 
-  // 예시: 상위 컴포넌트에서 구독 채널 정보를 prop으로 받거나 API를 통해 불러오도록 구성 가능
+  // 예시 구독채널 (실제로는 GIS API 결과)
   const dummySubscriptions = [
     { id: "1", snippet: { title: "내구독채널A", channelId: "ChannelA" } },
     { id: "2", snippet: { title: "내구독채널B", channelId: "ChannelB" } },
@@ -1535,6 +1697,7 @@ function ChangeChannelModal({
             직접 입력
           </ModalTab>
         </ModalTabRow>
+
         {activeMethod === "subs" ? (
           <SubsContainer>
             <p>구독 채널 중에서 변경할 채널을 선택하세요.</p>
@@ -1562,7 +1725,8 @@ function ChangeChannelModal({
     </ModalOverlay>
   );
 }
-// 모달 내부 스타일 (ChangeChannelModal)
+
+/* ----- ChangeChannelModal 스타일 ----- */
 const ModalTabRow = styled.div`
   display: flex;
   margin-bottom: 12px;
@@ -1589,7 +1753,6 @@ const SubsContainer = styled.div`
     margin-bottom: 8px;
   }
 `;
-
 const SubsItem = styled.div`
   display: flex;
   justify-content: space-between;
@@ -1600,12 +1763,10 @@ const SubsItem = styled.div`
   padding: 8px;
   align-items: center;
 `;
-
 const SubsName = styled.span`
   flex: 1;
   font-size: 14px;
 `;
-
 const SelectBtn = styled.button`
   background: #fffae0;
   border: 1px solid #ccc;
@@ -1614,7 +1775,6 @@ const SelectBtn = styled.button`
   padding: 4px 8px;
   border-radius: 4px;
 `;
-
 const ManualContainer = styled.div`
   text-align: left;
   label {
@@ -1624,7 +1784,6 @@ const ManualContainer = styled.div`
     color: #333;
   }
 `;
-
 const ManualInput = styled.input`
   width: 100%;
   padding: 10px;
@@ -1633,7 +1792,6 @@ const ManualInput = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
 `;
-
 const ApplyBtn = styled.button`
   width: 100%;
   background: #007bff;
@@ -1645,5 +1803,3 @@ const ApplyBtn = styled.button`
   border-radius: 4px;
   cursor: pointer;
 `;
-
-export { ChannelAutoArticleSection };

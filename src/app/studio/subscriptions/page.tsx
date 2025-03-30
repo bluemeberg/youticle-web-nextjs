@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import styled from "styled-components";
+import React, { useEffect, useState, ChangeEvent } from "react";
+import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
+import { FaChevronRight } from "react-icons/fa";
 import LogoHeader from "@/common/LogoHeader";
 
 /** 구독 채널 (YouTube API) */
@@ -34,6 +35,7 @@ export default function SubscriptionsPage() {
   const router = useRouter();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     // 세션스토리지에서 구독 채널 목록 가져오기
@@ -55,6 +57,16 @@ export default function SubscriptionsPage() {
     setLoading(false);
   }, []);
 
+  // 검색 입력 처리
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // 검색어에 따른 필터링
+  const filteredSubscriptions = subscriptions.filter((sub) =>
+    sub.snippet.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // 채널 클릭 시 -> channelId 를 사용해 "/subscriptions/[channelId]" 페이지로 이동
   const handleChannelClick = (channelId: string) => {
     router.push(`/studio/subscriptions/${channelId}`);
@@ -70,52 +82,67 @@ export default function SubscriptionsPage() {
         <br />
         <SmallNote>(모니터링 없이도 개별 영상 아티클 변환 가능!)</SmallNote>
       </Subtitle>
+      <SearchInput
+        type="text"
+        placeholder="채널 이름 검색..."
+        value={searchTerm}
+        onChange={handleSearchChange}
+      />
 
       {loading ? (
-        <Message>로딩 중...</Message>
-      ) : subscriptions.length > 0 ? (
-        subscriptions.map((sub) => {
-          const snippet = sub.snippet;
-          const thumbUrl = snippet.thumbnails?.medium?.url;
-          const channelTitle = snippet.title;
-          // 채널 설명이 없다면 기본 문구로 처리
-          const channelDesc =
-            snippet.description && snippet.description.trim().length > 0
-              ? snippet.description
-              : "채널 설명이 없습니다.";
-          const channelId = snippet.resourceId?.channelId;
-
-          // 예시로 구독자 정보가 statistics에 있다면 표시 (없으면 기본 문구)
-          const subscriberCount = sub.statistics?.subscriberCount
-            ? `구독자 ${Number(
-                sub.statistics.subscriberCount
-              ).toLocaleString()}명`
-            : "구독자 정보 없음";
-
-          return (
-            <ChannelCard
-              key={sub.id}
-              onClick={() => handleChannelClick(channelId)}
-            >
-              <ChannelThumb src={thumbUrl} alt={channelTitle} />
-              <ChannelInfo>
-                <ChannelName>{channelTitle}</ChannelName>
-                {/* <ChannelHandle>@{channelId}</ChannelHandle> */}
-                {/* <ChannelStats>{subscriberCount}</ChannelStats> */}
-                <ChannelDesc>{channelDesc}</ChannelDesc>
-              </ChannelInfo>
-              <RightArrow>›</RightArrow>
-            </ChannelCard>
-          );
-        })
+        <LoadingContainer>
+          <Spinner />
+        </LoadingContainer>
       ) : (
-        <Message>불러온 구독 채널이 없습니다.</Message>
+        <FadeInContainer>
+          {filteredSubscriptions.length > 0 ? (
+            filteredSubscriptions.map((sub) => {
+              const { snippet, statistics } = sub;
+              const thumbUrl = snippet.thumbnails?.medium?.url;
+              const channelTitle = snippet.title;
+              const channelDesc =
+                snippet.description && snippet.description.trim().length > 0
+                  ? snippet.description
+                  : "채널 설명이 없습니다.";
+              const channelId = snippet.resourceId?.channelId;
+              const subscriberCount = statistics?.subscriberCount
+                ? `구독자 ${Number(
+                    statistics.subscriberCount
+                  ).toLocaleString()}명`
+                : "구독자 정보 없음";
+
+              return (
+                <ChannelCard
+                  key={sub.id}
+                  onClick={() => handleChannelClick(channelId)}
+                >
+                  <ChannelThumb src={thumbUrl} alt={channelTitle} />
+                  <ChannelInfo>
+                    <ChannelName>{channelTitle}</ChannelName>
+                    {/* <ChannelStats>{subscriberCount}</ChannelStats> */}
+                    <ChannelDesc>{channelDesc}</ChannelDesc>
+                  </ChannelInfo>
+                  <RightArrow>
+                    <FaChevronRight size={20} color="#ccc" />
+                  </RightArrow>
+                </ChannelCard>
+              );
+            })
+          ) : (
+            <Message>불러온 구독 채널이 없습니다.</Message>
+          )}
+        </FadeInContainer>
       )}
     </Container>
   );
 }
 
 /* -------------------- Styled Components -------------------- */
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
 const Container = styled.div`
   max-width: 600px;
   margin: 0 auto;
@@ -124,18 +151,16 @@ const Container = styled.div`
 `;
 
 const Title = styled.h2`
-  margin: 16px;
-  margin-bottom: 8px;
+  margin: 72px 16px 8px;
   font-size: 18px;
   font-weight: 700;
-  margin-top: 72px;
 `;
 
 const Subtitle = styled.p`
   margin: 0 16px 16px;
-  font-size: 14px;
+  font-size: 15px;
   color: #555;
-  line-height: 1.4;
+  line-height: 1.5;
 `;
 
 const Highlight = styled.span`
@@ -150,6 +175,16 @@ const SmallNote = styled.span`
   margin-top: 4px;
 `;
 
+const SearchInput = styled.input`
+  display: block;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
+
 const Message = styled.p`
   margin-top: 72px;
   text-align: center;
@@ -158,11 +193,11 @@ const Message = styled.p`
 
 const ChannelCard = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   background: #fafafa;
   border-radius: 8px;
   padding: 12px;
-  margin: 16px 16px;
+  margin: 12px 16px;
   border: 1px solid #eee;
   cursor: pointer;
   transition: 0.2s ease;
@@ -173,10 +208,10 @@ const ChannelCard = styled.div`
 `;
 
 const ChannelThumb = styled.img`
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   object-fit: cover;
-  border-radius: 24px;
+  border-radius: 28px;
   margin-right: 12px;
 `;
 
@@ -192,12 +227,6 @@ const ChannelName = styled.div`
   color: #333;
 `;
 
-const ChannelHandle = styled.div`
-  font-size: 14px;
-  color: #666;
-  margin-top: 4px;
-`;
-
 const ChannelStats = styled.div`
   font-size: 13px;
   color: #888;
@@ -209,23 +238,44 @@ const ChannelDesc = styled.div`
   font-size: 13px;
   color: #666;
   line-height: 1.3;
-
-  /* 두 줄까지만 표시 & 나머지 숨김 */
   display: -webkit-box;
-  -webkit-line-clamp: 2; /* 2줄로 자르기 */
-  -webkit-box-orient: vertical; /* 수직 정렬 */
-  overflow: hidden; /* 초과 내용 숨김 */
-
-  /* 긴 단어(공백 없는 문자열)도 줄바꿈 허용 */
-  white-space: normal; /* 기본 줄바꿈 허용 */
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
   word-break: break-word;
   overflow-wrap: break-word;
 `;
 
 const RightArrow = styled.div`
   margin-left: 8px;
-  font-size: 24px;
-  color: #ccc;
-  align-self: center;
-  transform: translateY(-1px);
+  display: flex;
+  align-items: center;
+`;
+
+/* Loading Indicator Components */
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+`;
+
+const Spinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ccc;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+/* FadeInContainer: 채널 정보 표시 시 부드럽게 나타나도록 적용 */
+const FadeInContainer = styled.div`
+  animation: ${fadeIn} 0.5s ease-in-out;
 `;

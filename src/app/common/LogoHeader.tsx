@@ -68,7 +68,9 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       return;
     }
 
-    if (pathname.includes("/detail/")) {
+    if (pathname.startsWith("/studio/subscriptions/")) {
+      router.push("/studio/subscriptions");
+    } else if (pathname.includes("/detail/")) {
       router.push("/");
     } else if (
       pathname.includes("/detail") &&
