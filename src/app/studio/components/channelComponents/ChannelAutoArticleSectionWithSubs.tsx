@@ -66,7 +66,7 @@ interface TokenResponse {
 
 /** API Endpoint */
 // const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000/.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 메인 컴포넌트 */
 export default function ChannelAutoArticleSection() {
@@ -477,6 +477,44 @@ export default function ChannelAutoArticleSection() {
       observer.disconnect();
     };
   }, []);
+  const refreshTrigger = 0;
+  const [channels, setChannels] = useState<ChannelData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/history_feed`
+        );
+        if (!response.ok) throw new Error("Failed to fetch channel data");
+
+        const data: ChannelData[] = await response.json();
+
+        // 중복 제거: channel_handle 기준으로 최초 항목만 남김
+        const seen = new Map<string, ChannelData>();
+        for (const item of data) {
+          if (!seen.has(item.channel_handle)) {
+            seen.set(item.channel_handle, item);
+          }
+        }
+
+        // 최신 순 정렬 (created_at 내림차순)
+        const uniqueChannels = Array.from(seen.values()).sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setChannels(uniqueChannels);
+      } catch (error) {
+        console.error("Error fetching channels:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChannels();
+  }, [refreshTrigger]);
+  console.log(channels);
   return (
     <SectionWrapper>
       {/* ================= Hero + Landing Sections (New) ================= */}
@@ -647,14 +685,14 @@ export default function ChannelAutoArticleSection() {
                     <Image
                       src={howStepImage1}
                       alt="단계1 예시"
-                      style={{ width: "80%", height: "auto" }}
+                      style={{ width: "90%", height: "auto" }}
                     />
                   </StepImageBox>
                 </StepBox>
 
                 <StepBox>
                   <StepIcon>2</StepIcon>
-                  <StepText>개별 영상 아티클 생성</StepText>
+                  <StepText>채널 개별 영상 아티클 생성</StepText>
                   <HowVideoWrapper>
                     <Video
                       ref={videoRef}
@@ -709,7 +747,27 @@ export default function ChannelAutoArticleSection() {
                 <Author>- 이영희</Author>
               </TestimonialCard>
             </TestimonialGrid>
-
+            <SectionTitle>다른 유저들이 모니터링 중인 채널</SectionTitle>
+            <ScrollContainer>
+              {channels.map((channel) => (
+                <ChannelCard key={channel.id}>
+                  <ChannelHeader>
+                    <ThumbWrapper>
+                      <ChannelThumb
+                        src={channel.thumbnail}
+                        alt={channel.title}
+                      />
+                    </ThumbWrapper>
+                    <ChannelTitle>{channel.title}</ChannelTitle>
+                    <ChannelHandle>{channel.channel_handle}</ChannelHandle>
+                  </ChannelHeader>
+                  <ChannelDescription>{channel.description}</ChannelDescription>
+                  <ChannelDate>
+                    {new Date(channel.created_at).toLocaleString()}
+                  </ChannelDate>
+                </ChannelCard>
+              ))}
+            </ScrollContainer>
             {/* (E) Final CTA */}
             <FinalCTASection>
               <CTAContainer>
@@ -1035,7 +1093,7 @@ const HowVideoWrapper = styled.div`
 `;
 
 const Video = styled.video`
-  width: 80%;
+  width: 88%;
   object-fit: contain; /* 잘리지 않도록 contain */
 `;
 
@@ -1854,4 +1912,43 @@ const VideoPlayer = styled.video`
   object-fit: cover;
   /* iOS에서 인라인 재생 */
   /* playsinline, webkit-playsinline 등 속성은 아래 JSX 부분에서 설정 */
+`;
+const ScrollContainer = styled.div`
+  display: flex;
+  overflow-x: auto;
+  gap: 16px;
+  padding-bottom: 8px;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+  }
+`;
+
+const ChannelCard = styled.div`
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+`;
+
+const ChannelHeader = styled.div`
+  margin-bottom: 8px;
+`;
+
+const ChannelDescription = styled.p`
+  font-size: 14px;
+  color: #666;
+  margin: 8px 0;
+`;
+
+const ChannelDate = styled.div`
+  font-size: 12px;
+  color: #999;
 `;
