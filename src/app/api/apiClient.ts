@@ -1,7 +1,7 @@
 // apiClient.ts
 
-const API_BASE_URL = "https://youticle.shop";
-// const API_BASE_URL = "http://0.0.0.0:8000";
+// const API_BASE_URL = "https://youticle.shop";
+const API_BASE_URL = "http://0.0.0.0:8000";
 // 유저 정보 최초 등록
 export const createOrFetchUser = async (email: string, name: string) => {
   try {

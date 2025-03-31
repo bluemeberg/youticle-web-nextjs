@@ -22,7 +22,7 @@ import {
 } from "react-icons/fa";
 import Image from "next/image";
 import heroImage from "/public/images/What유티클2.png";
-import howStepImage1 from "/public/images/How유티클.png";
+import howStepImage1 from "/public/images/SubsLandingSection.png";
 import howStepImage2 from "/public/images/How유티클.png";
 /** 채널 정보 타입 */
 interface ChannelData {
@@ -65,7 +65,8 @@ interface TokenResponse {
 }
 
 /** API Endpoint */
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000/.shop";
 
 /** 메인 컴포넌트 */
 export default function ChannelAutoArticleSection() {
@@ -551,7 +552,7 @@ export default function ChannelAutoArticleSection() {
             <HeroVideoWrapper>
               <Video
                 ref={videoRef}
-                src="/videos/output3.mp4"
+                src="/videos/output5.mp4"
                 poster="/images/What유티클2.png"
                 muted
                 autoPlay
@@ -572,11 +573,13 @@ export default function ChannelAutoArticleSection() {
               <SectionTitle>🤔 왜 필요할까요?</SectionTitle>
 
               <WhyText>
-                구독 중인 채널 영상이 쌓이는데, 막상 다 챙겨보긴 어렵죠.
+                구독 중인 채널 영상이 쌓이는데, <br />
+                막상 다 챙겨보긴 어렵죠.
                 <br />
                 유티클은 매일 아침 새 영상을 간편히 요약해주고,
                 <br />
-                놓친 영상도 아카이브에 저장해 언제든 다시 볼 수 있게 해줍니다.
+                놓친 영상도 아카이브에 저장해 <br />
+                언제든 다시 볼 수 있게 해줍니다.
               </WhyText>
             </WhySection>
 
@@ -600,25 +603,25 @@ export default function ChannelAutoArticleSection() {
                   <IconWrapper>
                     <FaBell size={32} color="#007bff" />
                   </IconWrapper>
-                  <CardTitle>신규 영상 자동 알림</CardTitle>
+                  <CardTitle>신규 영상 자동 요약 후 카톡 알림</CardTitle>
                   <CardDesc>
-                    매일 아침 채널에 새로 올라온 영상을
+                    채널에 새로 올라온 영상을 자동 감지 후
                     <br />
-                    자동 감지 후 카톡으로 안내!
+                    다음날 아침 7시에 카톡으로 안내!
                   </CardDesc>
                 </FeatureCard>
                 <FeatureCard>
                   <IconWrapper>
                     <FaClipboardList size={32} color="#007bff" />
                   </IconWrapper>
-                  <CardTitle>아카이브</CardTitle>
+                  <CardTitle>아카이브 제공</CardTitle>
                   <CardDesc>
-                    바빠서 못 봤던 영상도
+                    바빠서 못 봤던 영상 아티클도
                     <br />
                     언제든 다시 찾아볼 수 있어요.
                   </CardDesc>
                 </FeatureCard>
-                <FeatureCard>
+                {/* <FeatureCard>
                   <IconWrapper>
                     <FaUserCheck size={32} color="#007bff" />
                   </IconWrapper>
@@ -628,7 +631,7 @@ export default function ChannelAutoArticleSection() {
                     <br />
                     채널 등록 후 바로 이용 가능!
                   </CardDesc>
-                </FeatureCard>
+                </FeatureCard> */}
               </FeaturesGrid>
             </FeaturesSection>
 
@@ -639,36 +642,51 @@ export default function ChannelAutoArticleSection() {
               <StepsRow>
                 <StepBox>
                   <StepIcon>1</StepIcon>
-                  <StepText>Google 계정으로 로그인</StepText>
+                  <StepText>구독 채널 불러오기 or 관심 채널 직접 입력</StepText>
                   <StepImageBox>
                     <Image
                       src={howStepImage1}
                       alt="단계1 예시"
-                      style={{ width: "100%", height: "auto" }}
+                      style={{ width: "80%", height: "auto" }}
                     />
                   </StepImageBox>
                 </StepBox>
 
                 <StepBox>
                   <StepIcon>2</StepIcon>
-                  <StepText>관심 채널 직접 입력 or 구독 채널 불러오기</StepText>
-                  <StepImageBox>
-                    <Image
-                      src={howStepImage2}
-                      alt="단계2 예시"
-                      style={{ width: "100%", height: "auto" }}
+                  <StepText>개별 영상 아티클 생성</StepText>
+                  <HowVideoWrapper>
+                    <Video
+                      ref={videoRef}
+                      src="/videos/make_output.mp4"
+                      poster="/images/What유티클2.png"
+                      muted
+                      autoPlay
+                      playsInline
+                      loop
+                      webkit-playsinline="true"
                     />
-                  </StepImageBox>
+                  </HowVideoWrapper>
                 </StepBox>
 
                 <StepBox>
                   <StepIcon>3</StepIcon>
-                  <StepText>개별 영상 요약 or 채널 전체 등록</StepText>
-                </StepBox>
-
-                <StepBox>
-                  <StepIcon>4</StepIcon>
-                  <StepText>카톡 알림 &amp; 아카이브로 편리하게 확인</StepText>
+                  <StepText>
+                    채널 모니터링 등록 후 카톡 알림 확인 <br />
+                    (신규 영상 업로드 시 다음날 아침 7시에 카톡 알람)
+                  </StepText>
+                  <HowVideoWrapper>
+                    <Video
+                      ref={videoRef}
+                      src="/videos/monitoring_output.mp4"
+                      poster="/images/What유티클2.png"
+                      muted
+                      autoPlay
+                      playsInline
+                      loop
+                      webkit-playsinline="true"
+                    />
+                  </HowVideoWrapper>
                 </StepBox>
               </StepsRow>
             </HowSection>
@@ -998,16 +1016,26 @@ const ManualInputContainer = styled.div`
 // Styled Components
 const HeroVideoWrapper = styled.div`
   width: 100%;
-  aspect-ratio: 9 / 16; /* or padding-top 방식 */
   max-width: 600px;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+  margin-top: 80px;
+`;
+
+// Styled Components
+const HowVideoWrapper = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  margin-top: 20px;
+  margin-bottom: 60px;
 `;
 
 const Video = styled.video`
-  width: 100%;
-  height: 100%;
+  width: 80%;
   object-fit: contain; /* 잘리지 않도록 contain */
 `;
 
@@ -1122,6 +1150,7 @@ const SectionTitle = styled.h2`
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 24px;
+  margin-top: 80px;
   color: #000;
   text-align: center;
 `;
@@ -1157,7 +1186,7 @@ const InfoCard = styled.div`
 `;
 
 const CardTitle = styled.h4`
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #222;
   line-height: 1.4;
@@ -1225,13 +1254,15 @@ const StepIcon = styled.div`
 const StepText = styled.p`
   font-size: 16px;
   color: #000;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  line-height: 140%;
 `;
 const StepImageBox = styled.div`
-  margin-top: 8px;
   border: 1px solid #eee;
   border-radius: 6px;
   overflow: hidden;
+  margin-bottom: 60px;
 `;
 
 const IconWrapper = styled.div`
