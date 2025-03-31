@@ -551,12 +551,13 @@ export default function ChannelAutoArticleSection() {
             <HeroVideoWrapper>
               <Video
                 ref={videoRef}
-                src="/videos/output3.mp4" // 최적화된 비디오 파일 (예: FFmpeg로 압축한 MP4)
-                poster="/images/What유티클2.png" // 로딩 전 보여줄 포스터 이미지
-                autoPlay
+                src="/videos/output3.mp4"
+                poster="/images/What유티클2.png"
                 muted
+                autoPlay
+                playsInline
                 loop
-                // preload="metadata" // 초기 로드 시 메타데이터만 미리 로드
+                webkit-playsinline="true"
               />
             </HeroVideoWrapper>
           </HeaderContainer>
@@ -997,16 +998,19 @@ const ManualInputContainer = styled.div`
 // Styled Components
 const HeroVideoWrapper = styled.div`
   width: 100%;
+  aspect-ratio: 9 / 16; /* or padding-top 방식 */
+  max-width: 600px;
+  margin: 0 auto;
   position: relative;
   overflow: hidden;
 `;
 
 const Video = styled.video`
   width: 100%;
-  height: auto;
-  object-fit: cover;
-  /* 필요에 따라 min-height를 설정할 수 있습니다 */
+  height: 100%;
+  object-fit: contain; /* 잘리지 않도록 contain */
 `;
+
 const ManualTitle = styled.div`
   font-size: 14px;
   font-weight: 700;
@@ -1802,4 +1806,21 @@ const ApplyBtn = styled.button`
   border: none;
   border-radius: 4px;
   cursor: pointer;
+`;
+const VideoContainer = styled.div`
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 비율 예시, 원하는 비율로 조정 */
+  overflow: hidden;
+`;
+
+const VideoPlayer = styled.video`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* iOS에서 인라인 재생 */
+  /* playsinline, webkit-playsinline 등 속성은 아래 JSX 부분에서 설정 */
 `;
