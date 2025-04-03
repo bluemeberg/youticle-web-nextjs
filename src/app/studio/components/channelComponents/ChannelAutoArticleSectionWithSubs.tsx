@@ -24,8 +24,25 @@ import Image from "next/image";
 import heroImage from "/public/images/What유티클2.png";
 import howStepImage1 from "/public/images/SubsLandingSection.png";
 import howStepImage2 from "/public/images/How유티클.png";
+import { parse } from "path";
 /** 채널 정보 타입 */
 interface ChannelData {
+  id: string;
+  user_id: number;
+  user_name: string;
+  channel_handle: string;
+  channel_title: string;
+  description: string;
+  overview: string;
+  channel_thumbnail: string;
+  banner: string;
+  sub_count: number;
+  view_count: number;
+  video_count: number;
+  created_at: string;
+}
+
+interface RegisteredChannelData {
   id: string;
   user_id: number;
   user_name: string;
@@ -65,8 +82,8 @@ interface TokenResponse {
 }
 
 /** API Endpoint */
-// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 메인 컴포넌트 */
 export default function ChannelAutoArticleSection() {
@@ -78,7 +95,7 @@ export default function ChannelAutoArticleSection() {
   // 채널 입력 및 등록/변경 상태
   const [channelInput, setChannelInput] = useState("");
   const [registeredChannel, setRegisteredChannel] =
-    useState<ChannelData | null>(null);
+    useState<RegisteredChannelData | null>(null);
   const [todayArticles, setTodayArticles] = useState<VideoData[]>([]);
 
   // 모달/로딩/에러 상태
@@ -514,7 +531,32 @@ export default function ChannelAutoArticleSection() {
 
     fetchChannels();
   }, [refreshTrigger]);
-  console.log(channels);
+
+  const [showManualInputModal, setShowManualInputModal] = useState(false);
+
+  // (A) "채널 직접 입력하기" 버튼 클릭 -> 모달 열기
+  const openManualInputModal = () => {
+    // if (!user.email) {
+    //   // 로그인되지 않은 경우는 여전히 showLoginModal 처리
+    //   setShowLoginModal(true);
+    //   return;
+    // }
+    setShowManualInputModal(true);
+  };
+
+  // (B) 모달 내부에서 실제 채널 등록 로직
+  const handleManualChannelRegister = async (channelHandle: string) => {
+    if (!user.email) {
+      // 로그인 안됐으면 모달 표시
+      setShowLoginModal(true);
+      return;
+    }
+    setChannelInput(channelHandle);
+    await handleRegisterAfterLogin();
+    // handleRegisterAfterLogin은 이미 내부에서 채널 등록 로직을 처리
+    setShowManualInputModal(false);
+  };
+
   return (
     <SectionWrapper>
       {/* ================= Hero + Landing Sections (New) ================= */}
@@ -533,11 +575,17 @@ export default function ChannelAutoArticleSection() {
               <BlueButton onClick={handleGoogleSignInForSubscriptions}>
                 유튜브 구독 채널 불러오기
               </BlueButton>
-              <GrayButton onClick={handleManualButton}>
+              <GrayButton onClick={openManualInputModal}>
                 채널 직접 입력하기
               </GrayButton>
             </ButtonGroup>
-            {showManualForm && (
+            {showManualInputModal && (
+              <ManualInputModal
+                onClose={() => setShowManualInputModal(false)}
+                onRegister={handleManualChannelRegister}
+              />
+            )}
+            {showManualInputModal && (
               <ManualInputContainer>
                 <ManualTitle>채널 핸들이나 URL을 입력해주세요</ManualTitle>
                 <ManualInputRow>
@@ -728,25 +776,6 @@ export default function ChannelAutoArticleSection() {
                 </StepBox>
               </StepsRow>
             </HowSection>
-
-            {/* (D) Testimonials Section */}
-            <SectionHeading>
-              <EmojiIcon>✨</EmojiIcon> 사용자 후기
-            </SectionHeading>
-            <TestimonialGrid>
-              <TestimonialCard>
-                <Quote>“영상 시청 시간이 확 줄었어요!”</Quote>
-                <Author>- 홍길동</Author>
-              </TestimonialCard>
-              <TestimonialCard>
-                <Quote>“카톡으로 요약본이 오니까 너무 편해요.”</Quote>
-                <Author>- 김철수</Author>
-              </TestimonialCard>
-              <TestimonialCard>
-                <Quote>“아카이브 덕에 예전 영상도 쉽게 찾아봅니다.”</Quote>
-                <Author>- 이영희</Author>
-              </TestimonialCard>
-            </TestimonialGrid>
             <SectionTitle>다른 유저들이 모니터링 중인 채널</SectionTitle>
             <ScrollContainer>
               {channels.map((channel) => (
@@ -754,30 +783,97 @@ export default function ChannelAutoArticleSection() {
                   <ChannelHeader>
                     <ThumbWrapper>
                       <ChannelThumb
-                        src={channel.thumbnail}
-                        alt={channel.title}
+                        src={channel.channel_thumbnail}
+                        alt={channel.channel_title}
                       />
                     </ThumbWrapper>
-                    <ChannelTitle>{channel.title}</ChannelTitle>
+                    <ChannelTitle>{channel.channel_title}</ChannelTitle>
                     <ChannelHandle>{channel.channel_handle}</ChannelHandle>
                   </ChannelHeader>
-                  <ChannelDescription>{channel.description}</ChannelDescription>
-                  <ChannelDate>
+                  <ChannelDescription>
+                    {parseSubscribersCount(channel.sub_count)}
+                  </ChannelDescription>
+                  {/* <ChannelDate>
                     {new Date(channel.created_at).toLocaleString()}
-                  </ChannelDate>
+                  </ChannelDate> */}
                 </ChannelCard>
               ))}
             </ScrollContainer>
+            {/* (D) Testimonials Section */}
+            {/* <SectionHeading>
+              <EmojiIcon>✨</EmojiIcon> 사용자 후기
+            </SectionHeading> */}
+            <TestimonialGrid>
+              {/* 후기 1 */}
+              <TestimonialCard>
+                {/* 상단에 페르소나 정보 */}
+                <PersonaInfo>
+                  <PersonaName>김00님, (20초, 대학생)</PersonaName>
+                  <PersonaSub>교육 관련 채널 구독중</PersonaSub>
+                </PersonaInfo>
+                {/* 문제 & 해결 */}
+                <QuoteText>
+                  &quot;전공 관련 공부할때 해외 대학 채널들을 참고하고 있었는데
+                  영상을 자동 번역해서 요약해주니까 <br /> 핵심 내용을 빠르게
+                  파악할 수 있어서 자료 공부 시간을 훨씬 단축시키고
+                  있어요.&quot;
+                </QuoteText>
+              </TestimonialCard>
+
+              {/* 후기 2 */}
+              <TestimonialCard>
+                <PersonaInfo>
+                  <PersonaName>이00님 (30초, 회사원)</PersonaName>
+                  <PersonaSub>재테크 유튜브 광팬</PersonaSub>
+                </PersonaInfo>
+                <QuoteText>
+                  &quot;구독 채널들이 자꾸 쌓여서 못 보고 넘어가니 <br />
+                  마음에 짐이 됐었거든요.
+                  <br />
+                  이제 유티클이 새 영상 올라오면 다음날 카톡으로
+                  <br />
+                  자동 요약을 보내주니 &quot;놓칠 일&quot;이 없어져서 너무
+                  좋습니다.&quot;
+                </QuoteText>
+              </TestimonialCard>
+
+              {/* 후기 3 */}
+              <TestimonialCard>
+                <PersonaInfo>
+                  <PersonaName>박00님, (20후, 프리랜서 디자이너)</PersonaName>
+                  <PersonaSub>여러 테크 채널 구독 중</PersonaSub>
+                </PersonaInfo>
+                <QuoteText>
+                  &quot;AI 트렌드에 따라가느라 여러 테크 채널들 구독해놨는데
+                  카톡으로 요약본 먼저 살펴보고 정말 볼만한 영상인지 판단할 수
+                  있어요.
+                  <br />
+                  결국 시간 절약 + 맞춤 정보만 쏙쏙 골라 보는 느낌입니다.&quot;
+                </QuoteText>
+              </TestimonialCard>
+            </TestimonialGrid>
             {/* (E) Final CTA */}
             <FinalCTASection>
               <CTAContainer>
-                <CTATitle>지금 바로 시작해보세요!</CTATitle>
+                <CTATitle>관심 채널 영상, 자동으로 요약받아보세요!</CTATitle>
                 <CTAText>
-                  관심 채널 영상, 다 챙겨보기 힘들다면
+                  해외 채널도 자동 번역·요약해서 <br />
+                  카톡으로 전송해 드립니다.
                   <br />
-                  영상 요약과 자동 알림으로 시간을 절약하세요.
+                  늘 쌓여 있던 영상들, 이제 빠르게 확인하고
+                  <br />
+                  놓치지 마세요!
                 </CTAText>
-                <CTAButton>회원가입 / 로그인</CTAButton>
+
+                {/* 1) 유튜브 구독 채널 불러오기 버튼 */}
+                <CTAButton onClick={handleGoogleSignInForSubscriptions}>
+                  유튜브 구독 채널 불러오기
+                </CTAButton>
+
+                {/* 2) 채널 직접 입력하기 버튼 */}
+                <CTAButtonSecondary onClick={openManualInputModal}>
+                  채널 직접 입력하기
+                </CTAButtonSecondary>
               </CTAContainer>
             </FinalCTASection>
           </LandingSection>
@@ -884,8 +980,8 @@ export default function ChannelAutoArticleSection() {
         </RegisteredContainer>
       )}
 
+      {registeredChannel && <ChannelFeedSectionWithTabs />}
       {/* 다른 유저들 채널 목록 */}
-      <ChannelFeedSectionWithTabs />
 
       {/* 로딩 오버레이 */}
       {isLoading && (
@@ -1108,7 +1204,11 @@ const ManualInputRow = styled.div`
   gap: 8px;
   align-items: center;
 `;
-
+const ModalInputRow = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+`;
 const ChannelInput = styled.input`
   flex: 1;
   padding: 14px;
@@ -1124,7 +1224,9 @@ const RegisterButtonColumn = styled.button`
   border: none;
   border-radius: 4px;
   padding: 14px;
-  font-size: 15px;
+  font-size: 16px;
+  width: 100%;
+  margin-bottom: 12px;
   cursor: pointer;
   &:hover {
     background-color: #005caf;
@@ -1331,6 +1433,7 @@ const TestimonialGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 24px;
+  margin-top: 40px;
 `;
 
 const TestimonialCard = styled.div`
@@ -1352,9 +1455,9 @@ const Author = styled.div`
 `;
 
 const FinalCTASection = styled.section`
-  margin-top: 40px;
-  padding: 24px 16px;
-  background: #f0f0f5;
+  margin-top: 100px;
+  /* padding: 24px 16px;
+  background: #f0f0f5; */
   border-radius: 8px;
   text-align: center;
 `;
@@ -1363,12 +1466,12 @@ const CTAContainer = styled.div`
   margin: 0 auto;
 `;
 const CTATitle = styled.h3`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 12px;
 `;
 const CTAText = styled.p`
-  font-size: 14px;
+  font-size: 16px;
   color: #444;
   line-height: 1.4;
   margin-bottom: 20px;
@@ -1380,12 +1483,28 @@ const CTAButton = styled.button`
   border: none;
   border-radius: 6px;
   padding: 14px 24px;
+  font-size: 16px;
+  width: 100%;
   cursor: pointer;
   &:hover {
     background-color: #005caf;
   }
 `;
-
+const CTAButtonSecondary = styled.button`
+  background-color: #f0f0f5;
+  color: #333;
+  font-weight: 700;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 14px 20px;
+  font-size: 16px;
+  margin-top: 8px;
+  width: 100%;
+  cursor: pointer;
+  &:hover {
+    background-color: #dedee3;
+  }
+`;
 /** ------ 등록된 채널 UI ------ */
 const RegisteredContainer = styled.div`
   position: relative;
@@ -1426,7 +1545,7 @@ const ThumbWrapper = styled.div`
   height: 54px;
   border-radius: 27px;
   overflow: hidden;
-  margin-right: 12px;
+  /* margin-right: 12px; */
 `;
 const ChannelThumb = styled.img`
   width: 100%;
@@ -1441,9 +1560,12 @@ const ChannelInfo = styled.div`
 const ChannelTitle = styled.h4`
   font-size: 15px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-top: 8px;
+  /* margin-bottom: 4px; */
   color: #222;
+  text-align: center;
 `;
+
 const ChannelHandle = styled.span`
   font-size: 13px;
   color: #666;
@@ -1819,6 +1941,67 @@ function ChangeChannelModal({
   );
 }
 
+interface ManualInputModalProps {
+  onClose: () => void;
+  onRegister: (channelHandle: string) => void;
+}
+
+function ManualInputModal({ onClose, onRegister }: ManualInputModalProps) {
+  const [localChannelInput, setLocalChannelInput] = useState("");
+  const [showHintImages, setShowHintImages] = useState(false);
+  const toggleHintImages = () => setShowHintImages((prev) => !prev);
+  // "등록하기" 버튼 시 호출
+  const handleSubmit = () => {
+    // if (!localChannelInput.trim()) {
+    //   alert("채널 핸들을 입력해주세요.");
+    //   return;
+    // }
+    onRegister(localChannelInput.trim()); // 부모로 전달
+  };
+
+  return (
+    <ModalOverlay>
+      <ModalContent>
+        <ModalClose onClick={onClose}>×</ModalClose>
+        <InfoMessage>채널 직접 입력</InfoMessage>
+        <InfoDescription>
+          등록할 유튜브 채널 핸들이나 URL을 입력해주세요.
+        </InfoDescription>
+
+        <ModalInputRow>
+          <ChannelInput
+            placeholder="@ExampleChannel"
+            value={localChannelInput}
+            onChange={(e) => setLocalChannelInput(e.target.value)}
+          />
+        </ModalInputRow>
+
+        <RegisterButtonColumn onClick={handleSubmit}>
+          채널 불러오기
+        </RegisterButtonColumn>
+
+        <HintBox>
+          <HintTitle>유튜브 @채널핸들명 찾기</HintTitle>
+          <HintDesc>
+            채널 홈 화면 상단에서 <strong>@아이디</strong>를 확인할 수 있습니다.
+          </HintDesc>
+          {/* 펼치기 토글 등은 필요 시 추가 */}
+          <ToggleHintButton onClick={toggleHintImages}>
+            {" "}
+            {showHintImages ? "접기 ▲" : "가이드 이미지 보기 ▼"}
+          </ToggleHintButton>
+          {showHintImages && (
+            <HintImageScrollContainer>
+              <HintImage src="/images/YoutubeHandleGuide1.png" alt="예시1" />
+              <HintImage src="/images/YoutubeHandleGuide2.png" alt="예시2" />
+            </HintImageScrollContainer>
+          )}
+        </HintBox>
+      </ModalContent>
+    </ModalOverlay>
+  );
+}
+
 /* ----- ChangeChannelModal 스타일 ----- */
 const ModalTabRow = styled.div`
   display: flex;
@@ -1929,26 +2112,61 @@ const ScrollContainer = styled.div`
 `;
 
 const ChannelCard = styled.div`
-  min-width: 200px;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 12px;
+  padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  min-width: 128px;
+  max-width: 128px;
 `;
 
 const ChannelHeader = styled.div`
   margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 `;
 
 const ChannelDescription = styled.p`
   font-size: 14px;
   color: #666;
-  margin: 8px 0;
 `;
 
 const ChannelDate = styled.div`
   font-size: 12px;
   color: #999;
+`;
+/* 기존 TestimonialCard 안에 쓸 추가 스타일 */
+
+const PersonaInfo = styled.div`
+  margin-bottom: 20px;
+  text-align: center;
+`;
+
+const PersonaName = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+`;
+
+const PersonaSub = styled.div`
+  font-size: 13px;
+  color: #777;
+`;
+
+const QuoteText = styled.p`
+  font-size: 15px; /* 기존 14px에서 조금 증가 */
+  line-height: 140%; /* 가독성 향상 */
+  color: #333;
+  margin-bottom: 0; /* 내부 여백을 줄이거나 조정 */
+  text-align: center;
+  white-space: pre-line; /* 줄바꿈 허용 */
 `;

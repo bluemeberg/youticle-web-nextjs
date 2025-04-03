@@ -78,8 +78,8 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 // pending action 타입 (채널 등록 vs. 영상 아티클 생성)
 type PendingAction = "registerChannel" | "convertArticle" | null;

@@ -14,6 +14,7 @@ import AdminTopicCard from "./AdminTopicCard";
 import { useSetRecoilState, useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import AdminIntroduce from "./AdminIntroduce";
+import VideoAutoArticleSection from "./videoComponents/VideoArticleSection";
 
 interface EditorArticleProps {
   data: EditorDataProps[];
@@ -195,7 +196,8 @@ const AdminArticleBeforeLogin = () => {
   return (
     <>
       {/* 탭 영역 */}
-      <AdminIntroduce />
+      {/* <AdminIntroduce /> */}
+      <VideoAutoArticleSection />
       {/* 탭별 안내 문구 */}
       {activeTab === "all" && (
         <>
