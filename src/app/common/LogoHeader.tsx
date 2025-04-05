@@ -25,6 +25,7 @@ interface LogoHeaderProps {
 
 const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   const user = useRecoilValue(userState);
+  console.log(user);
   const setUser = useSetRecoilState(userState);
   const player = useRecoilValue(playerState);
   const setPlayer = useSetRecoilState(playerState);

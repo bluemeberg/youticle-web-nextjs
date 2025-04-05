@@ -257,6 +257,7 @@ const InputRow = styled.div`
   flex-direction: column;
   gap: 0;
 `;
+
 const UrlInput = styled.input`
   flex: 1;
   padding: 16px;

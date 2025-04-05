@@ -149,6 +149,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           {formatSummary(detailData.summary_data.short_summary)}
         </div>
       </Preview>
+
       <TOC>
         <div>목차</div>
         <div>
@@ -157,6 +158,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           ))}
         </div>
       </TOC>
+
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}

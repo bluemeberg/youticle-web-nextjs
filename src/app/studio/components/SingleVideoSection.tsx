@@ -196,8 +196,8 @@ const AdminArticleBeforeLogin = () => {
   return (
     <>
       {/* 탭 영역 */}
-      {/* <AdminIntroduce /> */}
-      <VideoAutoArticleSection />
+      <AdminIntroduce />
+      {/* <VideoAutoArticleSection /> */}
       {/* 탭별 안내 문구 */}
       {activeTab === "all" && (
         <>

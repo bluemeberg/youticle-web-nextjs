@@ -39,6 +39,7 @@ interface ClientSideProps {
 }
 
 const ClientSide = ({ id, detailData }: ClientSideProps) => {
+  console.log(detailData);
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

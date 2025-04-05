@@ -19,6 +19,12 @@ import { useRouter } from "next/navigation"; // For navigation
 import CryptoOverview from "./overviews/CryptoOverview";
 import NewTocItem from "./NewTocItem";
 
+// "mm:ss" 형식의 문자열을 초 단위 숫자로 변환하는 함수
+function convertTimeStringToSeconds(timeString: string): number {
+  const [minutes, seconds] = timeString.split(":").map(Number);
+  return minutes * 60 + seconds;
+}
+
 interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
@@ -124,7 +130,10 @@ const Contents = ({
                 section: detailData.section,
                 videoId: detailData.video_id,
                 title,
-                start: Math.floor(Number(start_time)),
+                start:
+                  typeof start_time === "string" && start_time.includes(":")
+                    ? convertTimeStringToSeconds(start_time)
+                    : Math.floor(Number(start_time)),
                 summary: detail_contents,
                 partialDimmed:
                   index === 2 &&
@@ -140,8 +149,14 @@ const Contents = ({
                     isNoSubscribedSubjects),
                 tocItemHeight,
                 toc: detailData.summary_data.section,
-                onClick: () =>
-                  handleTocItemClick(Math.floor(Number(start_time))),
+                onClick: () => {
+                  // start_time이 문자열인 경우 mm:ss 형식을 초로 변환
+                  const seconds =
+                    typeof start_time === "string" && start_time.includes(":")
+                      ? convertTimeStringToSeconds(start_time)
+                      : Math.floor(Number(start_time));
+                  handleTocItemClick(seconds);
+                },
                 isLoggedOut: user.name === "",
                 isUnsubscribedSection,
                 isNoSubscribedSubjects,
