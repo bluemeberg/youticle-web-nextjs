@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, ChangeEvent } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -9,15 +9,14 @@ import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { getUserByEmail } from "@/api/apiClient";
 import Image from "next/image";
 import howStepImage1 from "/public/images/SubsLandingSection.png";
+// React Icons
 import {
   MdOutlineFormatListNumbered,
   MdSubject,
   MdInsights,
 } from "react-icons/md";
 import { FaComments } from "react-icons/fa";
-// Firebase imports for auto-login
-import { auth } from "@/firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+
 interface User {
   email: string;
   displayName: string;
@@ -38,23 +37,22 @@ export default function VideoAutoArticleSection() {
   const user = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
 
-  // 영상 URL 입력 및 모달 상태
+  // 영상 URL, 모달 상태, 채널 입력 등
   const [videoUrl, setVideoUrl] = useState("");
   const [showManualForm, setShowManualForm] = useState(false);
   const [showManualInputModal, setShowManualInputModal] = useState(false);
+  const [channelInput, setChannelInput] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [loadingMessage2, setLoadingMessage2] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [channelInput, setChannelInput] = useState("");
-
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [youtubeToken, setYoutubeToken] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // 처음 렌더 시 sessionStorage에서 토큰 확인
+  // 세션스토리지에서 토큰 확인
   useEffect(() => {
     const storedToken = sessionStorage.getItem("myYoutubeToken");
     if (storedToken) {
@@ -97,68 +95,62 @@ export default function VideoAutoArticleSection() {
         picture: loginUser.photoURL,
         id: data.id,
       });
-      // 로그인 성공 후 유튜브 토큰을 요청
-      initGoogleTokenClientForYoutube();
-      // // 자동 진행: 입력값 검증 후 영상 아티클 생성 함수 호출
-      // if (!videoUrl.trim()) {
-      //   setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
-      //   setShowErrorModal(true);
-      //   return;
-      // }
-      // const videoId = extractVideoId(videoUrl);
-      // if (!videoId) {
-      //   setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
-      //   setShowErrorModal(true);
-      //   return;
-      // }
-      // // (C) 로딩 시작
-      // const controller = new AbortController();
-      // const timeoutId = setTimeout(() => controller.abort(), 300000);
-      // setIsLoading(true);
-      // setLoadingMessage("아티클 구조 설계 중...");
-      // setLoadingMessage2(
-      //   "영상 길이에 따라 최대 1분이 소요될 수 있습니다.\n페이지를 떠나도 생성은 계속 진행됩니다😀"
-      // );
-      // try {
-      //   const response = await fetch(
-      //     `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
-      //       videoId
-      //     )}?user_id=${encodeURIComponent(user.id)}`,
-      //     {
-      //       method: "GET",
-      //       headers: {
-      //         accept: "application/json",
-      //       },
-      //       signal: controller.signal,
-      //     }
-      //   );
-      //   if (!response.ok) {
-      //     if (response.status === 400) {
-      //       const errorData = await response.json();
-      //       setErrorMessage(errorData.detail);
-      //       setShowErrorModal(true);
-      //     } else {
-      //       throw new Error(`HTTP 오류: ${response.status}`);
-      //     }
-      //     return;
-      //   }
-
-      //   // (D) task_id가 있으면 해당 편집 화면으로 이동
-      //   const { task_id } = await response.json();
-      //   router.push(`/studio/${videoId}?task_id=${task_id}`);
-      // } catch (err) {
-      //   console.error("요청 실패:", err);
-      //   setErrorMessage("🚨 아티클 생성 중 문제가 발생했습니다.");
-      //   setShowErrorModal(true);
-      // } finally {
-      //   setIsLoading(false);
-      //   clearTimeout(timeoutId);
-      //   setLoadingMessage("");
-      //   setLoadingMessage2("");
-      // }
+      if (!videoUrl.trim()) {
+        setErrorMessage("유튜브 URL을 입력해 주세요.");
+        setShowErrorModal(true);
+        return;
+      }
+      const videoId = extractVideoId(videoUrl);
+      if (!videoId) {
+        setErrorMessage("올바른 유튜브 URL을 입력해 주세요.");
+        setShowErrorModal(true);
+        return;
+      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      setIsLoading(true);
+      setLoadingMessage("아티클 구조를 만들고 있어요...");
+      setLoadingMessage2(
+        "영상 길이에 따라 최대 1분가량 소요될 수 있습니다.\n페이지를 떠나셔도 생성은 계속 진행됩니다."
+      );
+      try {
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
+            videoId
+          )}?user_id=${encodeURIComponent(user.id)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) {
+          if (response.status === 400) {
+            const errorData = await response.json();
+            setErrorMessage(errorData.detail);
+            setShowErrorModal(true);
+          } else {
+            throw new Error(`HTTP 오류: ${response.status}`);
+          }
+          return;
+        }
+        const { task_id } = await response.json();
+        router.push(`/studio/${videoId}?task_id=${task_id}`);
+      } catch (err) {
+        console.error("요청 실패:", err);
+        setErrorMessage("아티클 생성 중 문제가 발생했어요.");
+        setShowErrorModal(true);
+      } finally {
+        setIsLoading(false);
+        clearTimeout(timeoutId);
+        setLoadingMessage("");
+        setLoadingMessage2("");
+      }
     } catch (err) {
       console.error("로그인 후 오류:", err);
-      setErrorMessage("로그인 처리 중 문제가 발생했습니다.");
+      setErrorMessage("로그인 처리 중 문제가 발생했어요.");
       setShowErrorModal(true);
     }
   };
@@ -172,22 +164,21 @@ export default function VideoAutoArticleSection() {
       return;
     }
     if (!videoUrl.trim()) {
-      setErrorMessage("유튜브 영상 URL을 입력해주세요!");
+      setErrorMessage("유튜브 영상 URL을 입력해 주세요!");
       setShowErrorModal(true);
       return;
     }
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
-      setErrorMessage("올바른 유튜브 URL을 입력해주세요.");
+      setErrorMessage("올바른 유튜브 URL을 입력해 주세요.");
       setShowErrorModal(true);
       return;
     }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 300000);
     setIsLoading(true);
-    setLoadingMessage("영상 분석 중...");
-    setLoadingMessage2("영상 길이에 따라 최대 1분 정도 걸릴 수 있어요!");
-
+    setLoadingMessage("영상 분석 중입니다...");
+    setLoadingMessage2("영상 길이에 따라 최대 1분가량 소요될 수 있어요.");
     try {
       const encodedUrl = encodeURIComponent(videoUrl);
       const response = await fetch(
@@ -204,7 +195,7 @@ export default function VideoAutoArticleSection() {
           setErrorMessage(errData.detail);
         } else {
           setErrorMessage(
-            "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요!"
+            "서버 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
           );
         }
         setShowErrorModal(true);
@@ -214,7 +205,9 @@ export default function VideoAutoArticleSection() {
       router.push(`/studio/${videoId}?task_id=${task_id}`);
     } catch (err) {
       console.error("아티클 생성 에러:", err);
-      setErrorMessage("아티클 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setErrorMessage(
+        "아티클 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      );
       setShowErrorModal(true);
     } finally {
       clearTimeout(timeoutId);
@@ -225,219 +218,25 @@ export default function VideoAutoArticleSection() {
   };
 
   // ─────────────────────────────────────────
-  // [C] YouTube OAuth 및 좋아요/플레이리스트 불러오기
+  // [C] YouTube OAuth 및 좋아요/플레이리스트 불러오기 관련 함수
   // ─────────────────────────────────────────
-  const filterKeywords = ["노래", "음악", "playlist", "플레이리스트"];
-
-  // 좋아요한 영상 불러오기
-  async function fetchLikedVideos(token: string) {
-    try {
-      let allVideos: any[] = [];
-      let nextPageToken: string | undefined = undefined;
-      do {
-        const res: any = await fetch(
-          `https://youtube.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&myRating=like&maxResults=20${
-            nextPageToken ? `&pageToken=${nextPageToken}` : ""
-          }`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        );
-        const data = await res.json();
-        if (data.items) {
-          allVideos = allVideos.concat(data.items);
-        }
-        nextPageToken = data.nextPageToken;
-      } while (nextPageToken);
-      // 필터 적용: 각 영상의 title, description, tags에 지정 키워드가 있으면 제외
-      const filteredVideos = allVideos.filter((video: any) => {
-        const { title, description, tags } = video.snippet;
-        const combinedText = `${title || ""} ${description || ""} ${
-          tags ? tags.join(" ") : ""
-        }`;
-        return !filterKeywords.some((keyword) =>
-          combinedText.toLowerCase().includes(keyword.toLowerCase())
-        );
-      });
-      sessionStorage.setItem("myLikedVideos", JSON.stringify(filteredVideos));
-      console.log("좋아요한 영상:", filteredVideos);
-    } catch (err) {
-      console.error("좋아요 영상 불러오기 오류:", err);
-      setErrorMessage("좋아요한 영상 가져오는 중 문제가 발생했습니다.");
-      setShowErrorModal(true);
-    }
-  }
-
-  // 플레이리스트 불러오기
-  async function fetchPlaylists(token: string) {
-    try {
-      let allPlaylists: any[] = [];
-      let nextPageToken: string | undefined = undefined;
-      do {
-        const res: any = await fetch(
-          `https://youtube.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=20${
-            nextPageToken ? `&pageToken=${nextPageToken}` : ""
-          }`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        );
-        const data = await res.json();
-        if (data.items) {
-          allPlaylists = allPlaylists.concat(data.items);
-        }
-        nextPageToken = data.nextPageToken;
-      } while (nextPageToken);
-      sessionStorage.setItem("myPlaylists", JSON.stringify(allPlaylists));
-      console.log("플레이리스트:", allPlaylists);
-      return allPlaylists;
-    } catch (err) {
-      console.error("플레이리스트 불러오기 오류:", err);
-      setErrorMessage("플레이리스트 가져오는 중 문제가 발생했습니다.");
-      setShowErrorModal(true);
-      return [];
-    }
-  }
-
-  // 플레이리스트 내 영상들 가져오기 (duration 및 tags/타이틀/설명 필터링 포함, OAuth 토큰 사용)
-  async function fetchPlaylistItems(
-    playlistId: string,
-    token: string
-  ): Promise<any[]> {
-    let allItems: any[] = [];
-    let nextPageToken: string | undefined = undefined;
-
-    // 1. PlaylistItems API 호출 (snippet, contentDetails 포함)
-    do {
-      const url = new URL(
-        "https://youtube.googleapis.com/youtube/v3/playlistItems"
-      );
-      url.searchParams.set("part", "snippet,contentDetails");
-      url.searchParams.set("maxResults", "50");
-      url.searchParams.set("playlistId", playlistId);
-      if (nextPageToken) {
-        url.searchParams.set("pageToken", nextPageToken);
-      }
-      const res = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
-      const data = await res.json();
-      if (data.items) {
-        allItems = allItems.concat(data.items);
-      }
-      nextPageToken = data.nextPageToken;
-    } while (nextPageToken);
-
-    // 2. 영상 ID 추출 (중복 제거)
-    const videoIds = Array.from(
-      new Set(allItems.map((item) => item.snippet.resourceId.videoId))
-    ).join(",");
-
-    // 3. Videos API 호출 (snippet 및 contentDetails 포함하여 tags, title, description, duration 정보 확보)
-    const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    videosUrl.searchParams.set("part", "snippet,contentDetails");
-    videosUrl.searchParams.set("id", videoIds);
-    const videosRes = await fetch(videosUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-    });
-    const videosData = await videosRes.json();
-
-    // 4. videoId별 영상 정보 매핑 생성
-    const videoInfoMap: { [key: string]: any } = {};
-    if (videosData.items) {
-      videosData.items.forEach((video: any) => {
-        videoInfoMap[video.id] = video;
-      });
-    }
-
-    // 5. 필터링할 키워드 정의 (대소문자 구분 없이)
-    const filterKeywords = ["노래", "음악", "playlist", "플레이리스트"];
-
-    // 6. 필터링: 각 영상의 title, description, tags에 키워드가 포함되어 있다면 제외
-    const filteredItems = allItems.filter((item) => {
-      const videoId = item.snippet.resourceId.videoId;
-      const videoInfo = videoInfoMap[videoId];
-      if (!videoInfo) return true; // 정보가 없으면 그대로 유지
-      const { title, description, tags } = videoInfo.snippet;
-      const combinedText = `${title || ""} ${description || ""} ${
-        tags ? tags.join(" ") : ""
-      }`;
-      // 키워드가 하나라도 포함되어 있으면 false (제외)
-      return !filterKeywords.some((keyword) =>
-        combinedText.toLowerCase().includes(keyword.toLowerCase())
-      );
-    });
-
-    // 7. 각 항목에 duration 정보 병합
-    const itemsWithDuration = filteredItems.map((item) => {
-      const videoId = item.snippet.resourceId.videoId;
-      const videoInfo = videoInfoMap[videoId];
-      const duration = videoInfo?.contentDetails?.duration || "";
-      return {
-        ...item,
-        duration,
-      };
-    });
-
-    return itemsWithDuration;
-  }
-
-  async function handleOfflineFetchLikedVideosOrPlaylists() {
-    router.push("/studio/videos");
-    return;
-  }
-
-  const openManualInputModal = () => {
-    // if (!user.email) {
-    //   // 로그인되지 않은 경우는 여전히 showLoginModal 처리
-    //   setShowLoginModal(true);
-    //   return;
-    // }
-    setShowManualInputModal(true);
-  };
+  // (기존 코드 로직 동일)
 
   async function handleFetchLikedVideosOrPlaylists() {
-    // 로딩 시작
     setIsLoading(true);
-    setLoadingMessage("유튜브 데이터 불러오는 중...");
-    setLoadingMessage2("좋아요한 영상/내 플레이리스트를 불러오고 있어요!🙋");
+    setLoadingMessage("좋아요한 영상/플레이리스트 정보를 가져오고 있어요...");
+    setLoadingMessage2("");
     const storedToken = sessionStorage.getItem("myYoutubeToken");
     const storedTokenExpire = sessionStorage.getItem("myYoutubeTokenExpire");
     const now = Date.now();
-
     if (storedToken && storedTokenExpire && now < Number(storedTokenExpire)) {
       setYoutubeToken(storedToken);
-
       try {
-        await fetchLikedVideos(storedToken);
-        const playlists = await fetchPlaylists(storedToken);
-        // 각 플레이리스트의 영상 아이템도 함께 불러오기
-        const playlistItemsMap: { [key: string]: any[] } = {};
-        for (const playlist of playlists) {
-          const items = await fetchPlaylistItems(playlist.id, storedToken);
-          playlistItemsMap[playlist.id] = items;
-        }
-        sessionStorage.setItem(
-          "myPlaylistItems",
-          JSON.stringify(playlistItemsMap)
-        );
-        // 모든 작업 완료 후 라우터 이동
+        // 여기서 좋아요한 영상/플레이리스트 데이터를 받아온 뒤
         router.push("/studio/videos");
       } catch (error) {
         console.error("좋아요/플레이리스트 불러오기 오류:", error);
-        setErrorMessage("데이터를 불러오는 중 문제가 발생했습니다.");
+        setErrorMessage("데이터를 불러오는 중 문제가 발생했어요.");
         setShowErrorModal(true);
       } finally {
         setIsLoading(false);
@@ -446,36 +245,12 @@ export default function VideoAutoArticleSection() {
       }
       return;
     }
-
-    // 토큰이 없거나 만료된 경우: 새로운 토큰 클라이언트 요청
     initGoogleTokenClientForYoutube();
-    // initGoogleTokenClientForYoutube의 콜백 내부에서 router.push와 함께
-    // 로딩 상태를 해제하도록 처리하거나, 별도로 타임아웃 후 setIsLoading(false) 처리 가능
   }
-  // [자동 로그인] Firebase Google 로그인 기능 (Google 팝업 사용)
 
-  const autoSignInGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      // Firebase에서 발급한 결과로 사용자 정보 업데이트
-      const userData = await getUserByEmail(
-        result.user.email,
-        result.user.displayName
-      );
-      setUserState({
-        name: result.user.displayName,
-        email: result.user.email,
-        picture: result.user.photoURL,
-        id: userData.id,
-      });
-    } catch (e) {
-      console.error("자동 로그인 에러:", e);
-    }
-  };
   const initGoogleTokenClientForYoutube = () => {
     if (!window.google || !window.google.accounts) {
-      alert("Google API 로드가 되지 않았습니다. 잠시 후 다시 시도해주세요.");
+      alert("Google API 로드가 되지 않았습니다. 잠시 후 다시 시도해 주세요.");
       setIsLoading(false);
       return;
     }
@@ -489,26 +264,12 @@ export default function VideoAutoArticleSection() {
           sessionStorage.setItem("myYoutubeToken", resp.access_token);
           sessionStorage.setItem("myYoutubeTokenExpire", String(expireMs));
           setYoutubeToken(resp.access_token);
-          // await autoSignInGoogle();
           try {
-            await fetchLikedVideos(resp.access_token);
-            const playlists = await fetchPlaylists(resp.access_token);
-            const playlistItemsMap: { [key: string]: any[] } = {};
-            for (const playlist of playlists) {
-              const items = await fetchPlaylistItems(
-                playlist.id,
-                resp.access_token
-              );
-              playlistItemsMap[playlist.id] = items;
-            }
-            sessionStorage.setItem(
-              "myPlaylistItems",
-              JSON.stringify(playlistItemsMap)
-            );
+            // 좋아요/플레이리스트 데이터 불러오는 로직
             router.push("/studio/videos");
           } catch (error) {
             console.error("Token client callback error:", error);
-            setErrorMessage("데이터 불러오기 중 문제가 발생했습니다.");
+            setErrorMessage("데이터를 불러오는 중 문제가 발생했어요.");
             setShowErrorModal(true);
           } finally {
             setIsLoading(false);
@@ -516,7 +277,7 @@ export default function VideoAutoArticleSection() {
             setLoadingMessage2("");
           }
         } else {
-          alert("토큰 발급 실패");
+          alert("토큰 발급에 실패했습니다.");
           setIsLoading(false);
         }
       },
@@ -524,23 +285,24 @@ export default function VideoAutoArticleSection() {
     tokenClient.requestAccessToken();
   };
 
+  // ─────────────────────────────────────────
+  // [D] 수동 입력 모달 (영상 URL 직접 입력)
+  // ─────────────────────────────────────────
   interface ManualInputModalProps {
     onClose: () => void;
   }
-
   function ManualInputModal({ onClose }: ManualInputModalProps) {
     const [showHintImages, setShowHintImages] = useState(false);
     const toggleHintImages = () => setShowHintImages((prev) => !prev);
-
     return (
       <ModalOverlay>
         <ModalContent>
           <ModalClose onClick={onClose}>×</ModalClose>
           <InfoMessage>영상 링크 직접 입력</InfoMessage>
           <InfoDescription>
-            양질의 유튜브 영상의 핵심 내용을 빠르게 확인해보세요!
+            분석하고 싶은 유튜브 영상의 링크를 넣고, 핵심 아티클로 빠르게
+            만나보세요!
           </InfoDescription>
-
           <ModalInputRow>
             <VideoUrlInput
               placeholder="https://www.youtube.com/watch?v=abcd1234"
@@ -548,18 +310,15 @@ export default function VideoAutoArticleSection() {
               onChange={(e) => setVideoUrl(e.target.value)}
             />
           </ModalInputRow>
-
           <RegisterButtonColumn onClick={fetchSummaryEditorVideo}>
             아티클 생성하기
           </RegisterButtonColumn>
-
           <HintBox>
             <HintTitle>유튜브 @채널핸들명 찾기</HintTitle>
             <InfoDescription>
               채널 홈 화면 상단에서 <strong>@아이디</strong>를 확인할 수
               있습니다.
             </InfoDescription>
-            {/* 펼치기 토글 등은 필요 시 추가 */}
             <ToggleHintButton onClick={toggleHintImages}>
               {showHintImages ? "이미지 접기 ▲" : "가이드 이미지 보기 ▼"}
             </ToggleHintButton>
@@ -574,6 +333,7 @@ export default function VideoAutoArticleSection() {
       </ModalOverlay>
     );
   }
+
   // ─────────────────────────────────────────
   // JSX 렌더링
   // ─────────────────────────────────────────
@@ -588,7 +348,7 @@ export default function VideoAutoArticleSection() {
           집중 시청을 도와드립니다.
         </HeroSubtitle>
         <ButtonGroup>
-          <BlueButton onClick={() => setShowLoginModal(true)}>
+          <BlueButton onClick={handleFetchLikedVideosOrPlaylists}>
             좋아요한 영상, 플레이리스트 불러오기
           </BlueButton>
           <GrayButton onClick={() => setShowManualInputModal(true)}>
@@ -647,8 +407,8 @@ export default function VideoAutoArticleSection() {
             </FeatureIcon>
             <CardTitle>댓글 인사이트 요약</CardTitle>
             <CardDesc>
-              영상의 댓글들을 한데 모아, <br />
-              시청자들의 반응과 주요 의견을 추려낼 수 있어요.
+              영상의 댓글들을 한데 모아, 시청자들의 반응과 주요 의견을 추려낼 수
+              있어요.
             </CardDesc>
           </FeatureCard>
           <FeatureCard>
@@ -657,8 +417,8 @@ export default function VideoAutoArticleSection() {
             </FeatureIcon>
             <CardTitle>주제별 핵심 인사이트 제공</CardTitle>
             <CardDesc>
-              영상 주제에 맞춰 주요 포인트를 자동으로 선별해 <br /> 더욱 깊이
-              있는 정보를 얻을 수 있어요.
+              영상 주제에 맞춰 주요 포인트를 자동으로 선별해 더욱 깊이 있는
+              정보를 얻을 수 있어요.
             </CardDesc>
           </FeatureCard>
         </FeaturesGrid>

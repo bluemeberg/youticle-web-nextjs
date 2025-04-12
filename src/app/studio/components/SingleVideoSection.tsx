@@ -26,8 +26,8 @@ interface Editor {
   image: string;
   keywords: string[];
 }
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const AdminArticleBeforeLogin = () => {
   const [isFixed, setIsFixed] = useState(false);
@@ -196,19 +196,9 @@ const AdminArticleBeforeLogin = () => {
   return (
     <>
       {/* 탭 영역 */}
-      <AdminIntroduce />
-      {/* <VideoAutoArticleSection /> */}
+      {/* <AdminIntroduce /> */}
+      <VideoAutoArticleSection />
       {/* 탭별 안내 문구 */}
-      {activeTab === "all" && (
-        <>
-          <TabDescription>
-            <FeedTitle>영상 아티클 생성 이력</FeedTitle>
-            <Description>
-              에디터가 작성/업로드한 아티클들이 표시됩니다.
-            </Description>
-          </TabDescription>
-        </>
-      )}
 
       {/* {activeTab === "today" && (
         <>
@@ -232,45 +222,6 @@ const AdminArticleBeforeLogin = () => {
           </TodayFilterContainer>
         </>
       )} */}
-      {user.email !== "" &&
-        archiveData.length > 0 &&
-        activeTab === "archive" && (
-          <ArchiveContainer>
-            <ArchiveHeader>
-              <UserThumbnail
-                src={user.picture}
-                alt={`${user.name} Thumbnail`}
-              />
-              <ArchiveTitle>{user.name}님의 아카이브</ArchiveTitle>
-            </ArchiveHeader>
-
-            {isLoading ? (
-              <SkeletonContainer>
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <SkeletonCard key={index} />
-                ))}
-              </SkeletonContainer>
-            ) : (
-              <FadeInContainer>
-                <ArchiveList>
-                  {sortedFilteredData.map((item) => {
-                    const topicIcon = YOUTUBE_TOPICS.find(
-                      (topic) => topic.topic === item.section
-                    )?.icon;
-                    return (
-                      <AdminTopicCard
-                        key={item.video_id}
-                        icon={topicIcon}
-                        subjects={[]}
-                        {...item}
-                      />
-                    );
-                  })}
-                </ArchiveList>
-              </FadeInContainer>
-            )}
-          </ArchiveContainer>
-        )}
 
       {activeTab === "all" && (
         <EditorContainer>

@@ -82,7 +82,7 @@ interface TokenResponse {
 }
 
 /** API Endpoint */
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "https://claying.shop";
 // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 메인 컴포넌트 */
@@ -585,48 +585,7 @@ export default function ChannelAutoArticleSection() {
                 onRegister={handleManualChannelRegister}
               />
             )}
-            {showManualInputModal && (
-              <ManualInputContainer>
-                <ManualTitle>채널 핸들이나 URL을 입력해주세요</ManualTitle>
-                <ManualInputRow>
-                  <ChannelInput
-                    placeholder="@ExampleChannel"
-                    value={channelInput}
-                    onChange={(e) => setChannelInput(e.target.value)}
-                  />
-                  <RegisterButtonColumn onClick={handleRegister}>
-                    채널 등록하기
-                  </RegisterButtonColumn>
-                </ManualInputRow>
-                <HintBox>
-                  <HintTitle>유튜브에서 @채널핸들명을 어디서 찾나요?</HintTitle>
-                  <HintDesc>
-                    채널 홈 화면 상단에서 <strong>@아이디(핸들)</strong>을
-                    확인할 수 있어요.
-                    <br />
-                    아래 가이드 이미지처럼, 채널 이름 아래쪽에 보이는{" "}
-                    <em>@...</em> 문구가 바로 핸들명입니다.
-                  </HintDesc>
-                  {/* 펼치기 토글 등은 필요 시 추가 */}
-                  <ToggleHintButton onClick={toggleHintImages}>
-                    {" "}
-                    {showHintImages ? "접기 ▲" : "가이드 이미지 보기 ▼"}
-                  </ToggleHintButton>
-                  {showHintImages && (
-                    <HintImageScrollContainer>
-                      <HintImage
-                        src="/images/YoutubeHandleGuide1.png"
-                        alt="예시1"
-                      />
-                      <HintImage
-                        src="/images/YoutubeHandleGuide2.png"
-                        alt="예시2"
-                      />
-                    </HintImageScrollContainer>
-                  )}
-                </HintBox>
-              </ManualInputContainer>
-            )}
+
             {/* <HeroImageWrapper>
               <Image
                 src={heroImage}
@@ -638,8 +597,8 @@ export default function ChannelAutoArticleSection() {
             <HeroVideoWrapper>
               <Video
                 ref={videoRef}
-                src="/videos/output5.mp4"
-                poster="/images/What유티클2.png"
+                src="/videos/hero_output_250406_4.mp4"
+                // poster="/images/What유티클2.png"
                 muted
                 autoPlay
                 playsInline
@@ -855,7 +814,10 @@ export default function ChannelAutoArticleSection() {
             {/* (E) Final CTA */}
             <FinalCTASection>
               <CTAContainer>
-                <CTATitle>관심 채널 영상, 자동으로 요약받아보세요!</CTATitle>
+                <CTATitle>
+                  관심 채널의 신규 영상, <br />
+                  이제 자동으로 요약받아보세요!
+                </CTATitle>
                 <CTAText>
                   해외 채널도 자동 번역·요약해서 <br />
                   카톡으로 전송해 드립니다.
@@ -1456,10 +1418,11 @@ const Author = styled.div`
 
 const FinalCTASection = styled.section`
   margin-top: 100px;
-  /* padding: 24px 16px;
-  background: #f0f0f5; */
+  padding: 40px 12px;
+  background-color: #f3f9ff;
   border-radius: 8px;
   text-align: center;
+  /* border: 1px solid #d6d6d6; */
 `;
 const CTAContainer = styled.div`
   max-width: 480px;
@@ -1468,7 +1431,8 @@ const CTAContainer = styled.div`
 const CTATitle = styled.h3`
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+  line-height: 132%;
 `;
 const CTAText = styled.p`
   font-size: 16px;

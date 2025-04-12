@@ -31,8 +31,8 @@ interface SectionData {
   explanation_description?: string;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
@@ -379,9 +379,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
 
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(
-              removeMarkTags(detailData.summary_data.short_summary)
-            )}
+            {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
           {/** 5줄 핵심 요약 배치 **/}
           <FiveLineSummarySection>
@@ -432,9 +430,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           />
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(
-              removeMarkTags(detailData.summary_data.short_summary)
-            )}
+            {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
           {/** 5줄 핵심 요약 배치 **/}
           <FiveLineSummarySection>
@@ -751,9 +747,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           />
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(
-              removeMarkTags(detailData.summary_data.short_summary)
-            )}
+            {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
           {/** 5줄 핵심 요약 배치 **/}
           <FiveLineSummarySection>

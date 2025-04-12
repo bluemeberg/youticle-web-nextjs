@@ -5,6 +5,10 @@ import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import LogoHeader from "@/common/LogoHeader";
 import { timeAgo } from "@/utils/formatter";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { userState } from "@/store/user";
+import GoogleLogin from "@/common/MyArticleGoogleLogin";
+import { getUserByEmail } from "@/api/apiClient";
 
 /** 인터페이스 정의 */
 interface VideoItem {
@@ -22,6 +26,26 @@ interface VideoItem {
   };
 }
 
+/** 인터페이스 정의 */
+interface PlaylistVideoItem {
+  id: string;
+  snippet: {
+    title: string;
+    publishedAt: string;
+    thumbnails?: {
+      medium?: { url: string };
+      default?: { url: string };
+    };
+    resourceId: {
+      videoId: string;
+    };
+  };
+  duration: string; // ISO8601 형식 예: "PT10M30S"
+  contentDetails?: {
+    duration?: string; // ISO8601 형식 예: "PT10M30S"
+  };
+}
+
 interface Playlist {
   id: string;
   snippet: {
@@ -30,7 +54,13 @@ interface Playlist {
 }
 
 interface PlaylistItemsMap {
-  [playlistId: string]: VideoItem[];
+  [playlistId: string]: PlaylistVideoItem[];
+}
+
+interface User {
+  email: string;
+  displayName: string;
+  photoURL: string;
 }
 
 /** ISO8601 기간 문자열을 초로 변환하는 함수 */
@@ -43,6 +73,8 @@ function parseISO8601Duration(duration: string): number {
   const seconds = parseInt(matches[3] || "0", 10);
   return hours * 3600 + minutes * 60 + seconds;
 }
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 좋아요한 영상 및 플레이리스트 탭 UI */
 export default function StudioVideos() {
@@ -93,11 +125,145 @@ export default function StudioVideos() {
     }
   }, []);
 
-  console.log("좋아요한 영상:", likedVideos);
+  const user = useRecoilValue(userState);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [loadingMessage2, setLoadingMessage2] = useState("");
+  const setUserState = useSetRecoilState(userState);
+  const [videoId, setVideoId] = useState("");
+  const fetchSummaryEditorVideo = async (videoId: string) => {
+    if (!user.email) {
+      setShowLoginModal(true);
+      return;
+    }
+    if (!videoId) {
+      setErrorMessage("유튜브 영상 정보를 불러올 수 없습니다.");
+      setShowErrorModal(true);
+      return;
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
+    setIsLoading(true);
+    setLoadingMessage("영상 분석 중...");
+    setLoadingMessage2("영상 길이에 따라 최대 1분 정도 걸릴 수 있어요!");
+
+    try {
+      const encodedUrl = encodeURIComponent(videoId);
+      const response = await fetch(
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodedUrl}?user_id=${user.id}`,
+        {
+          method: "GET",
+          headers: { accept: "application/json" },
+          signal: controller.signal,
+        }
+      );
+      if (!response.ok) {
+        if (response.status === 400) {
+          const errData = await response.json();
+          setErrorMessage(errData.detail);
+        } else {
+          setErrorMessage(
+            "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요!"
+          );
+        }
+        setShowErrorModal(true);
+        return;
+      }
+      const { task_id } = await response.json();
+      router.push(`/studio/${videoId}?task_id=${task_id}`);
+    } catch (err) {
+      console.error("아티클 생성 에러:", err);
+      setErrorMessage("아티클 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setShowErrorModal(true);
+    } finally {
+      clearTimeout(timeoutId);
+      setIsLoading(false);
+      setLoadingMessage("");
+      setLoadingMessage2("");
+    }
+  };
+
+  const handleLoginSuccess = async (loginUser: User) => {
+    setShowLoginModal(false);
+    if (!loginUser.email) return;
+    try {
+      const data = await getUserByEmail(loginUser.email, loginUser.displayName);
+      setUserState({
+        name: loginUser.displayName,
+        email: loginUser.email,
+        picture: loginUser.photoURL,
+        id: data.id,
+      });
+      // 자동 진행: 입력값 검증 후 영상 아티클 생성 함수 호출
+      if (!videoId.trim()) {
+        setErrorMessage("🚨 유튜브 정보를 불러올 수 없습니다.");
+        setShowErrorModal(true);
+        return;
+      }
+      // (C) 로딩 시작
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      setIsLoading(true);
+      setLoadingMessage("아티클 구조 설계 중...");
+      setLoadingMessage2(
+        "영상 길이에 따라 최대 1분이 소요될 수 있습니다.\n페이지를 떠나도 생성은 계속 진행됩니다😀"
+      );
+      try {
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
+            videoId
+          )}?user_id=${encodeURIComponent(data.id)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) {
+          if (response.status === 400) {
+            const errorData = await response.json();
+            setErrorMessage(errorData.detail);
+            setShowErrorModal(true);
+          } else {
+            throw new Error(`HTTP 오류: ${response.status}`);
+          }
+          return;
+        }
+
+        // (D) task_id가 있으면 해당 편집 화면으로 이동
+        const { task_id } = await response.json();
+        router.push(`/studio/${videoId}?task_id=${task_id}`);
+      } catch (err) {
+        console.error("요청 실패:", err);
+        setErrorMessage("🚨 아티클 생성 중 문제가 발생했습니다.");
+        setShowErrorModal(true);
+      } finally {
+        setIsLoading(false);
+        clearTimeout(timeoutId);
+        setLoadingMessage("");
+        setLoadingMessage2("");
+      }
+    } catch (err) {
+      console.error("로그인 후 오류:", err);
+      setErrorMessage("로그인 처리 중 문제가 발생했습니다.");
+      setShowErrorModal(true);
+    }
+  };
 
   /** 아티클 변환 로직 (예시: 콘솔 출력) */
   const handleConvertToArticle = (videoId: string) => {
     console.log(`아티클 변환 요청: ${videoId}`);
+    setVideoId(videoId);
+    if (!user.email) {
+      setShowLoginModal(true);
+      return;
+    }
+    fetchSummaryEditorVideo(videoId);
     // 실제 구현에서는 router.push(`/studio/${videoId}?task_id=...`) 등으로 처리
   };
 
@@ -127,7 +293,7 @@ export default function StudioVideos() {
               active={activeTab === "liked"}
               onClick={() => setActiveTab("liked")}
             >
-              👍 좋아요 영상
+              👍 좋아요 누른 영상
             </TabButton>
             <TabButton
               active={activeTab === "playlists"}
@@ -190,33 +356,75 @@ export default function StudioVideos() {
             </PlaylistTabScroll>
             <VideoListContainer>
               {playlistItemsMap[activePlaylistId].length > 0 ? (
-                playlistItemsMap[activePlaylistId].map((video) => (
-                  <VideoRow key={video.id}>
-                    <ThumbWrapper>
-                      <Thumbnail
-                        src={
-                          video.snippet?.thumbnails?.medium?.url ||
-                          video.snippet?.thumbnails?.default?.url ||
-                          "/images/default_thumbnail.png"
-                        }
-                        alt={video.snippet.title}
-                      />
-                    </ThumbWrapper>
-                    <VideoInfo>
-                      <VideoTitle>{video.snippet.title}</VideoTitle>
-                    </VideoInfo>
-                    <ConvertButton
-                      onClick={() => handleConvertToArticle(video.id)}
-                    >
-                      아티클 변환
-                    </ConvertButton>
-                  </VideoRow>
-                ))
+                [...playlistItemsMap[activePlaylistId]]
+                  .sort(
+                    (a, b) =>
+                      new Date(b.snippet.publishedAt).getTime() -
+                      new Date(a.snippet.publishedAt).getTime()
+                  )
+                  .map((video) => (
+                    <VideoItemBox key={video.id}>
+                      <ThumbnailContainer>
+                        <VideoThumb
+                          src={
+                            video.snippet.thumbnails?.default?.url ||
+                            "/images/no_video_thumb.jpg"
+                          }
+                          alt={video.snippet.title}
+                        />
+                        <DurationOverlay>{video.duration}</DurationOverlay>
+                      </ThumbnailContainer>
+                      <VideoInfo>
+                        <VideoTitle>{video.snippet.title}</VideoTitle>
+                        <VideoDate>
+                          {timeAgo(video.snippet.publishedAt)}
+                        </VideoDate>
+                        <PreviewButton
+                          onClick={() =>
+                            handleConvertToArticle(
+                              video.snippet.resourceId?.videoId
+                            )
+                          }
+                        >
+                          아티클 변환
+                        </PreviewButton>
+                      </VideoInfo>
+                    </VideoItemBox>
+                  ))
               ) : (
                 <NoData>선택한 플레이리스트에 영상이 없습니다.</NoData>
               )}
             </VideoListContainer>
           </PlaylistContainer>
+        )}
+        {/* 로그인 모달 */}
+        {showLoginModal && (
+          <ModalOverlay>
+            <ModalContent>
+              <ModalClose onClick={() => setShowLoginModal(false)}>
+                ×
+              </ModalClose>
+              <InfoMessage>🙋 로그인이 필요합니다</InfoMessage>
+              <InfoDescription>
+                영상 요약 아티클 생성을 위해 Google 로그인 해주세요.
+              </InfoDescription>
+              <GoogleLogin onLoginSuccess={handleLoginSuccess} />
+            </ModalContent>
+          </ModalOverlay>
+        )}
+        {showErrorModal && (
+          <ModalOverlay>
+            <ModalContent>
+              <ModalClose onClick={() => setShowErrorModal(false)}>
+                ×
+              </ModalClose>
+              <InfoMessage>❌ 오류 발생</InfoMessage>
+              <InfoDescription>{errorMessage}</InfoDescription>
+              <ModalButton onClick={() => setShowErrorModal(false)}>
+                확인
+              </ModalButton>
+            </ModalContent>
+          </ModalOverlay>
         )}
       </Container>
     </>
