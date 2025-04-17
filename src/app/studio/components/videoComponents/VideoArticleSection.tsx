@@ -21,8 +21,10 @@ interface User {
   displayName: string;
   photoURL: string;
 }
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+
 const GOOGLE_CLIENT_ID =
   "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com";
 

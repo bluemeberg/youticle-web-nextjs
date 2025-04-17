@@ -73,8 +73,8 @@ function parseISO8601Duration(duration: string): number {
   const seconds = parseInt(matches[3] || "0", 10);
   return hours * 3600 + minutes * 60 + seconds;
 }
-// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 좋아요한 영상 및 플레이리스트 탭 UI */
 export default function StudioVideos() {

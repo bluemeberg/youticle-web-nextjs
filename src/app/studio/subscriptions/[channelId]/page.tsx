@@ -78,8 +78,8 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 // pending action 타입 (채널 등록 vs. 영상 아티클 생성)
 type PendingAction = "registerChannel" | "convertArticle" | null;
@@ -267,6 +267,12 @@ export default function ChannelDetailPage() {
 
   // 채널 모니터링 등록 함수 (영상 정보는 불러오지 않고 채널만 등록)
   async function handleChannelMonitoring() {
+    // 채널 모니터링 등록 성공 시 성공 팝업 띄움
+    setSuccessMessage(
+      "채널 모니터링 등록이 완료되었습니다. 카톡 알림을 확인해주세요."
+    );
+    setShowSuccessModal(true);
+    return;
     if (!user?.email) {
       setPendingAction("registerChannel");
       setShowLoginModal(true);
@@ -578,14 +584,13 @@ export default function ChannelDetailPage() {
         <SuccessModalOverlay>
           <SuccessModal>
             {/* 임팩트 아이콘/이모지 */}
-            <SuccessIcon>🎊</SuccessIcon>
+            <SuccessIcon>🎉</SuccessIcon>
 
             <SuccessTitle>채널 모니터링 등록 완료!</SuccessTitle>
 
             <SuccessMessage>
               이제 유튜브 채널의 신규 영상이 업로드되면 <br />
-              다음날 아침 7시 30분에 요약본을 카톡으로 전달합니다.
-              <br />
+              다음날 아침 7시에 요약본을 카톡으로 전달합니다.
               {"\n"}놓친 영상도 아카이브에서 언제든 다시 볼 수 있습니다!
             </SuccessMessage>
 
