@@ -98,8 +98,9 @@ export default function SubscriptionsPage() {
           {filteredSubscriptions.length > 0 ? (
             filteredSubscriptions.map((sub) => {
               const { snippet, statistics } = sub;
-              const thumbUrl = snippet.thumbnails?.medium?.url;
+              const thumbUrl = snippet.thumbnails?.default?.url;
               const channelTitle = snippet.title;
+              console.log(channelTitle, thumbUrl);
               const channelDesc =
                 snippet.description && snippet.description.trim().length > 0
                   ? snippet.description

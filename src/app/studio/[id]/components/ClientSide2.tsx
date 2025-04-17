@@ -31,8 +31,8 @@ interface SectionData {
   explanation_description?: string;
 }
 
-const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
-// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
@@ -893,6 +893,7 @@ const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
+
 const Container = styled.div<{ $isFixed: boolean }>`
   display: flex;
   flex-direction: column;

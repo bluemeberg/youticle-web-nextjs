@@ -15,9 +15,7 @@ import {
   MdInsights,
 } from "react-icons/md";
 import { FaComments } from "react-icons/fa";
-// Firebase imports for auto-login
-import { auth } from "@/firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+
 interface User {
   email: string;
   displayName: string;
@@ -97,65 +95,63 @@ export default function VideoAutoArticleSection() {
         picture: loginUser.photoURL,
         id: data.id,
       });
-      // 로그인 성공 후 유튜브 토큰을 요청
-      initGoogleTokenClientForYoutube();
-      // // 자동 진행: 입력값 검증 후 영상 아티클 생성 함수 호출
-      // if (!videoUrl.trim()) {
-      //   setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
-      //   setShowErrorModal(true);
-      //   return;
-      // }
-      // const videoId = extractVideoId(videoUrl);
-      // if (!videoId) {
-      //   setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
-      //   setShowErrorModal(true);
-      //   return;
-      // }
-      // // (C) 로딩 시작
-      // const controller = new AbortController();
-      // const timeoutId = setTimeout(() => controller.abort(), 300000);
-      // setIsLoading(true);
-      // setLoadingMessage("아티클 구조 설계 중...");
-      // setLoadingMessage2(
-      //   "영상 길이에 따라 최대 1분이 소요될 수 있습니다.\n페이지를 떠나도 생성은 계속 진행됩니다😀"
-      // );
-      // try {
-      //   const response = await fetch(
-      //     `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
-      //       videoId
-      //     )}?user_id=${encodeURIComponent(user.id)}`,
-      //     {
-      //       method: "GET",
-      //       headers: {
-      //         accept: "application/json",
-      //       },
-      //       signal: controller.signal,
-      //     }
-      //   );
-      //   if (!response.ok) {
-      //     if (response.status === 400) {
-      //       const errorData = await response.json();
-      //       setErrorMessage(errorData.detail);
-      //       setShowErrorModal(true);
-      //     } else {
-      //       throw new Error(`HTTP 오류: ${response.status}`);
-      //     }
-      //     return;
-      //   }
+      // 자동 진행: 입력값 검증 후 영상 아티클 생성 함수 호출
+      if (!videoUrl.trim()) {
+        setErrorMessage("🚨 유튜브 URL을 입력해주세요.");
+        setShowErrorModal(true);
+        return;
+      }
+      const videoId = extractVideoId(videoUrl);
+      if (!videoId) {
+        setErrorMessage("🚨 올바른 유튜브 URL을 입력해주세요.");
+        setShowErrorModal(true);
+        return;
+      }
+      // (C) 로딩 시작
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      setIsLoading(true);
+      setLoadingMessage("아티클 구조 설계 중...");
+      setLoadingMessage2(
+        "영상 길이에 따라 최대 1분이 소요될 수 있습니다.\n페이지를 떠나도 생성은 계속 진행됩니다😀"
+      );
+      try {
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodeURIComponent(
+            videoId
+          )}?user_id=${encodeURIComponent(data.id)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) {
+          if (response.status === 400) {
+            const errorData = await response.json();
+            setErrorMessage(errorData.detail);
+            setShowErrorModal(true);
+          } else {
+            throw new Error(`HTTP 오류: ${response.status}`);
+          }
+          return;
+        }
 
-      //   // (D) task_id가 있으면 해당 편집 화면으로 이동
-      //   const { task_id } = await response.json();
-      //   router.push(`/studio/${videoId}?task_id=${task_id}`);
-      // } catch (err) {
-      //   console.error("요청 실패:", err);
-      //   setErrorMessage("🚨 아티클 생성 중 문제가 발생했습니다.");
-      //   setShowErrorModal(true);
-      // } finally {
-      //   setIsLoading(false);
-      //   clearTimeout(timeoutId);
-      //   setLoadingMessage("");
-      //   setLoadingMessage2("");
-      // }
+        // (D) task_id가 있으면 해당 편집 화면으로 이동
+        const { task_id } = await response.json();
+        router.push(`/studio/${videoId}?task_id=${task_id}`);
+      } catch (err) {
+        console.error("요청 실패:", err);
+        setErrorMessage("🚨 아티클 생성 중 문제가 발생했습니다.");
+        setShowErrorModal(true);
+      } finally {
+        setIsLoading(false);
+        clearTimeout(timeoutId);
+        setLoadingMessage("");
+        setLoadingMessage2("");
+      }
     } catch (err) {
       console.error("로그인 후 오류:", err);
       setErrorMessage("로그인 처리 중 문제가 발생했습니다.");
@@ -189,7 +185,7 @@ export default function VideoAutoArticleSection() {
     setLoadingMessage2("영상 길이에 따라 최대 1분 정도 걸릴 수 있어요!");
 
     try {
-      const encodedUrl = encodeURIComponent(videoUrl);
+      const encodedUrl = encodeURIComponent(videoId);
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/process/${encodedUrl}?user_id=${user.id}`,
         {
@@ -452,27 +448,7 @@ export default function VideoAutoArticleSection() {
     // initGoogleTokenClientForYoutube의 콜백 내부에서 router.push와 함께
     // 로딩 상태를 해제하도록 처리하거나, 별도로 타임아웃 후 setIsLoading(false) 처리 가능
   }
-  // [자동 로그인] Firebase Google 로그인 기능 (Google 팝업 사용)
 
-  const autoSignInGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      // Firebase에서 발급한 결과로 사용자 정보 업데이트
-      const userData = await getUserByEmail(
-        result.user.email,
-        result.user.displayName
-      );
-      setUserState({
-        name: result.user.displayName,
-        email: result.user.email,
-        picture: result.user.photoURL,
-        id: userData.id,
-      });
-    } catch (e) {
-      console.error("자동 로그인 에러:", e);
-    }
-  };
   const initGoogleTokenClientForYoutube = () => {
     if (!window.google || !window.google.accounts) {
       alert("Google API 로드가 되지 않았습니다. 잠시 후 다시 시도해주세요.");
@@ -489,7 +465,6 @@ export default function VideoAutoArticleSection() {
           sessionStorage.setItem("myYoutubeToken", resp.access_token);
           sessionStorage.setItem("myYoutubeTokenExpire", String(expireMs));
           setYoutubeToken(resp.access_token);
-          // await autoSignInGoogle();
           try {
             await fetchLikedVideos(resp.access_token);
             const playlists = await fetchPlaylists(resp.access_token);
@@ -588,7 +563,7 @@ export default function VideoAutoArticleSection() {
           집중 시청을 도와드립니다.
         </HeroSubtitle>
         <ButtonGroup>
-          <BlueButton onClick={() => setShowLoginModal(true)}>
+          <BlueButton onClick={handleFetchLikedVideosOrPlaylists}>
             좋아요한 영상, 플레이리스트 불러오기
           </BlueButton>
           <GrayButton onClick={() => setShowManualInputModal(true)}>
@@ -598,6 +573,18 @@ export default function VideoAutoArticleSection() {
         {showManualInputModal && (
           <ManualInputModal onClose={() => setShowManualInputModal(false)} />
         )}
+        <HeroVideoWrapper>
+          <Video
+            ref={videoRef}
+            src="/videos/hero_output_video_250412.mp4"
+            // poster="/images/What유티클2.png"
+            muted
+            autoPlay
+            playsInline
+            loop
+            webkit-playsinline="true"
+          />
+        </HeroVideoWrapper>
       </HeroSection>
 
       {/* Landing / Why Section */}
@@ -801,6 +788,19 @@ const ButtonGroup = styled.div`
   flex-direction: column;
   gap: 8px;
 `;
+const HeroVideoWrapper = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  margin-top: 80px;
+`;
+const Video = styled.video`
+  width: 88%;
+  object-fit: contain; /* 잘리지 않도록 contain */
+`;
+
 const BlueButton = styled.button`
   background-color: #007bff;
   color: #fff;
@@ -1054,7 +1054,7 @@ const ModalOverlay = styled.div`
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 10000;
+  z-index: 9900;
   display: flex;
   align-items: center;
   justify-content: center;
