@@ -834,11 +834,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               onClose={() => setIsThreadModalOpen(false)}
             />
           )}
-          {taskStatus === "Success" && (
+          {/* {taskStatus === "Success" && (
             <FloatingButton onClick={handleOpenThreadModal}>
               스레드 생성하기
             </FloatingButton>
-          )}
+          )} */}
         </SlideInContainer>
       )}
       {/* ❌ 에러 팝업 */}

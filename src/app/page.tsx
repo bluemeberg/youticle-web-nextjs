@@ -3,14 +3,14 @@ import TodayPageClient from "./components/TodayPageClient"; // 클라이언트 �
 export const metadata = {
   title: "YouTicle",
   description:
-    "매일 최신 업로드된 19가지 주제의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
+    "구독 채널의 개별 영상 즉시 요약부터 신규 영상의 자동 요약 & 카톡알림까지, 나만의 유튜브 AI비서 - 유티클",
   openGraph: {
     title: "YouTicle",
     description:
-      "매일 최신 업로드된 19가지 주제의 유튜브 영상들을 빠르고 편하게 아티클로 읽어보세요!",
+      "구독 채널의 개별 영상 즉시 요약부터 신규 영상의 자동 요약 & 카톡알림까지, 나만의 유튜브 AI비서 - 유티클",
     images: [
       {
-        url: "/images/YouTicleOGImage.png", // public 폴더 내의 경로
+        url: "/images/YouTicleOGThumbnail2.png", // public 폴더 내의 경로
         alt: "Thumbnail Image",
       },
     ],

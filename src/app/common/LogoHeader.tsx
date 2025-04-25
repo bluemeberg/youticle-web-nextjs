@@ -252,7 +252,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
                 >
                   유티클 투데이
                 </MenuItem>{" "}
-                <MenuItem
+                {/* <MenuItem
                   onClick={() =>
                     handleMenuNavigation(
                       "/studio",
@@ -261,7 +261,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
                   }
                 >
                   유티클 스튜디오
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem
                   onClick={() =>
                     handleMenuNavigation("/editor", "에디터 픽 로딩 중...")
