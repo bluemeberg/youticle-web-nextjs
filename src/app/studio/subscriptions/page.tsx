@@ -77,8 +77,8 @@ export default function SubscriptionsPage() {
       <LogoHeader />
       <Title>내 구독 채널 목록</Title>
       <Subtitle>
-        모니터링할 채널을 선택하면 <Highlight>매일 새 영상을 요약</Highlight>해
-        알려드립니다.
+        모니터링할 채널을 선택하면{" "}
+        <Highlight>매일 새 영상을 자동 요약</Highlight>해 알려드립니다.
         <br />
         <SmallNote>(모니터링 없이도 개별 영상 아티클 변환 가능!)</SmallNote>
       </Subtitle>
