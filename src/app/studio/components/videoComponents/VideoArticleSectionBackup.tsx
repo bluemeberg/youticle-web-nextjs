@@ -407,8 +407,8 @@ export default function VideoAutoArticleSection() {
             </FeatureIcon>
             <CardTitle>댓글 인사이트 요약</CardTitle>
             <CardDesc>
-              영상의 댓글들을 한데 모아, 시청자들의 반응과 주요 의견을 추려낼 수
-              있어요.
+              영상의 댓글들을 한데 모아, <br />
+              시청자들의 반응과 주요 의견을 추려낼 수 있어요.
             </CardDesc>
           </FeatureCard>
           <FeatureCard>
@@ -417,8 +417,8 @@ export default function VideoAutoArticleSection() {
             </FeatureIcon>
             <CardTitle>주제별 핵심 인사이트 제공</CardTitle>
             <CardDesc>
-              영상 주제에 맞춰 주요 포인트를 자동으로 선별해 더욱 깊이 있는
-              정보를 얻을 수 있어요.
+              영상 주제에 맞춰 주요 포인트를 자동으로 선별해 <br /> 더욱 깊이
+              있는 정보를 얻을 수 있어요.
             </CardDesc>
           </FeatureCard>
         </FeaturesGrid>

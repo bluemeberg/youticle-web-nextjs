@@ -514,9 +514,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           />
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(
-              removeMarkTags(detailData.summary_data.short_summary)
-            )}
+            {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
           {/* 목차 영역 */}
           {/** 5줄 핵심 요약 배치 **/}
@@ -621,9 +619,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           />
           <OverviewTitle>📹 영상 소개</OverviewTitle>
           <Preview $isFixed={isFixed}>
-            {formatSummary(
-              removeMarkTags(detailData.summary_data.short_summary)
-            )}
+            {formatSummary(detailData.summary_data.short_summary)}
           </Preview>
           {/* 목차 영역 */} {/** 5줄 핵심 요약 배치 **/}
           <FiveLineSummarySection>
@@ -834,11 +830,11 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               onClose={() => setIsThreadModalOpen(false)}
             />
           )}
-          {/* {taskStatus === "Success" && (
+          {taskStatus === "Success" && (
             <FloatingButton onClick={handleOpenThreadModal}>
               스레드 생성하기
             </FloatingButton>
-          )} */}
+          )}
         </SlideInContainer>
       )}
       {/* ❌ 에러 팝업 */}

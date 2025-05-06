@@ -33,7 +33,7 @@ export default function AdminPageClient() {
     <Container>
       <LogoHeader
         onBackHome={() => {
-          console.log("heelo");
+          console.log("hello");
           setIsLeavingHome(true); // 로딩 유지
           setTimeout(() => {
             router.push("/");
@@ -159,7 +159,7 @@ const LoaderOverlay = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(48, 31, 31, 0.6);
   display: flex;
   flex-direction: column;
   align-items: center;

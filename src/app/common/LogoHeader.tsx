@@ -69,9 +69,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       return;
     }
 
-    if (pathname.startsWith("/studio/subscriptions/")) {
-      router.push("/studio/subscriptions");
-    } else if (pathname.includes("/detail/")) {
+    if (pathname.includes("/detail/")) {
       router.push("/");
     } else if (
       pathname.includes("/detail") &&
@@ -80,8 +78,13 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       router.push("/unsubscribe");
     } else if (pathname.endsWith("/subject/modify")) {
       router.push("/");
-    } else if (pathname.includes("/studio")) {
-      router.push("/studio");
+    } else if (pathname.startsWith("/studio")) {
+      // 스튜디오 내부 페이지는 히스토리 스택이 있으면 뒤로가기, 아니면 /studio 메인으로
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push("/studio");
+      }
     } else {
       router.back();
     }

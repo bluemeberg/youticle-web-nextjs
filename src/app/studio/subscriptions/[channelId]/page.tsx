@@ -18,6 +18,7 @@ import {
   timeAgo,
 } from "@/utils/formatter";
 import { getUserByEmail } from "@/api/apiClient";
+import { toZonedTime, format } from "date-fns-tz";
 
 interface BrandingSettings {
   image?: {
@@ -59,7 +60,12 @@ interface User {
   displayName: string;
   photoURL: string;
 }
-
+type RegisteredChannelData = {
+  id: number;
+  channel_handle: string;
+  title: string;
+  // add whatever other fields come back
+};
 // ISO8601 형식의 duration 문자열을 초로 변환하는 함수
 function parseISO8601Duration(duration: string): number {
   const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
@@ -79,7 +85,7 @@ function formatDuration(seconds: number): string {
 }
 
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8001";
 
 // pending action 타입 (채널 등록 vs. 영상 아티클 생성)
 type PendingAction = "registerChannel" | "convertArticle" | null;
@@ -120,6 +126,28 @@ export default function ChannelDetailPage() {
   // pending action 및 선택된 videoId
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [pendingVideoId, setPendingVideoId] = useState<string | null>(null);
+
+  // --- (2) 상태 선언부에 registeredChannel 추가
+  const [registeredChannel, setRegisteredChannel] =
+    useState<RegisteredChannelData | null>(null);
+
+  // ----------------- (3) 내 등록 채널 조회 -----------------
+  useEffect(() => {
+    if (!user?.email) return;
+    (async () => {
+      try {
+        const data = await getUserByEmail(user.email, user.displayName);
+        const res = await fetch(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${data.id}`
+        );
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        setRegisteredChannel(json[0] || null);
+      } catch (e) {
+        console.warn("내 등록 채널 조회 실패", e);
+      }
+    })();
+  }, [user.email]);
 
   // ----------------- 채널 상세 정보 및 영상 목록 불러오기 -----------------
   useEffect(() => {
@@ -197,10 +225,16 @@ export default function ChannelDetailPage() {
           const isoDuration = durationMap[vidId];
           const seconds = parseISO8601Duration(isoDuration);
           if (seconds < 180) return null; // 3분 미만 영상 제외
+          // ** convert publishedAt **
+          const utcDate = new Date(item.snippet.publishedAt);
+          const kstDate = toZonedTime(utcDate, "Asia/Seoul");
+          const publishedAt = format(kstDate, "yyyy-MM-dd HH:mm", {
+            timeZone: "Asia/Seoul",
+          });
           return {
             videoId: vidId,
             title: item.snippet.title,
-            publishedAt: item.snippet.publishedAt.split("T")[0],
+            publishedAt,
             thumbnailUrl: item.snippet.thumbnails?.medium?.url,
             duration: formatDuration(seconds),
           };
@@ -264,31 +298,72 @@ export default function ChannelDetailPage() {
       setLoadingMessage2("");
     }
   }
+  const [manualHandle, setManualHandle] = useState("");
 
   // 채널 모니터링 등록 함수 (영상 정보는 불러오지 않고 채널만 등록)
   async function handleChannelMonitoring() {
-    // 채널 모니터링 등록 성공 시 성공 팝업 띄움
-    setSuccessMessage(
-      "채널 모니터링 등록이 완료되었습니다. 카톡 알림을 확인해주세요."
-    );
-    setShowSuccessModal(true);
-    return;
+    // // 채널 모니터링 등록 성공 시 성공 팝업 띄움
+    // setSuccessMessage(
+    //   "채널 모니터링 등록이 완료되었습니다. 카톡 알림을 확인해주세요."
+    // );
+    // setShowSuccessModal(true);
+    // return;
     if (!user?.email) {
       setPendingAction("registerChannel");
       setShowLoginModal(true);
       return;
     }
-    const data = await getUserByEmail(user.email, user.displayName);
+    const data = await getUserByEmail(user.email, user.name);
+    if (!data.phone) {
+      setShowPhoneModal(true);
+      return;
+    }
     const regRes = await fetch(
       `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${data.id}`
     );
     const json = await regRes.json();
     const existingChannel = json[0];
     if (existingChannel) {
-      setErrorMessage(
-        `이미 등록된 채널이 있습니다: "${existingChannel.title}".\n채널 변경을 원하시면 "채널 변경하기" 기능을 이용해주세요.`
-      );
-      setShowErrorModal(true);
+      try {
+        setIsCreatingArticle(true);
+        setLoadingMessage("채널 변경 중...");
+        setLoadingMessage2("잠시만 기다려주세요.");
+        // 새 핸들 결정: customUrl 이 있으면 쓰고, 없으면 manualHandle 사용
+        const rawCustom = channelData!.snippet.customUrl; // 예: "business"
+        const newHandle = rawCustom
+          ? `${rawCustom}` // @business
+          : manualHandle.startsWith("@")
+          ? manualHandle // 이미 @붙은 경우
+          : `@${manualHandle}`; // 없으면 @붙여서
+
+        const url = new URL(
+          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/update/${user.id}`
+        );
+        if (registeredChannel) {
+          url.searchParams.set("old_handle", registeredChannel.channel_handle);
+        }
+        url.searchParams.set("new_handle", newHandle);
+
+        const res = await fetch(url.toString(), {
+          method: "PUT",
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          throw new Error(errJson?.detail || `변경 실패: ${res.status}`);
+        }
+
+        setSuccessMessage("자동 요약 채널이 정상적으로 변경되었습니다!");
+        setShowSuccessModal(true);
+      } catch (err: any) {
+        console.error("채널 변경 오류:", err);
+        setErrorMessage(err.message || "채널 변경 중 문제가 발생했습니다.");
+        setShowErrorModal(true);
+      } finally {
+        setIsCreatingArticle(false);
+        setLoadingMessage("");
+        setLoadingMessage2("");
+      }
       return;
     }
     // 여기서는 채널 핸들이 아닌, 채널 ID를 그대로 사용하여 등록 API 호출
@@ -396,29 +471,33 @@ export default function ChannelDetailPage() {
 
   // 휴대폰 번호 등록 함수
   const [phoneInput, setPhoneInput] = useState("");
+  const [phoneSaveSuccess, setPhoneSaveSuccess] = useState(false);
+
   const savePhoneNumberAndRegister = async () => {
-    const trimmed = phoneInput.trim();
-    if (trimmed.length === 0) {
-      setErrorMessage("휴대폰 번호를 입력해주세요.");
+    const raw = phoneInput.replace(/\D/g, ""); // 숫자만
+    if (raw.length < 10 || raw.length > 11) {
+      setErrorMessage("휴대폰 번호를 숫자 10~11자리로 입력해주세요.");
       return;
     }
+    // 서버로 보낼 땐 하이픈 자동 포맷
+    const formatted =
+      raw.length === 11
+        ? raw.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")
+        : raw.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
     try {
       const res = await fetch(`${NEXT_PUBLIC_API_BASE_URL}/users/phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id, phone_number: trimmed }),
+        body: JSON.stringify({ user_id: user.id, phone_number: formatted }),
       });
       if (!res.ok) throw new Error("폰번호 저장 실패");
-      setShowPhoneModal(false);
+      setPhoneSaveSuccess(true);
     } catch (err: any) {
       console.error("폰번호 등록 오류:", err);
       setErrorMessage("전화번호 등록 중 문제가 발생했습니다.");
     }
   };
-  const handleSkipPhoneRegistration = () => {
-    setShowPhoneModal(false);
-    // 전화번호 입력 없이 채널 모니터링 등록 진행
-  };
+
   // ---------------------- Render ----------------------
   if (loading) {
     return (
@@ -475,14 +554,23 @@ export default function ChannelDetailPage() {
           </ChannelMeta>
         </Row>
         <Description>{snippet.description}</Description>
+        {/* --- (4) 버튼 텍스트 분기 --- */}
         <ButtonRow>
-          <MonitorButton onClick={handleChannelMonitoring}>
-            {isCreatingArticle ? "등록 중..." : "채널 모니터링 등록"}
+          <MonitorButton
+            variant={registeredChannel ? "change" : "register"}
+            onClick={handleChannelMonitoring}
+          >
+            {" "}
+            {isCreatingArticle
+              ? "등록 중..."
+              : registeredChannel
+              ? "자동 요약 채널 변경하기"
+              : "채널 자동 요약 등록"}
           </MonitorButton>
         </ButtonRow>
         {/* 채널 모니터링 등록 리마인드 메시지 */}
         <InfoBox>
-          채널 모니터링 등록 시, 등록한 채널의 신규 영상을 매일 아침 7시에
+          채널 모니터링 등록 시, 등록한 채널의 신규 영상을 매일 아침 8시에
           모니터링하여 생성된 요약본이 카톡으로 전송되며, 아카이브를 통해 언제든
           다시 확인 가능합니다.
         </InfoBox>
@@ -490,7 +578,9 @@ export default function ChannelDetailPage() {
 
       <SectionTitle>최신 영상 목록</SectionTitle>
       {/* 쇼츠(3분 미만 영상) 제외 안내 */}
-      <NoteText>※ 참고: 3분 미만 영상(쇼츠)은 목록에서 제외됩니다.</NoteText>
+      <NoteText>
+        ※ 참고: 3분 미만 영상(쇼츠 포함)은 목록에서 제외됩니다.
+      </NoteText>
       {videoItems.length === 0 ? (
         <Message>최근 업로드 영상이 없습니다.</Message>
       ) : (
@@ -508,7 +598,7 @@ export default function ChannelDetailPage() {
                 <VideoTitle>{vid.title}</VideoTitle>
                 <VideoDate>{timeAgo(vid.publishedAt)}</VideoDate>
                 <PreviewButton onClick={() => handleVideoArticle(vid.videoId)}>
-                  아티클 변환
+                  아티클 즉시 변환
                 </PreviewButton>
               </VideoInfo>
             </VideoItemBox>
@@ -533,28 +623,45 @@ export default function ChannelDetailPage() {
       {showPhoneModal && (
         <ModalOverlay>
           <ModalContent>
-            {/* 예: 폰 이모지 or 아이콘 */}
+            <ModalClose onClick={() => setShowPhoneModal(false)}>×</ModalClose>
             <EmojiWrapper>📱</EmojiWrapper>
             <ModalTitle>카카오톡 알림을 위한 번호 등록</ModalTitle>
-            <ModalDescription>
-              채널 모니터링 알림을 받으려면 휴대폰 번호가 필요합니다.
-              <br />
-              🔒 입력하신 번호는 <strong>알림 발송 용도</strong>로만 안전하게
-              사용됩니다.
-            </ModalDescription>
 
-            <PhoneInput
-              placeholder="예: 010-1234-5678"
-              value={phoneInput}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-            />
+            {phoneSaveSuccess ? (
+              // 저장 완료 인디케이터
+              <ModalDescription>
+                번호가 성공적으로 저장되었습니다.
+                <br />
+                이제 채널 모니터링을 계속 진행합니다.
+              </ModalDescription>
+            ) : (
+              // 아직 저장 전
+              <>
+                <ModalDescription>
+                  채널 모니터링 알림을 받으려면 휴대폰 번호가 필요합니다.
+                  <br />
+                  입력하신 번호는 알림 발송 용도로만 안전하게 사용됩니다.
+                </ModalDescription>
+
+                <PhoneInput
+                  placeholder="예: 01012345678"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                />
+              </>
+            )}
             <PhoneButtonRow>
-              <PhoneRegisterButton onClick={savePhoneNumberAndRegister}>
-                번호 등록
-              </PhoneRegisterButton>
-              <SkipButton onClick={handleSkipPhoneRegistration}>
-                채널 모니터링 등록 나중에 하기
-              </SkipButton>
+              {phoneSaveSuccess ? (
+                // 완료 후엔 닫기만
+                <PhoneRegisterButton onClick={() => setShowPhoneModal(false)}>
+                  확인
+                </PhoneRegisterButton>
+              ) : (
+                // 저장 전엔 등록 버튼
+                <PhoneRegisterButton onClick={savePhoneNumberAndRegister}>
+                  번호 등록
+                </PhoneRegisterButton>
+              )}
             </PhoneButtonRow>
           </ModalContent>
         </ModalOverlay>
@@ -586,12 +693,24 @@ export default function ChannelDetailPage() {
             {/* 임팩트 아이콘/이모지 */}
             <SuccessIcon>🎉</SuccessIcon>
 
-            <SuccessTitle>채널 모니터링 등록 완료!</SuccessTitle>
+            <SuccessTitle>
+              {registeredChannel
+                ? "자동 요약 채널 변경 완료!"
+                : "채널 모니터링 등록 완료!"}
+            </SuccessTitle>
 
             <SuccessMessage>
-              이제 유튜브 채널의 신규 영상이 업로드되면 <br />
-              다음날 아침 7시에 요약본을 카톡으로 전달합니다.
-              {"\n"}놓친 영상도 아카이브에서 언제든 다시 볼 수 있습니다!
+              {registeredChannel ? (
+                "자동 요약 채널이 성공적으로 변경되었습니다!"
+              ) : (
+                <>
+                  이제 유튜브 채널의 신규 영상이 업로드되면
+                  <br />
+                  다음날 아침 7시에 요약본을 카톡으로 전달합니다.
+                  <br />
+                  놓친 영상도 아카이브에서 언제든 다시 볼 수 있습니다!
+                </>
+              )}
             </SuccessMessage>
 
             <SuccessButton
@@ -712,10 +831,10 @@ const PhoneButtonRow = styled.div`
   justify-content: center;
   align-items: center;
 `;
-
-const MonitorButton = styled.button`
+// MonitorButton: variant prop 받아서 색상 분기
+const MonitorButton = styled.button<{ variant: "register" | "change" }>`
   flex: 1;
-  background: #007bff;
+  background: ${({ variant }) => (variant === "change" ? "#000" : "#007bff")};
   color: #fff;
   font-weight: 700;
   border: none;
@@ -723,8 +842,10 @@ const MonitorButton = styled.button`
   padding: 12px 14px;
   cursor: pointer;
   font-size: 14px;
+
   &:hover {
-    background: #005bb5;
+    background: ${({ variant }) =>
+      variant === "change" ? "#aaaaaa" : "#005bb5"};
   }
 `;
 

@@ -23,6 +23,7 @@ import ItTechOverview from "@/detail/[id]/components/overviews/ItTechOverview";
 import RelationshipOverview from "@/detail/[id]/components/overviews/RelationshipOverview";
 import TravelOverviewUnified from "@/detail/[id]/components/overviews/TravelOverview";
 import HealthOverviewBusinessStyle from "@/detail/[id]/components/overviews/HealthOverview";
+import { parseTimeStringToSeconds } from "@/utils/formatter";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -172,18 +173,19 @@ const Contents = ({
   }, [user]);
 
   // 미구독이면 true, 구독이면 false
-  const isUnsubscribedSection =
-    !subscribedSubjects.includes(detailData.section) && user.name !== "";
-
+  // const isUnsubscribedSection =
+  //   !subscribedSubjects.includes(detailData.section) && user.name !== "";
+  const isUnsubscribedSection = false;
   console.log(isUnsubscribedSection, "구독여부");
   console.log("height", tocItemHeight);
   // 구독한 주제가 있으면 false, 미구독상태이면 true
   const isNoSubscribedSubjects =
     subscribedSubjects.length === 0 && user.name !== "";
 
-  const hasDimmedItem =
-    detailData.summary_data.section.some((_, index) => index >= 1) &&
-    user.name === "";
+  // const hasDimmedItem =
+  //   detailData.summary_data.section.some((_, index) => index >= 1) &&
+  //   user.name === "";
+  const hasDimmedItem = false;
   // const [wrapperHeight, setWrapperHeight] = useState(0);
 
   // useEffect(() => {
@@ -211,6 +213,7 @@ const Contents = ({
   const contentNumberNotLogin =
     Math.ceil(detailData.summary_data.section.length / 2) + 1;
   console.log("task status", taskStatus);
+  console.log(detailData.summary_data.section);
   return (
     <>
       <ContentWrapper
@@ -220,12 +223,12 @@ const Contents = ({
       // className="content-wrapper"
       >
         {detailData.summary_data.section
-          .slice(
-            0,
-            user.name === ""
-              ? contentNumberNotLogin
-              : detailData.summary_data.section.length
-          )
+          // .slice(
+          //   0,
+          //   user.name === ""
+          //     ? contentNumberNotLogin
+          //     : detailData.summary_data.section.length
+          // )
           .map(
             (
               {
@@ -251,21 +254,20 @@ const Contents = ({
                   section={detailData.section}
                   videoId={detailData.video_id}
                   title={title}
-                  start={Math.floor(Number(start_time))}
+                  start={parseTimeStringToSeconds(start_time)}
                   summary={detail_contents}
                   thumbnails={clientThumbnails[index]}
-                  partialDimmed={
-                    index === contentNumberNotLogin - 2 && user.name === ""
-                  }
+                  // partialDimmed={
+                  //   index === contentNumberNotLogin - 2 && user.name === ""
+                  // }
+                  partialDimmed={false}
                   explanation_keyword={explanation_keyword}
                   explanation_description={explanation_description}
-                  dimmed={
-                    index >= contentNumberNotLogin - 1 && user.name === ""
-                  }
+                  dimmed={false}
                   tocItemHeight={tocItemHeight}
                   toc={detailData.summary_data.section}
                   onClick={() =>
-                    handleTocItemClick(Math.floor(Number(start_time)))
+                    handleTocItemClick(parseTimeStringToSeconds(start_time))
                   }
                   isLoggedOut={user.name === ""}
                   isUnsubscribedSection={isUnsubscribedSection}

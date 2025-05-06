@@ -1,712 +1,529 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, ChangeEvent } from "react";
 import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
-import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
-import { parseSubscribersCount, removeMarkTags } from "@/utils/formatter";
 
-// 타입 선언
-interface ChannelData {
-  id: string;
-  user_id: number;
-  user_name: string;
-  channel_handle: string;
-  channel_title: string;
-  channel_description: string;
-  channel_overview: string;
-  channel_thumbnail: string;
-  channel_banner: string;
-  sub_count: number;
-  created_at: string;
-  history_type: string;
-}
+const GOOGLE_CLIENT_ID =
+  "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com";
 
-/** 구독 채널 (YouTube API) */
-interface Subscription {
-  kind: string;
-  etag: string;
-  id: string;
-  snippet: {
-    publishedAt: string;
-    title: string;
-    description: string;
-    resourceId: {
-      kind: string;
-      channelId: string;
-    };
-    thumbnails: {
-      default: { url: string; width: number; height: number };
-      medium: { url: string; width: number; height: number };
-      high: { url: string; width: number; height: number };
-    };
-  };
-  // statistics (구독자 수 등)이 있다면 여기에 추가 가능
-  statistics?: {
-    subscriberCount: string;
-  };
-}
-// API 기본 URL
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-
-export default function ChannelFeedSectionWithTabs() {
+/** ------------------------------------------------------------------
+ *  ChannelFeedSection – 내 구독 채널 + 직접 입력 탭
+ * ----------------------------------------------------------------*/
+export default function ChannelFeedSection() {
   const router = useRouter();
   const user = useRecoilValue(userState);
-  const refreshTrigger = useRecoilValue(channelFeedRefreshTrigger);
 
-  // "다른 유저들" (history_feed) 관련 상태
-  const [otherChannels, setOtherChannels] = useState<ChannelData[]>([]);
-  const [loadingOthers, setLoadingOthers] = useState<boolean>(true);
-
-  // "내 구독 채널" 관련 상태 (여기서는 세션스토리지에 저장된 데이터를 사용)
-  const [mySubscriptions, setMySubscriptions] = useState<any[]>([]);
-  const [loadingMySubs, setLoadingMySubs] = useState<boolean>(false);
-
-  // 현재 탭 상태 (로그인되어 있으면 "mysubs", 아니면 "others")
-  const [activeTab, setActiveTab] = useState<"mysubs" | "others">(
-    user?.email ? "mysubs" : "others"
-  );
-
-  // ----------------- 다른 유저들 (history_feed) 불러오기 -----------------
+  const [subs, setSubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"subs" | "manual">("subs");
+  const [manualHandle, setManualHandle] = useState("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  // ① 에러 모달 상태 추가
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
+  /** ----------------- sessionStorage 에서만 로드 (정렬 포함) ----------------*/
   useEffect(() => {
-    const fetchOtherChannels = async () => {
-      try {
-        const response = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/history_feed`
-        );
-        if (!response.ok) throw new Error("채널 데이터를 불러오지 못했습니다.");
-        const data: ChannelData[] = await response.json();
-
-        // channel_handle 기준 중복 제거 (가장 먼저 나온 것만 남김)
-        const seen = new Map<string, ChannelData>();
-        for (const item of data) {
-          if (!seen.has(item.channel_handle)) {
-            seen.set(item.channel_handle, item);
-          }
-        }
-        // 최신순 정렬 (created_at 기준 내림차순)
-        const uniqueChannels = Array.from(seen.values()).sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        setOtherChannels(uniqueChannels);
-      } catch (error) {
-        console.error("채널 불러오기 오류:", error);
-      } finally {
-        setLoadingOthers(false);
-      }
-    };
-
-    fetchOtherChannels();
-  }, [refreshTrigger]);
-
-  // ----------------- 내 구독 채널 불러오기 -----------------
-  const GOOGLE_CLIENT_ID =
-    "303228054178-8tl7e7t4tup4s3d08olhgff2ap28vvl2.apps.googleusercontent.com";
-
-  async function fetchSubscriptions(token: string) {
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      const data = await res.json();
-      if (data?.items) {
-        setMySubscriptions(data.items);
-        sessionStorage.setItem("mySubscriptions", JSON.stringify(data.items));
-      }
-    } catch (error) {
-      console.error("구독 채널 불러오기 오류:", error);
-    } finally {
-      setLoadingMySubs(false);
-    }
-  }
-
-  function loadSubsFromStorage() {
     const saved = sessionStorage.getItem("mySubscriptions");
     if (saved) {
       try {
-        const parsedSubs: Subscription[] = JSON.parse(saved);
-        // publishedAt 기준 내림차순 정렬
-        parsedSubs.sort(
-          (a, b) =>
+        const arr = JSON.parse(saved);
+        arr.sort(
+          (a: any, b: any) =>
             new Date(b.snippet.publishedAt).getTime() -
             new Date(a.snippet.publishedAt).getTime()
         );
-        setMySubscriptions(parsedSubs);
-      } catch (error) {
-        console.error("구독 채널 파싱 오류:", error);
+        setSubs(arr);
+      } catch {
+        // ignore parsing errors
       }
     }
-  }
-
-  useEffect(() => {
-    loadSubsFromStorage();
   }, []);
+  // 검색 입력 처리
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+  // 검색어 기반 필터링
+  const filteredSubs = subs.filter((s: any) =>
+    s.snippet.title.toLowerCase().includes(searchTerm.trim().toLowerCase())
+  );
 
-  async function handleRefreshSubs() {
-    setLoadingMySubs(true);
-    const savedToken = sessionStorage.getItem("myYoutubeToken");
-    const savedExpire = sessionStorage.getItem("myYoutubeTokenExpire");
-    const now = Date.now();
+  /** ----------------- 구독 채널 불러오기 (정렬 포함) ----------------*/
+  const fetchSubs = async (token: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const js = await res.json();
+      const items = js.items || [];
+      // publishedAt 기준 내림차순 정렬
+      items.sort(
+        (a: any, b: any) =>
+          new Date(b.snippet.publishedAt).getTime() -
+          new Date(a.snippet.publishedAt).getTime()
+      );
+      setSubs(items);
+      sessionStorage.setItem("mySubscriptions", JSON.stringify(items));
+    } catch (e) {
+      console.error(e);
+      alert("구독 채널을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (savedToken && savedExpire && now < Number(savedExpire)) {
-      await fetchSubscriptions(savedToken);
+  /** ----------------- 토큰 확인 & fetchSubs 호출 ----------------*/
+  const refresh = () => {
+    const tk = sessionStorage.getItem("myYoutubeToken");
+    const exp = sessionStorage.getItem("myYoutubeTokenExpire");
+    if (tk && exp && Date.now() < Number(exp)) {
+      fetchSubs(tk);
     } else {
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      const client = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: "https://www.googleapis.com/auth/youtube.readonly",
-        callback: async (tokenResponse: any) => {
-          if (tokenResponse.access_token) {
-            const now = Date.now();
-            const expireMs = now + (tokenResponse.expires_in ?? 3600) * 1000;
-            sessionStorage.setItem(
-              "myYoutubeToken",
-              tokenResponse.access_token
-            );
-            sessionStorage.setItem("myYoutubeTokenExpire", String(expireMs));
-            await fetchSubscriptions(tokenResponse.access_token);
-          } else {
-            console.error("토큰 발급 실패");
-            setLoadingMySubs(false);
-          }
+        callback: (r: any) => {
+          const expire = Date.now() + (r.expires_in ?? 3600) * 1000;
+          sessionStorage.setItem("myYoutubeToken", r.access_token);
+          sessionStorage.setItem("myYoutubeTokenExpire", String(expire));
+          fetchSubs(r.access_token);
         },
       });
-      tokenClient.requestAccessToken();
+      client.requestAccessToken();
     }
-  }
-  const handleChannelClick = (channelId: string) => {
-    router.push(`/studio/subscriptions/${channelId}`);
   };
+
+  /** ----------------- 액션 ----------------*/
+  const selectChannel = (id: string) => {
+    router.push(`/studio/subscriptions/${id}`);
+  };
+
+  // ② handleManual 클릭 시 호출될 async 함수로 변경
+  const submitManual = async () => {
+    if (!manualHandle.trim()) {
+      setErrorMessage("채널 핸들을 입력하세요.");
+      setShowErrorModal(true);
+      return;
+    }
+    try {
+      const channelId = await resolveChannelId(manualHandle);
+      router.push(`/studio/subscriptions/${channelId}`);
+    } catch (err: any) {
+      setErrorMessage("채널을 찾을 수 없습니다.");
+      setShowErrorModal(true);
+    }
+  };
+
+  // ③ 실제 YouTube API로 handle → channelId 변환
+  async function resolveChannelId(handle: string): Promise<string> {
+    const key = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY!;
+    let h = handle.trim().replace(/^@/, "");
+
+    // (A) legacy forUsername 조회
+    const url1 = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url1.searchParams.set("part", "id");
+    url1.searchParams.set("forHandle", h);
+    url1.searchParams.set("key", key);
+    let res = await fetch(url1.toString());
+    let json = await res.json();
+    if (json.items?.length) return json.items[0].id;
+    return json.items[0].snippet.channelId;
+  }
+
+  /** ----------------- 렌더 ----------------*/
+  const EmptyState = (
+    <Empty>
+      <EmptyIcon>📭</EmptyIcon>
+      <p>
+        구독 채널 정보를 다시 불러와야합니다.
+        <br />
+        <strong>&apos;새로고침&apos;</strong> 클릭 후 유튜브 구글 계정 다시
+        연결해주세요.
+      </p>
+    </Empty>
+  );
+
+  /** ----------------- 렌더 ----------------*/
   return (
-    <FeedContainer>
-      {user?.email && (
-        <TabButtons>
-          <TabButton
-            isActive={activeTab === "mysubs"}
-            onClick={() => setActiveTab("mysubs")}
-          >
-            내 구독 채널
-          </TabButton>
-          <TabButton
-            isActive={activeTab === "others"}
-            onClick={() => setActiveTab("others")}
-          >
-            다른 유저들의 채널
-          </TabButton>
-        </TabButtons>
-      )}
+    <Container>
+      <Header>
+        <HeaderTitle>자동 요약 채널 변경하기</HeaderTitle>
+        <RefreshButton onClick={refresh} disabled={loading}>
+          {loading ? "불러오는 중…" : "새로고침"}
+        </RefreshButton>
+      </Header>
 
-      {activeTab === "mysubs" && user?.email ? (
-        <MySubsWrapper>
-          <TabTitle>내 구독 채널 목록</TabTitle>
-          <HelpText>
-            YouTube API를 통해 불러온 내 구독 채널 목록입니다.
-            <br />
-            토큰이 만료되었다면 아래 버튼을 눌러 다시 불러오세요.
-          </HelpText>
-          <ButtonRow>
-            <RefreshButton onClick={handleRefreshSubs}>새로고침</RefreshButton>
-          </ButtonRow>
+      <TabRow>
+        <TabButton
+          active={activeTab === "subs"}
+          onClick={() => setActiveTab("subs")}
+        >
+          내 구독 채널
+        </TabButton>
+        <TabButton
+          active={activeTab === "manual"}
+          onClick={() => setActiveTab("manual")}
+        >
+          채널 ID 직접 입력
+        </TabButton>
+      </TabRow>
 
-          {loadingMySubs ? (
-            <SkeletonContainer>
-              {Array.from({ length: 3 }).map((_, idx) => (
-                <SkeletonCard key={idx} />
-              ))}
-            </SkeletonContainer>
-          ) : mySubscriptions.length === 0 ? (
-            <EmptyMsg>아직 구독 채널이 없습니다. (불러오지 않음)</EmptyMsg>
-          ) : (
-            <SubsList>
-              {mySubscriptions.map((sub: any) => {
-                const snippet = sub?.snippet;
-                if (!snippet) return null;
-                const channelThumb =
-                  snippet.thumbnails?.medium?.url ||
-                  snippet.thumbnails?.default?.url ||
-                  "";
-                const channelTitle = snippet.title;
-                const channelDesc =
-                  snippet.description && snippet.description.trim().length > 0
-                    ? snippet.description
-                    : "채널 설명이 없습니다.";
-                const channelId = snippet.resourceId?.channelId;
-
-                return (
-                  <SubsCard
-                    key={sub.id}
-                    onClick={() => handleChannelClick(channelId)}
+      {activeTab === "subs" ? (
+        loading ? (
+          <SkeletonContainer>
+            {[1, 2, 3].map((k) => (
+              <SkeletonCard key={k} />
+            ))}
+          </SkeletonContainer>
+        ) : subs.length === 0 ? (
+          EmptyState
+        ) : (
+          <>
+            <SearchInput
+              type="text"
+              placeholder="채널 이름 검색..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+            {filteredSubs.length > 0 ? (
+              <List>
+                {filteredSubs.map((s: any) => (
+                  <Card
+                    key={s.id}
+                    onClick={() =>
+                      selectChannel(s.snippet.resourceId.channelId)
+                    }
                   >
-                    <ThumbWrapper>
-                      <SubsThumb src={channelThumb} alt={channelTitle} />
-                    </ThumbWrapper>
-                    <SubsInfo>
-                      <SubsTitle>{channelTitle}</SubsTitle>
-                      <SubsDesc>{channelDesc}</SubsDesc>
-                    </SubsInfo>
-                  </SubsCard>
-                );
-              })}
-            </SubsList>
-          )}
-        </MySubsWrapper>
+                    <Thumb>
+                      <Img
+                        src={s.snippet.thumbnails.medium.url}
+                        alt={s.snippet.title}
+                      />
+                    </Thumb>
+                    <Info>
+                      <Name>{s.snippet.title}</Name>
+                      <Desc>{s.snippet.description}</Desc>
+                    </Info>
+                  </Card>
+                ))}
+              </List>
+            ) : (
+              <Message>검색 결과가 없습니다.</Message>
+            )}
+          </>
+        )
       ) : (
-        <OthersWrapper>
-          <TabTitle>다른 유저들이 모니터링 중인 채널</TabTitle>
-          <Description>사용자가 등록하거나 변경한 채널 목록입니다.</Description>
-          {loadingOthers ? (
-            <SkeletonContainer>
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <SkeletonCard key={idx} />
-              ))}
-            </SkeletonContainer>
-          ) : otherChannels.length > 0 ? (
-            otherChannels.map((channel) => {
-              const daysAgo = Math.floor(
-                (Date.now() - new Date(channel.created_at).getTime()) /
-                  (1000 * 60 * 60 * 24)
-              );
-              // 채널 카드를 클릭하면 subscription 채널 상세페이지로 이동
-              const handleClick = () => {
-                router.push(`/studio/channel/${channel.channel_handle}`);
-              };
-              return (
-                <div key={channel.id}>
-                  <EditorInfoRow>
-                    <RegisterUser>{channel.user_name}</RegisterUser>
-                    <RegisterTime>
-                      {daysAgo === 0 ? "오늘" : `${daysAgo}일 전`}{" "}
-                      {channel.history_type === "update"
-                        ? "업데이트했습니다"
-                        : "등록했습니다"}
-                    </RegisterTime>
-                  </EditorInfoRow>
-                  <ChannelCard onClick={handleClick}>
-                    <CardRow>
-                      <CardThumbWrapper>
-                        <ChannelThumb
-                          src={channel.channel_thumbnail}
-                          alt={channel.channel_title}
-                        />
-                      </CardThumbWrapper>
-                      <CardBody>
-                        <ChannelTitle>{channel.channel_title}</ChannelTitle>
-                        <ChannelHandle>{channel.channel_handle}</ChannelHandle>
-                        <Subscriber>
-                          구독자 {parseSubscribersCount(channel.sub_count)}
-                        </Subscriber>
-                      </CardBody>
-                    </CardRow>
-                    <Intro>
-                      {removeMarkTags(channel.channel_overview) ||
-                        channel.channel_description ||
-                        "채널 설명이 없습니다."}
-                    </Intro>
-                  </ChannelCard>
-                </div>
-              );
-            })
-          ) : (
-            <EmptyMsg>등록된 채널이 없습니다.</EmptyMsg>
-          )}
-        </OthersWrapper>
+        <>
+          <ManualBox>
+            <ManualInput
+              placeholder="@ExampleChannel"
+              value={manualHandle}
+              onChange={(e) => setManualHandle(e.target.value)}
+            />
+            <ApplyButton onClick={submitManual}>변경 적용</ApplyButton>
+          </ManualBox>
+          <HintBox>
+            <HintTitle>📌 유튜브 @채널ID 찾기</HintTitle>
+            <HintDesc>
+              채널 홈 화면 상단에서 <strong>@아이디</strong>를 확인할 수
+              있습니다.
+            </HintDesc>
+
+            <HintImageScroll>
+              <HintImg src="/images/YoutubeHandleGuide1.png" alt="guide1" />
+              <HintImg src="/images/YoutubeHandleGuide2.png" alt="guide2" />
+            </HintImageScroll>
+          </HintBox>
+        </>
       )}
-    </FeedContainer>
+      {/* ④ 에러 모달 */}
+      {showErrorModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <InfoMessage>⚠️ 안내</InfoMessage>
+            <InfoDescription>{errorMessage}</InfoDescription>
+            <CloseButton onClick={() => setShowErrorModal(false)}>
+              닫기
+            </CloseButton>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+    </Container>
   );
 }
 
-/* ---------------------- Styled Components ---------------------- */
-const FeedContainer = styled.div`
-  background-color: #f9f9f9;
+/** ------------------- Styled Components -------------------*/
+const fade = keyframes`
+  0% {opacity:.6}
+  50% {opacity:1}
+ 100% {opacity:.6}
+`;
+
+const Container = styled.section`
+  margin-top: 24px;
+  background: #fff;
+  border: 1px solid #e2e2e2;
   border-radius: 8px;
-  padding: 20px 16px;
-  margin-top: 40px;
+  padding: 16px;
 `;
-
-const TabButtons = styled.div`
+const Header = styled.div`
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-`;
-
-const TabButton = styled.button<{ isActive: boolean }>`
-  flex: 1;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  border: none;
-  border-radius: 4px;
-  background-color: ${({ isActive }) => (isActive ? "#007bff" : "#f0f0f5")};
-  color: ${({ isActive }) => (isActive ? "#fff" : "#333")};
-  cursor: pointer;
-`;
-
-const TabTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 8px;
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 12px;
 `;
-
+const HeaderTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+`;
 const RefreshButton = styled.button`
-  padding: 10px 14px;
-  background-color: #007bff;
+  background: #007bff;
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
   border: none;
   border-radius: 4px;
+  padding: 6px 12px;
+  font-weight: 600;
   cursor: pointer;
-  &:hover {
-    background-color: #005caf;
+  &:disabled {
+    background: #ccc;
+    cursor: not-allowed;
   }
 `;
-
-/* ========== MySubs (내 구독 채널) ========== */
-const MySubsWrapper = styled.div`
-  /* background: #fff;
-  border-radius: 8px;
-  padding: 16px; */
+const SearchInput = styled.input`
+  display: block;
+  width: calc(100%);
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 20px;
 `;
-
-const HelpText = styled.p`
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 6px;
+const TabRow = styled.div`
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 12px;
 `;
-
-const SubsList = styled.ul`
+const TabButton = styled.button<{ active: boolean }>`
+  flex: 1;
+  padding: 10px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: #fff;
+  color: ${(p) => (p.active ? "#007bff" : "#555")};
+  border-bottom: 2px solid ${(p) => (p.active ? "#007bff" : "transparent")};
+`;
+const List = styled.ul`
   list-style: none;
+  margin: 0;
   padding: 0;
 `;
-
-const SubsCard = styled.li`
+const Card = styled.li`
   display: flex;
   align-items: center;
-  background: #fafafa;
-  background-color: #ffffff;
-  border: 1px solid rgb(224, 224, 224);
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  margin-bottom: 8px;
-  padding: 16px 12px;
-  margin-bottom: 16px;
-
+  padding: 12px;
+  margin-bottom: 12px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: 0.2s;
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
-    background-color: #f9fcff;
+    background: #f9fcff;
+    transform: translateY(-2px);
   }
 `;
-
-const ThumbWrapper = styled.div`
+const Thumb = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 24px;
   overflow: hidden;
   margin-right: 12px;
 `;
-
-const SubsThumb = styled.img`
+const Img = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
 `;
-
-const SubsInfo = styled.div`
+const Info = styled.div`
   flex: 1;
 `;
-
-const SubsTitle = styled.h4`
+const Name = styled.h4`
+  margin: 0 0 4px;
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 4px;
 `;
-
-const SubsDesc = styled.p`
+const Desc = styled.p`
+  margin: 0;
   font-size: 13px;
   color: #666;
   line-height: 1.3;
-  display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  display: -webkit-box;
   overflow: hidden;
 `;
-
-/* ========== Others (다른 유저들의 채널) ========== */
-const OthersWrapper = styled.div``;
-
-const Description = styled.p`
-  font-size: 14px;
-  color: #666;
-  margin-top: 4px;
-  margin-bottom: 16px;
-`;
-
-const EditorInfoRow = styled.div`
+const ManualBox = styled.div`
+  /* padding: 12px; */
+  /* border: 1px dashed #ccc; */
+  border-radius: 6px;
   display: flex;
+  gap: 8px;
   align-items: center;
-  margin-top: 12px;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: #444;
+  margin-bottom: 20px;
 `;
-
-const RegisterUser = styled.span`
-  font-weight: 600;
-  margin-right: 4px;
-  color: #333;
-`;
-
-const RegisterTime = styled.span`
-  font-size: 12px;
-  color: #666;
-`;
-
-const ChannelCard = styled.div`
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  border: 1px solid rgb(224, 224, 224);
-  border-radius: 8px;
-  padding: 16px 12px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05);
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
-    background-color: #f9fcff;
-  }
-`;
-
-const CardRow = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const CardThumbWrapper = styled.div`
-  width: 52px;
-  height: 52px;
-  border-radius: 30px;
-  overflow: hidden;
-  margin-right: 12px;
-`;
-
-const ChannelThumb = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const CardBody = styled.div`
-  display: flex;
-  flex-direction: column;
+const ManualInput = styled.input`
   flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
 `;
-
-const ChannelTitle = styled.div`
-  font-size: 15px;
-  font-weight: 700;
-  color: #333;
+const ApplyButton = styled.button`
+  background: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
 `;
-
-const ChannelHandle = styled.span`
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 4px;
-`;
-
-const Subscriber = styled.div`
-  font-size: 13px;
-  color: #999;
-`;
-
-/* Intro: 채널 설명을 2줄로 제한 */
-const Intro = styled.p`
-  font-size: 13px;
-  color: #555;
-  line-height: 1.4;
-  margin-top: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-/* ========== 공통 ========== */
 const SkeletonContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 `;
-
-const shimmer = keyframes`
-  0% { background-position: -200px 0; }
-  100% { background-position: 200px 0; }
-`;
-
 const SkeletonCard = styled.div`
-  width: 100%;
   height: 70px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e4e4e4 37%, #f0f0f0 63%);
-  background-size: 400% 100%;
-  animation: ${shimmer} 1.4s ease infinite;
   border-radius: 8px;
+  background: linear-gradient(90deg, #eee 25%, #ddd 37%, #eee 63%);
+  background-size: 400% 100%;
+  animation: ${fade} 1.4s infinite ease;
 `;
-
-const EmptyMsg = styled.div`
+const Empty = styled.div`
+  text-align: center;
   font-size: 14px;
   color: #666;
-  text-align: center;
-  margin-top: 24px;
+  padding: 40px 0;
+`;
+const EmptyIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 12px;
 `;
 
-/* ---------------------- Modal & Loading Overlays ---------------------- */
+const HintBox = styled.div`
+  background: #f8f9fa;
+  border: 1px solid #d8dee2;
+  border-radius: 8px;
+  padding: 14px 18px;
+`;
+const HintTitle = styled.h4`
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+`;
+const HintDesc = styled.p`
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  margin-bottom: 20px;
+  strong {
+    color: #000;
+  }
+`;
+const ToggleHintButton = styled.button`
+  font-size: 13px;
+  font-weight: 600;
+  color: #007bff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+const HintImageScroll = styled.div`
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+  }
+`;
+const HintImg = styled.img`
+  width: 70%;
+  max-width: 260px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+`;
+const Message = styled.p`
+  margin-top: 72px;
+  text-align: center;
+  color: #999;
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 3000;
+  justify-content: center;
+  z-index: 10000;
 `;
 
 const ModalContent = styled.div`
-  background-color: #ffffff;
-  border-radius: 6px;
-  padding: 20px 16px;
-  max-width: 400px;
   width: 90%;
+  max-width: 360px;
+  background: #fff;
+  padding: 20px 16px;
+  border-radius: 4px;
   text-align: center;
   position: relative;
 `;
-
 const ModalClose = styled.button`
   position: absolute;
-  top: 6px;
-  right: 6px;
-  background: none;
+  top: 4px;
+  right: 4px;
   border: none;
-  font-size: 20px;
+  background: none;
+  font-size: 18px;
   color: #666;
   cursor: pointer;
 `;
-
-const InfoMessage = styled.p`
-  color: #333;
-  margin-top: 10px;
-  font-weight: bold;
-  font-size: 18px;
-  margin-bottom: 12px;
-  line-height: 132%;
-`;
-
-const InfoDescription = styled.p`
-  font-size: 14px;
-  line-height: 1.4;
-  color: #666;
-  margin-bottom: 20px;
-  text-align: left;
-`;
-
-const LoadingOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 430px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.85);
-  z-index: 4000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LoadingSpinner = styled.div`
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #007bff;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  animation: spin 1s linear infinite;
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const LoadingText = styled.p`
-  margin-top: 14px;
+const InfoMessage = styled.h3`
   font-size: 16px;
   font-weight: 700;
-  color: #000;
-  line-height: 1.4;
-  white-space: pre-line;
-  text-align: center;
+  color: #333;
+  margin-bottom: 12px;
 `;
-
-const LoadingSubText = styled.p`
-  margin-top: 10px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #000;
-  white-space: pre-line;
-  text-align: center;
-`;
-
-const PhoneInput = styled.input`
-  width: 80%;
-  padding: 12px;
-  margin-top: 12px;
+const InfoDescription = styled.p`
+  margin-bottom: 12px;
   font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-right: 8px;
+  color: #666;
+  line-height: 1.4;
+  white-space: pre-line;
 `;
-
-const RegisterButton = styled.button`
-  flex: 1;
-  background-color: #007bff;
+const CloseButton = styled.button`
+  background: #000;
   color: #fff;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   border-radius: 4px;
-  padding: 14px;
-  margin-top: 12px;
-  font-size: 16px;
-  font-weight: 700;
+  padding: 8px 14px;
   cursor: pointer;
-  &:hover {
-    background-color: #0056b3;
-  }
 `;

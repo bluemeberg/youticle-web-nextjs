@@ -193,6 +193,24 @@ const AdminArticleBeforeLogin = () => {
     // ... 총 19개...
   ];
 
+  // TODO: 실제 오픈 시 true로 바꿔주세요
+  const isFeatureReady = false;
+
+  if (!isFeatureReady) {
+    return (
+      <MaintenanceContainer>
+        <Emoji>🚧</Emoji>
+        <Title>서비스 준비 중입니다</Title>
+        <Message>
+          아직 준비 중인 페이지입니다.
+          <br />
+          차주 중으로 베타 오픈할 예정이니 조금만 기다려 주세요.
+        </Message>
+        <Apology>불편을 드려 죄송합니다 🙏</Apology>
+      </MaintenanceContainer>
+    );
+  }
+
   return (
     <>
       {/* 탭 영역 */}
@@ -600,3 +618,39 @@ const SkeletonCard = styled.div`
 `;
 
 export default AdminArticleBeforeLogin;
+
+const MaintenanceContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  padding: 0 20px;
+  animation: ${fadeIn} 0.5s ease-out;
+  background-color: #fafafa;
+`;
+
+const Emoji = styled.div`
+  font-size: 64px;
+  margin-bottom: 16px;
+`;
+
+const Title = styled.h1`
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #333;
+`;
+
+const Message = styled.p`
+  font-size: 16px;
+  line-height: 1.5;
+  color: #555;
+  margin-bottom: 24px;
+`;
+
+const Apology = styled.p`
+  font-size: 14px;
+  color: #999;
+`;

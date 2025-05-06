@@ -55,6 +55,7 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
+    console.log(start);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
@@ -95,7 +96,7 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
             </Summary>
           </SectionCard>
         </ContentWrapper>
-        {dimmed && (
+        {/* {dimmed && (
           <AdminDimmedArea
             tocItemHeight={tocItemHeight}
             videoId={videoId}
@@ -107,7 +108,7 @@ const AdminTocItem = forwardRef<HTMLDivElement, TocItemProps>(
             section={section}
             overview={overview}
           />
-        )}
+        )} */}
       </Container>
     );
   }

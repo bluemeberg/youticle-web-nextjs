@@ -334,9 +334,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         taskStatus="Success"
       />
       {/* (2) 하단 플로팅 버튼 */}
-      <FloatingButton onClick={handleOpenThreadModal}>
+      {/* <FloatingButton onClick={handleOpenThreadModal}>
         스레드 생성하기
-      </FloatingButton>
+      </FloatingButton> */}
     </Container>
   );
 };

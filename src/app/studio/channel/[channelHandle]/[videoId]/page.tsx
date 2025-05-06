@@ -31,7 +31,7 @@ interface StudioVideoDetailPageProps {
 //     description: `채널 ${channelHandle}의 영상 아티클 상세보기`,
 //   };
 // }
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8001";
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 // 메인 페이지

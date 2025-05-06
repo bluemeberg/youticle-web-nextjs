@@ -18,6 +18,26 @@ export const parseSubscribersCount = (count: number): string => {
   }
 };
 
+// Converts "HH:MM:SS" or "MM:SS" → total seconds
+export function parseTimeStringToSeconds(ts: string): number {
+  // 1) colon-delimited → HH:MM:SS or MM:SS
+  if (ts.includes(":")) {
+    const parts = ts.split(":").map((p) => Number(p) || 0);
+    if (parts.length === 3) {
+      const [h, m, s] = parts;
+      return h * 3600 + m * 60 + s;
+    }
+    if (parts.length === 2) {
+      const [m, s] = parts;
+      return m * 60 + s;
+    }
+  }
+
+  // 2) otherwise treat as seconds (possibly with decimal)
+  const secs = parseFloat(ts);
+  return isNaN(secs) ? 0 : Math.floor(secs);
+}
+
 // 구독자 수를 파싱하는 함수
 export const parseVideoCountcribersCount = (count: number): string => {
   if (count < 1000) {
@@ -157,7 +177,6 @@ export const removeMarkTags = (text: string): string => {
   // 정규식을 사용하여 <mark></mark> 태그를 삭제
   return text.replace(/<mark[^>]*>/g, "").replace(/<\/mark>/g, "");
 };
-
 export function timeAgo(dateStr: string): string {
   const now = new Date();
   const dateObj = new Date(dateStr);
@@ -176,6 +195,9 @@ export function timeAgo(dateStr: string): string {
     return `${diffHours}시간 전`;
   } else if (diffDays < 7) {
     return `${diffDays}일 전`;
+  } else if (diffDays < 30) {
+    const diffWeeks = Math.floor(diffDays / 7);
+    return `${diffWeeks}주 전`; // 7일 이상은 주 단위
   } else {
     const diffMonths =
       (now.getFullYear() - dateObj.getFullYear()) * 12 +
@@ -184,10 +206,8 @@ export function timeAgo(dateStr: string): string {
 
     if (diffYears >= 1) {
       return `${diffYears}년 전`;
-    } else if (diffMonths >= 1) {
-      return `${diffMonths}개월 전`;
     } else {
-      return `${diffDays}일 전`;
+      return `${diffMonths}개월 전`;
     }
   }
 }

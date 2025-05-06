@@ -39,7 +39,7 @@ export default function TabMainPageClient() {
       />
 
       {/* 메인 탭 (Pill 스타일) */}
-      {!!user.email && (
+      {/* {!!user.email && (
         <MainTabBar>
           <MainTabButton
             isActive={mainTab === "videoArticle"}
@@ -54,7 +54,7 @@ export default function TabMainPageClient() {
             내 아카이브
           </MainTabButton>
         </MainTabBar>
-      )}
+      )} */}
 
       <MainTabContent>
         {mainTab === "videoArticle" && <ArticleCreateSection />}

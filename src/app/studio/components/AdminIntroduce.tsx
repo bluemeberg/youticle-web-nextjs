@@ -16,7 +16,7 @@ interface User {
 }
 
 // API base URL
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "https://claying.shop";
 
 export default function AdminIntroduce() {
   const router = useRouter();
