@@ -754,7 +754,10 @@ export default function ChannelAutoArticleSection() {
   useEffect(() => {
     setIsKakao(isKakaoBrowser());
   }, []);
-
+  const openInExternal = () => {
+    // 현재 페이지 URL을 새 탭(외부 브라우저)로 엽니다.
+    window.open(window.location.href, "_blank", "noopener,noreferrer");
+  };
   return (
     <SectionWrapper>
       {/* ================= Hero + Landing Sections (New) ================= */}
@@ -1184,6 +1187,19 @@ export default function ChannelAutoArticleSection() {
             <InfoDescription>
               구독 채널을 불러오려면 Google 로그인이 필요합니다.
             </InfoDescription>
+            {/* ── 여기에 강조 안내 컴포넌트 추가 */}
+            <BrowserWarning>
+              카카오톡 인앱 브라우저에서는 Google 로그인이 지원되지 않습니다.
+              <br />
+              Safari, Chrome, Samsung Internet 등
+              <br />
+              외부 브라우저에서 다시 시도해 주세요.
+            </BrowserWarning>
+            {/* 외부 브라우저 바로 열기 버튼 */}
+            <ExternalButton onClick={openInExternal}>
+              외부 브라우저에서 열기
+            </ExternalButton>
+
             <GoogleLogin onLoginSuccess={handleLoginSuccessBeforeSubs} />
           </ModalContent>
         </ModalOverlay>
@@ -2552,4 +2568,30 @@ const LoaderOverlayContent = styled.div`
 const LoadingText = styled.span`
   font-size: 14px;
   color: #fff;
+`;
+const ExternalButton = styled.button`
+  width: 100%;
+  background-color: #ffd800;
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  &:hover {
+    background-color: #ffcf00;
+  }
+`;
+const BrowserWarning = styled.div`
+  background-color: #fff4e5; /* 살짝 노란 배경 */
+  border: 1px solid #ffd080; /* 강조 테두리 */
+  color: #663c00; /* 진한 브라운 텍스트 */
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0; /* 위아래 간격 */
+  line-height: 1.5;
+  text-align: center;
 `;
