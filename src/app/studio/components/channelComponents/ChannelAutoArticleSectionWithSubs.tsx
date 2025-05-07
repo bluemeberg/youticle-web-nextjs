@@ -352,7 +352,7 @@ export default function ChannelAutoArticleSection() {
         src: "/images/250501_subs_guide1.png",
         alt: "구글 계정 선택 화면",
         description:
-          "'Youtube 계정 연결하기' 버튼 클릭 후, 주로 사용하는 구글 계정을 선택하세요.",
+          "하단 'Youtube 계정 연결하기' 버튼 클릭 후, 주로 사용하는 구글 계정을 선택하세요.",
       },
       {
         src: "/images/250501_subs_guide2.png",
@@ -372,7 +372,7 @@ export default function ChannelAutoArticleSection() {
           <ModalClose onClick={onClose}>×</ModalClose>
           <ScrollArea>
             <GreetingText>
-              {user.name}님, <br /> 구독 채널을 불러오기 전에 잠깐!
+              💡 {user.name}님, 구독 채널을 불러오기 전에 잠깐!
             </GreetingText>
             <InfoDescription>
               유튜브 구독 채널을 자동으로 요약하려면
@@ -380,9 +380,11 @@ export default function ChannelAutoArticleSection() {
               “구독목록 읽기” 권한이 필요합니다.
             </InfoDescription>
             <WarningNotice>
-              단, 놀라지 마세요! <br />
-              아직 구글 테스트 단계라 Step2와 같은 <br />
+              아래 step을 참고해서 진행 부탁드려요! <br />
+              <br />
+              참고로 아직 구글 테스트 단계라 Step2와 같은 <br />
               “확인되지 않은 앱” 경고창이 뜹니다.
+              <br />
               <br />
               베타 안정화 후 정식 인증을 받을 예정이에요😄
             </WarningNotice>
@@ -754,10 +756,7 @@ export default function ChannelAutoArticleSection() {
   useEffect(() => {
     setIsKakao(isKakaoBrowser());
   }, []);
-  const openInExternal = () => {
-    // 현재 페이지 URL을 새 탭(외부 브라우저)로 엽니다.
-    window.open(window.location.href, "_blank", "noopener,noreferrer");
-  };
+
   return (
     <SectionWrapper>
       {/* ================= Hero + Landing Sections (New) ================= */}
@@ -1183,23 +1182,20 @@ export default function ChannelAutoArticleSection() {
         <ModalOverlay>
           <ModalContent>
             <ModalClose onClick={() => setShowLoginModal(false)}>×</ModalClose>
-            <InfoMessage>로그인이 필요합니다</InfoMessage>
+            <InfoMessage>💡 로그인이 필요합니다</InfoMessage>
             <InfoDescription>
               구독 채널을 불러오려면 Google 로그인이 필요합니다.
             </InfoDescription>
             {/* ── 여기에 강조 안내 컴포넌트 추가 */}
             <BrowserWarning>
-              카카오톡 인앱 브라우저에서는 Google 로그인이 지원되지 않습니다.
+              ⚠️ 카카오톡 인앱 브라우저에서는 <br />
+              Google 로그인이 지원되지 않습니다.
+              <br />
               <br />
               Safari, Chrome, Samsung Internet 등
               <br />
               외부 브라우저에서 다시 시도해 주세요.
             </BrowserWarning>
-            {/* 외부 브라우저 바로 열기 버튼 */}
-            <ExternalButton onClick={openInExternal}>
-              외부 브라우저에서 열기
-            </ExternalButton>
-
             <GoogleLogin onLoginSuccess={handleLoginSuccessBeforeSubs} />
           </ModalContent>
         </ModalOverlay>
@@ -2585,9 +2581,9 @@ const ExternalButton = styled.button`
   }
 `;
 const BrowserWarning = styled.div`
-  background-color: #fff4e5; /* 살짝 노란 배경 */
-  border: 1px solid #ffd080; /* 강조 테두리 */
-  color: #663c00; /* 진한 브라운 텍스트 */
+  color: #007bff; /* 붉은 계열로 경고 느낌 강조 */
+  background: #f0f4ff; /* 연한 배경으로 구분 */
+  border: 1px solid #007bff; /* 강조 테두리 */
   font-size: 14px;
   padding: 12px;
   border-radius: 6px;

@@ -56,6 +56,19 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   }, [pathname]);
 
   const handleBackClick = () => {
+    // 📌 직접 진입된 스튜디오 채널 상세 페이지
+    const directStudioDetail = /^\/studio\/channel\/@[^/]+\/[^/]+$/;
+    // 📌 직접 진입된 아카이브 페이지
+    const directStudioArchive = pathname === "/studio/archive";
+
+    if (
+      (directStudioDetail.test(pathname) || directStudioArchive) &&
+      window.history.length <= 1
+    ) {
+      router.push("/studio");
+      return;
+    }
+
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "back_button_click", {
         event_category: "navigation",
@@ -207,6 +220,40 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       // setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
     }, 500); // UI 자연스럽게 변경을 위해 0.8초 딜레이
   };
+
+  const MENU_ITEMS = [
+    {
+      icon: "🎬",
+      label: "요약 스튜디오",
+      href: "/studio",
+      loadingMsg: "스튜디오 로딩 중...",
+    },
+    {
+      icon: "🏠",
+      label: "유티클 투데이",
+      href: "/today",
+      loadingMsg: "투데이 로딩 중...",
+    },
+    {
+      icon: "📂",
+      label: "내 아카이브",
+      href: "/studio/archive",
+      loadingMsg: "아카이브 로딩 중...",
+    },
+    // {
+    //   icon: "✍️",
+    //   label: "에디터 픽",
+    //   href: "/editor",
+    //   loadingMsg: "에디터 픽 로딩 중...",
+    // },
+    // {
+    //   icon: "ℹ️",
+    //   label: "소개",
+    //   href: "/about",
+    //   loadingMsg: "소개 페이지 로딩 중...",
+    // },
+  ];
+
   return (
     <>
       <Container
@@ -246,53 +293,26 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
               user.picture === "" && (
                 <MenuIcon onClick={handleMenuClick}></MenuIcon>
               )}
+            {/* 드롭다운 */}
             {menuOpen && (
-              <MenuDropdown>
-                <MenuItem
-                  onClick={() =>
-                    handleMenuNavigation("/", "유티클 투데이 로딩 중...")
-                  }
-                >
-                  유티클 투데이
-                </MenuItem>{" "}
-                {/* <MenuItem
-                  onClick={() =>
-                    handleMenuNavigation(
-                      "/studio",
-                      "유티클 스튜디오 로딩 중..."
-                    )
-                  }
-                >
-                  유티클 스튜디오
-                </MenuItem> */}
-                <MenuItem
-                  onClick={() =>
-                    handleMenuNavigation("/editor", "에디터 픽 로딩 중...")
-                  }
-                >
-                  에디터 픽
-                </MenuItem>
-                <MenuItem
-                  onClick={() =>
-                    handleMenuNavigation("/about", "유티클 소개 로딩 중...")
-                  }
-                >
-                  유티클 소개
-                </MenuItem>
-                {/* <MenuItem onClick={() => goToPage("/my")}>
-                  나만의 아티클
-                </MenuItem>
-                <MenuItem
-                  onClick={() =>
-                    window.open("https://tally.so/r/w4vWqk", "_blank")
-                  }
-                >
-                  설문 참여하기
-                </MenuItem> */}
-                <MenuItem onClick={() => handleAuth(user.picture !== "")}>
-                  {user.picture !== "" ? "로그아웃" : "로그인하기"}
-                </MenuItem>
-              </MenuDropdown>
+              <Dropdown>
+                {MENU_ITEMS.map((item) => (
+                  <DropdownItem
+                    key={item.href}
+                    onClick={() =>
+                      handleMenuNavigation(item.href, item.loadingMsg)
+                    }
+                  >
+                    <span className="icon">{item.icon}</span>
+                    <span className="label">{item.label}</span>
+                  </DropdownItem>
+                ))}
+
+                {/* 로그인/로그아웃 */}
+                <DropdownItem onClick={() => handleAuth(!!user.email)}>
+                  {user.email ? "로그아웃" : "로그인하기"}
+                </DropdownItem>
+              </Dropdown>
             )}
             {/* 로딩 중일 때 화면 중앙에 표시되는 안내 메시지 */}
             {loadingPage && (
@@ -485,4 +505,30 @@ const LoadingText = styled.div`
   color: white;
   margin-top: 10px;
   font-size: 16px;
+`;
+
+const Dropdown = styled.div`
+  position: absolute;
+  top: 52px;
+  right: 0;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+`;
+
+const DropdownItem = styled.div`
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+  &:hover {
+    background: #f0f0f0;
+  }
+  .icon {
+    font-size: 16px;
+  }
 `;
