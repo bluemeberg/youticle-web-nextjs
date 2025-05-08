@@ -3,12 +3,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
 import { keyframes } from "styled-components";
-
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth } from "@/firebase";
+import { getUserByEmail } from "@/api/apiClient";
 // (VideoItem, CurrentChannel, PreviousChannel 등 타입 정의도 동일하게 복사)
 interface VideoItem {
   title: string;
@@ -64,22 +66,27 @@ const ArchiveChannelPage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const user = useRecoilValue(userState);
-
+  const setUser = useSetRecoilState(userState);
+  // Fetch archive data whenever user.id changes
   useEffect(() => {
+    // if user isn't logged in yet, skip fetching
+    if (!user.id) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        // 현재 구독 채널 API
-        const resCurrent = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/current/${user.id}`
-        );
+        const [resCurrent, resPrev] = await Promise.all([
+          fetch(
+            `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/current/${user.id}`
+          ),
+          fetch(
+            `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${user.id}`
+          ),
+        ]);
         const dataCurrent: CurrentResponse = await resCurrent.json();
-        console.log(dataCurrent);
-        // 이전 등록 채널 API
-        const resPrev = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${user.id}`
-        );
         const dataPrev: PreviousResponse = await resPrev.json();
-
         setCurrentChannels(dataCurrent.current_channels || []);
         setPreviousChannels(dataPrev.previous_channels || []);
       } catch (err) {
@@ -88,8 +95,61 @@ const ArchiveChannelPage: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [user.id]);
+  // 구글 로그인 핸들러
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const data = await getUserByEmail(
+        result.user.email!,
+        result.user.displayName!
+      );
+      setUser({
+        name: result.user.displayName!,
+        email: result.user.email!,
+        picture: result.user.photoURL!,
+        id: data.id,
+      });
+    } catch (err) {
+      console.error("Google login failed:", err);
+    }
+  };
+  // 로그인 전 안내 화면
+  if (!user.email) {
+    return (
+      <>
+        <LoginPromptWrapper>
+          <LogoHeader />
+          <ArchiveTitle>🔖 내 아카이브</ArchiveTitle>
+          <ArchiveDescription>
+            생성된 아티클을 한곳에서 관리하세요.
+          </ArchiveDescription>
+          <PromptBox>
+            <PromptTitle>💡 로그인이 필요합니다</PromptTitle>
+            <PromptDesc>
+              아카이브를 보려면 Google 로그인이 필요해요.
+              <br />
+            </PromptDesc>
+            <BrowserWarning>
+              ⚠️ 카카오톡 인앱 브라우저에서는 <br />
+              Google 로그인이 지원되지 않습니다.
+              <br />
+              <br />
+              Safari, Chrome, Samsung Internet 등
+              <br />
+              외부 브라우저에서 다시 시도해 주세요.
+            </BrowserWarning>
+            <LoginButton onClick={handleGoogleLogin}>
+              Google 계정으로 로그인
+            </LoginButton>
+          </PromptBox>
+        </LoginPromptWrapper>
+      </>
+    );
+  }
 
   if (loading) {
     return (
@@ -106,11 +166,11 @@ const ArchiveChannelPage: React.FC = () => {
 
   return (
     <ArchiveWrapper>
+      <LogoHeader />
       <ArchiveTitle>내 아카이브</ArchiveTitle>
       <ArchiveDescription>
         생성된 아티클을 한곳에서 관리하세요.
       </ArchiveDescription>
-      <LogoHeader />
       {isAllEmpty && (
         <EmptyWrapper>
           <EmptyIcon>📭</EmptyIcon>
@@ -311,7 +371,7 @@ const ArchiveTitle = styled.h2`
 const ArchiveDescription = styled.p`
   font-size: 14px;
   color: #666;
-  margin-bottom: 16px;
+  margin-bottom: 32px;
   margin-left: 8px;
 `;
 
@@ -529,12 +589,11 @@ const NoArticleMsg = styled.div`
   border: 1px solid #eee;
   line-height: 132%;
 `;
-// spinner keyframes
+
 const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-// 로딩 전용 오버레이
 const LoadingOverlay = styled.div`
   height: 100vh;
   display: flex;
@@ -542,8 +601,6 @@ const LoadingOverlay = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
-// 동그란 스피너
 const Spinner = styled.div`
   width: 48px;
   height: 48px;
@@ -553,10 +610,63 @@ const Spinner = styled.div`
   animation: ${spin} 1s linear infinite;
   margin-bottom: 12px;
 `;
-
-// 로딩 텍스트
 const LoadingText = styled.div`
   font-size: 16px;
   color: #555;
   font-weight: 500;
+`;
+
+const LoginPromptWrapper = styled.div`
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fb;
+  flex-direction: column;
+`;
+const PromptBox = styled.div`
+  background: #fff;
+  padding: 32px 24px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 360px;
+`;
+const PromptTitle = styled.h2`
+  font-size: 20px;
+  margin-bottom: 8px;
+  font-weight: 700;
+`;
+const PromptDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.6;
+  color: #000;
+  margin-bottom: 24px;
+  white-space: pre-line;
+`;
+const BrowserWarning = styled.div`
+  color: #007bff; /* 붉은 계열로 경고 느낌 강조 */
+  background: #f0f4ff; /* 연한 배경으로 구분 */
+  border: 1px solid #007bff; /* 강조 테두리 */
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0; /* 위아래 간격 */
+  line-height: 1.5;
+  text-align: center;
+`;
+
+const LoginButton = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 16px 32px;
+  font-size: 16px;
+  margin-top: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  &:hover {
+    background-color: #005caf;
+  }
 `;
