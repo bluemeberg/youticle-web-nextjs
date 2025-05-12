@@ -10,7 +10,6 @@ import GoogleLogin from "@/common/MyArticleGoogleLogin";
 import { getUserByEmail } from "@/api/apiClient";
 import {
   parseSubscribersCount,
-  parseVideoCountcribersCount,
   removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
@@ -83,14 +82,8 @@ interface TokenResponse {
 }
 
 /** API Endpoint */
-const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8001";
-
-// (1) util 함수
-function isKakaoBrowser() {
-  if (typeof navigator === "undefined") return false;
-  return /KAKAOTALK/i.test(navigator.userAgent);
-}
+// const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
+const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
 
 /** 메인 컴포넌트 */
 export default function ChannelAutoArticleSection() {
@@ -107,8 +100,6 @@ export default function ChannelAutoArticleSection() {
 
   // 모달/로딩/에러 상태
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showLoginModal2, setShowLoginModal2] = useState(false);
-
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -203,7 +194,7 @@ export default function ChannelAutoArticleSection() {
     }
     setIsLoading(true);
     setLoadingMessage("채널 정보를 업데이트 중...");
-    setLoadingMessage2("다음날 오전 8시부터 신규 채널을 모니터링합니다!");
+    setLoadingMessage2("다음날 오전 7시부터 신규 채널을 모니터링합니다!");
 
     try {
       const response = await fetch(
@@ -249,7 +240,7 @@ export default function ChannelAutoArticleSection() {
     }
     setIsLoading(true);
     setLoadingMessage("채널 정보를 업데이트 중...");
-    setLoadingMessage2("다음날 오전 8시부터 신규 채널을 모니터링합니다!");
+    setLoadingMessage2("다음날 오전 7시부터 신규 채널을 모니터링합니다!");
 
     try {
       const response = await fetch(
@@ -287,129 +278,6 @@ export default function ChannelAutoArticleSection() {
     setIsEditing(false);
     setChannelInput("");
   };
-
-  const [showSubsGuideModal, setShowSubsGuideModal] = useState(false);
-
-  // 구독 채널 불러오기 전 구글 로그인
-  const handleLoginSuccessBeforeSubs = async (loginUser: User) => {
-    setShowLoginModal(false);
-    try {
-      const data = await getUserByEmail(loginUser.email, loginUser.displayName);
-      setUserState({
-        name: loginUser.displayName,
-        email: loginUser.email,
-        picture: loginUser.photoURL,
-        id: data.id,
-      });
-      // 구독 채널 불러오기 위한 안내 팝업 표출
-      setShowSubsGuideModal(true);
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("로그인 후 처리가 실패했습니다.");
-      setShowErrorModal(true);
-    }
-  };
-
-  // 수동 입력 채널 불러오기 전 구글 로그인
-  const handleLoginSuccessBeforeManualChannel = async (loginUser: User) => {
-    setShowLoginModal2(false);
-    try {
-      const data = await getUserByEmail(loginUser.email, loginUser.displayName);
-      setUserState({
-        name: loginUser.displayName,
-        email: loginUser.email,
-        picture: loginUser.photoURL,
-        id: data.id,
-      });
-      try {
-        console.log(channelInput);
-        // 3) 채널 ID 확인
-        const channelId = await resolveChannelId(channelInput);
-        // 4) 해당 페이지로 이동
-        router.push(`/studio/subscriptions/${channelId}`);
-      } catch (err: any) {
-        setErrorMessage("채널을 찾을 수 없습니다.");
-        setShowErrorModal(true);
-      } finally {
-        setShowManualInputModal(false);
-      }
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("로그인 후 처리가 실패했습니다.");
-      setShowErrorModal(true);
-    }
-  };
-  // 안내 모달 컴포넌트
-  function SubsGuideModal({
-    onProceed,
-    onClose,
-  }: {
-    onProceed: () => void;
-    onClose: () => void;
-  }) {
-    const screenshots = [
-      {
-        src: "/images/250501_subs_guide1.png",
-        alt: "구글 계정 선택 화면",
-        description:
-          "하단 'Youtube 계정 연결하기' 버튼 클릭 후, 주로 사용하는 구글 계정을 선택하세요.",
-      },
-      {
-        src: "/images/250501_subs_guide2.png",
-        alt: "확인되지 않은 앱 경고 화면",
-        description:
-          "‘계속’ 을 눌러주세요. 아직 테스트 단계라 발생하는 경고입니다.",
-      },
-      {
-        src: "/images/250501_subs_guide3.png",
-        alt: "권한 요청 요약 화면",
-        description: "‘계속’ 을 클릭하면 끝!",
-      },
-    ];
-    return (
-      <ModalOverlay>
-        <ModalContent>
-          <ModalClose onClick={onClose}>×</ModalClose>
-          <ScrollArea>
-            <GreetingText>
-              💡 {user.name}님, 구독 채널을 불러오기 전에 잠깐!
-            </GreetingText>
-            <InfoDescription>
-              유튜브 구독 채널을 자동으로 요약하려면
-              <br />
-              “구독목록 읽기” 권한이 필요합니다.
-            </InfoDescription>
-            <WarningNotice>
-              아래 step을 참고해서 진행 부탁드려요! <br />
-              <br />
-              참고로 아직 구글 테스트 단계라 Step2와 같은 <br />
-              “확인되지 않은 앱” 경고창이 뜹니다.
-              <br />
-              <br />
-              베타 안정화 후 정식 인증을 받을 예정이에요😄
-            </WarningNotice>
-
-            {/* ↓↓↓ 이 부분이 변경된 스크린샷 섹션 */}
-            <ScreenshotContainer>
-              {screenshots.map((shot, i) => (
-                <ScreenshotWrapper key={i}>
-                  <ScreenshotCaption>
-                    <strong>Step {i + 1}.</strong> {shot.description}
-                  </ScreenshotCaption>
-                  <ScreenshotImage src={shot.src} alt={shot.alt} />
-                </ScreenshotWrapper>
-              ))}
-              {/* <ScrollHint>더 내려보세요</ScrollHint> */}
-            </ScreenshotContainer>
-          </ScrollArea>
-
-          <PrimaryButton onClick={onProceed}>
-            YouTube 계정 연결하기
-          </PrimaryButton>
-        </ModalContent>
-      </ModalOverlay>
-    );
-  }
 
   // ========= 로그인 + 폰번호 등록 =========
   const handleLoginSuccess = async (loginUser: User) => {
@@ -524,12 +392,10 @@ export default function ChannelAutoArticleSection() {
     const desc = registeredChannel.description || "";
     return desc.length <= 160 ? desc : desc.slice(0, 160) + "...";
   };
-  const [isFetchingSubs, setIsFetchingSubs] = useState(false);
 
   async function fetchAllSubscriptions(token: string): Promise<any[]> {
     let allSubs: any[] = [];
     let nextPageToken: string | undefined = undefined;
-    setIsFetchingSubs(true);
     do {
       const res: Response = await fetch(
         `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50${
@@ -548,26 +414,20 @@ export default function ChannelAutoArticleSection() {
       }
       nextPageToken = data.nextPageToken;
     } while (nextPageToken);
-    setIsFetchingSubs(false);
-
     return allSubs;
   }
   /** 구독 채널 불러오기 */
-  async function handleGoogleSignInForSubscriptions(skipGuide = false) {
+  async function handleGoogleSignInForSubscriptions() {
     if (user.email === "") {
       // 로그인 안됐으면 모달 표시
       setShowLoginModal(true);
       return;
     }
-
     // sessionStorage에서 토큰과 만료 시각을 가져옵니다.
     const storedToken = sessionStorage.getItem("myYoutubeToken");
     const storedTokenExpire = sessionStorage.getItem("myYoutubeTokenExpire");
     const now = Date.now();
-    if (!storedToken && !skipGuide) {
-      setShowSubsGuideModal(true);
-      return;
-    }
+
     // 토큰이 존재하고 만료 시각이 아직 미래라면 바로 구독 채널 정보를 불러옵니다.
     if (storedToken && storedTokenExpire && now < Number(storedTokenExpire)) {
       const subscriptions = await fetchAllSubscriptions(storedToken);
@@ -689,73 +549,18 @@ export default function ChannelAutoArticleSection() {
     setShowManualInputModal(true);
   };
 
-  async function resolveChannelId(handle: string): Promise<string> {
-    const key = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-    if (!key) throw new Error("YouTube API key가 없습니다.");
-
-    // 1) '@' 떼기
-    let h = handle.trim();
-    if (h.startsWith("@")) h = h.slice(1);
-
-    // 2) channels.list?forUsername=로 채널 정보 조회
-    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-    url.searchParams.set("part", "id");
-    url.searchParams.set("forHandle", h);
-    url.searchParams.set("key", key);
-
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(`채널 조회 실패: ${res.status}`);
-    const json = await res.json();
-    if (json.items && json.items.length > 0) {
-      return json.items[0].id as string;
-    }
-
-    throw new Error("해당 핸들의 채널을 찾을 수 없습니다.");
-  }
-
   // (B) 모달 내부에서 실제 채널 등록 로직
   const handleManualChannelRegister = async (channelHandle: string) => {
-    // 1) 빈 입력 체크
-    if (!channelHandle.trim()) {
-      setErrorMessage("채널 핸들을 입력해주세요!");
-      setShowErrorModal(true);
+    if (!user.email) {
+      // 로그인 안됐으면 모달 표시
+      setShowLoginModal(true);
       return;
     }
     setChannelInput(channelHandle);
-    if (!user.email) {
-      // 로그인 안됐으면 모달 표시
-      setShowLoginModal2(true);
-      return;
-    }
-    try {
-      // 3) 채널 ID 확인
-      const channelId = await resolveChannelId(channelHandle);
-      // 4) 해당 페이지로 이동
-      router.push(`/studio/subscriptions/${channelId}`);
-    } catch (err: any) {
-      setErrorMessage(err.message);
-      setShowErrorModal(true);
-    } finally {
-      setShowManualInputModal(false);
-    }
+    await handleRegisterAfterLogin();
+    // handleRegisterAfterLogin은 이미 내부에서 채널 등록 로직을 처리
+    setShowManualInputModal(false);
   };
-
-  // 오늘 생성된 아티클을 업로드 날짜 내림차순으로 정렬
-  const sortedTodayArticles = React.useMemo(
-    () =>
-      [...todayArticles].sort(
-        (a, b) =>
-          new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
-      ),
-    [todayArticles]
-  );
-
-  const [isKakao, setIsKakao] = useState(false);
-  const [showKakaoModal, setShowKakaoModal] = useState(false);
-
-  useEffect(() => {
-    setIsKakao(isKakaoBrowser());
-  }, []);
 
   return (
     <SectionWrapper>
@@ -772,9 +577,7 @@ export default function ChannelAutoArticleSection() {
             </HeroSubtitle>
             {/* [모니터링 시작하기] 섹션 */}
             <ButtonGroup>
-              <BlueButton
-                onClick={() => handleGoogleSignInForSubscriptions(false)}
-              >
+              <BlueButton onClick={handleGoogleSignInForSubscriptions}>
                 유튜브 구독 채널 불러오기
               </BlueButton>
               <GrayButton onClick={openManualInputModal}>
@@ -1030,9 +833,7 @@ export default function ChannelAutoArticleSection() {
                 </CTAText>
 
                 {/* 1) 유튜브 구독 채널 불러오기 버튼 */}
-                <CTAButton
-                  onClick={() => handleGoogleSignInForSubscriptions(false)}
-                >
+                <CTAButton onClick={handleGoogleSignInForSubscriptions}>
                   유튜브 구독 채널 불러오기
                 </CTAButton>
 
@@ -1077,44 +878,40 @@ export default function ChannelAutoArticleSection() {
 
             {/* 오늘 생성된 아티클 */}
             <TodayArticleSection>
-              <TodaySectionTitle>
-                📌 오늘 생성된 아티클 (오전 8시 갱신)
-              </TodaySectionTitle>
-              {sortedTodayArticles.length === 0 ? (
+              <TodaySectionTitle>📌 오늘 생성된 아티클</TodaySectionTitle>
+              {todayArticles.length === 0 ? (
                 <EmptyToday>
                   <EmptyMsg>
                     오늘 생성된 아티클이 없습니다.
                     <br />
-                    내일 오전 8시에 다시 확인해주세요!
+                    내일 오전 7시에 다시 확인해주세요!
                   </EmptyMsg>
                 </EmptyToday>
               ) : (
-                <TodayArticlesList>
-                  {sortedTodayArticles.map((art) => (
-                    <ArticleCard
-                      key={art.video_id}
-                      onClick={() =>
-                        router.push(
-                          `/studio/channel/${registeredChannel.channel_handle}/${art.video_id}`
-                        )
-                      }
-                    >
-                      <ArticleInfo>
-                        <ArticleTitle>
-                          {art.summary_data.headline_title}
-                        </ArticleTitle>
-                        <ArticleMeta>
-                          조회수 {parseVideoCountcribersCount(art.views)}·{" "}
-                          {timeAgo(art.upload_date)}
-                        </ArticleMeta>
-                      </ArticleInfo>
-                      <ArticleThumb src={art.thumbnail} alt={art.title} />
-                    </ArticleCard>
-                  ))}
-                </TodayArticlesList>
+                todayArticles.map((art) => (
+                  <ArticleCard
+                    key={art.video_id}
+                    onClick={() =>
+                      router.push(
+                        `/studio/channel/${registeredChannel.channel_handle}/${art.video_id}`
+                      )
+                    }
+                  >
+                    <ArticleInfo>
+                      <ArticleTitle>
+                        {art.summary_data.headline_title}
+                      </ArticleTitle>
+                      <ArticleMeta>
+                        조회수 {art.views?.toLocaleString()}회 ·{" "}
+                        {timeAgo(art.upload_date)}
+                      </ArticleMeta>
+                    </ArticleInfo>
+                    <ArticleThumb src={art.thumbnail} alt={art.title} />
+                  </ArticleCard>
+                ))
               )}
             </TodayArticleSection>
-            {/* 
+
             {!isEditing ? (
               <ButtonRow>
                 <GrayButton onClick={() => setShowChangeModal(true)}>
@@ -1145,7 +942,7 @@ export default function ChannelAutoArticleSection() {
                   </CancelButton>
                 </ButtonRow>
               </EditSection>
-            )} */}
+            )}
           </CardWrapper>
         </RegisteredContainer>
       )}
@@ -1182,37 +979,11 @@ export default function ChannelAutoArticleSection() {
         <ModalOverlay>
           <ModalContent>
             <ModalClose onClick={() => setShowLoginModal(false)}>×</ModalClose>
-            <InfoMessage>💡 로그인이 필요합니다</InfoMessage>
+            <InfoMessage>로그인이 필요합니다</InfoMessage>
             <InfoDescription>
               구독 채널을 불러오려면 Google 로그인이 필요합니다.
             </InfoDescription>
-            {/* ── 여기에 강조 안내 컴포넌트 추가 */}
-            <BrowserWarning>
-              ⚠️ 카카오톡 인앱 브라우저에서는 <br />
-              Google 로그인이 지원되지 않습니다.
-              <br />
-              <br />
-              Safari, Chrome, Samsung Internet 등
-              <br />
-              외부 브라우저에서 다시 시도해 주세요.
-            </BrowserWarning>
-            <GoogleLogin onLoginSuccess={handleLoginSuccessBeforeSubs} />
-          </ModalContent>
-        </ModalOverlay>
-      )}
-
-      {/* 로그인 모달 */}
-      {showLoginModal2 && (
-        <ModalOverlay>
-          <ModalContent>
-            <ModalClose onClick={() => setShowLoginModal2(false)}>×</ModalClose>
-            <InfoMessage>로그인이 필요합니다</InfoMessage>
-            <InfoDescription>
-              입력하신 채널의 정보를 불러오려면 Google 로그인이 필요합니다.
-            </InfoDescription>
-            <GoogleLogin
-              onLoginSuccess={handleLoginSuccessBeforeManualChannel}
-            />
+            <GoogleLogin onLoginSuccess={handleLoginSuccess} />
           </ModalContent>
         </ModalOverlay>
       )}
@@ -1223,7 +994,7 @@ export default function ChannelAutoArticleSection() {
           <ModalContent>
             <InfoMessage>카카오톡 알림을 위한 번호</InfoMessage>
             <InfoDescription>
-              매일 오전 8시에 채널 요약본을 카톡으로 전달해 드려요!
+              매일 오전 7시에 채널 요약본을 카톡으로 전달해 드려요!
             </InfoDescription>
             <PhoneInput
               placeholder="010-0000-0000"
@@ -1243,47 +1014,6 @@ export default function ChannelAutoArticleSection() {
           onClose={() => setShowChangeModal(false)}
           onUpdateChannel={performChannelUpdate}
         />
-      )}
-
-      {/* 안내 모달 */}
-      {showSubsGuideModal && (
-        <SubsGuideModal
-          onProceed={() => {
-            setShowSubsGuideModal(false);
-            handleGoogleSignInForSubscriptions(true);
-          }}
-          onClose={() => setShowSubsGuideModal(false)}
-        />
-      )}
-
-      {/* 카카오톡 브라우저 가이드 모달 */}
-      {showKakaoModal && (
-        <ModalOverlay>
-          <ModalContent>
-            <ModalClose onClick={() => setShowKakaoModal(false)}>×</ModalClose>
-            <InfoMessage>
-              ⚠️ 카카오톡 브라우저에서는 지원하지 않습니다
-            </InfoMessage>
-            <InfoDescription>
-              Google 로그인을 위해서는
-              <br />
-              Safari, Chrome 등 외부 브라우저에서
-              <br />이 페이지를 열어주세요.
-            </InfoDescription>
-            <CloseButton onClick={() => setShowKakaoModal(false)}>
-              닫기
-            </CloseButton>
-          </ModalContent>
-        </ModalOverlay>
-      )}
-
-      {isFetchingSubs && (
-        <ModalOverlay>
-          <LoaderOverlay>
-            <Spinner />
-            <LoadingText>구독 채널을 불러오는 중입니다…</LoadingText>
-          </LoaderOverlay>
-        </ModalOverlay>
       )}
     </SectionWrapper>
   );
@@ -1460,8 +1190,8 @@ const RegisterButtonColumn = styled.button`
   font-weight: 700;
   border: none;
   border-radius: 4px;
-  padding: 10px;
-  font-size: 14px;
+  padding: 14px;
+  font-size: 16px;
   width: 100%;
   margin-bottom: 12px;
   cursor: pointer;
@@ -1693,8 +1423,8 @@ const Author = styled.div`
 
 const FinalCTASection = styled.section`
   margin-top: 100px;
-  /* padding: 40px 12px; */
-  /* background-color: #f3f9ff; */
+  padding: 40px 12px;
+  background-color: #f3f9ff;
   border-radius: 8px;
   text-align: center;
   /* border: 1px solid #d6d6d6; */
@@ -1794,7 +1524,6 @@ const ChannelThumb = styled.img`
 const ChannelInfo = styled.div`
   display: flex;
   flex-direction: column;
-  margin-left: 8px;
 `;
 
 const ChannelTitle = styled.h4`
@@ -1803,7 +1532,7 @@ const ChannelTitle = styled.h4`
   margin-top: 8px;
   /* margin-bottom: 4px; */
   color: #222;
-  /* text-align: center; */
+  text-align: center;
 `;
 
 const ChannelHandle = styled.span`
@@ -1811,7 +1540,7 @@ const ChannelHandle = styled.span`
   color: #666;
 `;
 const SubCount = styled.div`
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 13px;
   color: #666;
 `;
@@ -1824,12 +1553,6 @@ const ChannelDesc = styled.div`
 
 const TodayArticleSection = styled.div`
   margin-top: 24px;
-`;
-const TodayArticlesList = styled.div`
-  max-height: 400px; /* 원하는 높이로 조정 */
-  overflow-y: auto;
-  margin-top: 8px;
-  padding-right: 4px; /* 스크롤바 여백 */
 `;
 const TodaySectionTitle = styled.h5`
   font-size: 14px;
@@ -1877,8 +1600,6 @@ const ArticleTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #222;
-  line-height: 132%;
-  margin-bottom: 8px;
 `;
 const ArticleMeta = styled.div`
   margin-top: 4px;
@@ -2196,7 +1917,7 @@ interface ManualInputModalProps {
 
 function ManualInputModal({ onClose, onRegister }: ManualInputModalProps) {
   const [localChannelInput, setLocalChannelInput] = useState("");
-  const [showHintImages, setShowHintImages] = useState(true);
+  const [showHintImages, setShowHintImages] = useState(false);
   const toggleHintImages = () => setShowHintImages((prev) => !prev);
   // "등록하기" 버튼 시 호출
   const handleSubmit = () => {
@@ -2229,7 +1950,7 @@ function ManualInputModal({ onClose, onRegister }: ManualInputModalProps) {
         </RegisterButtonColumn>
 
         <HintBox>
-          <HintTitle>유튜브 앱에서 @채널핸들명 찾기</HintTitle>
+          <HintTitle>유튜브 @채널핸들명 찾기</HintTitle>
           <HintDesc>
             채널 홈 화면 상단에서 <strong>@아이디</strong>를 확인할 수 있습니다.
           </HintDesc>
@@ -2417,177 +2138,4 @@ const QuoteText = styled.p`
   margin-bottom: 0; /* 내부 여백을 줄이거나 조정 */
   text-align: center;
   white-space: pre-line; /* 줄바꿈 허용 */
-`;
-
-// 로그인 및 권한 안내에 사용하는 버튼 스타일
-const PrimaryButton = styled.button`
-  background-color: #007bff;
-  color: #fff;
-  font-weight: 700;
-  font-size: 16px;
-  border: none;
-  border-radius: 6px;
-  padding: 12px 20px;
-  cursor: pointer;
-  &:hover {
-    background-color: #005caf;
-  }
-`;
-/* SubsGuideModal 전용 스타일 */
-const GreetingText = styled.h2`
-  font-size: 18px;
-  font-weight: 600;
-  color: #222;
-  margin-bottom: 8px;
-  line-height: 132%;
-`;
-
-/* 스크롤 영역 */
-const ScrollArea = styled.div`
-  margin: 16px 0;
-  max-height: 360px;
-  overflow-y: auto;
-  padding-right: 8px; /* 스크롤 여유 공간 */
-  scrollbar-width: thin;
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-  }
-`;
-
-const ModalSubTitle = styled.h4`
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #333;
-  margin-top: 20px;
-`;
-
-const WarningNotice = styled.p`
-  font-size: 13px;
-  color: #007bff; /* 붉은 계열로 경고 느낌 강조 */
-  background: #f0f4ff; /* 연한 배경으로 구분 */
-  padding: 10px 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  line-height: 1.4;
-`;
-
-const Screenshots = styled.div`
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  margin-bottom: 20px;
-  flex-direction: column;
-  align-items: center;
-`;
-
-const Screenshot = styled.img`
-  flex: 0 0 48%;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  object-fit: contain;
-  width: 100%;
-`;
-
-const ScreenshotContainer = styled.div`
-  margin-top: 20px;
-`;
-
-const ScrollHint = styled.div`
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 12px;
-  color: #007bff;
-  font-weight: 700;
-  &::before {
-    content: "↓";
-    font-size: 18px;
-    margin-bottom: 4px;
-  }
-`;
-// (2) 각 이미지를 감싸는 래퍼
-const ScreenshotWrapper = styled.div`
-  margin-bottom: 28px;
-`;
-
-// (3) 이미지 스타일 (가로 폭 100%, 세로 비율 유지)
-const ScreenshotImage = styled.img`
-  width: 100%;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  object-fit: contain;
-`;
-
-// (4) 단계별 설명
-const ScreenshotCaption = styled.p`
-  font-size: 14px;
-  color: #000;
-  margin-top: 6px;
-  line-height: 128%;
-  text-align: left;
-  font-weight: 500;
-  margin-bottom: 8px;
-`;
-
-const LoaderOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  flex-direction: column;
-`;
-
-const LoaderOverlayContent = styled.div`
-  background: #fff;
-  padding: 20px 24px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const LoadingText = styled.span`
-  font-size: 14px;
-  color: #fff;
-`;
-const ExternalButton = styled.button`
-  width: 100%;
-  background-color: #ffd800;
-  color: #000;
-  font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 14px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  &:hover {
-    background-color: #ffcf00;
-  }
-`;
-const BrowserWarning = styled.div`
-  color: #007bff; /* 붉은 계열로 경고 느낌 강조 */
-  background: #f0f4ff; /* 연한 배경으로 구분 */
-  border: 1px solid #007bff; /* 강조 테두리 */
-  font-size: 14px;
-  padding: 12px;
-  border-radius: 6px;
-  margin: 12px 0; /* 위아래 간격 */
-  line-height: 1.5;
-  text-align: center;
 `;
