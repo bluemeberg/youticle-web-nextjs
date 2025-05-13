@@ -795,7 +795,7 @@ export default function ChannelAutoArticleSection() {
             <HeroVideoWrapper>
               <Video
                 ref={videoRef}
-                src="/videos/hero_output_250406_4.mp4"
+                src="/videos/250511_channel_subs3.mp4"
                 // poster="/images/What유티클2.png"
                 muted
                 autoPlay
