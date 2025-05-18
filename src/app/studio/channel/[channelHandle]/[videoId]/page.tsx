@@ -1,5 +1,5 @@
 import NotFoundPage from "@/editor/[id]/components/NotFound";
-import ClientSide from "@/studio/[id]/components/ClientSide";
+import ClientSide from "./components/ClientSide";
 import { Metadata } from "next";
 // import ClientSide from "./components/ClientSide";
 import ClientSide2 from "./components/ClientSide2";
