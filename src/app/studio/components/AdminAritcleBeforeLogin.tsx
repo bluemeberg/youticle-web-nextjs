@@ -506,7 +506,7 @@ const EditorImage = styled.img<{ isSelected: boolean }>`
       : "2px solid #ddd"}; /* 선택된 경우 파란색 테두리 */
   transition: border 0.3s ease-in-out;
   image-rendering: crisp-edges;
-  object-fit: cover;*/
+  object-fit: cover;
 `;
 
 const EditorName = styled.span<{ isSelected: boolean }>`

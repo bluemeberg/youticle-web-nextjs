@@ -54,8 +54,6 @@ const AdminChannelTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
-    console.log("hello");
-    console.log(summary);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>

@@ -1790,19 +1790,24 @@ const ChannelInfo = styled.div`
   flex-direction: column;
   margin-left: 8px;
 `;
-
 const ChannelTitle = styled.h4`
   font-size: 15px;
   font-weight: 700;
-  margin-top: 8px;
-  /* margin-bottom: 4px; */
   color: #222;
-  /* text-align: center; */
+  margin: 8px 0 4px;
+  text-align: center; /* 중앙 정렬 */
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.2;
 `;
 
 const ChannelHandle = styled.span`
   font-size: 13px;
   color: #666;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
 `;
 const SubCount = styled.div`
   margin-top: 8px;
@@ -2354,19 +2359,23 @@ const ScrollContainer = styled.div`
   }
 `;
 
+// ChannelCard를 고정 크기(width)로 선언하고, 텍스트 줄바꿈을 허용합니다.
 const ChannelCard = styled.div`
+  width: 132px; /* min/max 대신 width로 고정 */
+  padding: 16px;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
   display: flex;
-  justify-content: center;
   flex-direction: column;
   align-items: center;
-  min-width: 128px;
-  max-width: 128px;
+
+  /* 아래가 핵심! */
+  white-space: normal; /* 줄바꿈 허용 */
+  overflow-wrap: break-word; /* 단어 단위로 줄바꿈 */
+  word-break: break-word; /* 매우 긴 문자열도 잘라서 줄바꿈 */
 `;
 
 const ChannelHeader = styled.div`

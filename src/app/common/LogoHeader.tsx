@@ -25,7 +25,6 @@ interface LogoHeaderProps {
 
 const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   const user = useRecoilValue(userState);
-  console.log(user);
   const setUser = useSetRecoilState(userState);
   const player = useRecoilValue(playerState);
   const setPlayer = useSetRecoilState(playerState);
@@ -213,6 +212,8 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   const [loadingPage, setLoadingPage] = useState(false);
   const [loadingText, setLoadingText] = useState(""); // 로딩 메시지 상태 추가
   const handleMenuNavigation = (url: string, loadingMessage?: string) => {
+    if (pathname === url) return router.push(url);
+
     setLoadingText(loadingMessage || "로딩 중..."); // 로딩 메시지 설정
     setLoadingPage(true); // 로딩 상태 활성화
     setTimeout(() => {

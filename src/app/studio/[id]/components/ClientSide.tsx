@@ -5,7 +5,6 @@ import styled, { keyframes } from "styled-components";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
-import Contents from "./Contents";
 import { DataProps } from "@/types/dataProps";
 import { formatSummary, removeMarkTags } from "@/utils/formatter";
 import { playerState } from "@/store/player";
@@ -16,6 +15,7 @@ import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
+import Contents from "./Contents";
 
 interface ClientSideProps {
   id: string;

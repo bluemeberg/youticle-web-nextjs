@@ -5,7 +5,6 @@ import styled, { keyframes } from "styled-components";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
-import Contents from "./Contents";
 import { DataProps } from "@/types/dataProps";
 import { formatSummary, removeMarkTags } from "@/utils/formatter";
 import { playerState } from "@/store/player";
@@ -16,6 +15,7 @@ import VideoCard from "@/detail/[id]/components/VideoCard";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "@/studio/[id]/components/CommentInsightSection";
 import ThreadModal from "@/studio/[id]/components/ThreadModal";
+import Contents from "./Contents";
 
 interface ClientSideProps {
   id: string;
@@ -23,8 +23,6 @@ interface ClientSideProps {
 }
 
 const ClientSide = ({ id, detailData }: ClientSideProps) => {
-  console.log(id);
-  console.log(detailData);
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +68,17 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     },
   };
 
+  const pageViewSent = useRef(false);
+  useEffect(() => {
+    if (!window.gtag || pageViewSent.current) return;
+    pageViewSent.current = true;
+
+    window.gtag("event", "page_view_channel", {
+      page_path: window.location.pathname,
+      page_title: detailData.summary_data.headline_title,
+    });
+  }, []); // <- empty deps, only on first mount
+
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -87,6 +96,58 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  // ───────────────────────────
+  // 2) SCROLL / READING DEPTH
+  // ───────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.gtag) return;
+
+    const thresholds = [25, 50, 75, 100]; // % of page height
+    const triggered = new Array(thresholds.length).fill(false);
+
+    const onScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const pct = Math.round((scrollTop / docHeight) * 100);
+
+      thresholds.forEach((th, i) => {
+        if (!triggered[i] && pct >= th) {
+          triggered[i] = true;
+          window.gtag("event", "scroll_depth_channel", {
+            event_category: "engagement",
+            event_label: `${th}% scrolled`,
+            value: th,
+          });
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // ───────────────────────────
+  // 3) TIME ON PAGE
+  // ───────────────────────────
+  const startTimeRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.gtag) return;
+
+    const onBeforeUnload = () => {
+      const seconds = (Date.now() - startTimeRef.current) / 1000;
+      window.gtag("event", "time_on_page_channel", {
+        event_category: "engagement",
+        event_label: window.location.pathname,
+        value: Math.floor(seconds), // round to whole seconds
+      });
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   // Server-side data fetching using fetch with no-store
   const EDITOR_ARTICLE_API_LOCAL_URL = "http://0.0.0.0:8000/editor/all/article";
   const EDITOR_ARTICLE_API_URL = "https://youticle.shop/editor/all/article";

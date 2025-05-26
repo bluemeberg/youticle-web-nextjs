@@ -11,7 +11,7 @@ export interface DataProps {
   subscribers: number;
   score: number;
   summary_data: SummaryData;
-
+  id?: string;
   channel_details: ChannelDetails;
 }
 

@@ -91,7 +91,7 @@ const formatMinutesToTime = (minutes: number): string => {
 // 시간 범위를 포맷팅하는 함수
 export const formatTimeRange = (startMinutes: number): string => {
   const startTime = formatMinutesToTime(startMinutes);
-  return `${startTime} ~`;
+  return `${startTime}~`;
 };
 
 export const formatSummary = (summary: string | string[] | undefined) => {

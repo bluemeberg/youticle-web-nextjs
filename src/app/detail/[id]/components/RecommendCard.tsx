@@ -17,9 +17,22 @@ interface RecommendCardProps extends DataProps {
 
 const RecommendCard = (props: RecommendCardProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const [, , , channelHandle] = pathname.split("/"); // "@ttimestv"
+
   const setTopicState = useSetRecoilState(detailDataState);
   const { video_id, summary_data, thumbnail, upload_date } = props;
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+
+  // Convert UTC to KST (Korean Standard Time)
+  const convertToKST = (utcDate: string) => {
+    const date = new Date(utcDate);
+    // Convert UTC to KST (Korean Standard Time is UTC + 9)
+    date.setHours(date.getHours() + 9);
+    return date;
+  };
+
+  const kstDate: Date = convertToKST(upload_date); // KST 시간 변환
 
   const handleNavigate = () => {
     if (typeof window !== "undefined" && window.gtag) {
@@ -40,6 +53,12 @@ const RecommendCard = (props: RecommendCardProps) => {
         // API 소스가 'editor'인지 'briefing'인지도 함께 query param으로
         const sourceParam = props.source === "editor" ? "editor" : "briefing";
         router.push(`/studio/${props.video_id}?source=${sourceParam}`);
+      } else if (
+        pathname.startsWith("/studio/channel") &&
+        channelHandle &&
+        props.path !== "detail"
+      ) {
+        router.push(`/studio/channel/${channelHandle}/${props.id}`);
       } else if (props.path === "editor") {
         router.push(`/editor/${props.video_id}`);
       } else {
@@ -59,7 +78,7 @@ const RecommendCard = (props: RecommendCardProps) => {
       <Thumbnail src={thumbnail} />
       <Info>
         <Title>{summary_data.headline_title}</Title>
-        <UploadTime>{timeAgo(upload_date)}</UploadTime>
+        <UploadTime>{timeAgo(kstDate.toISOString())}</UploadTime>
       </Info>
     </Container>
   );
@@ -79,9 +98,9 @@ const Container = styled.div`
 
 const Thumbnail = styled.img`
   object-fit: cover;
-  height: 64px;
-  min-width: 120px;
-  max-width: 120px;
+  height: 80px;
+  min-width: 140px;
+  max-width: 140px;
 `;
 
 const Info = styled.div`

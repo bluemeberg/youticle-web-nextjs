@@ -5,7 +5,6 @@ import styled, { keyframes } from "styled-components";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
-import Contents from "./Contents";
 import { DataProps } from "@/types/dataProps";
 import { formatSummary, removeMarkTags } from "@/utils/formatter";
 import { playerState } from "@/store/player";
@@ -16,6 +15,7 @@ import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
+import Contents from "./Contents";
 
 interface ClientSide2Props {
   id: string;
@@ -31,7 +31,7 @@ interface SectionData {
   explanation_description?: string;
 }
 
-// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8000";
+// const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8001";
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
 const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {

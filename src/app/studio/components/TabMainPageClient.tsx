@@ -23,7 +23,6 @@ export default function TabMainPageClient() {
   );
   const user = useRecoilValue(userState);
   // 로그인 안 된 상태라면 'myLibrary' 탭 숨기고, 항상 'videoArticle' 탭만 표시
-  console.log(user);
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
   const router = useRouter();
   return (

@@ -6,7 +6,6 @@ import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import React, { useEffect, useRef, useState } from "react";
 import TocItem from "@/detail/[id]/components/TocItem";
-import Recommend from "@/detail/[id]/components/Recommend";
 import AdminChannelTocItem from "./AdminChannelTocItem";
 import StockOverview from "@/detail/[id]/components/overviews/StockOverview";
 import HealthOverview from "@/detail/[id]/components/overviews/HealthOverview";
@@ -23,6 +22,7 @@ import TravelOverviewUnified from "@/detail/[id]/components/overviews/TravelOver
 import HealthOverviewBusinessStyle from "@/detail/[id]/components/overviews/HealthOverview";
 import { parseTimeStringToSeconds } from "@/utils/formatter";
 import { fetchSubscribedSubjects } from "@/api/apiClient";
+import RecommendChannel from "./RecommendChannel";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -211,8 +211,6 @@ const Contents = ({
 
   const contentNumberNotLogin =
     Math.ceil(detailData.summary_data.section.length / 2) + 1;
-  console.log("task status", taskStatus);
-  console.log(detailData.summary_data.section);
   return (
     <>
       <ContentWrapper
@@ -393,16 +391,16 @@ const Contents = ({
             )} */}
         </HilightContainer>
       )}
+
       {!hasDimmedItem && taskStatus === "Success" ? (
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
           $tocItemHeight={tocItemHeight}
           $isUnsubscribedSection={isUnsubscribedSection} // 새로운 속성 추가
         >
-          <Recommend
+          <RecommendChannel
             section={detailData.section}
             videoId={detailData.video_id}
-            isUnsubscribedSection={isUnsubscribedSection}
           />
         </RecommendWrapper>
       ) : (
@@ -431,12 +429,16 @@ const RecommendWrapper = styled.div<{
       ? `240px`
       : props.$hasDimmedItem
       ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
-      : `100px`};
+      : `40px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 20px;
   padding-right: 20px;
 `;
 
 const HilightContainer = styled.div`
+  margin-top: 40px;
+`;
+
+const RecommendChannelWrapper = styled.div`
   margin-top: 40px;
 `;

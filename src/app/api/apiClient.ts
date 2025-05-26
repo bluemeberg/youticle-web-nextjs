@@ -1,5 +1,7 @@
 // apiClient.ts
 
+import { ChannelDetails } from "@/types/dataProps";
+
 const API_BASE_URL = "https://youticle.shop";
 // const API_BASE_URL = "http://0.0.0.0:8001";
 // 유저 정보 최초 등록
@@ -183,4 +185,42 @@ export async function fetchEditorArticle() {
   } catch (error) {
     console.error("Error fetching data:", error);
   }
+}
+export interface ChannelArticle {
+  video_id: string; // Add video_id to ChannelArticle
+  id: string;
+  title: string;
+  section: string;
+  upload_date: string;
+  summary_data: any;
+  channel_details: ChannelDetails;
+
+  thumbnail: string; // Ensure thumbnail exists
+  views: number; // Add views
+  likes: number; // Add likes (if necessary)
+  score: number; // Add score for sorting
+  duration: string; // Add duration if it's needed
+  // … 필요하다면 thumbnail, etc 추가
+  comments: number;
+  subscribers: number;
+}
+
+export interface ChannelDetailResponse {
+  channel: {
+    /* 생략 */
+  };
+  today_articles: ChannelArticle[];
+  past_articles: ChannelArticle[];
+}
+
+export async function fetchChannelDetail(
+  channel_handle: string
+): Promise<ChannelDetailResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/editor/user_channels/detail?channel_handle=${encodeURIComponent(
+      channel_handle
+    )}`
+  );
+  if (!res.ok) throw new Error("채널 상세 조회 실패");
+  return res.json();
 }

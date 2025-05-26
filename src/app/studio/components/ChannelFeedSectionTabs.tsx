@@ -326,6 +326,10 @@ const List = styled.ul`
 const Card = styled.li`
   display: flex;
   align-items: center;
+
+  /* ↓ 이거 없으면 Info가 넘치면 인접 카드로 침범합니다 */
+  overflow: hidden;
+
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 12px;
@@ -337,36 +341,58 @@ const Card = styled.li`
     transform: translateY(-2px);
   }
 `;
+
 const Thumb = styled.div`
   width: 48px;
   height: 48px;
-  border-radius: 24px;
+  border-radius: 50%;
   overflow: hidden;
   margin-right: 12px;
+
+  /* ↓ 이거 안 넣으면 flex 부모가 좁아질 때 썸네일이 찌그러집니다 */
+  flex-shrink: 0;
 `;
+
 const Img = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
 `;
 const Info = styled.div`
+  /* flex:1 만으로는 자식 요소가 min-content 에 묶여서 넘쳐버립니다 */
   flex: 1;
+
+  /* ↓ 이거 있어야 flex 자식이 컨테이너 안에서 잘 줄어듭니다 */
+  min-width: 0;
 `;
 const Name = styled.h4`
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 600;
+  text-align: left;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 `;
+
 const Desc = styled.p`
   margin: 0;
   font-size: 13px;
   color: #666;
   line-height: 1.3;
+
+  /* 기존 2줄 클램프 */
+  display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  display: -webkit-box;
   overflow: hidden;
+
+  /* 긴 단어라도 강제로 줄바꿈 */
+  white-space: normal;
+  word-break: break-word;
 `;
+
 const ManualBox = styled.div`
   /* padding: 12px; */
   /* border: 1px dashed #ccc; */
