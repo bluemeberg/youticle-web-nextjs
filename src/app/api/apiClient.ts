@@ -3,8 +3,8 @@
 import { ChannelDetails } from "@/types/dataProps";
 
 const API_BASE_URL = "https://youticle.shop";
-// const API_BASE_URL = "http://0.0.0.0:8001";
-// 유저 정보 최초 등록
+// 유저 정보 최초 등록// const API_BASE_URL = "http://0.0.0.0:8001";
+
 export const createOrFetchUser = async (email: string, name: string) => {
   try {
     const response = await fetch(`${API_BASE_URL}/users/`, {
@@ -223,4 +223,31 @@ export async function fetchChannelDetail(
   );
   if (!res.ok) throw new Error("채널 상세 조회 실패");
   return res.json();
+}
+
+export async function logCtaClick(
+  action: string,
+  userId?: number,
+  userEmail?: string,
+  anonId?: string
+) {
+  const params = new URLSearchParams();
+  params.set("action", action);
+  if (userId) params.set("user_id", String(userId));
+  if (userEmail) params.set("user_email", userEmail);
+  if (anonId) params.set("anon_id", anonId);
+  // ★ 웹에서는 redirect=false를 꼭 붙여서 호출
+  params.set("redirect", "false");
+
+  try {
+    const resp = await fetch(
+      `https://youticle.shop/emails/cta-click?${params}`,
+      {
+        method: "GET",
+      }
+    );
+    // (필요하다면 resp.json()으로 결과 확인)
+  } catch (err) {
+    console.error("CTA 클릭 로그 저장 중 오류:", err);
+  }
 }

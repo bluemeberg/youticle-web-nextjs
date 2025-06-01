@@ -7,12 +7,13 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import { channelFeedRefreshTrigger } from "@/store/userChannelFeedStatus";
 import GoogleLogin from "@/common/MyArticleGoogleLogin";
-import { getUserByEmail } from "@/api/apiClient";
+import { getUserByEmail, logCtaClick } from "@/api/apiClient";
 import {
   parseSubscribersCount,
   removeMarkTags,
   timeAgo,
   parseVideoCountcribersCount,
+  getOrCreateAnonId,
 } from "@/utils/formatter";
 import ChannelFeedSectionWithTabs from "../ChannelFeedSectionTabs";
 import {
@@ -292,6 +293,12 @@ export default function ChannelAutoArticleSection() {
   // 구독 채널 불러오기 전 구글 로그인
   const handleLoginSuccessBeforeSubs = async (loginUser: User) => {
     setShowLoginModal(false);
+    await logCtaClick(
+      "register_google_login",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
     try {
       const data = await getUserByEmail(loginUser.email, loginUser.displayName);
       setUserState({
@@ -338,6 +345,7 @@ export default function ChannelAutoArticleSection() {
       setShowErrorModal(true);
     }
   };
+
   // 안내 모달 컴포넌트
   function SubsGuideModal({
     onProceed,
@@ -409,13 +417,29 @@ export default function ChannelAutoArticleSection() {
             </BodyContainer>
           </ScrollArea>
 
-          <PrimaryButton onClick={onProceed}>
+          <PrimaryButton
+            onClick={async () => {
+              try {
+                await logCtaClick(
+                  "yt_account_link", // 클릭한 버튼 액션 식별자
+                  user?.id ?? null, // 로그인된 유저 ID (없으면 null)
+                  user?.email ?? null, // 로그인된 유저 이메일 (없으면 null)
+                  getOrCreateAnonId() // 익명 UUID
+                );
+              } catch (err) {
+                console.error("CTA 로그 저장 실패:", err);
+                // 실패해도 흐름은 계속 진행하도록 catch만 해둡니다.
+              }
+              onProceed(); // 기존 동작(유튜브 계정 연결) 실행
+            }}
+          >
             YouTube 계정 연결하기
           </PrimaryButton>
         </ModalContent>
       </ModalOverlay>
     );
   }
+
   // ========= 로그인 + 폰번호 등록 =========
   const handleLoginSuccess = async (loginUser: User) => {
     setShowLoginModal(false);
@@ -757,6 +781,19 @@ export default function ChannelAutoArticleSection() {
   const [isKakao, setIsKakao] = useState(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
 
+  // (1) ‘유튜브 구독 채널 불러오기’ 버튼 클릭
+  const handleFreeRegisterClick = async () => {
+    await logCtaClick(
+      "free_register",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
+    // → 웹에서는 redirect가 없으니,
+    //    원하는 화면 이동 로직을 직접 수행
+    //    예: router.push("/studio/subscriptions");
+  };
+
   useEffect(() => {
     setIsKakao(isKakaoBrowser());
   }, []);
@@ -776,7 +813,20 @@ export default function ChannelAutoArticleSection() {
             {/* [모니터링 시작하기] 섹션 */}
             <ButtonGroup>
               <BlueButton
-                onClick={() => handleGoogleSignInForSubscriptions(false)}
+                onClick={async () => {
+                  try {
+                    await logCtaClick(
+                      "subs_cta",
+                      user?.id ?? null,
+                      user?.email ?? null,
+                      getOrCreateAnonId()
+                    );
+                  } catch (err) {
+                    console.error("CTA 로그 저장 실패:", err);
+                    // 로그 실패해도 흐름은 계속 진행
+                  }
+                  handleGoogleSignInForSubscriptions(false);
+                }}
               >
                 유튜브 구독 채널 불러오기
               </BlueButton>

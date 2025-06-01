@@ -211,3 +211,13 @@ export function timeAgo(dateStr: string): string {
     }
   }
 }
+
+// UUID 생성/저장 예시
+export function getOrCreateAnonId(): string {
+  let anon = localStorage.getItem("anon_uuid");
+  if (!anon) {
+    anon = crypto.randomUUID();
+    localStorage.setItem("anon_uuid", anon);
+  }
+  return anon;
+}
