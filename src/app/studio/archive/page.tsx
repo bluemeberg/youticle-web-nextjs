@@ -140,7 +140,7 @@ const ArchiveChannelPage: React.FC = () => {
               <br />
               Safari, Chrome, Samsung Internet 등
               <br />
-              외부 브라우저에서 다시 시도해 주세요.
+              외부 브라우저에서 시도해 주세요.
             </BrowserWarning>
             <LoginButton onClick={handleGoogleLogin}>
               Google 계정으로 로그인

@@ -390,7 +390,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
               <PartCard>
                 <PartHeader>1부</PartHeader>
                 {sections.slice(0, 5).map((sec, i) => (
-                  <Item key={i}>{sec.title}</Item>
+                  <Item key={i}>{removeMarkTags(sec.title)}</Item>
                 ))}
               </PartCard>
 
@@ -399,7 +399,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
                 <PartCard>
                   <PartHeader>2부</PartHeader>
                   {sections.slice(5, 10).map((sec, i) => (
-                    <Item key={i + 5}>{sec.title}</Item>
+                    <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
                   ))}
                 </PartCard>
               )}

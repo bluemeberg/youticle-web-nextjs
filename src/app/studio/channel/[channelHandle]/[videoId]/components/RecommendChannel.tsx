@@ -88,8 +88,6 @@ const RecommendChannel: React.FC<RecommendProps> = ({ section, videoId }) => {
     (a, b) =>
       new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
   );
-  console.log(sameChannel);
-  console.log(channelInfo);
   return (
     <Container>
       {/* 1. Channel Info */}

@@ -351,13 +351,13 @@ export default function ChannelAutoArticleSection() {
         src: "/images/250501_subs_guide1.png",
         alt: "구글 계정 선택 화면",
         description:
-          "하단 'Youtube 계정 연결하기' 버튼 클릭 후, 주로 사용하는 구글 계정을 선택하세요.",
+          "하단 'Youtube 계정 연결하기' 버튼 클릭 후, 주로 사용하는 Google 계정을 선택하세요.",
       },
       {
         src: "/images/250501_subs_guide2.png",
         alt: "확인되지 않은 앱 경고 화면",
         description:
-          "‘계속’ 을 눌러주세요. 아직 테스트 단계라 발생하는 경고입니다.",
+          "'확인되지 않은 앱' 경고가 뜰 수 있어요. 베타 단계이므로 [계속]을 눌러주세요.",
       },
       {
         src: "/images/250501_subs_guide3.png",
@@ -365,41 +365,48 @@ export default function ChannelAutoArticleSection() {
         description: "‘계속’ 을 클릭하면 끝!",
       },
     ];
+    const [currentStep, setCurrentStep] = useState(0);
+    const isLast = currentStep === screenshots.length - 1;
+
     return (
       <ModalOverlay>
         <ModalContent>
           <ModalClose onClick={onClose}>×</ModalClose>
           <ScrollArea>
-            <GreetingText>
-              💡 {user.name}님, 구독 채널을 불러오기 전에 잠깐!
-            </GreetingText>
-            <InfoDescription>
-              유튜브 구독 채널을 자동으로 요약하려면
+            {/* ── 1. 타이틀 영역 ──────────────────────────────────── */}
+            <ModalHeader>
+              <HeaderTitle>💡 {user.name}님 안녕하세요,</HeaderTitle>
+              <HeaderSubtitle>
+                YouTicle 서비스에서 구독 채널 자동 요약을 <br />
+                제공하려면 “구독목록 읽기” 권한이 필요해요! <br />
+                <br /> 👇아래 가이드 참고해서 <strong>1초만에 연결하기!</strong>
+              </HeaderSubtitle>
+            </ModalHeader>
+            {/* <InfoDescription>
+              YouTicle 서비스에서 <br />
+              구독 채널 자동 요약을 제공하려면
               <br />
               “구독목록 읽기” 권한이 필요합니다.
-            </InfoDescription>
-            <WarningNotice>
-              아래 step을 참고해서 진행 부탁드려요! <br />
-              <br />
-              참고로 아직 구글 테스트 단계라 Step2와 같은 <br />
-              “확인되지 않은 앱” 경고창이 뜹니다.
-              <br />
-              <br />
-              베타 안정화 후 정식 인증을 받을 예정이에요😄
-            </WarningNotice>
+            </InfoDescription> */}
+            <BodyContainer>
+              <WarningNotice>
+                * 베타 테스트 단계로 인해 <br />
+                <strong>“확인되지 않은 앱”</strong> 경고가 발생합니다.
+              </WarningNotice>
 
-            {/* ↓↓↓ 이 부분이 변경된 스크린샷 섹션 */}
-            <ScreenshotContainer>
-              {screenshots.map((shot, i) => (
-                <ScreenshotWrapper key={i}>
-                  <ScreenshotCaption>
-                    <strong>Step {i + 1}.</strong> {shot.description}
-                  </ScreenshotCaption>
-                  <ScreenshotImage src={shot.src} alt={shot.alt} />
-                </ScreenshotWrapper>
-              ))}
-              {/* <ScrollHint>더 내려보세요</ScrollHint> */}
-            </ScreenshotContainer>
+              {/* ↓↓↓ 이 부분이 변경된 스크린샷 섹션 */}
+              <ScreenshotContainer>
+                {screenshots.map((shot, i) => (
+                  <StepContainer key={i}>
+                    <StepCaption>
+                      <StepNumber>Step {i + 1}.</StepNumber> {shot.description}
+                    </StepCaption>
+                    <ScreenshotImage src={shot.src} alt={shot.alt} />
+                  </StepContainer>
+                ))}
+                {/* <ScrollHint>더 내려보세요</ScrollHint> */}
+              </ScreenshotContainer>
+            </BodyContainer>
           </ScrollArea>
 
           <PrimaryButton onClick={onProceed}>
@@ -1191,7 +1198,7 @@ export default function ChannelAutoArticleSection() {
               <br />
               Safari, Chrome, Samsung Internet 등
               <br />
-              외부 브라우저에서 다시 시도해 주세요.
+              외부 브라우저에서 시도해 주세요.
             </BrowserWarning>
             <GoogleLogin onLoginSuccess={handleLoginSuccessBeforeSubs} />
           </ModalContent>
@@ -1443,9 +1450,10 @@ const ModalInputRow = styled.div`
 const ChannelInput = styled.input`
   flex: 1;
   padding: 14px;
-  font-size: 14px;
+  font-size: 16px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  line-height: 1.2; /* iOS에서 가끔 줄 간격 때문에 커지므로 약간 조정 */
 `;
 
 const RegisterButtonColumn = styled.button`
@@ -1470,6 +1478,10 @@ const HintBox = styled.div`
   border-radius: 8px;
   padding: 14px 18px;
   margin-top: 12px;
+  /* 힌트 박스 내부가 너무 커지면 자체적으로 스크롤하게끔 높이 제한 */
+  max-height: 40vh; /* 모바일 화면 높이 기준 40% 정도로 제한 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 `;
 
 const HintTitle = styled.h4`
@@ -2046,12 +2058,17 @@ const ModalOverlay = styled.div`
 const ModalContent = styled.div`
   width: 90%;
   max-width: 360px;
+  /* 전체 모달이 화면을 넘어가지 않도록 최대 높이를 잡고 내부를 스크롤하도록 처리 */
+  max-height: 90vh;
   background: #fff;
   padding: 20px 16px;
   border-radius: 4px;
   text-align: center;
   position: relative;
+  overflow-y: auto; /* 세로 스크롤 가능하도록 */
+  -webkit-overflow-scrolling: touch; /* iOS 스크롤 부드럽게 */
 `;
+
 const ModalClose = styled.button`
   position: absolute;
   top: 4px;
@@ -2212,7 +2229,7 @@ function ManualInputModal({ onClose, onRegister }: ManualInputModalProps) {
         <ModalClose onClick={onClose}>×</ModalClose>
         <InfoMessage>채널 직접 입력</InfoMessage>
         <InfoDescription>
-          등록할 유튜브 채널 핸들이나 URL을 입력해주세요.
+          등록할 채널 핸들이나 URL을 입력해주세요.
         </InfoDescription>
 
         <ModalInputRow>
@@ -2424,25 +2441,37 @@ const QuoteText = styled.p`
 `;
 // 로그인 및 권한 안내에 사용하는 버튼 스타일
 const PrimaryButton = styled.button`
+  width: 100%;
   background-color: #007bff;
-  color: #fff;
+  color: #ffffff;
   font-weight: 700;
   font-size: 16px;
   border: none;
   border-radius: 6px;
-  padding: 12px 20px;
+  padding: 14px 0;
   cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  margin-bottom: 8px;
+
   &:hover {
     background-color: #005caf;
   }
 `;
 /* SubsGuideModal 전용 스타일 */
 const GreetingText = styled.h2`
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   color: #222;
-  margin-bottom: 8px;
-  line-height: 132%;
+  line-height: 1.4;
+  margin-bottom: 20px;
+  white-space: pre-line;
+  text-align: left;
+
+  strong {
+    font-size: 18px;
+    font-weight: 700;
+    color: #007bff;
+  }
 `;
 
 /* 스크롤 영역 */
@@ -2470,13 +2499,18 @@ const ModalSubTitle = styled.h4`
 `;
 
 const WarningNotice = styled.p`
-  font-size: 13px;
-  color: #007bff; /* 붉은 계열로 경고 느낌 강조 */
-  background: #f0f4ff; /* 연한 배경으로 구분 */
+  font-size: 14px;
+  color: #004ea2; /* 파란색 강조 */
+  background: #e6f0ff; /* 연한 파란 배경 */
   padding: 10px 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
+  border-radius: 6px;
+  margin-bottom: 24px;
   line-height: 1.4;
+  strong {
+    margin-left: 4px;
+    font-weight: 700;
+    color: #002f6c;
+  }
 `;
 
 const Screenshots = styled.div`
@@ -2497,7 +2531,32 @@ const Screenshot = styled.img`
 `;
 
 const ScreenshotContainer = styled.div`
-  margin-top: 20px;
+  margin-top: 4px;
+`;
+
+// 스텝 설명 컨테이너
+const StepContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+`;
+
+// 스텝 번호 + 설명
+const StepCaption = styled.p`
+  font-size: 15px;
+  color: #333;
+  line-height: 1.4;
+  text-align: left;
+
+  /* 각 줄 간격 조금 더 여유 있게 */
+`;
+
+// “Step X.” 번호만 강조하기 위한 스타일
+const StepNumber = styled.span`
+  font-weight: 700;
+  color: #007bff;
+  margin-right: 6px;
 `;
 
 const ScrollHint = styled.div`
@@ -2525,8 +2584,8 @@ const ScreenshotWrapper = styled.div`
 // (3) 이미지 스타일 (가로 폭 100%, 세로 비율 유지)
 const ScreenshotImage = styled.img`
   width: 100%;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   object-fit: contain;
 `;
 
@@ -2593,4 +2652,44 @@ const BrowserWarning = styled.div`
   margin: 12px 0; /* 위아래 간격 */
   line-height: 1.5;
   text-align: center;
+`;
+
+/** ── 타이틀 영역 ─────────────────────────────────────────── */
+const ModalHeader = styled.div`
+  padding: 4px 16px 4px;
+  text-align: center;
+`;
+
+const HeaderIcon = styled.span`
+  font-size: 24px;
+  display: block;
+  margin-bottom: 8px;
+`;
+
+const HeaderTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 6px;
+`;
+
+const HeaderSubtitle = styled.p`
+  font-size: 15px;
+  color: #444;
+  line-height: 1.4;
+  white-space: pre-line;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+/** 타이틀과 본문을 나누는 구분선 */
+const Divider = styled.div`
+  height: 1px;
+  background-color: #e0e0e0;
+`;
+
+/** ── 본문 영역 ───────────────────────────────────────────── */
+const BodyContainer = styled.div`
+  padding: 4px 20px;
 `;

@@ -2,7 +2,11 @@
 
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
-import { formatTimeRange, formatSummary } from "@/utils/formatter";
+import {
+  formatTimeRange,
+  formatSummary,
+  removeMarkTags,
+} from "@/utils/formatter";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 import { Overview } from "@/types/dataProps";
@@ -59,7 +63,7 @@ const AdminChannelTocItem = forwardRef<HTMLDivElement, TocItemProps>(
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <SectionCard ref={ref}>
             <Header>
-              <Title>{title}</Title>
+              <Title>{removeMarkTags(title)}</Title>
               {thumbnails && (
                 <Thumbnail onClick={onClick}>
                   {!isEditorPath ? (
