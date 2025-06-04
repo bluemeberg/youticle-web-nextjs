@@ -287,15 +287,13 @@ const Contents = ({
             )
           )}
       </ContentWrapper>
-      {user.name !== "" && taskStatus === "Success" && (
+      {taskStatus === "Success" && (
         <HilightContainer>
-          {user.name !== "" &&
-            detailData.section === "주식" &&
+          {detailData.section === "주식" &&
             detailData.summary_data.overview && (
               <StockOverview overview={detailData.summary_data.overview} />
             )}
-          {user.name !== "" &&
-            detailData.section === "건강" &&
+          {detailData.section === "건강" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
               <HealthOverviewBusinessStyle
@@ -313,8 +311,7 @@ const Contents = ({
               <EconomyOverview overview={detailData.summary_data.overview} />
             )} */}
 
-          {user.name !== "" &&
-            detailData.section === "부동산" &&
+          {detailData.section === "부동산" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
               <RealEstateOverview
@@ -325,32 +322,27 @@ const Contents = ({
               />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "뷰티/메이크업" &&
+          {detailData.section === "뷰티/메이크업" &&
             detailData.summary_data.overview && (
               <BeautyOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "인공지능" &&
+          {detailData.section === "인공지능" &&
             detailData.summary_data.overview && (
               <AIOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "비즈니스/사업" &&
+          {detailData.section === "비즈니스/사업" &&
             detailData.summary_data.overview && (
               <BusinessOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "가상자산" &&
+          {detailData.section === "가상자산" &&
             detailData.summary_data.overview && (
               <CryptoOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "IT/테크" &&
+          {detailData.section === "IT/테크" &&
             detailData.summary_data.overview && (
               <ItTechOverview
                 overview={
@@ -360,8 +352,7 @@ const Contents = ({
               />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "연애/결혼" &&
+          {detailData.section === "연애/결혼" &&
             detailData.summary_data.overview && (
               <RelationshipOverview
                 overview={
@@ -371,8 +362,7 @@ const Contents = ({
               />
             )}
 
-          {user.name !== "" &&
-            detailData.section === "여행" &&
+          {detailData.section === "여행" &&
             detailData.summary_data.overview && (
               <TravelOverviewUnified
                 overview={
