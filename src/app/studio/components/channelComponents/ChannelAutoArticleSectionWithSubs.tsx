@@ -830,7 +830,21 @@ export default function ChannelAutoArticleSection() {
               >
                 유튜브 구독 채널 불러오기
               </BlueButton>
-              <GrayButton onClick={openManualInputModal}>
+              <GrayButton
+                onClick={async () => {
+                  try {
+                    await logCtaClick(
+                      "manual_cta",
+                      user?.id ?? undefined,
+                      user?.email ?? undefined,
+                      getOrCreateAnonId()
+                    );
+                  } catch (err) {
+                    console.error("CTA 로그 저장 실패:", err);
+                  }
+                  openManualInputModal();
+                }}
+              >
                 관심 채널 직접 입력하기
               </GrayButton>
             </ButtonGroup>

@@ -16,6 +16,7 @@ import Toast from "./Toast";
 import { isDesktop } from "react-device-detect";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getUserByEmail } from "@/api/apiClient";
+import { removeMarkTags } from "@/utils/formatter";
 
 interface LogoHeaderProps {
   title?: string;
@@ -273,7 +274,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
               YouTicle
             </span>
           ) : (
-            <Title>{title}</Title>
+            <Title>{removeMarkTags(title)}</Title>
           )}
         </PageInfo>
         {isDetailPage && title !== "" && (

@@ -6,7 +6,11 @@ import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import { DataProps } from "@/types/dataProps";
-import { formatSummary, removeMarkTags } from "@/utils/formatter";
+import {
+  formatSummary,
+  getOrCreateAnonId,
+  removeMarkTags,
+} from "@/utils/formatter";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
@@ -16,6 +20,8 @@ import { useRouter } from "next/navigation";
 import CommentsInsightSection from "@/studio/[id]/components/CommentInsightSection";
 import ThreadModal from "@/studio/[id]/components/ThreadModal";
 import Contents from "./Contents";
+import { userState } from "@/store/user";
+import { logCtaClick } from "@/api/apiClient";
 
 interface ClientSideProps {
   id: string;
@@ -78,6 +84,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       page_title: detailData.summary_data.headline_title,
     });
   }, []); // <- empty deps, only on first mount
+  const user = useRecoilValue(userState);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -86,7 +93,21 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         setIsFixed(scrollRefTop <= 0);
       }
     };
-
+    const sendCtaLog = async () => {
+      try {
+        await logCtaClick(
+          "channel_article_open",
+          user?.id ?? null,
+          detailData.video_id ?? null,
+          getOrCreateAnonId()
+        );
+      } catch (err) {
+        console.error("CTA 로그 저장 실패:", err);
+        // 로그 실패해도 흐름은 계속 진행
+      }
+    };
+    // Effect가 실행되면 바로 로그를 보낸다
+    sendCtaLog();
     window.addEventListener("scroll", handleScroll);
 
     handleScroll();
@@ -279,7 +300,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       )} */}
       <PageInfo ref={scrollRef}>
         <Category>{detailData.section}</Category>
-        <Title>{detailData.summary_data.headline_title}</Title>
+        <Title>{removeMarkTags(detailData.summary_data.headline_title)}</Title>
         <UploadContainer>
           <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
           <Upload>{detailData.duration}</Upload>
