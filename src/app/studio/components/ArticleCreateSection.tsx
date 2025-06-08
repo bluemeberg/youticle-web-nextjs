@@ -11,7 +11,7 @@ import SingleVideoArticleSection from "./SingleVideoSection";
 const ArticleCreateSection: React.FC = () => {
   const [subTab, setSubTab] = useState<
     "channelAuto" | "playlistAuto" | "singleVideo"
-  >("channelAuto");
+  >("singleVideo");
 
   return (
     <Container>
@@ -25,16 +25,16 @@ const ArticleCreateSection: React.FC = () => {
         </SubTabButton>
         */}
         <SubTabButton
-          isActive={subTab === "channelAuto"}
-          onClick={() => setSubTab("channelAuto")}
-        >
-          유튜브 채널 모니터링
-        </SubTabButton>
-        <SubTabButton
           isActive={subTab === "singleVideo"}
           onClick={() => setSubTab("singleVideo")}
         >
-          유튜브 영상 아티클
+          유튜브 영상 즉시 요약
+        </SubTabButton>
+        <SubTabButton
+          isActive={subTab === "channelAuto"}
+          onClick={() => setSubTab("channelAuto")}
+        >
+          유튜브 채널 자동 요약
         </SubTabButton>
       </SubTabBar>
 

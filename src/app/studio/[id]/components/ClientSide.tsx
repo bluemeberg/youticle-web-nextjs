@@ -16,6 +16,7 @@ import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
 import Contents from "./Contents";
+import { userState } from "@/store/user";
 
 interface ClientSideProps {
   id: string;
@@ -162,6 +163,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     }
     return "0px";
   };
+  const user = useRecoilValue(userState);
 
   // 상태 변화 시 높이 재계산
   useEffect(() => {
@@ -312,21 +314,51 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       {/* (B) "아티클 본문" 타이틀 추가 */}
       <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
       <TOC>
-        <div>목차</div>
-        {/* 실제 목차 목록 컨테이너 */}
-        <ContentWrapper ref={contentRef} style={{ maxHeight }}>
-          {sections.map(({ title }, index) => (
-            <span key={index}>{title}</span>
-          ))}
+        <div className="toc-header">목차</div>
+
+        <ContentWrapper
+          ref={contentRef}
+          fullPadding={sections.length < 8} // ← 여기에!
+          style={{
+            /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
+            maxHeight: sections.length >= 8 ? maxHeight : undefined,
+            overflow: sections.length >= 8 ? "hidden" : "visible",
+          }}
+        >
+          {sections.length >= 8 ? (
+            <>
+              {/* 1부 */}
+              <PartCard>
+                <PartHeader>1부</PartHeader>
+                {sections.slice(0, 5).map((sec, i) => (
+                  <Item key={i}>{removeMarkTags(sec.title)}</Item>
+                ))}
+              </PartCard>
+
+              {/* 2부 (펼쳤을 때만) */}
+              {isExpanded && (
+                <PartCard>
+                  <PartHeader>2부</PartHeader>
+                  {sections.slice(5, 10).map((sec, i) => (
+                    <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                  ))}
+                </PartCard>
+              )}
+            </>
+          ) : (
+            /* 8개 미만일 땐 그냥 쭉 나열 */
+            sections.map((sec, i) => <Item key={i}>{sec.title}</Item>)
+          )}
         </ContentWrapper>
 
-        {/* 3) 5개 초과일 때만 토글 버튼 노출 */}
-        {sections.length > 5 && (
+        {/* 8개 이상일 때만 토글 버튼 표시 */}
+        {sections.length >= 8 && (
           <ToggleButton onClick={toggleView}>
             {isExpanded ? "간단히 보기" : "더 보기"}
           </ToggleButton>
         )}
       </TOC>
+
       <Contents
         detailData={detailData}
         thumbnails={thumbnails}
@@ -334,9 +366,11 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         taskStatus="Success"
       />
       {/* (2) 하단 플로팅 버튼 */}
-      {/* <FloatingButton onClick={handleOpenThreadModal}>
-        스레드 생성하기
-      </FloatingButton> */}
+      {user.id == 3 && (
+        <FloatingButton onClick={handleOpenThreadModal}>
+          스레드 생성하기
+        </FloatingButton>
+      )}
     </Container>
   );
 };
@@ -486,35 +520,61 @@ const OverviewTitle = styled.div`
   margin-top: 40px;
   margin-left: 16px;
 `;
-
 const TOC = styled.div`
   margin-top: 12px;
   padding: 0 16px;
 
-  div:first-child {
-    /* '목차' 블록 스타일 */
+  .toc-header {
     height: 44px;
-    padding: 10px 16px;
-    background-color: black;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: #000;
+    color: #fff;
     font-size: 20px;
     font-weight: 800;
-    color: white;
   }
 `;
 
-const ContentWrapper = styled.div`
-  /* 여기서 max-height를 동적으로 변경할 예정 */
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-  /* 나머지 스타일은 필요에 맞게 */
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background-color: rgb(248, 248, 248);
+// 2) PartCard: full-width 카드
+const PartCard = styled.div`
+  width: 100%; /* ← 전체 폭 차지 */
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 160%;
+`;
+
+// 부 제목 강조
+const PartHeader = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  display: inline-block;
+  background: #007bff;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+`;
+
+// 기존 ul/li 대신 쓸 아이템
+const Item = styled.div`
+  position: relative;
+  margin-bottom: 16px;
+  /* line-height: 1.4; */
   font-size: 18px;
   font-weight: 600;
-  line-height: 132%;
-  padding: 20px;
+`;
+// 1) ContentWrapper: 세로 스택
+const ContentWrapper = styled.div<{ fullPadding: boolean }>`
+  overflow: hidden;
+  padding: ${({ fullPadding }) => (fullPadding ? "20px" : "0px")};
+  transition: max-height 0.3s ease;
+  display: flex;
+  flex-direction: column; /* ← 가로가 아니라 세로로 */
+  gap: 16px;
+  background: #f8f8f8;
 `;
 
 const ToggleButton = styled.button`

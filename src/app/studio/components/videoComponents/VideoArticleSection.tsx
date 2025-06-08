@@ -551,6 +551,9 @@ export default function VideoAutoArticleSection() {
       </ModalOverlay>
     );
   }
+
+  const [showHintImages, setShowHintImages] = useState(false);
+  const toggleHintImages = () => setShowHintImages((prev) => !prev);
   // ─────────────────────────────────────────
   // JSX 렌더링
   // ─────────────────────────────────────────
@@ -566,12 +569,34 @@ export default function VideoAutoArticleSection() {
         </HeroSubtitle>
         <ButtonGroup>
           <BlueButton onClick={handleFetchLikedVideosOrPlaylists}>
-            좋아요한 영상, 플레이리스트 불러오기
+            좋아요한 영상/플레이리스트 불러오기
           </BlueButton>
-          <GrayButton onClick={() => setShowManualInputModal(true)}>
-            영상 링크로 즉시 아티클 만들기
-          </GrayButton>
+          {/* <GrayButton onClick={() => setShowManualInputModal(true)}>
+            영상 링크로 즉시 요약 아티클 확인하기
+          </GrayButton> */}
         </ButtonGroup>
+        <Separator>또는</Separator>
+        <InlineForm>
+          <VideoUrlInput
+            placeholder="https://www.youtube.com/watch?v=abcd1234"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+          />
+          <GrayButton onClick={fetchSummaryEditorVideo}>
+            영상 즉시 요약하기{" "}
+          </GrayButton>
+        </InlineForm>
+        {/** 가이드 이미지 토글 **/}
+
+        <ToggleHintButton onClick={() => setShowHintImages((v) => !v)}>
+          {showHintImages ? "가이드 접기 ▲" : "영상 URL 입력 가이드 ▼"}
+        </ToggleHintButton>
+        {showHintImages && (
+          <HintImageScrollContainer>
+            <HintImage src="/images/YoutubeHandleGuide1.png" alt="예시1" />
+            <HintImage src="/images/YoutubeHandleGuide2.png" alt="예시2" />
+          </HintImageScrollContainer>
+        )}
         {showManualInputModal && (
           <ManualInputModal onClose={() => setShowManualInputModal(false)} />
         )}
@@ -654,7 +679,7 @@ export default function VideoAutoArticleSection() {
       </FeaturesSection>
 
       {/* How Section */}
-      <HowSection>
+      {/* <HowSection>
         <SectionTitle>어떻게 사용하나요?</SectionTitle>
         <StepsRow>
           <StepBox>
@@ -682,7 +707,7 @@ export default function VideoAutoArticleSection() {
               </span>
             </StepText>
             <HowVideoWrapper>
-              {/* <Video
+              <Video
                 ref={videoRef}
                 src="/videos/make_output.mp4"
                 poster="/images/What유티클2.png"
@@ -691,11 +716,11 @@ export default function VideoAutoArticleSection() {
                 playsInline
                 loop
                 webkit-playsinline="true"
-              /> */}
+              />
             </HowVideoWrapper>
           </StepBox>
         </StepsRow>
-      </HowSection>
+      </HowSection> */}
 
       {/* CTA Section */}
       <CTASection>
@@ -709,7 +734,7 @@ export default function VideoAutoArticleSection() {
           좋아요한 영상, 플레이리스트 불러오기
         </CTAButton>
         <CTAButtonSecondary onClick={() => setShowManualInputModal(true)}>
-          영상 링크로 즉시 아티클 만들기
+          영상 링크로 즉시 요약 아티클 확인하기
         </CTAButtonSecondary>
       </CTASection>
 
@@ -790,6 +815,18 @@ const ButtonGroup = styled.div`
   flex-direction: column;
   gap: 8px;
 `;
+const Separator = styled.div`
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  margin: 12px 0;
+`;
+const InlineForm = styled.div`
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+  flex-direction: column;
+`;
 const HeroVideoWrapper = styled.div`
   width: 100%;
   max-width: 600px;
@@ -810,10 +847,25 @@ const BlueButton = styled.button`
   font-size: 16px;
   border: none;
   border-radius: 6px;
-  padding: 14px 20px;
+  padding: 16px 20px;
   cursor: pointer;
   &:hover {
     background-color: #005caf;
+  }
+`;
+
+// 1) Secondary용 OutlineButton 추가
+const OutlineButton = styled.button`
+  background: white;
+  color: #007bff;
+  font-weight: 700;
+  border: 2px solid #007bff;
+  border-radius: 6px;
+  padding: 14px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  &:hover {
+    background-color: rgba(0, 123, 255, 0.1);
   }
 `;
 const GrayButton = styled.button`
@@ -822,7 +874,7 @@ const GrayButton = styled.button`
   font-weight: 600;
   border: 1px solid #ccc;
   border-radius: 6px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   font-size: 16px;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
@@ -1143,24 +1195,28 @@ const ChannelThumb = styled.img`
   object-fit: cover;
   margin-bottom: 8px;
 `;
+
 const ChannelName = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #333;
   margin-bottom: 4px;
 `;
+
 const ChannelSubs = styled.div`
   font-size: 12px;
   color: #777;
 `;
+
 const ModalInputRow = styled.div`
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
 `;
+
 const VideoUrlInput = styled.input`
   flex: 1;
-  padding: 14px;
+  padding: 16px;
   font-size: 14px;
   border: 1px solid #ddd;
   border-radius: 4px;

@@ -15,7 +15,8 @@ import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
-import Contents from "./Contents";
+import Contents from "@/studio/channel/[channelHandle]/[videoId]/components/Contents";
+import { userState } from "@/store/user";
 
 interface ClientSide2Props {
   id: string;
@@ -38,7 +39,6 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const [taskStatus, setTaskStatus] = useState("PENDING");
   const [taskMessage, setTaskMessage] = useState("작업을 시작합니다.");
   const [youtubeArticle, setYoutubeArticle] = useState<any>(null);
-  const [sections, setSections] = useState<any[]>([]);
   const [detailData, setDetailData] = useState<any>({});
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
@@ -160,6 +160,24 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
 
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // START 단계 지연 알림톡 안내 모달 토글
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  // 입력된 번호
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  let timer: NodeJS.Timeout;
+
+  // START → PROGRESS 전환 대기용 타이머
+  useEffect(() => {
+    if (taskStatus === "START") {
+      timer = setTimeout(() => setShowNotifyModal(true), 5000);
+    } else {
+      clearTimeout(timer);
+    }
+    return () => clearTimeout(timer);
+  }, [taskStatus]);
+
   useEffect(() => {
     const pollTaskStatus = async () => {
       try {
@@ -245,18 +263,62 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
   const handleOpenThreadModal = () => {
     setIsThreadModalOpen(true);
   };
+  const [maxHeight, setMaxHeight] = useState("0px");
 
+  // 1) 처음/갱신 시 목차 전체 높이를 측정하여 expanded 상태에 따라 maxHeight를 설정
+  useEffect(() => {
+    if (contentRef.current) {
+      // 실제 콘텐츠 전체 높이
+      const fullHeight = contentRef.current.scrollHeight;
+
+      if (isExpanded) {
+        // 펼친 상태: 전체 높이로 설정
+        setMaxHeight(`${fullHeight}px`);
+      } else {
+        // 접힌 상태: 5개 정도만 보여줄 높이를 임의로 계산
+        // (정밀 계산 필요하면 5개 항목 높이만큼 미리 측정해야 함)
+        // 간단히 "200px"처럼 고정값을 써도 됨
+        setMaxHeight("232px");
+      }
+    }
+  }, [isExpanded, detailData]);
   const router = useRouter();
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
   const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
-  const [isInsightVisible, setIsInsightVisible] = useState(false);
+  const [isInsightVisible, setIsInsightVisible] = useState(true);
   /** 🔴 에러 팝업 확인 시 /studio로 이동 */
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     router.push("/studio");
   };
+  const user = useRecoilValue(userState);
+  const [showNotifyConfirm, setShowNotifyConfirm] = useState(false);
 
+  const handleNotifySubmit = async () => {
+    // if (!/^010-\d{4}-\d{4}$/.test(phoneNumber)) {
+    //   alert("010-1234-5678 형식으로 입력해주세요.");
+    //   return;
+    // }
+    const trimmed = phoneNumber.trim();
+    if (!trimmed) {
+      alert("핸드폰 번호를 입력해주세요!");
+      return;
+    }
+    try {
+      const res = await fetch(`${NEXT_PUBLIC_API_BASE_URL}/users/phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, phone_number: trimmed }),
+      });
+      if (!res.ok) throw new Error("폰번호 저장 실패");
+      setShowNotifyModal(false);
+      // 2) 확인 모달 열기
+      setShowNotifyConfirm(true);
+    } catch {
+      alert("요청 실패, 다시 시도해주세요.");
+    }
+  };
   return (
     <Container $isFixed={isFixed} className={fadeInComplete ? "fadeIn" : ""}>
       {/* 상태에 따른 콘텐츠 렌더링 */}
@@ -299,7 +361,64 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
       )}
 
       {/* 상태 메시지 및 로딩 표시 */}
+      {showNotifyModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalClose onClick={() => setShowNotifyModal(false)}>×</ModalClose>
+            <InfoMessage>
+              📢 아티클 생성에 다소 시간이 <br />
+              소요되고 있나요?
+            </InfoMessage>
+            <InfoDescription>
+              기다리시기 불편하시다면,
+              <br /> 요약 완료 <span> 즉시</span> 결과를 <span> 알림톡</span>
+              으로 받아보세요!
+              <br />
+              (최대 30초 이내로 요약은 완료될 예정입니다.)
+            </InfoDescription>
+            <PhoneInput
+              placeholder="010-1234-5678"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+            <ButtonGroup>
+              <ModalButton onClick={handleNotifySubmit}>
+                요약 완료 알림받기
+              </ModalButton>
 
+              <ActionButtonSecondary onClick={() => setShowNotifyModal(false)}>
+                더 기다리기
+              </ActionButtonSecondary>
+            </ButtonGroup>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {showNotifyConfirm && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalClose onClick={() => setShowNotifyConfirm(false)}>
+              ×
+            </ModalClose>
+            <InfoMessage>🎉 요청이 완료되었습니다!</InfoMessage>
+            <InfoDescription>
+              영상 요약 완료 시 알림톡으로 결과 안내드리겠습니다.
+              <br />
+              감사합니다.
+            </InfoDescription>
+            <ModalButton onClick={() => router.push("/studio")}>
+              다른 영상 요약하러가기
+            </ModalButton>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+      {/* (3) FloatingPhoneButton: 모달 외에도 항상 노출 */}
+      {/** showNotifyModal 이 꺼져 있어도 보여주고 */}
+      {showNotifyModal == false && (
+        <FloatingPhoneButton onClick={() => setShowNotifyModal(true)}>
+          알림톡 요청하기
+        </FloatingPhoneButton>
+      )}
       {taskStatus === "START" && detailData && (
         <FadeInContainer>
           <PageInfo ref={scrollRef}>
@@ -346,7 +465,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           </Preview>
 
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
             <SkeletonContainer>
               {Array.from({ length: 1 }).map((_, index) => (
                 <SkeletonCard key={index} />
@@ -398,7 +517,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             </FiveLineList>
           </FiveLineSummarySection>
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
             <SkeletonContainer>
               {Array.from({ length: 3 }).map((_, index) => (
                 <SkeletonCard key={index} />
@@ -482,7 +601,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
             </>
           )}
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
             <SkeletonContainer>
               {Array.from({ length: 3 }).map((_, index) => (
                 <SkeletonCard key={index} />
@@ -570,20 +689,59 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           {/* (B) "아티클 본문" 타이틀 추가 */}
           <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
+
             <ContentWrapper
               ref={contentRef}
-              $height={contentHeight}
-              $isExpanded={false}
+              fullPadding={detailData.summary_data.section.length < 8} // ← 여기에!
+              style={{
+                /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
+                maxHeight:
+                  detailData.summary_data.section.length >= 8
+                    ? maxHeight
+                    : undefined,
+                overflow:
+                  detailData.summary_data.section.length >= 8
+                    ? "hidden"
+                    : "visible",
+              }}
             >
-              {detailData.summary_data?.section?.map(
-                ({ title }: any, index: number) => (
-                  <span key={index}>{title}</span>
+              {detailData.summary_data.section.length >= 8 ? (
+                <>
+                  {/* 1부 */}
+                  <PartCard>
+                    <PartHeader>1부</PartHeader>
+                    {detailData.summary_data.section
+                      .slice(0, 5)
+                      .map((sec: SectionData, i: number) => (
+                        <Item key={i}>{removeMarkTags(sec.title)}</Item>
+                      ))}
+                  </PartCard>
+
+                  {/* 2부 (펼쳤을 때만) */}
+                  {isExpanded && (
+                    <PartCard>
+                      <PartHeader>2부</PartHeader>
+                      {detailData.summary_data.section
+                        .slice(5, 10)
+                        .map((sec: SectionData, i: number) => (
+                          <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                        ))}
+                    </PartCard>
+                  )}
+                </>
+              ) : (
+                /* 8개 미만일 땐 그냥 쭉 나열 */
+                detailData.summary_data.section.map(
+                  (sec: SectionData, i: number) => (
+                    <Item key={i}>{sec.title}</Item>
+                  )
                 )
               )}
             </ContentWrapper>
 
-            {detailData.summary_data?.section?.length > 5 && (
+            {/* 8개 이상일 때만 토글 버튼 표시 */}
+            {detailData.summary_data.section.length >= 8 && (
               <ToggleButton onClick={toggleView}>
                 {isExpanded ? "간단히 보기" : "더 보기"}
               </ToggleButton>
@@ -674,20 +832,59 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           {/* (B) "아티클 본문" 타이틀 추가 */}
           <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
+
             <ContentWrapper
               ref={contentRef}
-              $height={contentHeight}
-              $isExpanded={false}
+              fullPadding={detailData.summary_data.section.length < 8} // ← 여기에!
+              style={{
+                /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
+                maxHeight:
+                  detailData.summary_data.section.length >= 8
+                    ? maxHeight
+                    : undefined,
+                overflow:
+                  detailData.summary_data.section.length >= 8
+                    ? "hidden"
+                    : "visible",
+              }}
             >
-              {detailData.summary_data?.section?.map(
-                ({ title }: any, index: number) => (
-                  <span key={index}>{title}</span>
+              {detailData.summary_data.section.length >= 8 ? (
+                <>
+                  {/* 1부 */}
+                  <PartCard>
+                    <PartHeader>1부</PartHeader>
+                    {detailData.summary_data.section
+                      .slice(0, 5)
+                      .map((sec: SectionData, i: number) => (
+                        <Item key={i}>{removeMarkTags(sec.title)}</Item>
+                      ))}
+                  </PartCard>
+
+                  {/* 2부 (펼쳤을 때만) */}
+                  {isExpanded && (
+                    <PartCard>
+                      <PartHeader>2부</PartHeader>
+                      {detailData.summary_data.section
+                        .slice(5, 10)
+                        .map((sec: SectionData, i: number) => (
+                          <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                        ))}
+                    </PartCard>
+                  )}
+                </>
+              ) : (
+                /* 8개 미만일 땐 그냥 쭉 나열 */
+                detailData.summary_data.section.map(
+                  (sec: SectionData, i: number) => (
+                    <Item key={i}>{sec.title}</Item>
+                  )
                 )
               )}
             </ContentWrapper>
 
-            {detailData.summary_data?.section?.length > 5 && (
+            {/* 8개 이상일 때만 토글 버튼 표시 */}
+            {detailData.summary_data.section.length >= 8 && (
               <ToggleButton onClick={toggleView}>
                 {isExpanded ? "간단히 보기" : "더 보기"}
               </ToggleButton>
@@ -798,20 +995,59 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
           {/* (B) "아티클 본문" 타이틀 추가 */}
           <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
           <TOC>
-            <div>목차</div>
+            <div className="toc-header">목차</div>
+
             <ContentWrapper
               ref={contentRef}
-              $height={contentHeight}
-              $isExpanded={false}
+              fullPadding={detailData.summary_data.section.length < 8} // ← 여기에!
+              style={{
+                /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
+                maxHeight:
+                  detailData.summary_data.section.length >= 8
+                    ? maxHeight
+                    : undefined,
+                overflow:
+                  detailData.summary_data.section.length >= 8
+                    ? "hidden"
+                    : "visible",
+              }}
             >
-              {detailData.summary_data?.section?.map(
-                ({ title }: any, index: number) => (
-                  <span key={index}>{title}</span>
+              {detailData.summary_data.section.length >= 8 ? (
+                <>
+                  {/* 1부 */}
+                  <PartCard>
+                    <PartHeader>1부</PartHeader>
+                    {detailData.summary_data.section
+                      .slice(0, 5)
+                      .map((sec: SectionData, i: number) => (
+                        <Item key={i}>{removeMarkTags(sec.title)}</Item>
+                      ))}
+                  </PartCard>
+
+                  {/* 2부 (펼쳤을 때만) */}
+                  {isExpanded && (
+                    <PartCard>
+                      <PartHeader>2부</PartHeader>
+                      {detailData.summary_data.section
+                        .slice(5, 10)
+                        .map((sec: SectionData, i: number) => (
+                          <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                        ))}
+                    </PartCard>
+                  )}
+                </>
+              ) : (
+                /* 8개 미만일 땐 그냥 쭉 나열 */
+                detailData.summary_data.section.map(
+                  (sec: SectionData, i: number) => (
+                    <Item key={i}>{sec.title}</Item>
+                  )
                 )
               )}
             </ContentWrapper>
 
-            {detailData.summary_data?.section?.length > 5 && (
+            {/* 8개 이상일 때만 토글 버튼 표시 */}
+            {detailData.summary_data.section.length >= 8 && (
               <ToggleButton onClick={toggleView}>
                 {isExpanded ? "간단히 보기" : "더 보기"}
               </ToggleButton>
@@ -830,7 +1066,7 @@ const ClientSide2 = ({ id, taskId }: ClientSide2Props) => {
               onClose={() => setIsThreadModalOpen(false)}
             />
           )}
-          {taskStatus === "Success" && (
+          {user.id == 3 && taskStatus === "Success" && (
             <FloatingButton onClick={handleOpenThreadModal}>
               스레드 생성하기
             </FloatingButton>
@@ -983,21 +1219,20 @@ const Preview = styled.div<{ $isFixed: boolean }>`
   }
 `;
 
+// TOC 래퍼
 const TOC = styled.div`
-  margin-top: 20px;
+  margin-top: 12px;
   padding: 0 16px;
 
-  div:first-child {
+  .toc-header {
     height: 44px;
-    padding: 10px 16px;
-    background-color: black;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: #000;
+    color: #fff;
     font-size: 20px;
     font-weight: 800;
-    color: white;
-  }
-
-  span {
-    line-height: 132%;
   }
 `;
 
@@ -1063,20 +1298,47 @@ const OverviewTitle = styled.div`
   margin-left: 16px;
 `;
 
-const ContentWrapper = styled.div<{ $height: string; $isExpanded: boolean }>`
+// 1) ContentWrapper: 세로 스택
+const ContentWrapper = styled.div<{ fullPadding: boolean }>`
   overflow: hidden;
-  height: ${({ $height }) => $height};
-  transition: height 0.3s ease;
-  padding: 20px;
+  padding: ${({ fullPadding }) => (fullPadding ? "20px" : "0px")};
+  transition: max-height 0.3s ease;
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background-color: rgb(248, 248, 248);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 132%;
+  flex-direction: column; /* ← 가로가 아니라 세로로 */
+  gap: 16px;
+  background: #f8f8f8;
 `;
 
+// 2) PartCard: full-width 카드
+const PartCard = styled.div`
+  width: 100%; /* ← 전체 폭 차지 */
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 160%;
+`;
+
+// 부 제목 강조
+const PartHeader = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  display: inline-block;
+  background: #007bff;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+`;
+
+// 기존 ul/li 대신 쓸 아이템
+const Item = styled.div`
+  position: relative;
+  margin-bottom: 16px;
+  /* line-height: 1.4; */
+  font-size: 18px;
+  font-weight: 600;
+`;
 const ContentWrapperProgress = styled.div`
   overflow: hidden;
   padding: 20px;
@@ -1211,7 +1473,7 @@ const SkeletonCard = styled.div`
 
 const FloatingButton = styled.button`
   position: fixed;
-  bottom: 20px;
+  bottom: 80px;
   right: 20px;
   z-index: 10000; /* 본문 위에 보이도록 충분히 높은 값 */
   padding: 14px 18px;
@@ -1326,6 +1588,7 @@ const ModalOverlay = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 10000;
 `;
 
 const ModalContent = styled.div`
@@ -1336,6 +1599,8 @@ const ModalContent = styled.div`
   max-width: 400px;
   width: 90%;
   position: relative;
+  z-index: 10000;
+  margin-top: 20px;
 `;
 
 const ModalClose = styled.button`
@@ -1349,6 +1614,10 @@ const ModalClose = styled.button`
   color: #666;
 `;
 
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 8px;
+`;
 const ModalButton = styled.button`
   background-color: #007bff;
   color: white;
@@ -1367,9 +1636,77 @@ const InfoMessage = styled.p`
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 12px;
+  line-height: 1.4;
 `;
 
 const InfoDescription = styled.p`
   font-size: 16px;
   line-height: 1.5;
+  span {
+    font-weight: 700;
+  }
+`;
+const NotificationPrompt = styled.div`
+  margin-top: 20px;
+  padding: 16px;
+  background: #fffbea;
+  border: 1px solid #ffe58f;
+  border-radius: 6px;
+  text-align: center;
+`;
+const PromptText = styled.p`
+  font-size: 14px;
+  color: #663c00;
+  margin-bottom: 12px;
+  line-height: 1.4;
+`;
+const ActionButton = styled.button`
+  background-color: #ffc53d;
+  color: #663c00;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-right: 8px;
+  cursor: pointer;
+`;
+const PhoneInput = styled.input`
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  margin: 12px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+`;
+
+const ActionButtonSecondary = styled.button`
+  background: transparent;
+  color: #007bff;
+  border: 1px solid #007bff;
+  padding: 10px;
+  border-radius: 4px;
+  width: 100%;
+  font-weight: 600;
+  margin-top: 20px;
+  cursor: pointer;
+`;
+
+const FloatingPhoneButton = styled.button`
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000; /* 본문 위에 보이도록 충분히 높은 값 */
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 14px 18px;
+  font-weight: 600;
+  font-size: 16px;
+
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  &:hover {
+    background-color: #0056b3;
+  }
 `;

@@ -194,7 +194,7 @@ const AdminArticleBeforeLogin = () => {
   ];
 
   // TODO: 실제 오픈 시 true로 바꿔주세요
-  const isFeatureReady = false;
+  const isFeatureReady = true;
 
   if (!isFeatureReady) {
     return (
@@ -513,7 +513,7 @@ const EditorImage = styled.img<{ isSelected: boolean }>`
       : "2px solid #ddd"}; /* 선택된 경우 파란색 테두리 */
   transition: border 0.3s ease-in-out;
   image-rendering: crisp-edges;
-  object-fit: cover;*/
+  object-fit: cover;
 `;
 
 const EditorName = styled.span<{ isSelected: boolean }>`

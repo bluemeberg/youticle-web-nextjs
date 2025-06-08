@@ -24,6 +24,7 @@ import RelationshipOverview from "@/detail/[id]/components/overviews/Relationshi
 import TravelOverviewUnified from "@/detail/[id]/components/overviews/TravelOverview";
 import HealthOverviewBusinessStyle from "@/detail/[id]/components/overviews/HealthOverview";
 import { parseTimeStringToSeconds } from "@/utils/formatter";
+import AdminChannelTocItem from "@/studio/channel/[channelHandle]/[videoId]/components/AdminChannelTocItem";
 
 interface ContentsProps {
   detailData: DataProps;
@@ -241,7 +242,7 @@ const Contents = ({
               index
             ) => (
               <React.Fragment key={index}>
-                <AdminTocItem
+                <AdminChannelTocItem
                   key={index}
                   ref={
                     index ===

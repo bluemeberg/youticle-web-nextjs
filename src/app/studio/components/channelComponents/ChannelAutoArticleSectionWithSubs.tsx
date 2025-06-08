@@ -808,7 +808,7 @@ export default function ChannelAutoArticleSection() {
             <HeroSubtitle>
               중요한 영상을 빠르게 텍스트 아티클로 확인하고,
               <br />
-              신규 영상 자동 요약 알림까지 받아보세요!
+              신규 영상 자동 요약 카톡 알림까지 받아보세요!
             </HeroSubtitle>
             {/* [모니터링 시작하기] 섹션 */}
             <ButtonGroup>
@@ -830,7 +830,39 @@ export default function ChannelAutoArticleSection() {
               >
                 유튜브 구독 채널 불러오기
               </BlueButton>
-              <GrayButton
+            </ButtonGroup>
+            {/* 3) InlineForm: 입력창 + 등록 버튼 */}
+            {/* 2) Separator (or) */}
+            <Separator>또는</Separator>
+            <InlineForm>
+              <ChannelInput
+                placeholder="@채널ID 붙여넣기, ex) @BloombergTechnology"
+                value={channelInput}
+                onChange={(e) => setChannelInput(e.target.value)}
+              />
+              <GrayButton onClick={() => handleManualChannelRegister(channelInput)}>
+                채널 직접 불러오기
+              </GrayButton>
+            </InlineForm>
+            {/* 4) 가이드 토글 */}
+            <ToggleHintButton onClick={() => setShowHintImages((v) => !v)}>
+              채널ID 입력 가이드 {showHintImages ? "▲" : "▼"}
+            </ToggleHintButton>
+
+            {/* 5) 가이드 이미지 */}
+            {showHintImages && (
+              <HintImageScrollContainer>
+                <HintImage
+                  src="/images/YoutubeHandleGuide1.png"
+                  alt="가이드1"
+                />
+                <HintImage
+                  src="/images/YoutubeHandleGuide2.png"
+                  alt="가이드2"
+                />
+              </HintImageScrollContainer>
+            )}
+            {/* <GrayButton
                 onClick={async () => {
                   try {
                     await logCtaClick(
@@ -846,8 +878,7 @@ export default function ChannelAutoArticleSection() {
                 }}
               >
                 관심 채널 직접 입력하기
-              </GrayButton>
-            </ButtonGroup>
+              </GrayButton> */}
             {showManualInputModal && (
               <ManualInputModal
                 onClose={() => setShowManualInputModal(false)}
@@ -1514,7 +1545,7 @@ const ModalInputRow = styled.div`
 const ChannelInput = styled.input`
   flex: 1;
   padding: 14px;
-  font-size: 16px;
+  font-size: 14px;
   border: 1px solid #ddd;
   border-radius: 4px;
   line-height: 1.2; /* iOS에서 가끔 줄 간격 때문에 커지므로 약간 조정 */
@@ -1569,7 +1600,19 @@ const HintDesc = styled.p`
     font-style: italic;
   }
 `;
+const Separator = styled.div`
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin: 12px 0;
+`;
 
+const InlineForm = styled.div`
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+  flex-direction: column;
+`;
 const ToggleHintButton = styled.button`
   font-size: 13px;
   font-weight: 600;
@@ -1976,13 +2019,12 @@ const ButtonRow = styled.div`
 `;
 
 const GrayButton = styled.button`
-  flex: 1;
   background-color: #f0f0f5;
   color: #333;
   font-weight: 600;
   border: 1px solid #ccc;
   border-radius: 6px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   cursor: pointer;
   font-size: 16px;
   transition: all 0.2s ease-in-out;
