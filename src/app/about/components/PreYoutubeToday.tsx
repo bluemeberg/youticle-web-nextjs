@@ -87,7 +87,7 @@ const YoutubeToday = () => {
       <Divider />
       {/* <SampleCard />
       <SampleCard1 /> */}
-      {clientData.map((item, index) => {
+      {/* {clientData.map((item, index) => {
         const topicIcon = YOUTUBE_TOPICS.find(
           (topic) => topic.topic === item.section
         )?.icon;
@@ -99,7 +99,7 @@ const YoutubeToday = () => {
             {...item}
           />
         );
-      })}
+      })} */}
 
       <ButtonContainer>
         <ServiceButton onClick={() => goToPage("/ ")}>
