@@ -161,6 +161,9 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
                 key={item.video_id}
                 icon={topicInfo?.icon}
                 subjects={[]}
+                metricLabel=""
+                metricValue={0}
+                rank={0}
                 {...item}
               />
             </>
