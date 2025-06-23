@@ -3,6 +3,7 @@
 import styled from "styled-components";
 import TodayIcon from "@/assets/today.svg";
 import { useRouter } from "next/navigation";
+import CountdownTimer from "./CountdownTimerCenter";
 
 interface ServiceIntroduceProps {
   subjects: string[]; // 추가된 subjects prop
@@ -17,7 +18,7 @@ const getCurrentDateWithDay = () => {
   return `${year}.${month}.${day} (${weekDay})`; // YYYY.MM.DD (요일) 형식
 };
 
-const SERVICE_TITLE = "오늘의 유튜브 아티클";
+const SERVICE_TITLE = "오늘의 유튜브 TOP5";
 const SERVICE_DESCRIPTION =
   "오늘 업로드된 주요 키워드의 영상들을 단 1초만에 아티클로 읽을 수 있습니다.";
 const NO_SUBSCRIBED_TOPIC_MSG =
@@ -42,19 +43,18 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
         <CurrentDate>{currentDateWithDay}</CurrentDate>
         <TitleContainer>
           <TodayIcon />
-          <ServiceTitle>{SERVICE_TITLE}</ServiceTitle>
+          <ServiceTitle>{SERVICE_TITLE} </ServiceTitle>
         </TitleContainer>
         <Announcement>
-          <Title>
+          {/* <Title>
             오늘 업로드된 주요 영상들을 자동 요약된 아티클로 읽어보세요!
-          </Title>
+          </Title> */}
           <Description>
-            <Highlight>구독한 키워드</Highlight>의 아티클은{" "}
-            <Highlight>내용 전문</Highlight>을 읽을 수 있고, <br />
-            구독 없이도 일부 내용을 미리 확인할 수 있습니다.
+            주요 키워드별 반응 좋은 <Highlight>TOP5 영상</Highlight>을
+            <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
           </Description>
         </Announcement>{" "}
-        {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
+        {/* {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
           <>
             <ButtonContainer>
               <ServiceButton onClick={() => goToPage("subject")}>
@@ -71,7 +71,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
               구독 키워드 변경하기
             </ServiceButton>
           </ButtonContainer>
-        )}
+        )} */}
       </ContentBox>
     </Container>
   );
@@ -89,7 +89,7 @@ const Container = styled.div`
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 `;
 const CurrentDate = styled.div`
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: #000;
   margin-bottom: 8px;
@@ -98,7 +98,7 @@ const ContentBox = styled.div`
   background-color: #f0f4ff;
   padding-left: 16px;
   padding-right: 16px;
-  padding-bottom: 20px;
+  /* padding-bottom: 20px; */
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -211,7 +211,7 @@ const Title = styled.h2`
 `;
 
 const Description = styled.p`
-  font-size: 16px;
+  font-size: 18px;
   line-height: 132%;
   font-weight: 400;
   color: #000;

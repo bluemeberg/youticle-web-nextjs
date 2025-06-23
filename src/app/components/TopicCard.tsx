@@ -10,21 +10,29 @@ import {
   timeAgo,
   removeMarkTags,
   parseVideoCountcribersCount,
+  timeAgoUTC,
 } from "@/utils/formatter";
 import LikeIcon from "@/assets/like_icon.svg";
 import ViewIcon from "@/assets/view_icon.svg";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface TopicCardProps extends DataProps {
   icon: React.ReactNode;
   subjects: string[]; // 구독 키워드 전달
+  metricLabel: string;
+  metricValue: number;
+  rank: number;
 }
 
 const YOUTUBE_TOPICS = [
   { topic: "전체", icon: "🌐" },
   { topic: "주식", icon: "📈" },
+  { topic: "국내 주식", icon: "📈" },
+  { topic: "해외 주식", icon: "📈" },
   { topic: "부동산", icon: "🏢" },
   { topic: "가상자산", icon: "💰" },
+  { topic: "국내 가상자산", icon: "💰" },
+  { topic: "해외 가상자산", icon: "💰" },
   { topic: "경제", icon: "💵" },
   { topic: "정치", icon: "🏛️" },
   { topic: "비즈니스/사업", icon: "💼" },
@@ -60,7 +68,7 @@ const TopicCard = (props: TopicCardProps) => {
     views,
     likes,
   } = props;
-
+  console.log(props);
   const handleNavigate = () => {
     if (isLoading) return; // 중복 클릭 방지
 
@@ -79,7 +87,7 @@ const TopicCard = (props: TopicCardProps) => {
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
   const specialSections = ["주식"]; // 특정 주제 섹션 목록
-
+  console.log(props);
   // 해당 섹션이 특정 주제인지 확인
   const isSpecialSection = specialSections.includes(section);
 
@@ -87,6 +95,57 @@ const TopicCard = (props: TopicCardProps) => {
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+  const metrics = [
+    // 🔥 섹션 평균 대비 조회수가 2배(200%) 이상
+    `키워드 내 평균 대비 2배 조회수 돌파`,
+
+    // 👥 구독자당 조회수가 평소 대비 얼마나 올랐는지
+    `구독자당 조회수 평소 대비 +50% 상승 중`,
+
+    // 📈 지난 1시간 동안 어느 정도 조회수가 늘었는지 (절대치+증가율)
+    `지난 1시간 조회수 +1.2천뷰`,
+
+    // 💬 댓글 참여율이 섹션 내 1위라는 점 강조
+    `키워드 내 댓글 참여율 1위`,
+
+    // ⏱️ 업로드 후 얼마나 빨리 TOP5에 진입했는지
+    `업로드 3시간 만에 TOP5 진입`,
+  ];
+  const sampleComments = [
+    {
+      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다. `,
+      likes: 191,
+    },
+    {
+      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
+      likes: 12,
+    },
+    {
+      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다.`,
+      likes: 20,
+    },
+    {
+      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
+      likes: 12,
+    },
+    {
+      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
+      likes: 12,
+    },
+    {
+      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다.`,
+      likes: 20,
+    },
+  ];
+  // (3) metrics 중 하나를 랜덤으로 뽑아 한 번만 기억
+  const metricText = useMemo(
+    () => metrics[Math.floor(Math.random() * metrics.length)],
+    []
+  );
+  const sampleCommentsText = useMemo(
+    () => sampleComments[Math.floor(Math.random() * sampleComments.length)],
+    []
+  );
 
   return (
     <Container onClick={handleNavigate}>
@@ -96,10 +155,10 @@ const TopicCard = (props: TopicCardProps) => {
         </LoadingOverlay>
       )}
       <CardHeader>
-        {/* <Section isSubscribed={isSubscribed}>
-          {topicInfo?.icon} {topicInfo?.topic || section}
-        </Section> */}
-        {section === "주식" &&
+        {/* <MetricBadge bg="#FFF4E5" color="#302d28">
+          <Value>{metrics[0].label}</Value>
+        </MetricBadge> */}
+        {/* {section === "주식" &&
         (summary_data?.key_points ||
           summary_data?.headline_sub_title === "") ? (
           <Title>
@@ -113,9 +172,26 @@ const TopicCard = (props: TopicCardProps) => {
               {summary_data?.headline_sub_title}
             </Title>
           )
-        )}
+        )} */}
+        {/* 카드 상단: 메트릭 배지 */}
+        <MetricsContainer>
+          <Section isSubscribed={isSubscribed}>
+            {topicInfo?.icon} {topicInfo?.topic || section}
+          </Section>
+          <MetricBadge bg="#EAF4FF" color="#007BFF">
+            {props.metricLabel} {props.rank}위
+          </MetricBadge>
+        </MetricsContainer>
       </CardHeader>
       <BodyContainer>
+        <ChannelInfoContainer>
+          <Thumbnail src={thumbnail} />
+
+          {/* <VideoInfo>
+            <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
+            <LikeIcon /> <span>{parseVideoCountcribersCount(likes)}</span>
+          </VideoInfo> */}
+        </ChannelInfoContainer>
         <Body>
           {isSpecialSection ? (
             <Summary>
@@ -131,17 +207,25 @@ const TopicCard = (props: TopicCardProps) => {
             </Summary>
           ) : (
             <Summary>
+              <Title>{summary_data?.headline_title}</Title>
               <ShortSummary>{short_summary}</ShortSummary>
+              {/* <ChannelInfo>
+                <ProfileImage src={channel_details.channel_thumbnail} />
+                <ProfileInfo>
+                  <Name>{channel_details.channel_name}</Name>
+                  <SubsUpload>
+                    <Subscriber>
+                      {parseSubscribersCount(
+                        channel_details.channel_subscribers
+                      )}
+                    </Subscriber>
+                    <UploadTime>{timeAgo(upload_date)}</UploadTime>
+                  </SubsUpload>
+                </ProfileInfo>
+              </ChannelInfo> */}
             </Summary>
           )}
         </Body>
-        <ChannelInfoContainer>
-          <Thumbnail src={thumbnail} />
-          <VideoInfo>
-            <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
-            <LikeIcon /> <span>{parseVideoCountcribersCount(likes)}</span>
-          </VideoInfo>
-        </ChannelInfoContainer>
       </BodyContainer>
 
       <ChannelInfo>
@@ -152,10 +236,23 @@ const TopicCard = (props: TopicCardProps) => {
             <Subscriber>
               {parseSubscribersCount(channel_details.channel_subscribers)}
             </Subscriber>
-            <UploadTime>{timeAgo(upload_date)}</UploadTime>
+            <UploadTime>{timeAgoUTC(upload_date)}</UploadTime>
           </SubsUpload>
         </ProfileInfo>
       </ChannelInfo>
+      {summary_data.comment_social_proof?.comment?.trim() ? (
+        <CommentSection>
+          <Comment>
+            <CommentIcon>💬</CommentIcon>
+            <CommentText>
+              {summary_data.comment_social_proof.comment}
+            </CommentText>
+            {/* <LikeCount>
+              👍🏻 {summary_data.comment_social_proof.likeCount || 0}
+            </LikeCount> */}
+          </Comment>
+        </CommentSection>
+      ) : null}
     </Container>
   );
 };
@@ -176,7 +273,6 @@ const Container = styled.div`
   transition: transform 0.2s, box-shadow 0.2s;
   margin-left: 8px;
   margin-right: 8px;
-  margin-top: 8px;
   &:hover {
     transform: translateY(-4px); /* 호버 시 위로 살짝 이동 */
     box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 강조 */
@@ -229,19 +325,19 @@ const CardHeader = styled.div`
   padding-bottom: 8px;
   align-items: flex-start; /* Section을 왼쪽 정렬 */
   width: 100%; /* 부모의 가로폭을 채움 */
-  margin-bottom: 12px;
 `;
 
 const ShortSummary = styled.div`
-  font-size: 16px;
-  line-height: 140%;
+  font-size: 14px;
+  line-height: 132%;
   display: -webkit-box;
-  -webkit-line-clamp: 4; /* 최대 5줄 */
+  -webkit-line-clamp: 2; /* 최대 5줄 */
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: rgb(60, 60, 61);
   text-overflow: ellipsis;
-  margin-top: -2px;
+  margin-top: 4px;
+  /* font-weight: 700; */
 `;
 
 const BodyContainer = styled.div`
@@ -274,14 +370,15 @@ const Section = styled.div<{ isSubscribed: boolean }>`
 
 const Body = styled.div`
   display: flex;
-  max-width: 64%; /* Body 영역을 60%로 설정 */
-  min-width: 64%;
+  max-width: 56%; /* Body 영역을 60%로 설정 */
+  min-width: 56%;
+  margin-left: 12px;
 `;
 
 const Title = styled.span`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  line-height: 28px;
+  line-height: 132%;
   margin-top: 4px;
 `;
 
@@ -317,7 +414,7 @@ const SummaryContent = styled.div<{ fontSize: string }>`
 
 const Summary = styled.div`
   border-radius: 4px;
-  margin-right: 12px;
+  /* margin-right: 12px; */
 `;
 
 const Thumbnail = styled.img`
@@ -325,7 +422,7 @@ const Thumbnail = styled.img`
   border-radius: 4px;
   width: 100%;
   height: auto;
-  aspect-ratio: 132 / 72;
+  aspect-ratio: 140/80;
 `;
 
 const UploadTime = styled.span`
@@ -353,8 +450,8 @@ const VideoInfo = styled.div`
 const ChannelInfoContainer = styled.div`
   display: flex;
   flex-direction: column;
-  flex-basis: 40%; /* ChannelInfoContainer의 너비를 BodyContainer의 40%로 설정 */
-  max-width: 40%;
+  flex-basis: 52%; /* ChannelInfoContainer의 너비를 BodyContainer의 40%로 설정 */
+  max-width: 52%;
 `;
 
 const ChannelInfo = styled.div`
@@ -394,4 +491,79 @@ const Subscriber = styled.span`
   line-height: 16.8px;
   color: #696868;
   margin-right: 8px;
+`;
+const MetricsBar = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+`;
+const Metric = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+const Badge = styled.span`
+  font-size: 10px;
+  color: #555;
+`;
+const Value = styled.span`
+  font-size: 14px;
+  font-weight: bold;
+`;
+const CommentSection = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+`;
+
+const Comment = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 본문과 좋아요 카운트 사이 간격 확보 */
+`;
+
+const CommentIcon = styled.span`
+  margin-right: 8px;
+`;
+
+const CommentText = styled.span`
+  flex: 1; /* 본문이 길어져도 자리를 차지하도록 */
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+  margin-right: 8px;
+
+  /* ─── 2줄 클램프 ─── */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const LikeCount = styled.span`
+  font-size: 14px;
+  color: #888;
+`;
+
+const MetricsContainer = styled.div`
+  display: flex;
+  /* padding: 8px;
+  border-radius: 8px;
+  min-width: 80px;
+  margin-top: 12px; */
+`;
+
+const MetricBadge = styled.span<{ bg?: string; color?: string }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: ${({ bg }) => bg};
+  color: ${({ color }) => color};
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  margin-left: 8px;
+  /* margin-bottom: 8px; */
 `;

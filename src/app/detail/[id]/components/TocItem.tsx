@@ -79,7 +79,15 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
             <span>{formatTimeRange(start)}</span>
           </Timeline>
           <Summary>
-            {formatSummary(summary)}
+            {Array.isArray(summary) ? (
+              <ul>
+                {(summary as string[]).map((line, i) => (
+                  <li key={i}>{formatSummary(line)}</li>
+                ))}
+              </ul>
+            ) : (
+              formatSummary(summary as string)
+            )}{" "}
             {explanation_keyword ? (
               <TipArea>
                 💡 <Tip>{explanation_keyword}</Tip>

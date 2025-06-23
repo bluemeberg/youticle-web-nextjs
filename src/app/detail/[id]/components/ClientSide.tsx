@@ -236,6 +236,30 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       <Preview $isFixed={isFixed}>
         {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
+      {/** 5줄 핵심 요약 배치 **/}
+      {detailData.summary_data.five_lines_summary && (
+        <>
+          <FiveLineSummarySection>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineList>
+              {(detailData.summary_data.five_lines_summary ?? []).map(
+                (point, idx) => (
+                  <FiveLineListWrapper key={idx}>
+                    {/* <FiveLineListWrapperIndex>
+                            {NUMBER_EMOJIS[idx]}
+                          </FiveLineListWrapperIndex> */}
+                    {/* <Timeline> */}
+                    {/* <PlayIcon width={16} height={16} /> */}
+                    {/* <span>00:05</span>
+                    </Timeline> */}
+                    <li key={idx}> {formatSummary(point)}</li>
+                  </FiveLineListWrapper>
+                )
+              )}
+            </FiveLineList>
+          </FiveLineSummarySection>
+        </>
+      )}
       {detailData.summary_data.comment_insight &&
         Object.keys(detailData.summary_data.comment_insight).length > 0 && (
           <>
@@ -636,4 +660,40 @@ const FiveLineListWrapper = styled.div`
 const FiveLineListWrapperIndex = styled.div`
   margin-top: 4px;
   margin-right: 4px;
+`;
+
+const Timeline = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* padding: 12px 0px 12px 8px; */
+  /* border: 1px solid #007bff; */
+  border-radius: 8px;
+  background-color: #eaf4ff;
+  /* margin-left: 4px; */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-height: 32px;
+  margin-right: 8px;
+  &:hover {
+    background-color: #007bff;
+    span {
+      color: white;
+    }
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: #007bff;
+    transition: fill 0.2s ease;
+  }
+
+  span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #007bff;
+    transition: color 0.2s ease;
+    min-width: 56px;
+  }
 `;

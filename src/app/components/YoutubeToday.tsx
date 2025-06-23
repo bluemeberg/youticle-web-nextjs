@@ -27,8 +27,11 @@ interface YoutubeTodayProps {
 const YOUTUBE_TOPICS = [
   { topic: "전체", icon: "🌐" },
   { topic: "주식", icon: "📈" },
+  { topic: "국내 주식", icon: "📈" },
+  { topic: "해외 주식", icon: "📈" },
   { topic: "부동산", icon: "🏢" },
-  { topic: "가상자산", icon: "💰" },
+  { topic: "국내 가상자산", icon: "💰" },
+  { topic: "해외 가상자산", icon: "💰" },
   { topic: "경제", icon: "💵" },
   { topic: "정치", icon: "🏛️" },
   { topic: "비즈니스/사업", icon: "💼" },
@@ -47,6 +50,28 @@ const YOUTUBE_TOPICS = [
   { topic: "과학", icon: "🔬" },
   { topic: "역사", icon: "📜" },
 ];
+const GROUPED_TOPICS: Record<string, string[]> = {
+  주식: ["주식", "국내 주식", "해외 주식"],
+  가상자산: ["국내 가상자산", "해외 가상자산"],
+  // 필요하다면 다른 그룹도 추가
+};
+
+const METRIC_KEYS = [
+  "category_relative_views_pct",
+  "relative_sub_norm_pct",
+  "avg_views_per_hour_normalized",
+  "like_rate_pct",
+  "comment_rate_pct",
+] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
+
+const METRIC_LABELS: Record<MetricKey, string> = {
+  category_relative_views_pct: "카테고리 조회수 순위",
+  relative_sub_norm_pct: "구독자 대비 조회수 순위",
+  avg_views_per_hour_normalized: "시간당 조회수 순위",
+  like_rate_pct: "좋아요율 순위",
+  comment_rate_pct: "댓글율 순위",
+};
 
 const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
@@ -111,37 +136,56 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const [showSubscribedOnly, setShowSubscribedOnly] = useState(false); // 토글 상태
 
   const filteredAndSortedData = useMemo(() => {
-    const filteredData = clientData.filter((item) => {
-      if (showSubscribedOnly && subjects.length > 0) {
-        // showSubscribedOnly가 true이고 subjects가 있을 때
-        if (selectedTopic === "전체") {
-          return subjects.includes(item.section);
-        }
-        return (
-          subjects.includes(selectedTopic) && item.section === selectedTopic
-        );
-      }
+    const seen = new Set<string>();
 
-      // subjects가 없을 때 전체 데이터 반환
-      return selectedTopic === "전체" || item.section === selectedTopic;
-    });
+    return (
+      clientData
+        .filter((item) => {
+          // 1) “구독중만 보기” 로직(이전대로)
+          if (showSubscribedOnly && subjects.length > 0) {
+            if (selectedTopic === "전체") {
+              return subjects.includes(item.section);
+            }
+            return (
+              subjects.includes(selectedTopic) && item.section === selectedTopic
+            );
+          }
 
-    // 데이터 정렬
-    const sortedData = filteredData.sort((a, b) => {
-      if (sortCriteria === "engagement") {
-        return b.score - a.score;
-      }
-      return b.views + b.likes * 10 - (a.views + a.likes * 10);
-    });
+          // 2) 전체 토픽
+          if (selectedTopic === "전체") {
+            return true;
+          }
 
-    return sortedData;
+          // 3) 그룹 토픽 처리 (“주식”이면 국내 주식 + 해외 주식 포함)
+          const group = GROUPED_TOPICS[selectedTopic];
+          if (group) {
+            return group.includes(item.section);
+          }
+
+          // 4) 일반 토픽
+          return item.section === selectedTopic;
+        })
+        // 중복 video_id 제거
+        .filter((item) => {
+          if (seen.has(item.video_id)) {
+            return false;
+          }
+          seen.add(item.video_id);
+          return true;
+        })
+        .sort((a, b) => {
+          // 기존 정렬 로직 그대로
+          if (sortCriteria === "engagement") {
+            return b.score - a.score;
+          }
+          return b.views + b.likes * 10 - (a.views + a.likes * 10);
+        })
+    );
   }, [clientData, showSubscribedOnly, subjects, selectedTopic, sortCriteria]);
-
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
         const scrollRefTop = scrollRef.current.getBoundingClientRect().top;
-        console.log(scrollRefTop);
         setIsFixed(scrollRefTop <= 0);
       }
     };
@@ -166,6 +210,29 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const filteredSubjects = showSubscribedOnly
     ? subjects
     : YOUTUBE_TOPICS.map((t) => t.topic);
+  // ① 필터＋정렬된 리스트가 바뀔 때마다, 각 메트릭별 랭킹 맵을 계산
+
+  const metricRanks = useMemo(() => {
+    const ranks: Record<MetricKey, Map<string, number>> = {
+      category_relative_views_pct: new Map(),
+      relative_sub_norm_pct: new Map(),
+      avg_views_per_hour_normalized: new Map(),
+      like_rate_pct: new Map(),
+      comment_rate_pct: new Map(),
+    };
+
+    METRIC_KEYS.forEach((key) => {
+      // 내림차순 정렬 → 순위 매기기
+      const sorted = [...filteredAndSortedData].sort(
+        (a, b) => (b.summary_data[key] ?? 0) - (a.summary_data[key] ?? 0)
+      );
+      sorted.forEach((item, idx) => {
+        ranks[key].set(item.video_id, idx + 1);
+      });
+    });
+
+    return ranks;
+  }, [filteredAndSortedData]);
 
   return (
     <Container>
@@ -208,8 +275,11 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             subscribedSubjects={subjects} // 구독 주제 전달 (색상 변경용)
           ></TopicNav>
         </TopicNavContainer>
+        {/* <CountdownTimer /> */}
       </SubContainer>
-      <SortOptions
+      {/* 여기서 Topic별 subtitle 추가 */}
+
+      {/* <SortOptions
         ref={sortOptionsRef}
         isFixed={isFixed}
         sortCriteria={sortCriteria}
@@ -218,7 +288,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
         handleSortClick={handleSortClick}
         handleClickIcon={handleClickIcon}
         variant="default"
-      />
+      /> */}
       {/* 🛠 애니메이션 추가 */}
       <TopicCardWrapper $isRendered={isRendered}>
         <EditorContainer>
@@ -228,15 +298,56 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             );
             const isSubscribed = subjects.includes(item.section);
 
+            // ② 이 아이템에 대해 가장 좋은(=작은) 랭킹을 가진 key 찾기
+            let bestKey: MetricKey = METRIC_KEYS[0];
+            let bestRank = metricRanks[bestKey].get(item.video_id)!;
+
+            METRIC_KEYS.forEach((key) => {
+              const rank = metricRanks[key].get(item.video_id)!;
+              if (rank < bestRank) {
+                bestKey = key;
+                bestRank = rank;
+              }
+            });
+
+            const metricLabel = METRIC_LABELS[bestKey];
+            const metricValue = item.summary_data[bestKey];
+            console.log(item.video_id, metricLabel);
+            console.log(item.video_id, metricValue);
+            console.log("best key", bestKey);
+            console.log("best rank", bestRank);
+
             return (
               <>
-                <Section isSubscribed={isSubscribed}>
-                  {topicInfo?.icon} {topicInfo?.topic || item.section}
-                </Section>
+                <CardContainer>
+                  {/* <Section isSubscribed={isSubscribed}>
+                    {topicInfo?.icon} {topicInfo?.topic || item.section}
+                  </Section> */}
+                  {/* <MetricsContainer>
+                    <MetricBadge bg="#FFF4E5" color="#302d28">
+                      <Value>
+                        {topicInfo?.icon} {topicInfo?.topic || item.section}
+                      </Value>
+                      <Value> - {metric.label}</Value>
+                    </MetricBadge> */}
+                  {/* <Metric>
+                      <Badge>ΔViews</Badge>
+                      <Value>20%</Value>
+                    </Metric>
+                    <Metric>
+                      <Badge>Recency</Badge>
+                      <Value>15</Value>
+                    </Metric> */}
+                  {/* </MetricsContainer> */}
+                </CardContainer>
                 <TopicCard
                   key={item.video_id}
                   icon={topicInfo?.icon}
                   subjects={subjects}
+                  // ③ 새로 추가된 props
+                  metricLabel={metricLabel}
+                  metricValue={metricValue}
+                  rank={bestRank}
                   {...item}
                 />
               </>
@@ -425,6 +536,60 @@ const ToggleButton = styled.button<{ isActive: boolean }>`
 const EditorContainer = styled.div`
   padding-top: 12px;
   border-radius: 8px;
-  margin-top: 4px;
   background-color: #f9f9f9;
+`;
+export const MetricsContainer = styled.div`
+  display: flex;
+  background: #f5f7fa;
+  padding: 8px;
+  border-radius: 8px;
+  min-width: 80px;
+  margin-top: 12px;
+`;
+
+export const Metric = styled.div`
+  text-align: center;
+  margin-bottom: 8px;
+  display: flex;
+`;
+
+export const Badge = styled.span`
+  font-size: 10px;
+  color: #777;
+`;
+
+export const Value = styled.span`
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-right: 4px;
+`;
+export const CardContainer = styled.div`
+  display: flex;
+  align-items: flex-start;
+`;
+
+const Subtitle = styled.div`
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  background-color: #f0f4ff;
+  border-bottom: 1px solid #e0e0e0;
+  margin-top: 8px;
+`;
+const MetricBadge = styled.span<{
+  bg?: string;
+  color?: string;
+}>`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: ${({ bg }) => bg || "#f5f7fa"};
+  color: ${({ color }) => color || "#333"};
+  font-size: 12px;
+  border-radius: 12px;
+  margin-right: 8px;
+  white-space: nowrap;
 `;

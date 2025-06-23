@@ -82,7 +82,15 @@ const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
             </Header>
 
             <Summary>
-              {formatSummary(summary)}
+              {Array.isArray(summary) ? (
+                <ul>
+                  {(summary as string[]).map((line, i) => (
+                    <li key={i}>{formatSummary(line)}</li>
+                  ))}
+                </ul>
+              ) : (
+                formatSummary(summary as string)
+              )}{" "}
               {explanation_keyword ? (
                 <TipArea>
                   💡 <Tip>{explanation_keyword}</Tip>
@@ -96,7 +104,7 @@ const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
             </Summary>
           </SectionCard>
         </ContentWrapper>
-        {dimmed && (
+        {/* {dimmed && (
           <DimmedArea
             tocItemHeight={tocItemHeight}
             videoId={videoId}
@@ -108,7 +116,7 @@ const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
             section={section}
             overview={overview}
           />
-        )}
+        )} */}
       </Container>
     );
   }
@@ -127,12 +135,8 @@ const ContentWrapper = styled.div<{
   $dimmed: boolean;
   $partialDimmed: boolean;
 }>`
-  opacity: ${(props) => (props.$dimmed ? 0.2 : 1)};
-  ${({ $partialDimmed }) =>
-    $partialDimmed
-      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);
-      `
-      : ""}
+  opacity: ${(props) => (props.$dimmed ? 1 : 1)};
+  ${({ $partialDimmed }) => ($partialDimmed ? "" : "")}
 `;
 
 const SectionCard = styled.div`
@@ -230,13 +234,24 @@ const Summary = styled.div`
   font-weight: 400;
   line-height: 168%;
 
+  /* 배열 렌더링 시 불릿 스타일 */
+  ul {
+    padding-left: 1.2em;
+    margin: 0 0 16px;
+    list-style-type: disc;
+  }
+  li {
+    margin-bottom: 8px;
+  }
+
+  /* 기존 단일 summary 포맷(포맷터 사용) */
   span {
     display: block;
   }
 
   span.line-break {
     font-weight: 400;
-    line-height: 148%;
+    line-height: 128%;
     margin-bottom: 12px;
   }
 `;

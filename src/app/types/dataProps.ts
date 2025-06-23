@@ -240,6 +240,12 @@ export interface SummaryData {
   overview?: Overview; // Make overview optional
   comment_insight?: CommentInsight; // ✅ comment_insight 속성 추가
   five_lines_summary?: string[]; // ✅ five_lines_summary 속성 추가
+  comment_social_proof: CommentSocialProof;
+  category_relative_views_pct: number;
+  relative_sub_norm_pct: number;
+  avg_views_per_hour_normalized: number;
+  like_rate_pct: number;
+  comment_rate_pct: number;
 }
 // 🟡 새로운 comment_insight 타입 정의
 export interface CommentInsight {
@@ -249,6 +255,11 @@ export interface CommentInsight {
   "2nd_comments": CommentObj[];
   "3rd": string;
   "3rd_comments": CommentObj[];
+}
+
+export interface CommentSocialProof {
+  comment: string;
+  likeCount: string;
 }
 
 export interface CommentObj {

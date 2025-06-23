@@ -106,23 +106,35 @@ const TopicNav = ({
   }, []);
 
   return (
-    <Container
-      ref={containerRef}
-      $isFixed={$isFixed}
-      $hasScrolled={hasScrolled}
-    >
-      {filteredTopics.map(({ topic, icon }) => (
-        <Topic
-          key={topic}
-          onClick={() => handleTopicClick(topic)}
-          selected={clientSelected === topic}
-          isSubscribed={subscribedSubjects.includes(topic)} // 구독된 주제 색상 변경
-        >
-          {icon}
-          <span>{topic}</span>
-        </Topic>
-      ))}
-    </Container>
+    <>
+      <Container
+        ref={containerRef}
+        $isFixed={$isFixed}
+        $hasScrolled={hasScrolled}
+      >
+        {filteredTopics.map(({ topic, icon }) => (
+          <Topic
+            key={topic}
+            onClick={() => handleTopicClick(topic)}
+            selected={clientSelected === topic}
+            isSubscribed={subscribedSubjects.includes(topic)} // 구독된 주제 색상 변경
+          >
+            {icon}
+            <span>{topic}</span>
+          </Topic>
+        ))}
+      </Container>
+      <Subtitle $isFixed={$isFixed}>
+        {/* 아이콘 + 텍스트 */}
+        <span style={{ marginRight: 6 }}>
+          {YOUTUBE_TOPICS.find(({ topic }) => topic === selectedTopic)?.icon ||
+            "🌐"}
+        </span>
+        {selectedTopic === "전체"
+          ? "전체 TOP5 영상"
+          : `${selectedTopic} TOP5 영상`}
+      </Subtitle>
+    </>
   );
 };
 
@@ -140,7 +152,7 @@ const Container = styled.div<{ $isFixed: boolean; $hasScrolled: boolean }>`
   max-width: 430px;
   background-color: #fff;
   z-index: 10;
-
+  padding-bottom: 20px;
   ::-webkit-scrollbar {
     display: none;
   }
@@ -173,4 +185,26 @@ const Topic = styled.div<{ selected: boolean; isSubscribed: boolean }>`
     white-space: nowrap;
     text-align: center;
   }
+`;
+const Subtitle = styled.div<{ $isFixed: boolean }>`
+  /* 네비게이션 컨테이너와 같은 padding */
+  padding: 20px 16px 8px 16px;
+  /* 텍스트 스타일 */
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  /* 배경을 아주 연하게 줘서 구분 */
+  background-color: #fff;
+  /* 탭 하단 경계와 컬러를 맞춤 */
+  /* border-bottom: 1px solid #dde2e6; */
+
+  /* fixed 상태일 땐 네비 바로 아래에 붙이기 */
+  position: ${({ $isFixed }) => ($isFixed ? "fixed" : "relative")};
+  top: ${({ $isFixed }) => ($isFixed ? "112px" : "auto")};
+  width: 100%;
+  z-index: ${({ $isFixed }) => ($isFixed ? 9 : "auto")};
+
+  /* 네비 및 본문 컨테이너와 동일한 max-width & centering */
+  max-width: 430px;
+  margin: 0 auto;
 `;

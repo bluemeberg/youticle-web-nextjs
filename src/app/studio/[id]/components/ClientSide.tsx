@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
 import Contents from "./Contents";
 import { userState } from "@/store/user";
+import PlayIcon from "@/assets/play.svg";
+import Recommend from "@/detail/[id]/components/Recommend";
 
 interface ClientSideProps {
   id: string;
@@ -265,9 +267,13 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
               {(detailData.summary_data.five_lines_summary ?? []).map(
                 (point, idx) => (
                   <FiveLineListWrapper key={idx}>
-                    <FiveLineListWrapperIndex>
+                    {/* <FiveLineListWrapperIndex>
                       {NUMBER_EMOJIS[idx]}
-                    </FiveLineListWrapperIndex>
+                    </FiveLineListWrapperIndex> */}
+                    <Timeline>
+                      {/* <PlayIcon width={16} height={16} /> */}
+                      <span>00:05</span>
+                    </Timeline>
                     <li key={idx}> {formatSummary(point)}</li>
                   </FiveLineListWrapper>
                 )
@@ -276,41 +282,8 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
-      {/* 댓글 분석 섹션 추가 */}
-      {detailData.summary_data.comment_insight && (
-        <>
-          <CommentAnalysisWrapper>
-            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
-            <AnalysisDesc>
-              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
-              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
-              남겼을까요?
-            </AnalysisDesc>
-            <ToggleButton2
-              onClick={() => setIsInsightVisible(!isInsightVisible)}
-            >
-              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
-            </ToggleButton2>
-          </CommentAnalysisWrapper>
-          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
-          {isInsightVisible && (
-            <CommentsInsightSection
-              data={
-                detailData.summary_data.comment_insight ?? {
-                  "1st": "",
-                  "1st_comments": [],
-                  "2nd": "",
-                  "2nd_comments": [],
-                  "3rd": "",
-                  "3rd_comments": [],
-                }
-              }
-              isLoggedIn={true}
-            />
-          )}{" "}
-        </>
-      )}
-      <Divider />
+      <MoreButton>상세 요약 내용 더보기</MoreButton>
+      {/* <Divider /> */}
       {/* (B) "아티클 본문" 타이틀 추가 */}
       <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
       <TOC>
@@ -347,7 +320,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
             </>
           ) : (
             /* 8개 미만일 땐 그냥 쭉 나열 */
-            sections.map((sec, i) => <Item key={i}>{sec.title}</Item>)
+            sections.map((sec, i) => (
+              <Item key={i}>{removeMarkTags(sec.title)}</Item>
+            ))
           )}
         </ContentWrapper>
 
@@ -365,6 +340,50 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         handleTocItemClick={handleTocItemClick}
         taskStatus="Success"
       />
+      {detailData.summary_data.comment_insight && (
+        <>
+          <CommentAnalysisWrapper>
+            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+            <AnalysisDesc>
+              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
+              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+              남겼을까요?
+            </AnalysisDesc>
+            {/* <ToggleButton2
+              onClick={() => setIsInsightVisible(!isInsightVisible)}
+            >
+              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+            </ToggleButton2> */}
+          </CommentAnalysisWrapper>
+          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
+          {isInsightVisible && (
+            <CommentsInsightSection
+              data={
+                detailData.summary_data.comment_insight ?? {
+                  "1st": "",
+                  "1st_comments": [],
+                  "2nd": "",
+                  "2nd_comments": [],
+                  "3rd": "",
+                  "3rd_comments": [],
+                }
+              }
+              isLoggedIn={true}
+            />
+          )}{" "}
+        </>
+      )}
+      <RecommendWrapper
+        $hasDimmedItem={false}
+        $tocItemHeight={0}
+        $isUnsubscribedSection={false} // 새로운 속성 추가
+      >
+        <Recommend
+          section={detailData.section}
+          videoId={detailData.video_id}
+          isUnsubscribedSection={false}
+        />
+      </RecommendWrapper>
       {/* (2) 하단 플로팅 버튼 */}
       {user.id == 3 && (
         <FloatingButton onClick={handleOpenThreadModal}>
@@ -660,10 +679,10 @@ const Spinner = styled.div`
 /** ⬇️ 5줄 핵심 요약 섹션 추가 */
 const FiveLineSummarySection = styled.div`
   margin: 0 16px 32px 16px;
-  padding: 20px;
-  background-color: #f7faff;
+  /* padding: 20px; */
+  /* background-color: #f7faff; */
   /* border-radius: 8px; */
-  border: 1px solid #b4c2ff;
+  /* border: 1px solid #b4c2ff; */
 `;
 
 const Divider = styled.div`
@@ -674,9 +693,10 @@ const Divider = styled.div`
 `;
 
 const FiveLineTitle = styled.h3`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 20px;
+  margin-top: 20px;
 `;
 
 const FiveLineList = styled.ul`
@@ -688,6 +708,41 @@ const FiveLineList = styled.ul`
   }
 `;
 
+const Timeline = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* padding: 12px 0px 12px 8px; */
+  /* border: 1px solid #007bff; */
+  border-radius: 8px;
+  background-color: #eaf4ff;
+  /* margin-left: 4px; */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-height: 32px;
+  margin-right: 8px;
+  &:hover {
+    background-color: #007bff;
+    span {
+      color: white;
+    }
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: #007bff;
+    transition: fill 0.2s ease;
+  }
+
+  span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #007bff;
+    transition: color 0.2s ease;
+    min-width: 56px;
+  }
+`;
 /** 본문 시작 타이틀 추가 */
 const MainBodyTitle = styled.h3`
   font-size: 22px;
@@ -695,8 +750,27 @@ const MainBodyTitle = styled.h3`
   margin: 24px 16px 12px;
 `;
 
+const MoreButton = styled.button`
+  display: block;
+  margin: 0 16px 24px;
+  width: calc(100% - 32px);
+  padding: 12px 0;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+
 const FiveLineListWrapper = styled.div`
   display: flex;
+  margin-bottom: 12px;
 `;
 
 const FiveLineListWrapperIndex = styled.div`
@@ -742,4 +816,20 @@ const ToggleButton2 = styled.button`
   &:hover {
     background-color: #0056b3;
   }
+`;
+
+const RecommendWrapper = styled.div<{
+  $hasDimmedItem: boolean;
+  $isUnsubscribedSection: boolean;
+  $tocItemHeight: number;
+}>`
+  margin-top: ${(props) =>
+    props.$hasDimmedItem && props.$isUnsubscribedSection
+      ? `240px`
+      : props.$hasDimmedItem
+      ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
+      : `100px`};
+  z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+  padding-left: 16px;
+  padding-right: 16px;
 `;

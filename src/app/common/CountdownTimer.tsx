@@ -49,7 +49,7 @@ const CountdownTimer = ({ scrollRef }: CountdownTimerProps) => {
     <>
       <Description>
         <TimeContainer>
-          <TimeWarning>👀 다음 업데이트까지 남은 시간.</TimeWarning>
+          <TimeWarning>다음 업데이트까지 남은 시간</TimeWarning>
         </TimeContainer>
         <TooltipSection ref={infoIconRef}>
           <InfoIcon onClick={handleClickIcon} />
@@ -72,11 +72,11 @@ const TimeContainer = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-left: 4px;
+  margin-left: 14px;
 `;
 const TimeWarning = styled.span`
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 16.71px;
 `;
 
@@ -98,8 +98,8 @@ const TooltipSection = styled.div`
   cursor: pointer;
 `;
 const StyledTime = styled.span`
-  font-size: 32px;
-  font-weight: 500;
+  font-size: 24px;
+  font-weight: 400;
   line-height: 16px;
   text-align: left;
   padding-bottom: 12px;
@@ -110,14 +110,16 @@ const StyledTime = styled.span`
 const Container = styled.div`
   border-bottom: 1px solid #d5d5d5;
   display: flex;
+  margin-left: 14px;
   margin-bottom: 12px;
 `;
 
 const Description = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   justify-content: space-between;
+  margin-top: 12px;
 `;
 
 const Tooltip = styled.div<{ $tooltipVisible: boolean }>`

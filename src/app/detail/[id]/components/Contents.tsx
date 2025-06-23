@@ -18,6 +18,7 @@ import FashionOverview from "./overviews/FashionOverview";
 import { useRouter } from "next/navigation"; // For navigation
 import CryptoOverview from "./overviews/CryptoOverview";
 import NewTocItem from "./NewTocItem";
+import ItTechOverview from "./overviews/ItTechOverview";
 
 // "mm:ss" 형식의 문자열을 초 단위 숫자로 변환하는 함수
 function convertTimeStringToSeconds(timeString: string): number {
@@ -38,7 +39,31 @@ interface RealEstateOverviewProps {
     investment_strategy?: string;
   };
 }
+interface ItTechOverviewProps {
+  overview: {
+    target_audience?: Audience[];
+    tech_trends?: TechTrend[];
+    tech_strategic_insights?: TechStrategy[];
+  };
+}
 
+interface Audience {
+  label: string;
+  description: string;
+}
+interface TechTrend {
+  trend_name: string;
+  trend_description: string;
+}
+interface ApplicationTip {
+  tip_title: string;
+  tip_description: string;
+}
+interface TechStrategy {
+  technology_name: string;
+  technology_description: string;
+  usage_tips: ApplicationTip[];
+}
 const Contents = ({
   detailData,
   thumbnails,
@@ -103,7 +128,7 @@ const Contents = ({
           .slice(
             0,
             user.name === "" || isUnsubscribedSection
-              ? 4
+              ? detailData.summary_data.section.length
               : detailData.summary_data.section.length
           )
           .map(
@@ -123,7 +148,7 @@ const Contents = ({
                 ref:
                   index ===
                   (user.name === "" || isUnsubscribedSection
-                    ? 3
+                    ? detailData.summary_data.section.length - 1
                     : detailData.summary_data.section.length - 1)
                     ? tocItemsRef
                     : null,
@@ -180,25 +205,19 @@ const Contents = ({
           )}
       </ContentWrapper>
 
-      {user.name !== "" && !isUnsubscribedSection && (
+      {
         <HilightContainer>
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "주식" &&
+          {detailData.section === "주식" &&
             detailData.summary_data.overview && (
               <StockOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "경제" &&
+          {detailData.section === "경제" &&
             detailData.summary_data.overview && (
               <EconomyOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "부동산" &&
+          {detailData.section === "부동산" &&
             typeof detailData.summary_data.overview === "object" &&
             detailData.summary_data.overview !== null && (
               <RealEstateOverview
@@ -209,45 +228,45 @@ const Contents = ({
               />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "뷰티/메이크업" &&
+          {detailData.section === "뷰티/메이크업" &&
             detailData.summary_data.overview && (
               <BeautyOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "인공지능" &&
+          {detailData.section === "인공지능" &&
             detailData.summary_data.overview && (
               <AIOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "비즈니스/사업" &&
+          {detailData.section === "비즈니스/사업" &&
             detailData.summary_data.overview && (
               <BusinessOverview overview={detailData.summary_data.overview} />
             )}
 
-          {user.name !== "" &&
-            !isUnsubscribedSection &&
-            detailData.section === "가상자산" &&
+          {detailData.section === "가상자산" &&
             detailData.summary_data.overview && (
               <CryptoOverview overview={detailData.summary_data.overview} />
+            )}
+
+          {detailData.section === "IT/테크" &&
+            detailData.summary_data.overview && (
+              <ItTechOverview
+                overview={
+                  detailData.summary_data
+                    .overview as ItTechOverviewProps["overview"]
+                }
+              />
             )}
 
           {/* 패션 섹션 */}
           {(detailData.section === "남자 패션" ||
             detailData.section === "여자 패션") &&
-            detailData.summary_data.overview &&
-            user.name !== "" &&
-            !isUnsubscribedSection && (
+            detailData.summary_data.overview && (
               <FashionOverview overview={detailData.summary_data.overview} />
             )}
         </HilightContainer>
-      )}
-      {!hasDimmedItem ? (
+      }
+      {
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
           $tocItemHeight={tocItemHeight}
@@ -259,9 +278,7 @@ const Contents = ({
             isUnsubscribedSection={isUnsubscribedSection}
           />
         </RecommendWrapper>
-      ) : (
-        <></>
-      )}
+      }
     </>
   );
 };

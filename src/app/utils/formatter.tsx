@@ -64,8 +64,8 @@ export const calcuateTimeLeft = (): string => {
   const tomorrow = new Date(
     now.getFullYear(),
     now.getMonth(),
-    now.getDate() + 1,
-    7,
+    now.getDate(),
+    2,
     30,
     0
   );
@@ -220,4 +220,37 @@ export function getOrCreateAnonId(): string {
     localStorage.setItem("anon_uuid", anon);
   }
   return anon;
+}
+
+export function timeAgoUTC(dateStr: string): string {
+  // 1) dateStr 끝에 Z 또는 오프셋(+09:00 등)이 없으면 Z를 붙여 UTC로 파싱
+  const iso = /Z$|[+\-]\d\d:\d\d$/.test(dateStr) ? dateStr : dateStr + "Z";
+  const dateObj = new Date(iso);
+
+  // 2) now도 로컬(KST) Date 객체—두 시점이 동일한 기준(UTC)으로 비교됨
+  const now = new Date();
+
+  const diffMs = now.getTime() - dateObj.getTime();
+  const diffSecs = Math.floor(diffMs / 1_000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) {
+    return `${diffSecs}초 전`;
+  } else if (diffMins < 60) {
+    return `${diffMins}분 전`;
+  } else if (diffHours < 24) {
+    return `${diffHours}시간 전`;
+  } else if (diffDays < 7) {
+    return `${diffDays}일 전`;
+  } else if (diffDays < 30) {
+    return `${Math.floor(diffDays / 7)}주 전`;
+  } else {
+    const months =
+      (now.getFullYear() - dateObj.getFullYear()) * 12 +
+      (now.getMonth() - dateObj.getMonth());
+    const years = now.getFullYear() - dateObj.getFullYear();
+    return years >= 1 ? `${years}년 전` : `${months}개월 전`;
+  }
 }

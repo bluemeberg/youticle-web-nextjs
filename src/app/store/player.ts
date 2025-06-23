@@ -5,6 +5,6 @@ const { persistAtom } = recoilPersist();
 
 export const playerState = atom({
   key: "playerState",
-  default: false,
+  default: true,
   effects_UNSTABLE: [persistAtom],
 });
