@@ -23,7 +23,11 @@ import {
 } from "@/types/dataProps";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
-import { formatSummary } from "@/utils/formatter";
+import {
+  formatSummary,
+  parseTimeStringToSeconds,
+  removeMarkTags,
+} from "@/utils/formatter";
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
 import Footer from "@/components/Footer";
@@ -32,6 +36,7 @@ import { userState } from "@/store/user";
 import { fetchSubscribedSubjects } from "@/api/apiClient";
 import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
 import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
+import Recommend from "./Recommend";
 
 interface ClientSideProps {
   id: string;
@@ -165,7 +170,31 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     };
     fetchSubjects();
   }, [user]);
+  const [isArticleVisible, setIsArticleVisible] = useState(false);
+  const articleRef = useRef<HTMLDivElement>(null);
+  const [articleHeight, setArticleHeight] = useState(0);
 
+  // 요약 섹션 높이 재계산
+  useEffect(() => {
+    if (articleRef.current) {
+      setArticleHeight(articleRef.current.scrollHeight);
+    }
+  }, [detailData, isArticleVisible]);
+
+  const handleMoreClick = () => {
+    const next = !isArticleVisible;
+    setIsArticleVisible(next);
+    if (next) {
+      // 펼칠 때만 스크롤
+      setTimeout(() => {
+        articleRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        window.scrollBy({ top: -76, behavior: "smooth" });
+      }, 0);
+    }
+  };
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -252,7 +281,17 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
                     {/* <PlayIcon width={16} height={16} /> */}
                     {/* <span>00:05</span>
                     </Timeline> */}
-                    <li key={idx}> {formatSummary(point)}</li>
+                    <Timeline
+                      onClick={() =>
+                        handleTocItemClick(
+                          parseTimeStringToSeconds(point.start_time)
+                        )
+                      }
+                    >
+                      {/* <PlayIcon width={16} height={16} /> */}
+                      <span>{point.start_time}</span>
+                    </Timeline>
+                    <li key={idx}> {formatSummary(point.content)}</li>
                   </FiveLineListWrapper>
                 )
               )}
@@ -260,104 +299,41 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
-      {detailData.summary_data.comment_insight &&
-        Object.keys(detailData.summary_data.comment_insight).length > 0 && (
-          <>
-            <CommentAnalysisWrapper>
-              <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
-              <AnalysisDesc>
-                AI가 댓글을 분석해 <strong>{detailData.section}</strong>과
-                관련한 주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
-                남겼을까요?
-              </AnalysisDesc>
-              <ToggleButton2
-                onClick={() => {
-                  if (typeof window !== "undefined" && window.gtag) {
-                    window.gtag("event", "comment_toggle_click", {
-                      event_category: "engagement",
-                      event_label: isInsightVisible
-                        ? "Collapse Comment Insight"
-                        : "Expand Comment Insight",
-                      value: 1,
-                    });
-                  }
 
-                  setIsInsightVisible(!isInsightVisible);
-                }}
-              >
-                {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
-              </ToggleButton2>
-            </CommentAnalysisWrapper>
-            {/* user 정보가 있고 구독중인 키워드라면 commentInsight 활성화 */}
+      <MoreButton onClick={handleMoreClick}>
+        {isArticleVisible ? "간단히 보기" : "상세 요약 더보기"}
+      </MoreButton>
+      <ArticleWrapper
+        expanded={isArticleVisible}
+        maxHeight={articleHeight}
+        ref={articleRef}
+      >
+        <TOC>
+          <div>목차</div>
+          <div>
+            {detailData.summary_data.section.map(({ title }, index) => (
+              <span key={index}>{removeMarkTags(title)} </span>
+            ))}
+          </div>
+        </TOC>
 
-            {/* user 정보가 있고 구독중인 키워드가 없다면 commentInsightDimmed 활성화 */}
-
-            {/* user 정보가 없다면 commentInsightDimmed 활성화 */}
-
-            {isInsightVisible && (
-              <>
-                {user.name !== "" &&
-                subscribedSubjects.includes(detailData.section) ? (
-                  // ✅ 유저 정보 존재 + 구독한 키워드 있음 → 전체 공개
-                  <CommentsInsightSection
-                    data={detailData.summary_data.comment_insight}
-                    isLoggedIn={true}
-                  />
-                ) : user.name !== "" && subscribedSubjects.length === 0 ? (
-                  // ✅ 유저 정보 존재 + 구독한적 없음 → 일부 차단 & 구독 유도
-                  <CommentsInsightSectionDimmed
-                    data={detailData.summary_data.comment_insight}
-                    section={detailData.section}
-                    isLoggedIn={true}
-                    isUnsubscribed={true} // 🚨 미구독 상태 전달
-                    isNeverSubscribed={true}
-                    videoId={detailData.video_id}
-                    subscribedSubjects={subscribedSubjects}
-                  />
-                ) : user.name !== "" &&
-                  subscribedSubjects.length > 0 &&
-                  !subscribedSubjects.includes(detailData.section) ? (
-                  // ✅ 유저 정보 존재 + 구독한 키워드 없음 → 일부 차단 & 구독 유도
-                  <CommentsInsightSectionDimmed
-                    data={detailData.summary_data.comment_insight}
-                    section={detailData.section}
-                    isLoggedIn={true}
-                    isUnsubscribed={true} // 🚨 미구독 상태 전달
-                    isNeverSubscribed={false}
-                    videoId={detailData.video_id}
-                    subscribedSubjects={subscribedSubjects}
-                  />
-                ) : (
-                  // ✅ 유저 정보 없음 (비로그인 상태) → 전체 차단 & 로그인/구독 유도
-                  <CommentsInsightSectionDimmed
-                    data={detailData.summary_data.comment_insight}
-                    section={detailData.section}
-                    isLoggedIn={false}
-                    isUnsubscribed={true} // 🚨 구독한 적 없음 정보 전달
-                    isNeverSubscribed={true}
-                    videoId={detailData.video_id}
-                    subscribedSubjects={subscribedSubjects}
-                  />
-                )}
-              </>
-            )}
-          </>
-        )}
-      <TOC>
-        <div>목차</div>
-        <div>
-          {detailData.summary_data.section.map(({ title }, index) => (
-            <span key={index}>{title} </span>
-          ))}
-        </div>
-      </TOC>
-
-      <Contents
-        detailData={detailData}
-        thumbnails={thumbnails.length > 0 ? thumbnails : []}
-        handleTocItemClick={handleTocItemClick}
-      />
-
+        <Contents
+          detailData={detailData}
+          thumbnails={thumbnails.length > 0 ? thumbnails : []}
+          handleTocItemClick={handleTocItemClick}
+        />
+      </ArticleWrapper>
+      <RecommendWrapper
+        $hasDimmedItem={false}
+        $tocItemHeight={0}
+        $isUnsubscribedSection={false} // 새로운 속성 추가
+      >
+        <Recommend
+          section={detailData.section}
+          videoId={detailData.video_id}
+          isUnsubscribedSection={false}
+        />
+      </RecommendWrapper>
       {/* <Preview $isFixed={isFixed}>
         <div>
           <span>🔎 미리보기</span>
@@ -618,10 +594,10 @@ const ToggleButton2 = styled.button`
 /** ⬇️ 5줄 핵심 요약 섹션 추가 */
 const FiveLineSummarySection = styled.div`
   margin: 0 16px 32px 16px;
-  padding: 20px;
-  background-color: #f7faff;
+  /* padding: 20px;
+  background-color: #f7faff; */
   /* border-radius: 8px; */
-  border: 1px solid #b4c2ff;
+  /* border: 1px solid #b4c2ff; */
 `;
 
 const Divider = styled.div`
@@ -635,6 +611,7 @@ const FiveLineTitle = styled.h3`
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 20px;
+  margin-top: 20px;
 `;
 
 const FiveLineList = styled.ul`
@@ -655,6 +632,7 @@ const MainBodyTitle = styled.h3`
 
 const FiveLineListWrapper = styled.div`
   display: flex;
+  margin-bottom: 12px;
 `;
 
 const FiveLineListWrapperIndex = styled.div`
@@ -696,4 +674,46 @@ const Timeline = styled.button`
     transition: color 0.2s ease;
     min-width: 56px;
   }
+`;
+const MoreButton = styled.button`
+  position: relative;
+  z-index: 10;
+  display: block;
+  margin: 32px 16px 24px;
+  width: calc(100% - 32px);
+  padding: 16px 0;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+const ArticleWrapper = styled.div<{ expanded: boolean; maxHeight: number }>`
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.3s ease;
+  max-height: ${(p) => (p.expanded ? `${p.maxHeight}px` : "0px")};
+  opacity: ${(p) => (p.expanded ? 1 : 0)};
+  margin-top: 32px;
+`;
+
+const RecommendWrapper = styled.div<{
+  $hasDimmedItem: boolean;
+  $isUnsubscribedSection: boolean;
+  $tocItemHeight: number;
+}>`
+  margin-top: ${(props) =>
+    props.$hasDimmedItem && props.$isUnsubscribedSection
+      ? `240px`
+      : props.$hasDimmedItem
+      ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
+      : `100px`};
+  z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
+  padding-left: 16px;
+  padding-right: 16px;
 `;

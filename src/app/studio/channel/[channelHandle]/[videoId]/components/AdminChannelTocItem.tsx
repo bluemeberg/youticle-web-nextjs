@@ -63,6 +63,10 @@ const AdminChannelTocItem = forwardRef<HTMLDivElement, TocItemProps>(
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <SectionCard ref={ref}>
             <Header>
+              <Timeline onClick={onClick}>
+                {/* <PlayIcon width={16} height={16} /> */}
+                <span>{formatTimeRange(start)}</span>
+              </Timeline>
               <Title>{removeMarkTags(title)}</Title>
               {thumbnails && (
                 <Thumbnail onClick={onClick}>
@@ -78,10 +82,6 @@ const AdminChannelTocItem = forwardRef<HTMLDivElement, TocItemProps>(
                   <PlayIcon className="play-icon" />
                 </Thumbnail>
               )}
-              <Timeline onClick={onClick}>
-                <PlayIcon width={16} height={16} />
-                <span>{formatTimeRange(start)}</span>
-              </Timeline>
             </Header>
             <Summary>
               {Array.isArray(summary) ? (
@@ -130,7 +130,7 @@ const Container = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  margin-top: 60px;
+  margin-top: 40px;
 `;
 
 const ContentWrapper = styled.div<{
@@ -148,16 +148,17 @@ const ContentWrapper = styled.div<{
 const SectionCard = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 16px;
   background: #ffffff;
-  border: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  /* border: 1px solid #e0e0e0;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
 `;
 
 const Header = styled.div`
   display: flex;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   align-items: center;
   margin-bottom: 20px;
 `;
@@ -166,6 +167,7 @@ const Title = styled.span`
   font-size: 18px;
   font-weight: 700;
   line-height: 140%;
+  margin-left: 8px;
 `;
 
 const Thumbnail = styled.div`
@@ -204,11 +206,11 @@ const Timeline = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 0px 12px 8px;
-  border: 1px solid #007bff;
+  padding: 12px 4px 12px 8px;
+  /* border: 1px solid #007bff; */
   border-radius: 8px;
   background-color: #eaf4ff;
-  margin-left: 4px;
+  /* margin-left: 4px; */
   cursor: pointer;
   transition: all 0.3s ease;
 

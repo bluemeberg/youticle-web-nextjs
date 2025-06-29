@@ -268,7 +268,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
                   <FiveLineListWrapperIndex>
                     {NUMBER_EMOJIS[idx]}
                   </FiveLineListWrapperIndex>
-                  <li> {formatSummary(point)}</li>
+                  <li> {formatSummary(point.content)}</li>
                 </FiveLineListWrapper>
               ))}
             </FiveLineList>

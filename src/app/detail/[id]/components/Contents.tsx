@@ -211,6 +211,14 @@ const Contents = ({
             detailData.summary_data.overview && (
               <StockOverview overview={detailData.summary_data.overview} />
             )}
+          {detailData.section === "국내 주식" &&
+            detailData.summary_data.overview && (
+              <StockOverview overview={detailData.summary_data.overview} />
+            )}
+          {detailData.section === "해외 주식" &&
+            detailData.summary_data.overview && (
+              <StockOverview overview={detailData.summary_data.overview} />
+            )}
 
           {detailData.section === "경제" &&
             detailData.summary_data.overview && (
@@ -247,7 +255,14 @@ const Contents = ({
             detailData.summary_data.overview && (
               <CryptoOverview overview={detailData.summary_data.overview} />
             )}
-
+          {detailData.section === "국내 가상자산" &&
+            detailData.summary_data.overview && (
+              <CryptoOverview overview={detailData.summary_data.overview} />
+            )}
+          {detailData.section === "해외 가상자산" &&
+            detailData.summary_data.overview && (
+              <CryptoOverview overview={detailData.summary_data.overview} />
+            )}
           {detailData.section === "IT/테크" &&
             detailData.summary_data.overview && (
               <ItTechOverview
@@ -266,7 +281,7 @@ const Contents = ({
             )}
         </HilightContainer>
       }
-      {
+      {/* {
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
           $tocItemHeight={tocItemHeight}
@@ -278,7 +293,7 @@ const Contents = ({
             isUnsubscribedSection={isUnsubscribedSection}
           />
         </RecommendWrapper>
-      }
+      } */}
     </>
   );
 };

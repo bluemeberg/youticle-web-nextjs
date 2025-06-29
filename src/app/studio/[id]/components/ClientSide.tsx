@@ -6,7 +6,11 @@ import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import { DataProps } from "@/types/dataProps";
-import { formatSummary, removeMarkTags } from "@/utils/formatter";
+import {
+  formatSummary,
+  parseTimeStringToSeconds,
+  removeMarkTags,
+} from "@/utils/formatter";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
@@ -185,6 +189,33 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
 
   const [isInsightVisible, setIsInsightVisible] = useState(false);
+  const [isArticleVisible, setIsArticleVisible] = useState(false);
+
+  const articleRef = useRef<HTMLDivElement>(null);
+
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const handleMoreClick = () => {
+    const next = !isArticleVisible;
+    setIsArticleVisible(next);
+    if (next) {
+      // 보여줄 때만 스크롤
+      setTimeout(() => {
+        articleRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        // 상단 헤더(76px) 만큼 위로 올리기
+        window.scrollBy({ top: -76, behavior: "smooth" });
+      }, 0);
+    }
+  };
+  const [articleHeight, setArticleHeight] = useState(0);
+
+  useEffect(() => {
+    if (articleRef.current) {
+      setArticleHeight(articleRef.current.scrollHeight);
+    }
+  }, [detailData, isArticleVisible]);
 
   return (
     <Container $isFixed={isFixed}>
@@ -270,11 +301,17 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
                     {/* <FiveLineListWrapperIndex>
                       {NUMBER_EMOJIS[idx]}
                     </FiveLineListWrapperIndex> */}
-                    <Timeline>
+                    <Timeline
+                      onClick={() =>
+                        handleTocItemClick(
+                          parseTimeStringToSeconds(point.start_time)
+                        )
+                      }
+                    >
                       {/* <PlayIcon width={16} height={16} /> */}
-                      <span>00:05</span>
+                      <span>{point.start_time}</span>
                     </Timeline>
-                    <li key={idx}> {formatSummary(point)}</li>
+                    <li key={idx}> {formatSummary(point.content)}</li>
                   </FiveLineListWrapper>
                 )
               )}
@@ -282,97 +319,72 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
-      <MoreButton>상세 요약 내용 더보기</MoreButton>
+
+      <MoreButton ref={moreButtonRef} onClick={handleMoreClick}>
+        {isArticleVisible ? "간단히 보기" : "상세 요약 더보기"}
+      </MoreButton>
       {/* <Divider /> */}
       {/* (B) "아티클 본문" 타이틀 추가 */}
-      <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
-      <TOC>
-        <div className="toc-header">목차</div>
+      <ArticleWrapper
+        expanded={isArticleVisible}
+        maxHeight={articleHeight}
+        ref={articleRef}
+      >
+        <MainBodyTitle>📝 아티클 본문 살펴보기</MainBodyTitle>
+        <TOC>
+          <div className="toc-header">목차</div>
 
-        <ContentWrapper
-          ref={contentRef}
-          fullPadding={sections.length < 8} // ← 여기에!
-          style={{
-            /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
-            maxHeight: sections.length >= 8 ? maxHeight : undefined,
-            overflow: sections.length >= 8 ? "hidden" : "visible",
-          }}
-        >
-          {sections.length >= 8 ? (
-            <>
-              {/* 1부 */}
-              <PartCard>
-                <PartHeader>1부</PartHeader>
-                {sections.slice(0, 5).map((sec, i) => (
-                  <Item key={i}>{removeMarkTags(sec.title)}</Item>
-                ))}
-              </PartCard>
-
-              {/* 2부 (펼쳤을 때만) */}
-              {isExpanded && (
+          <ContentWrapper
+            ref={contentRef}
+            fullPadding={sections.length < 8} // ← 여기에!
+            style={{
+              /* 8개 이상일 때만 스크롤 제한, 아니면 full-height */
+              maxHeight: sections.length >= 8 ? maxHeight : undefined,
+              overflow: sections.length >= 8 ? "hidden" : "visible",
+            }}
+          >
+            {sections.length >= 8 ? (
+              <>
+                {/* 1부 */}
                 <PartCard>
-                  <PartHeader>2부</PartHeader>
-                  {sections.slice(5, 10).map((sec, i) => (
-                    <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                  <PartHeader>1부</PartHeader>
+                  {sections.slice(0, 5).map((sec, i) => (
+                    <Item key={i}>{removeMarkTags(sec.title)}</Item>
                   ))}
                 </PartCard>
-              )}
-            </>
-          ) : (
-            /* 8개 미만일 땐 그냥 쭉 나열 */
-            sections.map((sec, i) => (
-              <Item key={i}>{removeMarkTags(sec.title)}</Item>
-            ))
+
+                {/* 2부 (펼쳤을 때만) */}
+                {isExpanded && (
+                  <PartCard>
+                    <PartHeader>2부</PartHeader>
+                    {sections.slice(5, 10).map((sec, i) => (
+                      <Item key={i + 5}>{removeMarkTags(sec.title)}</Item>
+                    ))}
+                  </PartCard>
+                )}
+              </>
+            ) : (
+              /* 8개 미만일 땐 그냥 쭉 나열 */
+              sections.map((sec, i) => (
+                <Item key={i}>{removeMarkTags(sec.title)}</Item>
+              ))
+            )}
+          </ContentWrapper>
+
+          {/* 8개 이상일 때만 토글 버튼 표시 */}
+          {sections.length >= 8 && (
+            <ToggleButton onClick={toggleView}>
+              {isExpanded ? "간단히 보기" : "더 보기"}
+            </ToggleButton>
           )}
-        </ContentWrapper>
-
-        {/* 8개 이상일 때만 토글 버튼 표시 */}
-        {sections.length >= 8 && (
-          <ToggleButton onClick={toggleView}>
-            {isExpanded ? "간단히 보기" : "더 보기"}
-          </ToggleButton>
-        )}
-      </TOC>
-
-      <Contents
-        detailData={detailData}
-        thumbnails={thumbnails}
-        handleTocItemClick={handleTocItemClick}
-        taskStatus="Success"
-      />
-      {detailData.summary_data.comment_insight && (
-        <>
-          <CommentAnalysisWrapper>
-            <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
-            <AnalysisDesc>
-              AI가 댓글을 분석해 <strong>{detailData.section}</strong>과 관련한
-              주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
-              남겼을까요?
-            </AnalysisDesc>
-            {/* <ToggleButton2
-              onClick={() => setIsInsightVisible(!isInsightVisible)}
-            >
-              {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
-            </ToggleButton2> */}
-          </CommentAnalysisWrapper>
-          {/* isInsightVisible이 true일 때만 댓글 분석 섹션 표시 */}
-          {isInsightVisible && (
-            <CommentsInsightSection
-              data={
-                detailData.summary_data.comment_insight ?? {
-                  "1st": "",
-                  "1st_comments": [],
-                  "2nd": "",
-                  "2nd_comments": [],
-                  "3rd": "",
-                  "3rd_comments": [],
-                }
-              }
-              isLoggedIn={true}
-            />
-          )}{" "}
-        </>
-      )}
+        </TOC>
+        <Contents
+          detailData={detailData}
+          thumbnails={thumbnails}
+          handleTocItemClick={handleTocItemClick}
+          taskStatus="Success"
+        />
+      </ArticleWrapper>
       <RecommendWrapper
         $hasDimmedItem={false}
         $tocItemHeight={0}
@@ -748,17 +760,20 @@ const MainBodyTitle = styled.h3`
   font-size: 22px;
   font-weight: 700;
   margin: 24px 16px 12px;
+  margin-top: 60px;
 `;
 
 const MoreButton = styled.button`
+  position: relative;
+  z-index: 10;
   display: block;
-  margin: 0 16px 24px;
+  margin: 32px 16px 24px;
   width: calc(100% - 32px);
-  padding: 12px 0;
+  padding: 16px 0;
   background-color: #007bff;
   color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -832,4 +847,14 @@ const RecommendWrapper = styled.div<{
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 16px;
   padding-right: 16px;
+`;
+
+const ArticleWrapper = styled.div<{
+  expanded: boolean;
+  maxHeight: number;
+}>`
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.3s ease;
+  max-height: ${(p) => (p.expanded ? `${p.maxHeight}px` : `0px`)};
+  opacity: ${(p) => (p.expanded ? 1 : 0)};
 `;

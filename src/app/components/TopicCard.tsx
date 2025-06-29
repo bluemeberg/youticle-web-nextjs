@@ -21,6 +21,7 @@ interface TopicCardProps extends DataProps {
   subjects: string[]; // 구독 키워드 전달
   metricLabel: string;
   metricValue: number;
+  metricIcon: string;
   rank: number;
 }
 
@@ -95,57 +96,6 @@ const TopicCard = (props: TopicCardProps) => {
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
-  const metrics = [
-    // 🔥 섹션 평균 대비 조회수가 2배(200%) 이상
-    `키워드 내 평균 대비 2배 조회수 돌파`,
-
-    // 👥 구독자당 조회수가 평소 대비 얼마나 올랐는지
-    `구독자당 조회수 평소 대비 +50% 상승 중`,
-
-    // 📈 지난 1시간 동안 어느 정도 조회수가 늘었는지 (절대치+증가율)
-    `지난 1시간 조회수 +1.2천뷰`,
-
-    // 💬 댓글 참여율이 섹션 내 1위라는 점 강조
-    `키워드 내 댓글 참여율 1위`,
-
-    // ⏱️ 업로드 후 얼마나 빨리 TOP5에 진입했는지
-    `업로드 3시간 만에 TOP5 진입`,
-  ];
-  const sampleComments = [
-    {
-      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다. `,
-      likes: 191,
-    },
-    {
-      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
-      likes: 12,
-    },
-    {
-      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다.`,
-      likes: 20,
-    },
-    {
-      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
-      likes: 12,
-    },
-    {
-      text: `삼성은 계획이 다 있었구나............!!! 삼성, sk 둘다 경쟁하면서 발전해 나가 세계 점유율 다 잡아먹었으면!!`,
-      likes: 12,
-    },
-    {
-      text: `새로운 것은 없고, 또 다른 포켓몬 - 디즈니 봉제/피규어 수집용 장난감을 블라인드 박스 형식으로 포장한 것일 뿐입니다. 5년 안에 WSJ는 '팝마트의 흥망성쇠'라는 영상을 만들 것입니다.`,
-      likes: 20,
-    },
-  ];
-  // (3) metrics 중 하나를 랜덤으로 뽑아 한 번만 기억
-  const metricText = useMemo(
-    () => metrics[Math.floor(Math.random() * metrics.length)],
-    []
-  );
-  const sampleCommentsText = useMemo(
-    () => sampleComments[Math.floor(Math.random() * sampleComments.length)],
-    []
-  );
 
   return (
     <Container onClick={handleNavigate}>
@@ -175,11 +125,14 @@ const TopicCard = (props: TopicCardProps) => {
         )} */}
         {/* 카드 상단: 메트릭 배지 */}
         <MetricsContainer>
-          <Section isSubscribed={isSubscribed}>
+          {/* <Section isSubscribed={isSubscribed}>
             {topicInfo?.icon} {topicInfo?.topic || section}
-          </Section>
+          </Section> */}{" "}
           <MetricBadge bg="#EAF4FF" color="#007BFF">
-            {props.metricLabel} {props.rank}위
+            🔥 Hot Score {props.score}↑
+          </MetricBadge>
+          <MetricBadge bg="#EAF4FF" color="#007BFF">
+            {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
           </MetricBadge>
         </MetricsContainer>
       </CardHeader>
@@ -207,7 +160,7 @@ const TopicCard = (props: TopicCardProps) => {
             </Summary>
           ) : (
             <Summary>
-              <Title>{summary_data?.headline_title}</Title>
+              <Title>{removeMarkTags(summary_data?.headline_title)}</Title>
               <ShortSummary>{short_summary}</ShortSummary>
               {/* <ChannelInfo>
                 <ProfileImage src={channel_details.channel_thumbnail} />
@@ -530,7 +483,7 @@ const CommentIcon = styled.span`
 const CommentText = styled.span`
   flex: 1; /* 본문이 길어져도 자리를 차지하도록 */
   font-size: 14px;
-  color: #333;
+  color: #000;
   line-height: 1.4;
   margin-right: 8px;
 
@@ -564,6 +517,7 @@ const MetricBadge = styled.span<{ bg?: string; color?: string }>`
   font-size: 12px;
   font-weight: 600;
   border-radius: 4px;
-  margin-left: 8px;
+  /* margin-left: 8px; */
+  margin-right: 4px;
   /* margin-bottom: 8px; */
 `;

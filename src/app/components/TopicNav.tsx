@@ -80,6 +80,25 @@ const TopicNav = ({
     return YOUTUBE_TOPICS;
   }, [subjects, unSubscribe]);
   const [clientSelected, setClientSelected] = useState<string>("");
+  // 탭이 바뀔 때마다 해당 버튼을 중앙으로 스크롤
+  useEffect(() => {
+    if (!containerRef.current) return;
+    // "전체" 선택 시엔 왼쪽 끝으로
+    if (selectedTopic === "전체") {
+      containerRef.current.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    const el = containerRef.current.querySelector<HTMLElement>(
+      `[data-topic="${selectedTopic}"]`
+    );
+    if (el) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest", // 수직 스크롤 방지
+        inline: "center", // 수평 중앙 정렬
+      });
+    }
+  }, [selectedTopic]);
 
   useEffect(() => {
     setClientSelected(selectedTopic);
@@ -115,9 +134,10 @@ const TopicNav = ({
         {filteredTopics.map(({ topic, icon }) => (
           <Topic
             key={topic}
+            data-topic={topic} // <-- 여기
             onClick={() => handleTopicClick(topic)}
-            selected={clientSelected === topic}
-            isSubscribed={subscribedSubjects.includes(topic)} // 구독된 주제 색상 변경
+            selected={selectedTopic === topic}
+            isSubscribed={subscribedSubjects.includes(topic)}
           >
             {icon}
             <span>{topic}</span>
@@ -131,7 +151,7 @@ const TopicNav = ({
             "🌐"}
         </span>
         {selectedTopic === "전체"
-          ? "전체 TOP5 영상"
+          ? "전체 섹션 별 TOP5 영상"
           : `${selectedTopic} TOP5 영상`}
       </Subtitle>
     </>
@@ -190,7 +210,7 @@ const Subtitle = styled.div<{ $isFixed: boolean }>`
   /* 네비게이션 컨테이너와 같은 padding */
   padding: 20px 16px 8px 16px;
   /* 텍스트 스타일 */
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #000;
   /* 배경을 아주 연하게 줘서 구분 */
@@ -207,4 +227,5 @@ const Subtitle = styled.div<{ $isFixed: boolean }>`
   /* 네비 및 본문 컨테이너와 동일한 max-width & centering */
   max-width: 430px;
   margin: 0 auto;
+  margin-bottom: 12px;
 `;

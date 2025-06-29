@@ -36,6 +36,28 @@ interface Editor {
   keywords: string[];
 }
 
+// DataProps.summary_data 에서 뽑아올 키들 + top-level 키
+const METRIC_KEYS = [
+  "score", // Hot Score
+  "avg_views_per_hour", // 시간당 조회수
+  "category_relative_views_pct", // 섹션 대비 조회↑
+  "relative_sub_norm_pct", // 구독자당 조회↑
+  "like_rate_pct", // 좋아요율
+  "comment_rate_pct", // 댓글율
+] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
+type AuxKey = Exclude<MetricKey, "score">;
+
+// 1) metric key → 아이콘·이름 매핑
+const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
+  score: { icon: "🔥", name: "Hot Score" },
+  avg_views_per_hour: { icon: "👁️", name: "시간당 조회속도" },
+  category_relative_views_pct: { icon: "", name: "섹션 대비 조회수" },
+  relative_sub_norm_pct: { icon: "👥", name: "구독자당 조회속도" },
+  like_rate_pct: { icon: "👍", name: "좋아요율" },
+  comment_rate_pct: { icon: "💬", name: "댓글율" },
+};
+
 const Recommend = ({
   isUnsubscribedSection,
   section,
@@ -55,7 +77,7 @@ const Recommend = ({
     async function loadVideos() {
       setLoading(true);
       try {
-        if (section == "주식") {
+        if (section == "국내 주식") {
           const data = await fetchStockVideo();
           setVideos(data);
           const editorData = await fetchEditorArticle();
@@ -177,50 +199,45 @@ const Recommend = ({
       : "다른 에디터의 아티클을 확인해보세요.";
   }
   console.log(filteredAndSortedData);
-  // 1) 카드별 보여줄 메트릭 정의
-  const metrics = [
-    // 🔥 섹션 평균 대비 조회수가 2배(200%) 이상
-    `${section}  평균 대비 2배 조회수 돌파`,
 
-    // 👥 구독자당 조회수가 평소 대비 얼마나 올랐는지
-    `구독자당 조회수 평소 대비 +50% 상승 중`,
+  // DataProps.summary_data 에서 뽑아올 키들 + top-level 키
+  const METRIC_KEYS = [
+    "score", // Hot Score
+    "avg_views_per_hour", // 시간당 조회수
+    "category_relative_views_pct", // 섹션 대비 조회↑
+    "relative_sub_norm_pct", // 구독자당 조회↑
+    "like_rate_pct", // 좋아요율
+    "comment_rate_pct", // 댓글율
+  ] as const;
+  type MetricKey = (typeof METRIC_KEYS)[number];
 
-    // 📈 지난 1시간 동안 어느 정도 조회수가 늘었는지 (절대치+증가율)
-    `지난 1시간 조회수 +1.2천뷰`,
+  // 1) useMemo에서 metricRankings 생성 시
+  const metricRankings = useMemo(() => {
+    const rankings: Record<MetricKey, string[]> = {} as any;
 
-    // 💬 댓글 참여율이 섹션 내 1위라는 점 강조
-    `댓글 참여율 ${section} 1위`,
+    // 'score' 제외
+    const auxKeys = METRIC_KEYS.filter((k) => k !== "score");
 
-    // ⏱️ 업로드 후 얼마나 빨리 TOP5에 진입했는지
-    `업로드 3시간 만에 ${section} TOP5 진입`,
-  ];
-  // 2) 샘플 댓글 2개
-  const sampleComments = [
-    {
-      text: `2025년에도 멀티태스킹이 개선되지 않았다면 스스로에게 질문을 던져봐야 할 것입니다...... 스마트폰에서 가장 중요한 것 중 하나인데 말이죠..... 알아서 판단하세요! 저는 안드로이드에 매우 만족하며 평생 그럴 것입니다.`,
-      likes: 70,
-    },
-    {
-      text: `이제서야 프로가 프로다워진 느낌이에요 너무 좋음! 저도 미리 베타 올렸는데 신세계입니다 ㅎㅎ 가벼운 맥북 쓰는 너낌~~`,
-      likes: 5,
-    },
-    {
-      text: `2025년에도 멀티태스킹이 개선되지 않았다면 스스로에게 질문을 던져봐야 할 것입니다...... 스마트폰에서 가장 중요한 것 중 하나인데 말이죠..... 알아서 판단하세요! 저는 안드로이드에 매우 만족하며 평생 그럴 것입니다.`,
-      likes: 70,
-    },
-    {
-      text: `이제서야 프로가 프로다워진 느낌이에요 너무 좋음! 저도 미리 베타 올렸는데 신세계입니다 ㅎㅎ 가벼운 맥북 쓰는 너낌~~`,
-      likes: 5,
-    },
-    {
-      text: `2025년에도 멀티태스킹이 개선되지 않았다면 스스로에게 질문을 던져봐야 할 것입니다...... 스마트폰에서 가장 중요한 것 중 하나인데 말이죠..... 알아서 판단하세요! 저는 안드로이드에 매우 만족하며 평생 그럴 것입니다.`,
-      likes: 70,
-    },
-    {
-      text: `이제서야 프로가 프로다워진 느낌이에요 너무 좋음! 저도 미리 베타 올렸는데 신세계입니다 ㅎㅎ 가벼운 맥북 쓰는 너낌~~`,
-      likes: 5,
-    },
-  ];
+    auxKeys.forEach((key) => {
+      // 각 지표별 값으로 내림차순 정렬한 video_id 배열 생성
+      const sorted = [...filteredAndSortedData]
+        .sort((a, b) => {
+          const aVal = (a.summary_data as any)[key] ?? (a as any)[key];
+          const bVal = (b.summary_data as any)[key] ?? (b as any)[key];
+          return bVal - aVal;
+        })
+        .map((v) => v.video_id);
+      rankings[key] = sorted;
+    });
+
+    return rankings;
+  }, [filteredAndSortedData]);
+
+  // 3) Hot Score 순위 계산 (높을수록 인기)
+  const scoreRanking = useMemo(
+    () => filteredAndSortedData.map((v) => v.video_id),
+    [filteredAndSortedData]
+  );
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>
       {pathname.includes("/studio") ? (
@@ -236,8 +253,8 @@ const Recommend = ({
 
           <VideoList>
             {filteredAndSortedData.slice(0, 5).map((item, idx) => {
-              const metricText = metrics[idx] ?? metrics[metrics.length - 1];
-
+              // const metricText = metrics[idx] ?? metrics[metrics.length - 1];
+              // social proof 데이터가 있으면 사용
               return (
                 <Card
                   key={item.video_id}
@@ -246,7 +263,7 @@ const Recommend = ({
                   {/* 카드 상단: 메트릭 배지 */}
                   <MetricsContainer>
                     <MetricBadge bg="#EAF4FF" color="#007BFF">
-                      {metricText}
+                      {/* {metricText} */}
                     </MetricBadge>
                   </MetricsContainer>
                   <VideoItem
@@ -284,14 +301,20 @@ const Recommend = ({
                     </ChannelInfo>
                   </ChannelFooter>
                   {/* 4. 댓글 섹션 */}
-                  <CommentSection>
-                    <CommentIcon>💬</CommentIcon>
-                    <CommentText>
-                      {/* 예시 댓글; 실제로는 API에서 가져온 데이터를 쓰세요 */}
-                      {sampleComments[idx].text}
-                    </CommentText>
-                    <LikeCount>👍🏻 {sampleComments[idx].likes}</LikeCount>
-                  </CommentSection>
+                  {/* 4. 댓글 섹션 */}
+                  {item.summary_data.comment_social_proof?.comment?.trim() ? (
+                    <CommentSection>
+                      <Comment>
+                        <CommentIcon>💬</CommentIcon>
+                        <CommentText>
+                          {item.summary_data.comment_social_proof.comment}
+                        </CommentText>
+                        {/* <LikeCount>
+              👍🏻 {summary_data.comment_social_proof.likeCount || 0}
+            </LikeCount> */}
+                      </Comment>
+                    </CommentSection>
+                  ) : null}
                 </Card>
               );
             })}
@@ -299,7 +322,103 @@ const Recommend = ({
         </>
       ) : pathname.includes("/detail") ? (
         <>
-          <SubContainer>
+          <Header>
+            <SectionTitle>🔥 오늘의 {section} TOP5 영상</SectionTitle>
+            <TimerWrapper>
+              {/* <TimerIcon>👀</TimerIcon>
+              <span>다음 업데이트까지</span> */}
+              {/* <CountdownTimer /> */}
+            </TimerWrapper>
+          </Header>
+
+          <VideoList>
+            {filteredAndSortedData.slice(0, 5).map((item, idx) => {
+              // Hot Score 순위
+              const hotRank = scoreRanking.indexOf(item.video_id) + 1;
+
+              // 보조지표 bestKey + 순위
+              const auxKeys = METRIC_KEYS.filter(
+                (k) => k !== "score"
+              ) as AuxKey[];
+              const bestKey = auxKeys.reduce(
+                (b, k) =>
+                  metricRankings[k].indexOf(item.video_id) <
+                  metricRankings[b].indexOf(item.video_id)
+                    ? k
+                    : b,
+                auxKeys[0]
+              );
+              const auxRank =
+                metricRankings[bestKey].indexOf(item.video_id) + 1;
+              const { icon, name } = metricMeta[bestKey];
+              return (
+                <Card
+                  key={item.video_id}
+                  onClick={() => router.push(`/detail/${item.video_id}`)}
+                >
+                  {/* 카드 상단: 메트릭 배지 */}
+                  <MetricsContainer>
+                    <MetricBadge bg="#EAF4FF" color="#007BFF">
+                      🔥 Hot Score {item.summary_data.score}↑
+                    </MetricBadge>
+                    <MetricBadge bg="#EAF4FF" color="#007BFF">
+                      {icon} {name} {auxRank}위
+                    </MetricBadge>
+                  </MetricsContainer>
+
+                  <VideoItem
+                    key={item.video_id}
+                    onClick={() => router.push(`/detail/${item.video_id}`)}
+                  >
+                    <ThumbWrapper>
+                      <Thumbnail src={item.thumbnail} />
+                    </ThumbWrapper>
+                    <Info>
+                      <VideoTitle>
+                        {item.summary_data.headline_title}
+                      </VideoTitle>
+
+                      <Meta>
+                        {removeMarkTags(item.summary_data.short_summary)}
+                      </Meta>
+                    </Info>
+                  </VideoItem>
+                  {/* 카드 하단: 채널 정보 */}
+                  <ChannelFooter>
+                    <ChannelThumb
+                      src={item.channel_details.channel_thumbnail}
+                    />
+                    <ChannelInfo>
+                      <ChannelName>
+                        {item.channel_details.channel_name}
+                      </ChannelName>
+                      <ChannelMeta>
+                        {parseSubscribersCount(
+                          item.channel_details.channel_subscribers
+                        )}{" "}
+                        · {timeAgoUTC(item.upload_date)}
+                      </ChannelMeta>
+                    </ChannelInfo>
+                  </ChannelFooter>
+                  {/* 4. 댓글 섹션 */}
+                  {item.summary_data.comment_social_proof?.comment?.trim() ? (
+                    <CommentSection>
+                      <Comment>
+                        <CommentIcon>💬</CommentIcon>
+                        <CommentText>
+                          {item.summary_data.comment_social_proof.comment}
+                        </CommentText>
+                        {/* <LikeCount>
+              👍🏻 {summary_data.comment_social_proof.likeCount || 0}
+            </LikeCount> */}
+                      </Comment>
+                    </CommentSection>
+                  ) : null}
+                </Card>
+              );
+            })}
+          </VideoList>
+          {/* <SubContainer>
             <RecommendTitle
               dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }}
             />
@@ -333,8 +452,8 @@ const Recommend = ({
             >
               유티클 투데이 더 알아보기
             </ServiceButton>
-          </ButtonContainer>
-          {matchedEditor ? (
+          </ButtonContainer> */}
+          {/* {matchedEditor ? (
             <>
               <SubEditorContainer>
                 {!pathname.includes("/studio") ? (
@@ -377,7 +496,7 @@ const Recommend = ({
             </>
           ) : (
             <></>
-          )}
+          )} */}
         </>
       ) : (
         <>
@@ -755,8 +874,14 @@ const MetricBadge = styled.span<{ bg?: string; color?: string }>`
   font-weight: 600;
   border-radius: 4px;
   /* margin-bottom: 8px; */
+  margin-left: 4px;
 `;
-
+const BadgeLabel = styled.span`
+  margin-left: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+`;
 const Info = styled.div`
   flex: 1;
   display: flex;
@@ -821,7 +946,7 @@ const CommentIcon = styled.span`
 const CommentText = styled.span`
   flex: 1; /* 본문이 길어져도 자리를 차지하도록 */
   font-size: 13px;
-  color: #333;
+  color: #000;
   line-height: 1.4;
   margin-right: 8px;
 

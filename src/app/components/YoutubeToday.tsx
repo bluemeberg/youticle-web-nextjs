@@ -59,7 +59,7 @@ const GROUPED_TOPICS: Record<string, string[]> = {
 const METRIC_KEYS = [
   "category_relative_views_pct",
   "relative_sub_norm_pct",
-  "avg_views_per_hour_normalized",
+  "avg_views_per_hour",
   "like_rate_pct",
   "comment_rate_pct",
 ] as const;
@@ -68,9 +68,17 @@ type MetricKey = (typeof METRIC_KEYS)[number];
 const METRIC_LABELS: Record<MetricKey, string> = {
   category_relative_views_pct: "카테고리 조회수 순위",
   relative_sub_norm_pct: "구독자 대비 조회수 순위",
-  avg_views_per_hour_normalized: "시간당 조회수 순위",
+  avg_views_per_hour: "시간당 조회수 순위",
   like_rate_pct: "좋아요율 순위",
   comment_rate_pct: "댓글율 순위",
+};
+
+const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
+  avg_views_per_hour: { icon: "👁️", name: "시간당 조회속도" },
+  category_relative_views_pct: { icon: "📊", name: "조회수" },
+  relative_sub_norm_pct: { icon: "👥", name: "구독자당 조회속도" },
+  like_rate_pct: { icon: "👍", name: "좋아요율" },
+  comment_rate_pct: { icon: "💬", name: "댓글율" },
 };
 
 const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
@@ -91,7 +99,13 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const unsubscribedData = data.filter(
     (item) => !subjects.includes(item.section)
   );
-
+  // sec → nav에서 클릭할 topic 이름으로 변환
+  const toNavTopic = (sec: string) => {
+    const g = Object.entries(GROUPED_TOPICS).find(([, arr]) =>
+      arr.includes(sec)
+    );
+    return g ? g[0] : sec;
+  };
   // useEffect(() => {
   //   if (subjects.length > 0) {
   //     setSelectedTopic(subjects[0]);
@@ -101,6 +115,9 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
 
   const handleTopicClick = (topic: string) => {
     setSelectedTopic(topic);
+    // 피드 영역 세로 스크롤 초기화 (맨 위로)
+
+    feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     if (sortOptionsRef.current) {
       const { top } = sortOptionsRef.current.getBoundingClientRect();
@@ -216,23 +233,35 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     const ranks: Record<MetricKey, Map<string, number>> = {
       category_relative_views_pct: new Map(),
       relative_sub_norm_pct: new Map(),
-      avg_views_per_hour_normalized: new Map(),
+      avg_views_per_hour: new Map(),
       like_rate_pct: new Map(),
       comment_rate_pct: new Map(),
     };
 
+    // ① 전체 항목에서 “섹션명” 만 뽑아서 중복 제거
+    const sections = Array.from(
+      new Set(filteredAndSortedData.map((v) => v.section))
+    );
+
     METRIC_KEYS.forEach((key) => {
-      // 내림차순 정렬 → 순위 매기기
-      const sorted = [...filteredAndSortedData].sort(
-        (a, b) => (b.summary_data[key] ?? 0) - (a.summary_data[key] ?? 0)
-      );
-      sorted.forEach((item, idx) => {
-        ranks[key].set(item.video_id, idx + 1);
+      // ② 섹션별로 그룹핑 해서, 해당 그룹 내에서만 순위를 매김
+      sections.forEach((sec) => {
+        const groupItems = filteredAndSortedData.filter(
+          (v) => v.section === sec
+        );
+        const sortedGroup = [...groupItems].sort(
+          (a, b) => (b.summary_data[key] ?? 0) - (a.summary_data[key] ?? 0)
+        );
+        sortedGroup.forEach((item, idx) => {
+          ranks[key].set(item.video_id, idx + 1);
+        });
       });
     });
 
     return ranks;
   }, [filteredAndSortedData]);
+
+  const feedRef = useRef<HTMLDivElement>(null);
 
   return (
     <Container>
@@ -263,7 +292,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
           </ToggleContainer>
         )}
       </Header>
-      <SubContainer ref={scrollRef}>
+      <SubContainer ref={feedRef}>
         <TopicNavContainer>
           <TopicNav
             $isFixed={isFixed}
@@ -310,19 +339,22 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
               }
             });
 
-            const metricLabel = METRIC_LABELS[bestKey];
+            // const metricLabel = METRIC_LABELS[bestKey];
             const metricValue = item.summary_data[bestKey];
-            console.log(item.video_id, metricLabel);
-            console.log(item.video_id, metricValue);
-            console.log("best key", bestKey);
-            console.log("best rank", bestRank);
+            // metricMeta에서 icon, name 가져오기
+            const { icon: metricIcon, name: metricLabel } = metricMeta[bestKey];
+            const navTopic = toNavTopic(item.section);
 
             return (
               <>
                 <CardContainer>
-                  {/* <Section isSubscribed={isSubscribed}>
-                    {topicInfo?.icon} {topicInfo?.topic || item.section}
-                  </Section> */}
+                  <Section
+                    isSubscribed={isSubscribed}
+                    onClick={() => handleTopicClick(navTopic)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {topicInfo?.icon} {item.section}
+                  </Section>
                   {/* <MetricsContainer>
                     <MetricBadge bg="#FFF4E5" color="#302d28">
                       <Value>
@@ -345,6 +377,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
                   icon={topicInfo?.icon}
                   subjects={subjects}
                   // ③ 새로 추가된 props
+                  metricIcon={metricIcon}
                   metricLabel={metricLabel}
                   metricValue={metricValue}
                   rank={bestRank}
@@ -447,7 +480,8 @@ const Section = styled.div<{ isSubscribed: boolean }>`
   border: 1px solid
     ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")}; /* 구독 여부에 따른 테두리 */
   margin-left: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
+  margin-bottom: 4px;
 `;
 
 const TodayTitle = styled.span<{

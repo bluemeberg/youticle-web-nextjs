@@ -162,6 +162,7 @@ const EditorArticle = ({ data }: EditorArticleProps) => {
                 icon={topicInfo?.icon}
                 subjects={[]}
                 metricLabel=""
+                metricIcon=""
                 metricValue={0}
                 rank={0}
                 {...item}
@@ -193,7 +194,6 @@ const Container = styled.div`
 const EditorContainer = styled.div`
   margin-top: 12px;
   border-radius: 8px;
-  margin-top
   background-color: #f9f9f9;
 `;
 
@@ -257,7 +257,7 @@ const EditorImage = styled.img<{ isSelected: boolean }>`
       : "2px solid #ddd"}; /* 선택된 경우 파란색 테두리 */
   transition: border 0.3s ease-in-out;
   image-rendering: crisp-edges;
-  object-fit: cover;*/
+  object-fit: cover;
 `;
 
 const EditorName = styled.span<{ isSelected: boolean }>`
