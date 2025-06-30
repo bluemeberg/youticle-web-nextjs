@@ -20,22 +20,22 @@ const YOUTUBE_TOPICS = [
   { topic: "부동산", icon: "🏢" },
   { topic: "가상자산", icon: "💰" },
   { topic: "경제", icon: "💵" },
-  { topic: "정치", icon: "🏛️" },
+  { topic: "인공지능", icon: "🤖" },
+  { topic: "IT/테크", icon: "💻" },
   { topic: "비즈니스/사업", icon: "💼" },
+  { topic: "연애/결혼", icon: "❤️" },
+  { topic: "뷰티/메이크업", icon: "💄" },
+  { topic: "정치", icon: "🏛️" },
   { topic: "건강", icon: "🩺" },
   { topic: "피트니스", icon: "🏋️" },
-  { topic: "연애/결혼", icon: "❤️" },
   { topic: "육아", icon: "👶" },
-  { topic: "뷰티/메이크업", icon: "💄" },
   { topic: "여자 패션", icon: "👗" },
   { topic: "남자 패션", icon: "👔" },
   { topic: "요리", icon: "🍳" },
-  { topic: "IT/테크", icon: "💻" },
-  { topic: "인공지능", icon: "🤖" },
   { topic: "자동차", icon: "🚗" },
   { topic: "여행", icon: "✈️" },
-  { topic: "과학", icon: "🔬" },
-  { topic: "역사", icon: "📜" },
+  // { topic: "과학", icon: "🔬" },
+  // { topic: "역사", icon: "📜" },
 ];
 
 const TopicNav = ({
@@ -144,7 +144,7 @@ const TopicNav = ({
           </Topic>
         ))}
       </Container>
-      <Subtitle $isFixed={$isFixed}>
+      <Subtitle>
         {/* 아이콘 + 텍스트 */}
         <span style={{ marginRight: 6 }}>
           {YOUTUBE_TOPICS.find(({ topic }) => topic === selectedTopic)?.icon ||
@@ -206,7 +206,7 @@ const Topic = styled.div<{ selected: boolean; isSubscribed: boolean }>`
     text-align: center;
   }
 `;
-const Subtitle = styled.div<{ $isFixed: boolean }>`
+const Subtitle = styled.div`
   /* 네비게이션 컨테이너와 같은 padding */
   padding: 20px 16px 8px 16px;
   /* 텍스트 스타일 */
@@ -219,10 +219,6 @@ const Subtitle = styled.div<{ $isFixed: boolean }>`
   /* border-bottom: 1px solid #dde2e6; */
 
   /* fixed 상태일 땐 네비 바로 아래에 붙이기 */
-  position: ${({ $isFixed }) => ($isFixed ? "fixed" : "relative")};
-  top: ${({ $isFixed }) => ($isFixed ? "112px" : "auto")};
-  width: 100%;
-  z-index: ${({ $isFixed }) => ($isFixed ? 9 : "auto")};
 
   /* 네비 및 본문 컨테이너와 동일한 max-width & centering */
   max-width: 430px;

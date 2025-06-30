@@ -40,7 +40,7 @@ interface Editor {
 const METRIC_KEYS = [
   "score", // Hot Score
   "avg_views_per_hour", // 시간당 조회수
-  "category_relative_views_pct", // 섹션 대비 조회↑
+  // "category_relative_views_pct", // 섹션 대비 조회↑
   "relative_sub_norm_pct", // 구독자당 조회↑
   "like_rate_pct", // 좋아요율
   "comment_rate_pct", // 댓글율
@@ -51,8 +51,8 @@ type AuxKey = Exclude<MetricKey, "score">;
 // 1) metric key → 아이콘·이름 매핑
 const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
   score: { icon: "🔥", name: "Hot Score" },
-  avg_views_per_hour: { icon: "👁️", name: "시간당 조회속도" },
-  category_relative_views_pct: { icon: "", name: "섹션 대비 조회수" },
+  avg_views_per_hour: { icon: "👁️", name: "시간당 조회수" },
+  // category_relative_views_pct: { icon: "", name: "섹션 대비 조회수" },
   relative_sub_norm_pct: { icon: "👥", name: "구독자당 조회속도" },
   like_rate_pct: { icon: "👍", name: "좋아요율" },
   comment_rate_pct: { icon: "💬", name: "댓글율" },
@@ -204,7 +204,7 @@ const Recommend = ({
   const METRIC_KEYS = [
     "score", // Hot Score
     "avg_views_per_hour", // 시간당 조회수
-    "category_relative_views_pct", // 섹션 대비 조회↑
+    // "category_relative_views_pct", // 섹션 대비 조회↑
     "relative_sub_norm_pct", // 구독자당 조회↑
     "like_rate_pct", // 좋아요율
     "comment_rate_pct", // 댓글율

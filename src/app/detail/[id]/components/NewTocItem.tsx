@@ -147,7 +147,7 @@ const ContentWrapper = styled.div<{
 const SectionCard = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 16px 4px;
   background: #ffffff;
   /* border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -256,7 +256,7 @@ const Summary = styled.div`
 
   span.line-break {
     font-weight: 400;
-    line-height: 128%;
+    line-height: 140%;
     margin-bottom: 12px;
   }
 `;

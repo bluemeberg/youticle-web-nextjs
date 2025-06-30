@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation"; // For navigation
 import CryptoOverview from "./overviews/CryptoOverview";
 import NewTocItem from "./NewTocItem";
 import ItTechOverview from "./overviews/ItTechOverview";
+import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
 
 // "mm:ss" 형식의 문자열을 초 단위 숫자로 변환하는 함수
 function convertTimeStringToSeconds(timeString: string): number {
@@ -120,6 +121,8 @@ const Contents = ({
   const hasDimmedItem =
     detailData.summary_data.section.some((_, index) => index >= 3) &&
     (user.name === "" || isUnsubscribedSection);
+
+  const [isInsightVisible, setIsInsightVisible] = useState(false);
 
   return (
     <>
@@ -281,6 +284,44 @@ const Contents = ({
             )}
         </HilightContainer>
       }
+      {detailData.summary_data.comment_insight &&
+        Object.keys(detailData.summary_data.comment_insight).length > 0 && (
+          <>
+            <CommentAnalysisWrapper>
+              <AnalysisTitle>💬 시청자 반응 빠르게 알아보기</AnalysisTitle>
+              <AnalysisDesc>
+                AI가 댓글을 분석해 <strong>{detailData.section}</strong>과
+                관련한 주요 감상 포인트를 정리했습니다. 시청자들은 어떤 의견을
+                남겼을까요?
+              </AnalysisDesc>
+              <ToggleButton2
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.gtag) {
+                    window.gtag("event", "comment_toggle_click", {
+                      event_category: "engagement",
+                      event_label: isInsightVisible
+                        ? "Collapse Comment Insight"
+                        : "Expand Comment Insight",
+                      value: 1,
+                    });
+                  }
+
+                  setIsInsightVisible(!isInsightVisible);
+                }}
+              >
+                {isInsightVisible ? "▲ 댓글 분석 접기" : "▼ 댓글 분석 보기"}
+              </ToggleButton2>
+            </CommentAnalysisWrapper>
+
+            {isInsightVisible && (
+              // ✅ 유저 정보 존재 + 구독한 키워드 있음 → 전체 공개
+              <CommentsInsightSection
+                data={detailData.summary_data.comment_insight}
+                isLoggedIn={true}
+              />
+            )}
+          </>
+        )}
       {/* {
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
@@ -383,4 +424,43 @@ const CloseButton = styled.button`
   font-weight: bold;
   color: #000;
   cursor: pointer;
+`;
+
+/* 🔹 스타일 */
+const CommentAnalysisWrapper = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  /* border-radius: 8px; */
+  margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-top: 40px;
+`;
+const AnalysisTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const AnalysisDesc = styled.p`
+  font-size: 14px;
+  line-height: 1.2;
+  color: #444;
+  margin-top: 12px;
+  strong {
+    font-weight: 700;
+  }
+`;
+const ToggleButton2 = styled.button`
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  font-size: 14px;
+  &:hover {
+    background-color: #0056b3;
+  }
 `;

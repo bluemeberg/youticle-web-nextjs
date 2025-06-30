@@ -195,6 +195,15 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       }, 0);
     }
   };
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState("0px");
+
+  // calculate split for TOC sections
+  const sections = detailData.summary_data.section;
+  const sectionCount = sections.length;
+  const isMultiPart = sectionCount >= 8;
+  const midIndex = Math.ceil(sectionCount / 2);
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -299,24 +308,49 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
-
+      <MainBodyTitle>📝 상세 요약 본문</MainBodyTitle>
+      <TOC>
+        <div className="toc-header">목차</div>
+        <ContentWrapper
+          fullPadding={detailData.summary_data.section.length < 8}
+        >
+          {isMultiPart ? (
+            <>
+              <PartCard>
+                <PartHeader>1부</PartHeader>
+                {sections.slice(0, midIndex).map((sec, i) => (
+                  <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
+                ))}
+              </PartCard>
+              <PartCard>
+                <PartHeader>2부</PartHeader>
+                {sections.slice(midIndex).map((sec, i) => (
+                  <Item key={`part2-${i}`}>{removeMarkTags(sec.title)}</Item>
+                ))}
+              </PartCard>
+            </>
+          ) : (
+            sections.map((sec, i) => (
+              <Item key={i}>{removeMarkTags(sec.title)}</Item>
+            ))
+          )}
+          <PartCard>
+            <PartHeader>추가 인사이트</PartHeader>
+            <Item>🧠 유티클 &apos;{detailData.section}&apos; 인사이트</Item>
+            {detailData.summary_data.comment_insight && (
+              <Item>👥 시청자 댓글 인사이트 TOP3</Item>
+            )}
+          </PartCard>
+        </ContentWrapper>
+      </TOC>
       <MoreButton onClick={handleMoreClick}>
         {isArticleVisible ? "간단히 보기" : "상세 요약 더보기"}
       </MoreButton>
       <ArticleWrapper
         expanded={isArticleVisible}
-        maxHeight={articleHeight}
+        maxHeight={articleHeight + 1500}
         ref={articleRef}
       >
-        <TOC>
-          <div>목차</div>
-          <div>
-            {detailData.summary_data.section.map(({ title }, index) => (
-              <span key={index}>{removeMarkTags(title)} </span>
-            ))}
-          </div>
-        </TOC>
-
         <Contents
           detailData={detailData}
           thumbnails={thumbnails.length > 0 ? thumbnails : []}
@@ -443,29 +477,28 @@ const Preview = styled.div<{ $isFixed: boolean }>`
 const TOC = styled.div`
   margin-top: 20px;
   padding: 0 16px;
-  span {
-    line-height: 132%;
-  }
-  div:first-child {
+  .toc-header {
     height: 44px;
-    padding: 10px 16px 10px 16px;
-    background-color: rgba(0, 0, 0, 1);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: #000;
+    color: #fff;
     font-size: 20px;
     font-weight: 800;
-    line-height: 24px;
-    color: rgba(255, 255, 255, 1);
+    border-radius: 4px;
+    margin-bottom: 8px;
   }
-
-  div:nth-child(2) {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    background-color: rgb(248, 248, 248);
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 132%;
-  }
+`;
+// 1) ContentWrapper: 세로 스택
+const ContentWrapper = styled.div<{ fullPadding: boolean }>`
+  overflow: hidden;
+  padding: ${({ fullPadding }) => (fullPadding ? "20px" : "0px")};
+  transition: max-height 0.3s ease;
+  display: flex;
+  flex-direction: column; /* ← 가로가 아니라 세로로 */
+  gap: 8px;
+  background: ${({ fullPadding }) => (fullPadding ? "#f8f8f8" : "transparent")};
 `;
 
 const VideoContainer = styled.div<{ $isFixed: boolean; $isDesktop: boolean }>`
@@ -608,7 +641,7 @@ const Divider = styled.div`
 `;
 
 const FiveLineTitle = styled.h3`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 20px;
   margin-top: 20px;
@@ -625,9 +658,9 @@ const FiveLineList = styled.ul`
 
 /** 본문 시작 타이틀 추가 */
 const MainBodyTitle = styled.h3`
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  margin: 24px 16px 12px;
+  margin: 40px 16px 4px;
 `;
 
 const FiveLineListWrapper = styled.div`
@@ -716,4 +749,48 @@ const RecommendWrapper = styled.div<{
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 16px;
   padding-right: 16px;
+`;
+
+// 2) PartCard: full-width 카드
+const PartCard = styled.div`
+  width: 100%; /* ← 전체 폭 차지 */
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 160%;
+`;
+
+// 부 제목 강조
+const PartHeader = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  display: inline-block;
+  background: #007bff;
+  color: #fff;
+  padding: 4px 20px;
+  border-radius: 4px;
+`;
+
+// 기존 ul/li 대신 쓸 아이템
+const Item = styled.div`
+  position: relative;
+  margin-bottom: 16px;
+  /* line-height: 1.4; */
+  font-size: 18px;
+  font-weight: 600;
+`;
+const InsightBlock = styled.div`
+  border-top: 1px solid #eee;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const InsightTitle = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #444;
 `;

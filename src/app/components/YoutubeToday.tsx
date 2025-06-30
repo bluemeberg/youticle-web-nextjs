@@ -50,6 +50,7 @@ const YOUTUBE_TOPICS = [
   { topic: "과학", icon: "🔬" },
   { topic: "역사", icon: "📜" },
 ];
+
 const GROUPED_TOPICS: Record<string, string[]> = {
   주식: ["주식", "국내 주식", "해외 주식"],
   가상자산: ["국내 가상자산", "해외 가상자산"],
@@ -57,7 +58,7 @@ const GROUPED_TOPICS: Record<string, string[]> = {
 };
 
 const METRIC_KEYS = [
-  "category_relative_views_pct",
+  // "category_relative_views_pct",
   "relative_sub_norm_pct",
   "avg_views_per_hour",
   "like_rate_pct",
@@ -66,7 +67,7 @@ const METRIC_KEYS = [
 type MetricKey = (typeof METRIC_KEYS)[number];
 
 const METRIC_LABELS: Record<MetricKey, string> = {
-  category_relative_views_pct: "카테고리 조회수 순위",
+  // category_relative_views_pct: "카테고리 조회수 순위",
   relative_sub_norm_pct: "구독자 대비 조회수 순위",
   avg_views_per_hour: "시간당 조회수 순위",
   like_rate_pct: "좋아요율 순위",
@@ -74,8 +75,8 @@ const METRIC_LABELS: Record<MetricKey, string> = {
 };
 
 const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
-  avg_views_per_hour: { icon: "👁️", name: "시간당 조회속도" },
-  category_relative_views_pct: { icon: "📊", name: "조회수" },
+  avg_views_per_hour: { icon: "👁️", name: "시간당 조회수" },
+  // category_relative_views_pct: { icon: "📊", name: "조회수" },
   relative_sub_norm_pct: { icon: "👥", name: "구독자당 조회속도" },
   like_rate_pct: { icon: "👍", name: "좋아요율" },
   comment_rate_pct: { icon: "💬", name: "댓글율" },
@@ -122,7 +123,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     if (sortOptionsRef.current) {
       const { top } = sortOptionsRef.current.getBoundingClientRect();
       window.scrollTo({
-        top: window.scrollY + top - 94 - 68,
+        top: 0,
         behavior: "smooth",
       });
     }
@@ -231,7 +232,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
 
   const metricRanks = useMemo(() => {
     const ranks: Record<MetricKey, Map<string, number>> = {
-      category_relative_views_pct: new Map(),
+      // category_relative_views_pct: new Map(),
       relative_sub_norm_pct: new Map(),
       avg_views_per_hour: new Map(),
       like_rate_pct: new Map(),
@@ -264,7 +265,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const feedRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Container>
+    <Container ref={feedRef}>
       <Header>
         {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
           <ToggleContainer>
@@ -292,8 +293,8 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
           </ToggleContainer>
         )}
       </Header>
-      <SubContainer ref={feedRef}>
-        <TopicNavContainer>
+      <SubContainer>
+        <TopicNavContainer ref={scrollRef}>
           <TopicNav
             $isFixed={isFixed}
             selectedTopic={selectedTopic}
@@ -500,7 +501,11 @@ const TodayTitle = styled.span<{
   margin-top: 12px;
 `;
 
-const TopicNavContainer = styled.div`
+const TopicNavContainer = styled.div.attrs<{ ref?: React.Ref<HTMLDivElement> }>(
+  (props) => ({
+    ref: props.ref,
+  })
+)`
   padding: 0;
   background-color: #f8f9fa;
 `;
