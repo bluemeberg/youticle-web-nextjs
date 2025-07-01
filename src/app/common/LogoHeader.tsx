@@ -15,8 +15,8 @@ import ShareIcon from "@/assets/share.svg";
 import Toast from "./Toast";
 import { isDesktop } from "react-device-detect";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { getUserByEmail } from "@/api/apiClient";
-import { removeMarkTags } from "@/utils/formatter";
+import { getUserByEmail, logCtaClick } from "@/api/apiClient";
+import { getOrCreateAnonId, removeMarkTags } from "@/utils/formatter";
 
 interface LogoHeaderProps {
   title?: string;
@@ -68,7 +68,13 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
       router.push("/studio");
       return;
     }
-
+    // 1) 클릭 로그 전송
+    logCtaClick(
+      "back_button_click",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "back_button_click", {
         event_category: "navigation",
@@ -179,6 +185,8 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   };
 
   const handleLogoClick = () => {
+    // 1) 클릭 로그 전송
+    logCtaClick("logo_click", user?.id, user?.email, getOrCreateAnonId());
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "logo_click", {
         event_category: "navigation",
