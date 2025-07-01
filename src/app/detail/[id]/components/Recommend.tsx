@@ -14,14 +14,17 @@ import {
   fetchEditorArticle,
   fetchStockVideo,
   fetchTopVideosBySection,
+  logCtaClick,
 } from "@/api/apiClient";
 import { useRouter, usePathname } from "next/navigation";
 import {
+  getOrCreateAnonId,
   parseSubscribersCount,
   removeMarkTags,
   timeAgo,
   timeAgoUTC,
 } from "@/utils/formatter";
+import { userState } from "@/store/user";
 
 interface RecommendProps {
   isUnsubscribedSection: boolean;
@@ -238,6 +241,19 @@ const Recommend = ({
     () => filteredAndSortedData.map((v) => v.video_id),
     [filteredAndSortedData]
   );
+
+  const user = useRecoilValue(userState);
+  const handleCardClick = (videoId: string) => {
+    // 1) 클릭 로그 전송
+    logCtaClick(
+      "recommend_card_click",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
+    // 2) 상세 페이지로 이동
+    router.push(`/detail/${videoId}`);
+  };
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>
       {pathname.includes("/studio") ? (
@@ -354,7 +370,7 @@ const Recommend = ({
               return (
                 <Card
                   key={item.video_id}
-                  onClick={() => router.push(`/detail/${item.video_id}`)}
+                  onClick={() => handleCardClick(item.video_id)}
                 >
                   {/* 카드 상단: 메트릭 배지 */}
                   <MetricsContainer>
@@ -368,7 +384,7 @@ const Recommend = ({
 
                   <VideoItem
                     key={item.video_id}
-                    onClick={() => router.push(`/detail/${item.video_id}`)}
+                    onClick={() => handleCardClick(item.video_id)}
                   >
                     <ThumbWrapper>
                       <Thumbnail src={item.thumbnail} />

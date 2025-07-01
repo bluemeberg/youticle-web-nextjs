@@ -25,6 +25,7 @@ import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import {
   formatSummary,
+  getOrCreateAnonId,
   parseTimeStringToSeconds,
   removeMarkTags,
 } from "@/utils/formatter";
@@ -33,7 +34,7 @@ import { isDesktop } from "react-device-detect";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { userState } from "@/store/user";
-import { fetchSubscribedSubjects } from "@/api/apiClient";
+import { fetchSubscribedSubjects, logCtaClick } from "@/api/apiClient";
 import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
 import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
 import Recommend from "./Recommend";
@@ -72,6 +73,12 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   }, []);
 
   const handleTocItemClick = (start: number) => {
+    logCtaClick(
+      "player_item_click",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
     if (!isPlayerVisible) setIsPlayerVisible(true);
 
     if (videoPlayer) {
@@ -181,9 +188,20 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     }
   }, [detailData, isArticleVisible]);
 
+  // 1) 페이지 오픈 로깅
+  useEffect(() => {
+    logCtaClick("page_open", user?.id, user?.email, getOrCreateAnonId());
+  }, []);
+
   const handleMoreClick = () => {
     const next = !isArticleVisible;
     setIsArticleVisible(next);
+    logCtaClick(
+      isArticleVisible ? "summary_collapse" : "summary_expand",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
     if (next) {
       // 펼칠 때만 스크롤
       setTimeout(() => {

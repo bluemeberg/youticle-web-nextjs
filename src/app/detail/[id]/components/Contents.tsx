@@ -7,7 +7,7 @@ import { DataProps, RealEstateAnalysis } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
-import { fetchSubscribedSubjects } from "../../../api/apiClient";
+import { fetchSubscribedSubjects, logCtaClick } from "../../../api/apiClient";
 import StockOverview from "./overviews/StockOverview";
 import RealEstateOverview from "./overviews/RealEstateOverview";
 import EconomyOverview from "./overviews/EconomyOverview";
@@ -20,6 +20,7 @@ import CryptoOverview from "./overviews/CryptoOverview";
 import NewTocItem from "./NewTocItem";
 import ItTechOverview from "./overviews/ItTechOverview";
 import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
+import { getOrCreateAnonId } from "@/utils/formatter";
 
 // "mm:ss" 형식의 문자열을 초 단위 숫자로 변환하는 함수
 function convertTimeStringToSeconds(timeString: string): number {
@@ -295,7 +296,14 @@ const Contents = ({
                 남겼을까요?
               </AnalysisDesc>
               <ToggleButton2
-                onClick={() => {
+                onClick={async () => {
+                  // 1) CTA 클릭 로깅
+                  await logCtaClick(
+                    "comment_insight_toggle",
+                    user?.id,
+                    user?.email,
+                    getOrCreateAnonId()
+                  );
                   if (typeof window !== "undefined" && window.gtag) {
                     window.gtag("event", "comment_toggle_click", {
                       event_category: "engagement",
