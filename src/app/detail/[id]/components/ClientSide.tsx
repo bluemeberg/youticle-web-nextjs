@@ -190,7 +190,12 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
   // 1) 페이지 오픈 로깅
   useEffect(() => {
-    logCtaClick("page_open", user?.id, user?.email, getOrCreateAnonId());
+    logCtaClick(
+      "page_open",
+      user?.id ?? null,
+      detailData.video_id ?? null,
+      getOrCreateAnonId()
+    );
   }, []);
 
   const handleMoreClick = () => {
@@ -198,8 +203,8 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
     setIsArticleVisible(next);
     logCtaClick(
       isArticleVisible ? "summary_collapse" : "summary_expand",
-      user?.id,
-      user?.email,
+      user?.id ?? null,
+      detailData.video_id ?? null,
       getOrCreateAnonId()
     );
     if (next) {
@@ -785,7 +790,7 @@ const PartHeader = styled.h4`
   font-weight: 700;
   margin: 0 0 12px;
   display: inline-block;
-  background: #007bff;
+  background: #969696;
   color: #fff;
   padding: 4px 20px;
   border-radius: 4px;
