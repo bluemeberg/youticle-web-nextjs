@@ -227,6 +227,62 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const isMultiPart = sectionCount >= 8;
   const midIndex = Math.ceil(sectionCount / 2);
 
+  // 1) refs
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // 2) thresholds fire-once 관리
+  const firedCollapsed = useRef<Set<number>>(new Set());
+  const firedExpanded = useRef<Set<number>>(new Set());
+  const THRESHOLDS = [30, 50, 70, 90];
+  useEffect(() => {
+    const handleScroll = () => {
+      let percent = 0;
+
+      if (!isArticleVisible) {
+        // ● 접힌 상태: 페이지 전체 scroll 기준
+        const scrollY = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight;
+        const viewH = window.innerHeight;
+        const maxScroll = docHeight - viewH;
+        if (maxScroll <= 0) return;
+        percent = (scrollY / maxScroll) * 100;
+      } else {
+        // ● 펼친 상태: 상세 요약 영역 기준
+        const el = articleRef.current;
+        if (!el) return;
+        const scrollY = window.scrollY;
+        const elTop = el.getBoundingClientRect().top + window.scrollY;
+        const relativeY = scrollY - elTop;
+        const maxScroll = el.scrollHeight - window.innerHeight;
+        if (relativeY < 0 || maxScroll <= 0) return;
+        percent = (relativeY / maxScroll) * 100;
+      }
+
+      // 0~100 clamp
+      percent = Math.min(Math.max(percent, 0), 100);
+      const firedSet = isArticleVisible
+        ? firedExpanded.current
+        : firedCollapsed.current;
+
+      THRESHOLDS.forEach((threshold) => {
+        if (percent >= threshold && !firedSet.has(threshold)) {
+          firedSet.add(threshold);
+          const eventName = isArticleVisible
+            ? `summary_expanded_${threshold}`
+            : `summary_collapsed_${threshold}`;
+          logCtaClick(
+            eventName,
+            user?.id ?? null,
+            detailData.video_id ?? null,
+            getOrCreateAnonId()
+          );
+        }
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isArticleVisible, detailData.video_id, user]);
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
