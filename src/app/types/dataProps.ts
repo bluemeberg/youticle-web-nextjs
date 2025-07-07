@@ -241,6 +241,7 @@ export interface SummaryData {
   comment_insight?: CommentInsight; // ✅ comment_insight 속성 추가
   five_lines_summary?: FiveLineSummary[]; // ✅ five_lines_summary 속성 추가
   comment_social_proof: CommentSocialProof;
+  comment_insight_front: CommentInsightFront;
   category_relative_views_pct: number;
   relative_sub_norm_pct: number;
   avg_views_per_hour_normalized: number;
@@ -267,6 +268,15 @@ export interface CommentInsight {
 export interface CommentSocialProof {
   comment: string;
   likeCount: string;
+}
+
+export interface CommentInsightFront {
+  "1st": string;
+  "1st_comments": CommentObj[];
+  "2nd": string;
+  "2nd_comments": CommentObj[];
+  "3rd": string;
+  "3rd_comments": CommentObj[];
 }
 
 export interface CommentObj {

@@ -387,41 +387,38 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
-      <MainBodyTitle>📝 상세 요약 본문</MainBodyTitle>
-      <TOC>
-        <div className="toc-header">목차</div>
-        <ContentWrapper
-          fullPadding={detailData.summary_data.section.length < 8}
-        >
-          {isMultiPart ? (
-            <>
-              <PartCard>
-                <PartHeader>1부</PartHeader>
-                {sections.slice(0, midIndex).map((sec, i) => (
-                  <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
-                ))}
-              </PartCard>
-              <PartCard>
-                <PartHeader>2부</PartHeader>
-                {sections.slice(midIndex).map((sec, i) => (
-                  <Item key={`part2-${i}`}>{removeMarkTags(sec.title)}</Item>
-                ))}
-              </PartCard>
-            </>
-          ) : (
-            sections.map((sec, i) => (
-              <Item key={i}>{removeMarkTags(sec.title)}</Item>
-            ))
-          )}
-          <PartCard>
-            <PartHeader>추가 인사이트</PartHeader>
-            <Item>🧠 유티클 &apos;{detailData.section}&apos; 인사이트</Item>
-            {detailData.summary_data.comment_insight && (
-              <Item>👥 시청자 댓글 인사이트 TOP3</Item>
-            )}
-          </PartCard>
-        </ContentWrapper>
-      </TOC>
+      {detailData.summary_data.comment_insight_front &&
+      Object.keys(detailData.summary_data.comment_insight_front).length > 0 ? (
+        <>
+          <SectionTitle>💬 시청자 댓글 인사이트 TOP3</SectionTitle>
+          <InsightContainer>
+            {(["1st"] as const).map((key) => {
+              const title = detailData.summary_data.comment_insight_front![key];
+              const comments = detailData.summary_data.comment_insight_front![
+                `${key}_comments`
+              ] as { comment: string; likeCount: string; updatedAt: string }[];
+
+              return (
+                <InsightCard key={key}>
+                  <InsightHeader dangerouslySetInnerHTML={{ __html: title }} />
+                  <CommentList>
+                    {comments.map((c, i) => (
+                      <CommentItem key={i}>
+                        <CommentText>{c.comment}</CommentText>
+                        <CommentMeta>
+                          👍 {c.likeCount} · {timeAgo(c.updatedAt)}
+                        </CommentMeta>
+                      </CommentItem>
+                    ))}
+                  </CommentList>
+                </InsightCard>
+              );
+            })}
+          </InsightContainer>
+        </>
+      ) : (
+        <EmptyState>👥 아직 시청자 댓글 인사이트가 없습니다.</EmptyState>
+      )}
       <MoreButton onClick={handleMoreClick}>
         {isArticleVisible ? "간단히 보기" : "상세 요약 더보기"}
       </MoreButton>
@@ -430,6 +427,41 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         maxHeight={articleHeight + 1500}
         ref={articleRef}
       >
+        <MainBodyTitle>📝 상세 요약 본문</MainBodyTitle>
+        <TOC>
+          <div className="toc-header">목차</div>
+          <ContentWrapper
+            fullPadding={detailData.summary_data.section.length < 8}
+          >
+            {isMultiPart ? (
+              <>
+                <PartCard>
+                  <PartHeader>1부</PartHeader>
+                  {sections.slice(0, midIndex).map((sec, i) => (
+                    <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
+                  ))}
+                </PartCard>
+                <PartCard>
+                  <PartHeader>2부</PartHeader>
+                  {sections.slice(midIndex).map((sec, i) => (
+                    <Item key={`part2-${i}`}>{removeMarkTags(sec.title)}</Item>
+                  ))}
+                </PartCard>
+              </>
+            ) : (
+              sections.map((sec, i) => (
+                <Item key={i}>{removeMarkTags(sec.title)}</Item>
+              ))
+            )}
+            <PartCard>
+              <PartHeader>추가 인사이트</PartHeader>
+              <Item>🧠 유티클 &apos;{detailData.section}&apos; 인사이트</Item>
+              {/* {detailData.summary_data.comment_insight && (
+                <Item>👥 시청자 댓글 인사이트 TOP3</Item>
+              )} */}
+            </PartCard>
+          </ContentWrapper>
+        </TOC>
         <Contents
           detailData={detailData}
           thumbnails={thumbnails.length > 0 ? thumbnails : []}
@@ -872,4 +904,67 @@ const InsightTitle = styled.div`
   font-size: 16px;
   font-weight: 600;
   color: #444;
+`;
+const InsightContainer = styled.div`
+  margin: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const InsightCard = styled.div`
+  background: #ffffff;
+  /* padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); */
+`;
+
+const InsightHeader = styled.h3`
+  font-size: 16px;
+  font-weight: 400;
+  color: #000;
+  line-height: 140%;
+  margin-bottom: 8px;
+  /* mark 태그 기본 스타일 제거 & font-weight만 강조 */
+  mark {
+    background: none;
+    color: inherit;
+    padding: 0;
+    font-weight: 700;
+  }
+`;
+const CommentList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const CommentItem = styled.div`
+  background: #f2f8ff;
+  border-left: 4px solid #007bff;
+  padding: 16px;
+  border-radius: 4px;
+`;
+
+const CommentText = styled.div`
+  font-size: 14px;
+  line-height: 140%;
+`;
+
+const CommentMeta = styled.div`
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+`;
+const SectionTitle = styled.h3`
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0px 16px;
+  /* color: #007bff; */
+`;
+const EmptyState = styled.div`
+  font-size: 16px;
+  color: #888;
+  text-align: center;
+  margin: 24px 16px;
 `;

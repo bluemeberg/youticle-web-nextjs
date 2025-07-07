@@ -285,7 +285,7 @@ const Contents = ({
             )}
         </HilightContainer>
       }
-      {detailData.summary_data.comment_insight &&
+      {/* {detailData.summary_data.comment_insight &&
         Object.keys(detailData.summary_data.comment_insight).length > 0 && (
           <>
             <CommentAnalysisWrapper>
@@ -329,7 +329,7 @@ const Contents = ({
               />
             )}
           </>
-        )}
+        )} */}
       {/* {
         <RecommendWrapper
           $hasDimmedItem={hasDimmedItem}
