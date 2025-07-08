@@ -357,7 +357,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
       {detailData.summary_data.five_lines_summary && (
         <>
           <FiveLineSummarySection>
-            <FiveLineTitle>📌 TL;DR : 핵심 요약 5가지</FiveLineTitle>
+            <FiveLineTitle>📌 TL;DR : 핵심 요약 3가지</FiveLineTitle>
             <FiveLineList>
               {(detailData.summary_data.five_lines_summary ?? []).map(
                 (point, idx) => (
@@ -400,7 +400,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
 
               return (
                 <InsightCard key={key}>
-                  <InsightHeader dangerouslySetInnerHTML={{ __html: title }} />
+                  {/* <InsightHeader dangerouslySetInnerHTML={{ __html: title }} /> */}
                   <CommentList>
                     {comments.map((c, i) => (
                       <CommentItem key={i}>
@@ -417,10 +417,11 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </InsightContainer>
         </>
       ) : (
-        <EmptyState>👥 아직 시청자 댓글 인사이트가 없습니다.</EmptyState>
+        <></>
+        // <EmptyState>👥 아직 시청자 댓글 인사이트가 없습니다.</EmptyState>
       )}
       <MoreButton onClick={handleMoreClick}>
-        {isArticleVisible ? "간단히 보기" : "상세 요약 더보기"}
+        {isArticleVisible ? "간단히 보기" : "더 상세한 요약 내용 더보기👇"}
       </MoreButton>
       <ArticleWrapper
         expanded={isArticleVisible}
@@ -947,7 +948,7 @@ const CommentItem = styled.div`
 `;
 
 const CommentText = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   line-height: 140%;
 `;
 
