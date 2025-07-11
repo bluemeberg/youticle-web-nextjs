@@ -249,12 +249,17 @@ export interface SummaryData {
   like_rate_pct: number;
   comment_rate_pct: number;
   score: number;
+  hooking_content: HookingContent;
 }
 
 export interface FiveLineSummary {
   content: string;
   start_time: string;
 }
+export interface HookingContent {
+  hooking_content: string;
+}
+
 // 🟡 새로운 comment_insight 타입 정의
 export interface CommentInsight {
   "1st": string;

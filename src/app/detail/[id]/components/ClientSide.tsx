@@ -1,4 +1,5 @@
 "use client";
+import { Search, HelpCircle } from "lucide-react";
 
 import { useState, useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
@@ -234,6 +235,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const firedCollapsed = useRef<Set<number>>(new Set());
   const firedExpanded = useRef<Set<number>>(new Set());
   const THRESHOLDS = [30, 50, 70, 90];
+
   useEffect(() => {
     const handleScroll = () => {
       let percent = 0;
@@ -387,6 +389,7 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           </FiveLineSummarySection>
         </>
       )}
+
       {detailData.summary_data.comment_insight_front &&
       Object.keys(detailData.summary_data.comment_insight_front).length > 0 ? (
         <>
@@ -420,8 +423,17 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
         <></>
         // <EmptyState>👥 아직 시청자 댓글 인사이트가 없습니다.</EmptyState>
       )}
+      {detailData.summary_data.hooking_content?.hooking_content && (
+        <InfoCard>
+          {/* 돋보기 아이콘 */}
+          <Search size={16} stroke="#0056b3" />
+          {/* 물음표 아이콘을 쓰고 싶다면 */}
+          {/* <HelpCircle size={16} stroke="#0056b3" /> */}
+          <span>{detailData.summary_data.hooking_content.hooking_content}</span>
+        </InfoCard>
+      )}
       <MoreButton onClick={handleMoreClick}>
-        {isArticleVisible ? "간단히 보기" : "더 상세한 요약 내용 더보기👇"}
+        {isArticleVisible ? "간단히 보기" : `1초만에 상세 요약 더보기 👇`}
       </MoreButton>
       <ArticleWrapper
         expanded={isArticleVisible}
@@ -824,7 +836,7 @@ const MoreButton = styled.button`
   position: relative;
   z-index: 10;
   display: block;
-  margin: 32px 16px 24px;
+  margin: 0px 16px 24px;
   width: calc(100% - 32px);
   padding: 16px 0;
   background-color: #007bff;
@@ -968,4 +980,48 @@ const EmptyState = styled.div`
   color: #888;
   text-align: center;
   margin: 24px 16px;
+`;
+
+const Callout = styled.div`
+  margin: 0 16px 8px;
+  padding: 12px 16px;
+  background: #f0f8ff;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0056b3;
+  font-weight: 600;
+  &::before {
+    content: "💬";
+    margin-right: 8px;
+  }
+`;
+
+// 1) bounce keyframes 정의 (작은 범위로 자연스럽게)
+const bounceY = keyframes`
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+`;
+
+const InfoCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 16px 12px;
+  padding: 12px 16px;
+  background: #eef6ff;
+  border: 1px solid #007bff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0056b3;
+  /* 여기에 bounceY 넣기 */
+  animation: ${bounceY} 2s ease-in-out infinite;
+  line-height: 140%;
+  svg {
+    flex-shrink: 0;
+  }
 `;
