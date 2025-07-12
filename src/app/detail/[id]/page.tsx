@@ -60,6 +60,17 @@ export default async function DetailPage({ params }: DetailPageProps) {
   // Vercel에서는 x-vercel-ip-country, Cloudflare는 cf-ipcountry
   const country =
     hdrs.get("x-vercel-ip-country") ?? hdrs.get("cf-ipcountry") ?? "Unknown";
+  const acceptLanguage = hdrs.get("accept-language") ?? "";
+  const userAgent = hdrs.get("user-agent") ?? "";
+  const referer = hdrs.get("referer") ?? "";
+
+  // 2) 이 네 가지를 하나의 객체로 묶기
+  const clientContext = {
+    country,
+    acceptLanguage,
+    userAgent,
+    referer,
+  };
   // const data = await fetchWithRetry(
   //   `https://youticle.shop/briefing/top_videos/${id}`
   // );
@@ -79,5 +90,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
     return <NotFoundPage />;
   }
 
-  return <ClientSide detailData={detailData} id={id} userCountry={country} />;
+  return (
+    <ClientSide detailData={detailData} id={id} clientContext={clientContext} />
+  );
 }

@@ -40,15 +40,22 @@ import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSecti
 import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
 import Recommend from "./Recommend";
 
+export interface ClientContext {
+  country: string;
+  acceptLanguage: string;
+  userAgent: string;
+  referer: string;
+}
+
 interface ClientSideProps {
   id: string;
   detailData: DataProps;
-  userCountry: string;
+  clientContext: ClientContext;
 }
 
-const ClientSide = ({ id, detailData, userCountry }: ClientSideProps) => {
+const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   console.log(detailData);
-  console.log(userCountry);
+  console.log(clientContext);
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,11 +200,18 @@ const ClientSide = ({ id, detailData, userCountry }: ClientSideProps) => {
 
   // 1) 페이지 오픈 로깅
   useEffect(() => {
+    const { country, acceptLanguage, userAgent, referer } = clientContext;
     logCtaClick(
       "page_open",
       user?.id ?? null,
       detailData.video_id ?? null,
-      getOrCreateAnonId()
+      getOrCreateAnonId(),
+      {
+        country,
+        accept_language: acceptLanguage,
+        user_agent: userAgent,
+        referer,
+      }
     );
   }, []);
 

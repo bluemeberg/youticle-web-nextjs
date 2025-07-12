@@ -229,7 +229,8 @@ export async function logCtaClick(
   action: string,
   userId?: number,
   userEmail?: string,
-  anonId?: string
+  anonId?: string,
+  context: Record<string, string> = {}
 ) {
   const params = new URLSearchParams();
   params.set("action", action);
@@ -237,6 +238,11 @@ export async function logCtaClick(
   if (userEmail) params.set("user_email", userEmail);
   if (anonId) params.set("anon_id", anonId);
   // ★ 웹에서는 redirect=false를 꼭 붙여서 호출
+  // 🚀 추가 수집 정보
+  Object.entries(context).forEach(([key, val]) => {
+    if (val) params.set(key, val);
+  });
+
   params.set("redirect", "false");
 
   try {
