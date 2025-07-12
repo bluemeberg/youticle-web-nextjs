@@ -43,10 +43,12 @@ import Recommend from "./Recommend";
 interface ClientSideProps {
   id: string;
   detailData: DataProps;
+  userCountry: string;
 }
 
-const ClientSide = ({ id, detailData }: ClientSideProps) => {
+const ClientSide = ({ id, detailData, userCountry }: ClientSideProps) => {
   console.log(detailData);
+  console.log(userCountry);
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

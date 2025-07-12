@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import ClientSide from "./components/ClientSide";
 import NotFoundPage from "./components/NotFound";
 import { DataProps } from "@/types/dataProps";
+import { headers } from "next/headers";
 
 interface DetailPageProps {
   params: {
@@ -34,9 +35,6 @@ export async function generateMetadata({
 }: DetailPageProps): Promise<Metadata> {
   const { id } = params;
 
-  // const data = await fetchWithRetry(
-  //   `https://youticle.shop/briefing/top_videos/${id}`
-  // );
   const response = await fetch(
     `https://youticle.shop/briefing/top_videos/${id}`
   );
@@ -57,7 +55,14 @@ export async function generateMetadata({
 // Main page component
 export default async function DetailPage({ params }: DetailPageProps) {
   const { id } = params;
-
+  // 1) 국가 헤더 읽기
+  const hdrs = headers();
+  // Vercel에서는 x-vercel-ip-country, Cloudflare는 cf-ipcountry
+  const country =
+    hdrs.get("x-vercel-ip-country") ?? hdrs.get("cf-ipcountry") ?? "Unknown";
+  // const data = await fetchWithRetry(
+  //   `https://youticle.shop/briefing/top_videos/${id}`
+  // );
   const response = await fetch(
     `https://youticle.shop/briefing/top_videos/${id}`
   );
@@ -74,5 +79,5 @@ export default async function DetailPage({ params }: DetailPageProps) {
     return <NotFoundPage />;
   }
 
-  return <ClientSide detailData={detailData} id={id} />;
+  return <ClientSide detailData={detailData} id={id} userCountry={country} />;
 }
