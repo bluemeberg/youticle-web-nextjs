@@ -198,6 +198,14 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     }
   }, [detailData, isArticleVisible]);
 
+  // a,b 테스트 버전
+  const getVariant = () => {
+    const match = document.cookie.match(/detailVariant=(a|b)/);
+    return match ? match[1] : "unknown";
+  };
+  const variant = getVariant();
+  console.log(variant, "옵션");
+
   // 1) 페이지 오픈 로깅
   useEffect(() => {
     const { country, acceptLanguage, userAgent, referer } = clientContext;
@@ -211,6 +219,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         accept_language: acceptLanguage,
         user_agent: userAgent,
         referer,
+        ab_variant: variant, // <-- 여기
       }
     );
   }, []);
