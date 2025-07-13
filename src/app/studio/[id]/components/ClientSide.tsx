@@ -15,14 +15,14 @@ import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
-import VideoCard from "@/detail/[id]/components/VideoCard";
+import VideoCard from "@/detail/a/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
 import Contents from "./Contents";
 import { userState } from "@/store/user";
 import PlayIcon from "@/assets/play.svg";
-import Recommend from "@/detail/[id]/components/Recommend";
+import Recommend from "@/detail/a/[id]/components/Recommend";
 
 interface ClientSideProps {
   id: string;

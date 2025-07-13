@@ -976,7 +976,7 @@ const CommentItem = styled.div`
 `;
 
 const CommentText = styled.div`
-  font-size: 16px;
+  font-size: 14px;
   line-height: 140%;
 `;
 

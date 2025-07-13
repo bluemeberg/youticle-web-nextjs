@@ -69,7 +69,6 @@ const TopicCard = (props: TopicCardProps) => {
     views,
     likes,
   } = props;
-  console.log(props);
   const handleNavigate = () => {
     if (isLoading) return; // 중복 클릭 방지
 

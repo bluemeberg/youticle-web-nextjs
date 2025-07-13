@@ -2,12 +2,16 @@
 
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
-import { formatTimeRange, formatSummary } from "@/utils/formatter";
+import {
+  formatTimeRange,
+  formatSummary,
+  removeMarkTags,
+} from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
 import { Overview } from "@/types/dataProps";
-import { usePathname } from "../../../../../node_modules/next/navigation";
+import { usePathname } from "next/navigation";
 
 interface TocItemProps {
   section: string;
@@ -29,7 +33,7 @@ interface TocItemProps {
   subscribedSubjects: string[];
   overview: Overview | undefined;
 }
-const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
+const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
     {
       section,
@@ -55,50 +59,56 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
-    console.log("썸네일", thumbnails);
     return (
       <Container ref={ref}>
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
-          <Title>{title}</Title>
-          {thumbnails && (
-            <Thumbnail onClick={onClick}>
-              {!isEditorPath ? (
-                <img
-                  // src={`https://youticle.shop/captures/${videoId}/${thumbnails}`}
-                  src={thumbnails}
-                  alt={title}
-                />
-              ) : (
-                <img src={thumbnails} alt={title} />
+          <SectionCard ref={ref}>
+            <Header>
+              <Timeline onClick={onClick}>
+                {/* <PlayIcon width={16} height={16} /> */}
+                <span>{formatTimeRange(start)}</span>
+              </Timeline>
+              <Title>{removeMarkTags(title)}</Title>
+              {thumbnails && (
+                <Thumbnail onClick={onClick}>
+                  {!isEditorPath ? (
+                    <img
+                      // src={`https://youticle.shop/captures/${videoId}/${thumbnails}`}
+                      src={thumbnails}
+                      alt={title}
+                    />
+                  ) : (
+                    <img src={thumbnails} alt={title} />
+                  )}
+                  <PlayIcon className="play-icon" />
+                </Thumbnail>
               )}
-              <PlayIcon className="play-icon" />
-            </Thumbnail>
-          )}
-          <Timeline>
-            <PlayIcon width={16} height={16} />
-            <span>{formatTimeRange(start)}</span>
-          </Timeline>
-          <Summary>
-            {Array.isArray(summary) ? (
-              <ul>
-                {(summary as string[]).map((line, i) => (
-                  <li key={i}>{formatSummary(line)}</li>
-                ))}
-              </ul>
-            ) : (
-              formatSummary(summary as string)
-            )}{" "}
-            {explanation_keyword ? (
-              <TipArea>
-                💡 <Tip>{explanation_keyword}</Tip>
-              </TipArea>
-            ) : null}
-            {explanation_description && (
-              <TipAreaDescription>{explanation_description}</TipAreaDescription>
-            )}
-          </Summary>
+            </Header>
+
+            <Summary>
+              {Array.isArray(summary) ? (
+                <ul>
+                  {(summary as string[]).map((line, i) => (
+                    <li key={i}>{formatSummary(line)}</li>
+                  ))}
+                </ul>
+              ) : (
+                formatSummary(summary as string)
+              )}{" "}
+              {explanation_keyword ? (
+                <TipArea>
+                  💡 <Tip>{explanation_keyword}</Tip>
+                </TipArea>
+              ) : null}
+              {explanation_description && (
+                <TipAreaDescription>
+                  {explanation_description}
+                </TipAreaDescription>
+              )}
+            </Summary>
+          </SectionCard>
         </ContentWrapper>
-        {dimmed && (
+        {/* {dimmed && (
           <DimmedArea
             tocItemHeight={tocItemHeight}
             videoId={videoId}
@@ -110,35 +120,49 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
             section={section}
             overview={overview}
           />
-        )}
+        )} */}
       </Container>
     );
   }
 );
-TocItem.displayName = "TocItem";
-export default TocItem;
+NewTocItem.displayName = "NewTocItem";
+export default NewTocItem;
 
 const Container = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  margin-top: 60px;
+  margin-top: 40px;
+  border-bottom: 1px solid #c4c4c4dd;
 `;
 
 const ContentWrapper = styled.div<{
   $dimmed: boolean;
   $partialDimmed: boolean;
 }>`
-  opacity: ${(props) => (props.$dimmed ? 0.2 : 1)};
-  ${({ $partialDimmed }) =>
-    $partialDimmed
-      ? `mask-image: linear-gradient(to top, transparent 20%, black 100%);
-      `
-      : ""}
+  opacity: ${(props) => (props.$dimmed ? 1 : 1)};
+  ${({ $partialDimmed }) => ($partialDimmed ? "" : "")}
+`;
+
+const SectionCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 16px 4px;
+  background: #ffffff;
+  /* border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+`;
+
+const Header = styled.div`
+  display: flex;
+  /* justify-content: space-between; */
+  align-items: center;
+  margin-bottom: 20px;
 `;
 
 const Title = styled.span`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 140%;
 `;
@@ -175,17 +199,38 @@ const Thumbnail = styled.div`
   }
 `;
 
-const Timeline = styled.div`
+const Timeline = styled.button`
   display: flex;
   align-items: center;
-  height: 18px;
-  gap: 12px;
-  margin-bottom: 24px;
+  justify-content: center;
+  padding: 12px 4px 12px 8px;
+  border: 1px solid #007bff;
+  border-radius: 8px;
+  background-color: #eaf4ff;
+  /* margin-left: 4px; */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 8px;
+  &:hover {
+    background-color: #007bff;
+    span {
+      color: white;
+    }
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: #007bff;
+    transition: fill 0.2s ease;
+  }
 
   span {
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 16.71px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #007bff;
+    transition: color 0.2s ease;
+    min-width: 56px;
   }
 `;
 
@@ -193,15 +238,25 @@ const Summary = styled.div`
   font-size: 16px;
   font-weight: 400;
   line-height: 168%;
-  margin-left: 8px;
 
+  /* 배열 렌더링 시 불릿 스타일 */
+  ul {
+    padding-left: 1.2em;
+    margin: 0 0 16px;
+    list-style-type: disc;
+  }
+  li {
+    margin-bottom: 8px;
+  }
+
+  /* 기존 단일 summary 포맷(포맷터 사용) */
   span {
     display: block;
   }
 
   span.line-break {
     font-weight: 400;
-    line-height: 168%;
+    line-height: 140%;
     margin-bottom: 12px;
   }
 `;
@@ -219,6 +274,7 @@ const Tip = styled.span`
   padding-right: 8px;
   border-radius: 4px;
   margin-left: 4px;
+  color: #007bff;
 `;
 
 const TipAreaDescription = styled.div`

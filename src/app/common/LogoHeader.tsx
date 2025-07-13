@@ -111,7 +111,6 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
 
   const copyUrlToClipboard = () => {
     const currentUrl = window.location.href;
-
     if (navigator.clipboard) {
       navigator.clipboard
         .writeText(currentUrl)

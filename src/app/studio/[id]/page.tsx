@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import ClientSide from "./components/ClientSide";
 // import NotFoundPage from "./components/NotFound";
 import { DataProps } from "@/types/dataProps";
-import NotFoundPage from "@/detail/[id]/components/NotFound";
+import NotFoundPage from "@/detail/a/[id]/components/NotFound";
 import ClientSide2 from "./components/ClientSide2";
 
 interface DetailPageProps {
