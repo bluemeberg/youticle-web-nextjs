@@ -25,6 +25,8 @@ import {
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import {
+  formatMinutesToTime,
+  formatSecondsToMmSs,
   formatSummary,
   formatTimeRange,
   getOrCreateAnonId,
@@ -430,7 +432,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                       }
                     >
                       {/* <PlayIcon width={16} height={16} /> */}
-                      <span>{formatTimeRange(Number(sec.start_time))}</span>
+                      <span>
+                        {formatSecondsToMmSs(
+                          parseTimeStringToSeconds(sec.start_time)
+                        )}
+                      </span>
                     </Timeline>
                     <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
                   </PartCardBox>
@@ -449,7 +455,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                       }
                     >
                       {/* <PlayIcon width={16} height={16} /> */}
-                      <span>{formatTimeRange(Number(sec.start_time))}</span>
+                      <span>
+                        {formatSecondsToMmSs(
+                          parseTimeStringToSeconds(sec.start_time)
+                        )}
+                      </span>
                     </Timeline>
                     <Item key={`part2-${i}`}>{removeMarkTags(sec.title)}</Item>
                   </PartCardBox>
@@ -457,9 +467,28 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
               </PartCard>
             </>
           ) : (
-            sections.map((sec, i) => (
-              <Item key={i}>{removeMarkTags(sec.title)}</Item>
-            ))
+            <PartCard>
+              {/* <PartHeader>1부</PartHeader> */}
+              {sections.slice(0, 6).map((sec, i) => (
+                <PartCardBox key={i}>
+                  <Timeline
+                    onClick={() =>
+                      handleTocItemClick(
+                        parseTimeStringToSeconds(sec.start_time)
+                      )
+                    }
+                  >
+                    {/* <PlayIcon width={16} height={16} /> */}
+                    <span>
+                      {formatSecondsToMmSs(
+                        parseTimeStringToSeconds(sec.start_time)
+                      )}
+                    </span>
+                  </Timeline>
+                  <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
+                </PartCardBox>
+              ))}
+            </PartCard>
           )}
         </ContentWrapper>
       </TOC>
@@ -614,12 +643,13 @@ const TOC = styled.div`
 // 1) ContentWrapper: 세로 스택
 const ContentWrapper = styled.div<{ fullPadding: boolean }>`
   overflow: hidden;
-  padding: ${({ fullPadding }) => (fullPadding ? "20px" : "0px")};
+  padding: ${({ fullPadding }) => (fullPadding ? "0px" : "0px")};
   transition: max-height 0.3s ease;
   display: flex;
   flex-direction: column; /* ← 가로가 아니라 세로로 */
   gap: 8px;
-  background: ${({ fullPadding }) => (fullPadding ? "#f8f8f8" : "transparent")};
+  background: ${({ fullPadding }) =>
+    fullPadding ? "#transparent" : "transparent"};
 `;
 
 const VideoContainer = styled.div<{ $isFixed: boolean; $isDesktop: boolean }>`
@@ -781,7 +811,7 @@ const FiveLineList = styled.ul`
 const MainBodyTitle = styled.h3`
   font-size: 20px;
   font-weight: 700;
-  margin: 60px 16px 4px;
+  margin: 48px 16px 4px;
 `;
 
 const FiveLineListWrapper = styled.div`

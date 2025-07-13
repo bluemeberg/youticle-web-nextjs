@@ -80,13 +80,21 @@ export const calcuateTimeLeft = (): string => {
 };
 
 // 분을 시간 포맷으로 변환하는 함수
-const formatMinutesToTime = (minutes: number): string => {
+export const formatMinutesToTime = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   const formattedHours = hours.toString().padStart(2, "0");
   const formattedMinutes = remainingMinutes.toString().padStart(2, "0");
   return `${formattedHours}:${formattedMinutes}`;
 };
+
+export function formatSecondsToMmSs(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
 
 // 시간 범위를 포맷팅하는 함수
 export const formatTimeRange = (startMinutes: number): string => {
