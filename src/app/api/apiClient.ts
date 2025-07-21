@@ -3,7 +3,8 @@
 import { ChannelDetails } from "@/types/dataProps";
 
 const API_BASE_URL = "https://youticle.shop";
-// 유저 정보 최초 등록// const API_BASE_URL = "http://0.0.0.0:8001";
+// 유저 정보 최초 등록
+// const API_BASE_URL = "http://0.0.0.0:8001";
 
 export const createOrFetchUser = async (email: string, name: string) => {
   try {
@@ -256,4 +257,48 @@ export async function logCtaClick(
   } catch (err) {
     console.error("CTA 클릭 로그 저장 중 오류:", err);
   }
+}
+
+// src/api/apiClient.ts
+export interface NotificationRequestPayload {
+  anon_id: string;
+  user_id?: number;
+  phone?: string;
+  schedule?: string;
+  channel_name?: string;
+}
+
+export interface NotificationRequest {
+  id: number;
+  anon_id: string;
+  user_id?: number;
+  phone?: string;
+  schedule?: string;
+  channel_name?: string;
+  requested_at: string;
+}
+
+export async function upsertNotificationRequest(
+  data: NotificationRequestPayload
+) {
+  const res = await fetch(`${API_BASE_URL}/users/notification-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `upsertNotificationRequest failed (${res.status}): ${text}`
+    );
+  }
+  return (await res.json()) as {
+    id: number;
+    user_id: number | null;
+    anon_id: string;
+    phone: string | null;
+    schedule: string | null;
+    channel_name: string | null;
+    requested_at: string;
+  };
 }

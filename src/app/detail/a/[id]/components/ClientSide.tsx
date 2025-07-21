@@ -458,7 +458,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         </InfoCard>
       )}
       <MoreButton onClick={handleMoreClick}>
-        {isArticleVisible ? "간단히 보기" : `1초만에 상세 요약 더보기 👇`}
+        {isArticleVisible ? "간단히 보기" : `즉시 상세 요약 확인하기 👇`}
       </MoreButton>
       <ArticleWrapper
         expanded={isArticleVisible}

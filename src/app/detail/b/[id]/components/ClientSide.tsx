@@ -1,5 +1,6 @@
 "use client";
 import { Search, HelpCircle } from "lucide-react";
+import { BarChart2, BellRing } from "lucide-react";
 
 import { useState, useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
@@ -35,13 +36,18 @@ import {
 } from "@/utils/formatter";
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
-import Footer from "@/components/Footer";
+// import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { userState } from "@/store/user";
-import { fetchSubscribedSubjects, logCtaClick } from "@/api/apiClient";
+import {
+  fetchSubscribedSubjects,
+  logCtaClick,
+  upsertNotificationRequest,
+} from "@/api/apiClient";
 import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
 import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
 import Recommend from "./Recommend";
+import { DailyTop5PreferenceSurvey } from "./DailyTop5PreferenceSurvey";
 
 export interface ClientContext {
   country: string;
@@ -313,6 +319,101 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isArticleVisible, detailData.video_id, user]);
+
+  const [showChannelInputSection, setShowChannelInputSection] = useState(false);
+
+  // 📣 설문 응답 핸들러: like가 boolean 으로 들어옵니다.
+  const handleSurveyAnswer = (like: boolean): void => {
+    const answer = like ? "yes" : "no";
+    // 1) 비동기 설문 전송
+    if (!like) {
+      setShowChannelInputSection(true);
+    }
+  };
+  // useState
+  const [channelInput, setChannelInput] = useState("");
+  const [notifyPref, setNotifyPref] = useState<"on" | "off">("on");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [customTime, setCustomTime] = useState("");
+
+  // 모달 확인 핸들러
+  const handleModalSubmit = async () => {
+    const digits = phone.replace(/\D/g, "");
+    if (!(digits.length === 10 || digits.length === 11)) {
+      alert("전화번호는 숫자 10자리 또는 11자리여야 합니다.");
+      return;
+    }
+    try {
+      logCtaClick(
+        "kakao_apply",
+        user?.id ?? null,
+        detailData.video_id,
+        getOrCreateAnonId()
+      );
+      const nr = await upsertNotificationRequest({
+        anon_id: getOrCreateAnonId(),
+        user_id: user?.id, // or omit if anonymous
+        phone, // your phone state
+        schedule, // your schedule state (e.g. "08")
+        channel_name: channelInput, // your channel name state
+      });
+      console.log("saved notification request:", nr);
+      setSubmitted(true);
+      setIsModalOpen(false);
+      setIsCompleteModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert("알림 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
+
+  const [schedule, setSchedule] = useState<
+    "08" | "08_18" | "08_18_22" | "08_13_18_22"
+  >("08");
+
+  // 시간 선택 옵션
+  const TIME_OPTIONS = [
+    { value: "08", label: "매일 08:00 1회" },
+    { value: "08_18", label: "매일 08:00, 18:00 2회" },
+    { value: "08_18_22", label: "매일 08:00, 18:00, 22:00 3회" },
+    { value: "08_13_18_22", label: "매일 08:00, 13:00, 18:00, 22:00 4회" },
+  ];
+
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [extraChannel, setExtraChannel] = useState("");
+
+  // 2) 채널 등록 핸들러
+  const handleRegisterChannel = async () => {
+    logCtaClick(
+      "register_priority_channel",
+      user?.id ?? null,
+      detailData.video_id,
+      getOrCreateAnonId()
+    );
+    if (!channelInput.trim()) {
+      alert("유튜브 채널명을 입력해주세요.");
+      return;
+    }
+    try {
+      await upsertNotificationRequest({
+        anon_id: getOrCreateAnonId(),
+        user_id: user?.id,
+        channel_name: channelInput,
+        // you can also pass phone/schedule if already set in state
+        phone,
+        schedule,
+      });
+      alert(`"${channelInput}" 채널이 등록되었습니다! 앞으로 우선 반영돼요 😊`);
+      setShowChannelInputSection(false);
+      setIsCompleteModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert("채널 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -345,7 +446,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         </LoaderOverlay>
       )}
       <PageInfo ref={scrollRef}>
-        <Category>{detailData.section}</Category>
+        <Category>7/19, {detailData.section} TOP5 유튜브 영상</Category>
         <Title>{detailData.summary_data.headline_title}</Title>
         <UploadContainer>
           <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
@@ -383,7 +484,6 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       <Preview $isFixed={isFixed}>
         {formatSummary(detailData.summary_data.short_summary)}
       </Preview>
-
       {detailData.summary_data.comment_insight_front &&
       Object.keys(detailData.summary_data.comment_insight_front).length > 0 ? (
         <>
@@ -496,9 +596,8 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           )}
         </ContentWrapper>
       </TOC>
-
       <MoreButton onClick={handleMoreClick}>
-        {isArticleVisible ? "간단히 보기" : `1초만에 상세 요약 더보기 👇`}
+        {isArticleVisible ? "간단히 보기" : `즉시 상세 요약 확인하기 👇`}
       </MoreButton>
       <ArticleWrapper
         expanded={isArticleVisible}
@@ -511,6 +610,93 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           handleTocItemClick={handleTocItemClick}
         />
       </ArticleWrapper>
+      {/* ─── Hook for Daily Top5 Survey ─── */}
+      <HookSection>
+        <HookingCopy>
+          매일 수십개 씩 쏟아지는 영상 속에서
+          <br />
+          주식 핵심 정보를 놓치지 않으려면?
+          <br />
+          <br />
+          <strong>
+            📢 주식 분야의 TOP5 영상 요약만 <br />
+            매일 카톡으로 받아보세요!
+          </strong>
+        </HookingCopy>
+        <ButtonGroup>
+          <SurveyButton
+            primary
+            onClick={async () => {
+              logCtaClick(
+                "daily_top5_survey_like",
+                user?.id,
+                user?.email,
+                getOrCreateAnonId()
+              );
+              setIsModalOpen(true);
+            }}
+          >
+            좋아요
+          </SurveyButton>
+          <SurveyButton
+            onClick={async () => {
+              logCtaClick(
+                "daily_top5_survey_dislike",
+                user?.id,
+                user?.email,
+                getOrCreateAnonId()
+              );
+              handleSurveyAnswer(false);
+            }}
+          >
+            관심 없어요
+          </SurveyButton>
+        </ButtonGroup>
+        {!showChannelInputSection && (
+          <Thumbnail
+            src="/images/TOP5알림톡3.png"
+            alt="오늘의 주식 TOP5 알림톡 예시"
+          />
+        )}
+      </HookSection>
+      {/* 설문 아래, 관심 없어요 눌렀을 때만 보이는 섹션 */}
+      {showChannelInputSection && (
+        <ChannelPrioritySection>
+          <h4>
+            {" "}
+            🤔 잠깐, 주식 TOP5 영상 요약에서 <br />
+            우선 반영하고 싶은 채널이 있으신가요?
+          </h4>
+          <p>
+            관심 채널을 등록하면 매일 TOP5 선정 시
+            <br />
+            해당 채널의 신규 영상이 있다면 우선 노출됩니다.
+          </p>
+          <Input
+            placeholder="예) 삼프로TV"
+            value={channelInput}
+            onChange={(e) => setChannelInput(e.target.value)}
+          />
+          <Footer style={{ justifyContent: "center", gap: "12px" }}>
+            <SurveyButton primary onClick={handleRegisterChannel}>
+              채널 등록하기
+            </SurveyButton>{" "}
+            <SurveyButton
+              onClick={async () => {
+                logCtaClick(
+                  "hide_priority_channel_section",
+                  user?.id ?? null,
+                  detailData.video_id,
+                  getOrCreateAnonId()
+                );
+                setShowChannelInputSection(false);
+              }}
+            >
+              다시 숨기기{" "}
+            </SurveyButton>{" "}
+          </Footer>
+        </ChannelPrioritySection>
+      )}
       <RecommendWrapper
         $hasDimmedItem={false}
         $tocItemHeight={0}
@@ -528,6 +714,136 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           {formatSummary(detailData.summary_data.short_summary)}
         </div>
       </Preview> */}
+      {isModalOpen && (
+        <ModalOverlay style={{ background: "rgba(0, 0, 0, 0.4)" }}>
+          <ModalContent>
+            <Header>✨ 새로운 기능 체험 신청!</Header>
+            <Body>
+              아직 준비 중인 <b>TOP5 영상 카톡 알림</b>을<br />
+              가장 먼저 받아보고 싶으신가요?
+              <br />
+              아래에 전화번호와 알림 시간을 남겨주세요!
+            </Body>
+
+            <Form>
+              <Label htmlFor="phone">카톡 받으실 번호</Label>
+              <Input
+                id="phone"
+                placeholder="예) 010-1234-5678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+
+              <Label>알림 받을 시간</Label>
+              <RadioGroup>
+                {TIME_OPTIONS.map((o) => (
+                  <RadioLabel key={o.value}>
+                    <input
+                      type="radio"
+                      name="schedule"
+                      value={o.value}
+                      checked={schedule === o.value}
+                      onChange={() => setSchedule(o.value as any)}
+                    />
+                    {o.label}
+                  </RadioLabel>
+                ))}
+                {/* <RadioLabel>
+                  <input
+                    type="radio"
+                    name="schedule"
+                    value="custom"
+                    checked={schedule === "custom"}
+                    onChange={() => setSchedule("custom")}
+                  />
+                  다른 시간 직접 입력
+                </RadioLabel> */}
+              </RadioGroup>
+
+              {/* {schedule === "custom" && (
+                <>
+                  <Label htmlFor="customTime">원하는 시간 (HH:MM)</Label>
+                  <Input
+                    id="customTime"
+                    placeholder="예) 14:30"
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                  />
+                </>
+              )} */}
+            </Form>
+
+            <Footer>
+              <PrimaryButton onClick={handleModalSubmit}>
+                신청하고 카톡 알림 받기
+              </PrimaryButton>
+              <SecondaryButton
+                onClick={() => {
+                  logCtaClick(
+                    "kakao_apply_later",
+                    user?.id ?? null,
+                    detailData.video_id,
+                    getOrCreateAnonId()
+                  );
+                  setIsModalOpen(false); // 1) 알림 모달 닫기
+                  setShowChannelInputSection(true); // 2) 채널 우선 반영 섹션 활성화
+                }}
+              >
+                {" "}
+                나중에 할게요
+              </SecondaryButton>
+            </Footer>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {isCompleteModalOpen && (
+        <ModalOverlay style={{ background: "rgba(0, 0, 0, 0.4)" }}>
+          <ModalContent>
+            <Header style={{ marginBottom: "24px" }}>
+              🎉 신청이 완료되었습니다!
+            </Header>
+            <Body style={{ marginBottom: "32px" }}>
+              TOP5 영상 요약 카톡 알림 기능의 오픈 즉시 <br /> 등록하신 번호로
+              가장 먼저 안내해드립니다.
+            </Body>
+            {/* 2. 채널 우선 반영 upsell with new hook */}
+            <SubHeader style={{ margin: "24px 0 12px", color: "#007bff" }}>
+              🤔 혹시 TOP5 영상 요약에서 <br />
+              우선 반영하고 싶은 채널이 있으신가요?
+            </SubHeader>
+            <SubBody style={{ marginBottom: "24px" }}>
+              관심 채널을 등록하면 매일 TOP5 선정 시
+              <br />
+              해당 채널의 신규 영상이 있다면 우선 노출됩니다.
+              {/* <br />
+              <br /> */}
+              {/* 예) 즐겨보는 <strong>@YouticleLab</strong> 채널이
+              <br />
+              항상 최상위 리스트에 오르게 돼요. */}
+            </SubBody>
+
+            <Form>
+              <Label htmlFor="channel">등록할 채널명</Label>
+              <Input
+                id="channel"
+                placeholder="예) 삼프로TV"
+                value={channelInput}
+                onChange={(e) => setChannelInput(e.target.value)}
+              />
+            </Form>
+
+            <Footer style={{ gap: "12px" }}>
+              <PrimaryButton onClick={handleRegisterChannel}>
+                채널 등록하기
+              </PrimaryButton>
+              <SecondaryButton onClick={() => setIsCompleteModalOpen(false)}>
+                건너뛰기
+              </SecondaryButton>
+            </Footer>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 };
@@ -902,7 +1218,7 @@ const RecommendWrapper = styled.div<{
       ? `240px`
       : props.$hasDimmedItem
       ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
-      : `100px`};
+      : `0px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 16px;
   padding-right: 16px;
@@ -1063,5 +1379,323 @@ const InfoCard = styled.div`
   line-height: 140%;
   svg {
     flex-shrink: 0;
+  }
+`;
+// ─── Styled-components ───
+const ActionSection = styled.section`
+  max-width: 600px;
+  margin: 32px auto;
+  padding: 32px 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+`;
+
+// const HookingCopy = styled.div`
+//   font-size: 18px;
+//   font-weight: 700;
+//   line-height: 1.5;
+//   text-align: center;
+//   color: #111;
+// `;
+
+const SectionHeader = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+`;
+
+const Card = styled.div`
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const CardTitle = styled.h4`
+  font-size: 16px;
+  margin: 0;
+`;
+
+const UserDescription = styled.p`
+  font-size: 14px;
+  color: #444;
+  margin: 0;
+`;
+
+const InputLabel = styled.label`
+  font-size: 12px;
+  color: #666;
+`;
+
+const ChannelInput = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
+
+const ButtonBase = styled.button`
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 14px;
+  width: 100%;
+  border: none;
+`;
+
+// const PrimaryButton = styled(ButtonBase)`
+//   background: #007bff;
+//   color: #fff;
+//   &:hover {
+//     background: #0056b3;
+//   }
+// `;
+const HookSection = styled.section`
+  background: #f5f7ff;
+  padding: 32px 24px;
+  padding-bottom: 0px;
+  margin: 24px 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  margin-top: 100px;
+`;
+
+const HookingCopy = styled.div`
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1f2937;
+  margin-bottom: 24px;
+  strong {
+    color: #007bff;
+    font-size: 18px;
+    font-weight: 700;
+  }
+`;
+
+const SurveyWrapper = styled.div`
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e0e7ff;
+  display: inline-block;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  svg {
+    color: #007bff;
+    margin-bottom: 16px;
+  }
+`;
+
+const PromptText = styled.p`
+  font-size: 16px;
+  color: #374151;
+  margin-bottom: 20px;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+`;
+
+const SurveyButton = styled.button<{ primary?: boolean }>`
+  flex: 1;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: ${({ primary }) => (primary ? 700 : 0)};
+
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+
+  background: ${({ primary }) => (primary ? "#007bff" : "#e0e0e0")};
+  color: ${({ primary }) => (primary ? "#fff" : "#555")};
+
+  &:hover {
+    background: ${({ primary }) => (primary ? "#0056b3" : "#5a6268")};
+  }
+`;
+
+const ModalContent = styled.div`
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+`;
+
+const Form = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+`;
+const Label = styled.label`
+  font-size: 16px;
+  font-weight: 700;
+  color: #444;
+`;
+const Input = styled.input`
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  width: 100%;
+`;
+const RadioGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+const RadioLabel = styled.label`
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  input {
+    transform: scale(1.1);
+  }
+`;
+
+const Thumbnail = styled.img`
+  width: 80%;
+  max-width: 320px;
+  border-radius: 8px;
+  margin: 0 auto 16px;
+  display: block;
+  margin-top: 60px;
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+`;
+
+// Header 아래 여백 강화
+const Header = styled.h3`
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-align: center;
+`;
+
+// Body 여백 강화
+const Body = styled.p`
+  font-size: 16px;
+  color: #000;
+  line-height: 1.4;
+  text-align: center;
+  margin-bottom: 32px;
+`;
+
+// SubHeader 강조 스타일 (색상, 굵기)
+const SubHeader = styled.h4`
+  font-size: 18px;
+  font-weight: 700;
+  color: #007bff;
+  text-align: center;
+  margin: 24px 0 12px;
+  line-height: 1.4;
+`;
+
+// SubBody 기본 여백 유지
+const SubBody = styled.p`
+  font-size: 16px;
+  color: #000;
+  line-height: 1.4;
+  text-align: center;
+  margin-bottom: 24px;
+`;
+
+// Footer 버튼 비율 유지
+const Footer = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+const PrimaryButton = styled.button`
+  flex: 0 0 60%;
+  background: #007bff;
+  color: #fff;
+  padding: 12px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const SecondaryButton = styled.button`
+  flex: 0 0 40%;
+  background: #e0e0e0;
+  color: #555;
+  padding: 12px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+`;
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+const fadeOut = keyframes`
+  from { opacity: 1; transform: translateY(8px); }
+  to   { opacity: 0; transform: translateY(0); }
+`;
+const ChannelPrioritySection = styled.div`
+  margin: 24px 16px;
+  padding: 20px;
+  background: #f5f7ff;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  animation: ${fadeIn} 0.3s ease-out forwards;
+
+  h4 {
+    margin-bottom: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  p {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+`;
+
+const RegisterButton = styled.button`
+  background: #007bff;
+  color: #fff;
+  padding: 16px 0;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover {
+    background: #0056b3;
   }
 `;
