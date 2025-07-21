@@ -23,7 +23,7 @@ import CryptoOverview from "./overviews/CryptoOverview";
 import NewTocItem from "./NewTocItem";
 import ItTechOverview from "./overviews/ItTechOverview";
 import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSection";
-import { getOrCreateAnonId } from "@/utils/formatter";
+import { getOrCreateAnonId, parseTimeStringToSeconds } from "@/utils/formatter";
 
 // "mm:ss" 형식의 문자열을 초 단위 숫자로 변환하는 함수
 function convertTimeStringToSeconds(timeString: string): number {
@@ -128,10 +128,15 @@ const Contents = ({
 
   const [isInsightVisible, setIsInsightVisible] = useState(false);
 
+  const sortedSections = [...detailData.summary_data.section].sort(
+    (a, b) =>
+      parseTimeStringToSeconds(a.start_time) -
+      parseTimeStringToSeconds(b.start_time)
+  );
   return (
     <>
       <ContentWrapper>
-        {detailData.summary_data.section
+        {sortedSections
           .slice(
             0,
             user.name === "" || isUnsubscribedSection

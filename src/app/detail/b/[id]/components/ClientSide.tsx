@@ -414,6 +414,12 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     }
   };
 
+  const sortedSections = [...sections].sort(
+    (a, b) =>
+      parseTimeStringToSeconds(a.start_time) -
+      parseTimeStringToSeconds(b.start_time)
+  );
+
   return (
     <Container $isFixed={isFixed}>
       <LogoHeader
@@ -526,7 +532,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             <>
               <PartCard>
                 {/* <PartHeader>1부</PartHeader> */}
-                {sections.slice(0, midIndex).map((sec, i) => (
+                {sortedSections.slice(0, midIndex).map((sec, i) => (
                   <PartCardBox key={i}>
                     <Timeline
                       onClick={() =>
@@ -549,7 +555,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
               <Divider />
               <PartCard>
                 {/* <PartHeader>2부</PartHeader> */}
-                {sections.slice(midIndex).map((sec, i) => (
+                {sortedSections.slice(midIndex).map((sec, i) => (
                   <PartCardBox key={i}>
                     <Timeline
                       onClick={() =>
@@ -573,7 +579,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           ) : (
             <PartCard>
               {/* <PartHeader>1부</PartHeader> */}
-              {sections.slice(0, 6).map((sec, i) => (
+              {sortedSections.slice(0, 6).map((sec, i) => (
                 <PartCardBox key={i}>
                   <Timeline
                     onClick={() =>
@@ -653,10 +659,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           </SurveyButton>
         </ButtonGroup>
         {!showChannelInputSection && (
-          <Thumbnail
-            src="/images/TOP5알림톡3.png"
-            alt="오늘의 주식 TOP5 알림톡 예시"
-          />
+          <>
+            <Thumbnail
+              src="/images/TOP5알림톡3.png"
+              alt="오늘의 주식 TOP5 알림톡 예시"
+            />
+            <Caption>{`[주식 분야 카카오톡 알림 예시]`}</Caption>
+          </>
         )}
       </HookSection>
       {/* 설문 아래, 관심 없어요 눌렀을 때만 보이는 섹션 */}
@@ -1578,6 +1587,14 @@ const Thumbnail = styled.img`
   margin: 0 auto 16px;
   display: block;
   margin-top: 60px;
+`;
+
+const Caption = styled.p`
+  font-size: 14px;
+  color: #666;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 4px;
 `;
 
 const ModalOverlay = styled.div`
