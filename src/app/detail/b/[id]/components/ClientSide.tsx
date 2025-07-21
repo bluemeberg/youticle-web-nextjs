@@ -615,11 +615,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         <HookingCopy>
           매일 수십개 씩 쏟아지는 영상 속에서
           <br />
-          주식 핵심 정보를 놓치지 않으려면?
+          {detailData.section} 핵심 정보를 놓치지 않으려면?
           <br />
           <br />
           <strong>
-            📢 주식 분야의 TOP5 영상 요약만 <br />
+            📢 {detailData.section} 분야의 TOP5 영상 요약만 <br />
             매일 카톡으로 받아보세요!
           </strong>
         </HookingCopy>
@@ -664,7 +664,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         <ChannelPrioritySection>
           <h4>
             {" "}
-            🤔 잠깐, 주식 TOP5 영상 요약에서 <br />
+            🤔 잠깐, {detailData.section} TOP5 영상 요약에서 <br />
             우선 반영하고 싶은 채널이 있으신가요?
           </h4>
           <p>
