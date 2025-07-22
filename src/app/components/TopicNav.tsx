@@ -16,9 +16,11 @@ interface TopicNavProps {
 
 const YOUTUBE_TOPICS = [
   { topic: "전체", icon: "🌐" },
-  { topic: "주식", icon: "📈" },
+  { topic: "국내 주식", icon: "📈" },
+  { topic: "해외 주식", icon: "📈" },
   { topic: "부동산", icon: "🏢" },
-  { topic: "가상자산", icon: "💰" },
+  { topic: "국내 가상자산", icon: "💰" },
+  { topic: "해외 가상자산", icon: "📈" },
   { topic: "경제", icon: "💵" },
   { topic: "인공지능", icon: "🤖" },
   { topic: "IT/테크", icon: "💻" },
