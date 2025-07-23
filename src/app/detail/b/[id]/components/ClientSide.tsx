@@ -619,14 +619,16 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       {/* ─── Hook for Daily Top5 Survey ─── */}
       <HookSection>
         <HookingCopy>
-          매일 수십개 씩 쏟아지는 영상 속에서
+          🤔 매일 수십개 씩 쏟아지는 <br /> 유튜브 영상 속에서
           <br />
-          {detailData.section} 핵심 정보를 놓치지 않으려면?
+          <span>{detailData.section}</span> 핵심 정보를 <br />
+          놓치지 않으려면?
           <br />
           <br />
           <strong>
-            📢 {detailData.section} 분야의 TOP5 영상 요약만 <br />
-            매일 카톡으로 받아보세요!
+            📢 매일 {detailData.section} 분야의 <br /> 유튜브 TOP5 영상 요약만{" "}
+            <br />
+            카톡으로 받아보세요!
           </strong>
         </HookingCopy>
         <ButtonGroup>
@@ -642,9 +644,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
               setIsModalOpen(true);
             }}
           >
-            좋아요
+            카톡 알림 무료로 신청하기
           </SurveyButton>
-          <SurveyButton
+          {/* <SurveyButton
             onClick={async () => {
               logCtaClick(
                 "daily_top5_survey_dislike",
@@ -656,15 +658,15 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             }}
           >
             관심 없어요
-          </SurveyButton>
+          </SurveyButton> */}
         </ButtonGroup>
         {!showChannelInputSection && (
           <>
+            <Caption>{`[주식 분야 카카오톡 알림 예시]`}</Caption>
             <Thumbnail
               src="/images/TOP5알림톡3.png"
               alt="오늘의 주식 TOP5 알림톡 예시"
             />
-            <Caption>{`[주식 분야 카카오톡 알림 예시]`}</Caption>
           </>
         )}
       </HookSection>
@@ -1482,13 +1484,16 @@ const HookSection = styled.section`
 const HookingCopy = styled.div`
   font-size: 18px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.5;
   color: #1f2937;
   margin-bottom: 24px;
   strong {
     color: #007bff;
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 800;
+  }
+  span {
+    font-weight: 900;
   }
 `;
 
@@ -1521,8 +1526,8 @@ const ButtonGroup = styled.div`
 
 const SurveyButton = styled.button<{ primary?: boolean }>`
   flex: 1;
-  padding: 12px 0;
-  font-size: 16px;
+  padding: 16px 0;
+  font-size: 18px;
   font-weight: ${({ primary }) => (primary ? 700 : 0)};
 
   border-radius: 4px;
@@ -1586,7 +1591,6 @@ const Thumbnail = styled.img`
   border-radius: 8px;
   margin: 0 auto 16px;
   display: block;
-  margin-top: 60px;
 `;
 
 const Caption = styled.p`
@@ -1594,7 +1598,8 @@ const Caption = styled.p`
   color: #666;
   font-weight: 700;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 60px;
+  margin-bottom: 12px;
 `;
 
 const ModalOverlay = styled.div`
