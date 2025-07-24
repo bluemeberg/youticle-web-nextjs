@@ -28,7 +28,9 @@ async function fetchWithRetry(
     }
   }
 }
-
+function stripMarks(s: string) {
+  return s.replace(/<mark[^>]*>/g, "").replace(/<\/mark>/g, "");
+}
 // Dynamically generate metadata based on fetched data
 export async function generateMetadata({
   params,
@@ -43,11 +45,22 @@ export async function generateMetadata({
 
   return {
     title: detailData?.summary_data.headline_title || "Detail Page",
-    description: detailData?.summary_data.short_summary || "Description",
+    description:
+      stripMarks(detailData?.summary_data.short_summary) || "Description",
     openGraph: {
+      url: `https://youticle.io/detail/${id}`,
+      siteName: "Youticle",
+      type: "website",
       title: detailData?.summary_data.headline_title,
-      description: detailData?.summary_data.short_summary,
-      images: [{ url: detailData?.thumbnail }],
+      description: stripMarks(detailData?.summary_data.short_summary),
+      images: [
+        {
+          url: detailData?.thumbnail,
+          width: 1200,
+          height: 630,
+          alt: detailData?.summary_data.headline_title,
+        },
+      ],
     },
   };
 }
