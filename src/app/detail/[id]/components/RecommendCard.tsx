@@ -5,7 +5,7 @@ import styled, { keyframes } from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
-import { timeAgo } from "@/utils/formatter";
+import { removeMarkTags, timeAgo } from "@/utils/formatter";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -77,7 +77,7 @@ const RecommendCard = (props: RecommendCardProps) => {
       )}
       <Thumbnail src={thumbnail} />
       <Info>
-        <Title>{summary_data.headline_title}</Title>
+        <Title>{removeMarkTags(summary_data.headline_title)}</Title>
         <UploadTime>{timeAgo(kstDate.toISOString())}</UploadTime>
       </Info>
     </Container>

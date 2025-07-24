@@ -7,10 +7,7 @@ import { DataProps, RealEstateAnalysis } from "@/types/dataProps";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
-import {
-  fetchSubscribedSubjects,
-  logCtaClick,
-} from "../../../../api/apiClient";
+import { fetchSubscribedSubjects, logCtaClick } from "../../../api/apiClient";
 import StockOverview from "./overviews/StockOverview";
 import RealEstateOverview from "./overviews/RealEstateOverview";
 import EconomyOverview from "./overviews/EconomyOverview";

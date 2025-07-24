@@ -207,13 +207,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     }
   }, [detailData, isArticleVisible]);
 
-  // a,b 테스트 버전
-  const getVariant = () => {
-    const match = document.cookie.match(/detailVariant=(a|b)/);
-    return match ? match[1] : "unknown";
-  };
-  const variant = getVariant();
-  console.log(variant, "옵션");
+  // // a,b 테스트 버전
+  // const getVariant = () => {
+  //   const match = document.cookie.match(/detailVariant=(a|b)/);
+  //   return match ? match[1] : "unknown";
+  // };
+  // const variant = getVariant();
+  // console.log(variant, "옵션");
 
   // 1) 페이지 오픈 로깅
   useEffect(() => {
@@ -228,7 +228,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         accept_language: acceptLanguage,
         user_agent: userAgent,
         referer,
-        ab_variant: variant, // <-- 여기
+        ab_variant: "", // <-- 여기
       }
     );
   }, []);
@@ -453,7 +453,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       )}
       <PageInfo ref={scrollRef}>
         <Category>7/19, {detailData.section} TOP5 유튜브 영상</Category>
-        <Title>{detailData.summary_data.headline_title}</Title>
+        <Title>{removeMarkTags(detailData.summary_data.headline_title)}</Title>
         <UploadContainer>
           <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
           <Upload>{detailData.duration}</Upload>
