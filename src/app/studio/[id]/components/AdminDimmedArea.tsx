@@ -10,7 +10,7 @@ import { userState } from "@/store/user";
 
 import { usePathname } from "next/navigation";
 import Footer from "@/components/Footer";
-import RecommendDimmed from "@/detail/a/[id]/components/RecommendDimmed";
+import RecommendDimmed from "@/detail/[id]/components/RecommendDimmed";
 
 const DIMMED_TITLE = `✨ 초기 무료 구독자에게만 제공되는 혜택`;
 const DIMMED_SUBTITLE = `👇지금 바로 무료 구독하세요!`;

@@ -10,7 +10,7 @@ import {
   fetchStockVideo,
   fetchTopVideosBySection,
 } from "@/api/apiClient";
-import RecommendCard from "@/detail/a/[id]/components/RecommendCard";
+import RecommendCard from "@/detail/[id]/components/RecommendCard";
 import { YOUTUBE_TOPICS } from "@/constants/topic";
 import { usePathname } from "next/navigation";
 

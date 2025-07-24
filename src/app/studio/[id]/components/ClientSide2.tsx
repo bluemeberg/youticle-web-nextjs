@@ -11,7 +11,7 @@ import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import { isDesktop } from "react-device-detect";
 import { timeAgo } from "@/utils/formatter";
-import VideoCard from "@/detail/a/[id]/components/VideoCard";
+import VideoCard from "@/detail/[id]/components/VideoCard";
 import ThreadModal from "./ThreadModal";
 import { useRouter } from "next/navigation";
 import CommentsInsightSection from "./CommentInsightSection";
