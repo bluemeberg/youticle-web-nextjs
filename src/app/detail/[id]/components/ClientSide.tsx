@@ -41,6 +41,7 @@ import { useRouter } from "next/navigation";
 import { userState } from "@/store/user";
 import {
   fetchSubscribedSubjects,
+  getUserByEmail,
   logCtaClick,
   upsertNotificationRequest,
 } from "@/api/apiClient";
@@ -48,6 +49,7 @@ import CommentsInsightSection from "@/editor/[id]/components/CommentInsightSecti
 import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsightDimmed";
 import Recommend from "./Recommend";
 import { DailyTop5PreferenceSurvey } from "./DailyTop5PreferenceSurvey";
+import GoogleLogin from "@/common/RegisterEmailByGoogle";
 
 export interface ClientContext {
   country: string;
@@ -206,7 +208,22 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       setArticleHeight(articleRef.current.scrollHeight);
     }
   }, [detailData, isArticleVisible]);
+  const [hideStickyOnScroll, setHideStickyOnScroll] = useState(false);
+  const STICKY_HIDE_OFFSET = 1000; // 원하는 만큼 조절
 
+  useEffect(() => {
+    const onScroll = () => {
+      if (!articleRef.current) return;
+
+      const { top } = articleRef.current.getBoundingClientRect();
+      // articleRef가 화면 상단을 지나치면 true
+      setHideStickyOnScroll(top <= STICKY_HIDE_OFFSET);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // 마운트 시에도 한 번 실행
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   // // a,b 테스트 버전
   // const getVariant = () => {
   //   const match = document.cookie.match(/detailVariant=(a|b)/);
@@ -368,6 +385,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       alert("알림 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
   };
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   const [schedule, setSchedule] = useState<
     "08" | "08_18" | "08_18_22" | "08_13_18_22"
@@ -382,6 +400,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   ];
 
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isEmailCompleteModalOpen, setIsEmailCompleteModalOpen] =
+    useState(false);
+
   const [extraChannel, setExtraChannel] = useState("");
 
   // 2) 채널 등록 핸들러
@@ -408,6 +429,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       alert(`"${channelInput}" 채널이 등록되었습니다! 앞으로 우선 반영돼요 😊`);
       setShowChannelInputSection(false);
       setIsCompleteModalOpen(false);
+      setIsEmailCompleteModalOpen(false);
     } catch (e) {
       console.error(e);
       alert("채널 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -419,6 +441,51 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       parseTimeStringToSeconds(a.start_time) -
       parseTimeStringToSeconds(b.start_time)
   );
+
+  // 로그인 성공 콜백
+  const handleLoginSuccess = async (loginUser: {
+    email: string;
+    displayName: string;
+    photoURL: string;
+  }) => {
+    logCtaClick(
+      "email_login_success",
+      user?.id,
+      user?.email,
+      getOrCreateAnonId()
+    );
+    setIsEmailModalOpen(false);
+    if (!loginUser.email) return;
+    const data = await getUserByEmail(loginUser.email, loginUser.displayName);
+    setIsEmailCompleteModalOpen(true);
+  };
+
+  const isAnyModalOpen =
+    isModalOpen ||
+    isEmailModalOpen ||
+    isCompleteModalOpen ||
+    isEmailCompleteModalOpen;
+
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+
+  // sticky 바를 숨겼는지 여부
+  const [stickyDismissed, setStickyDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!moreBtnRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // 버튼이 보이기 시작하면 한 번만 dismiss 처리
+        if (entry.isIntersecting) {
+          setStickyDismissed(true);
+          observer.disconnect();
+        }
+      },
+      { root: null, threshold: 0 }
+    );
+    observer.observe(moreBtnRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Container $isFixed={isFixed}>
@@ -437,6 +504,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           }, 500);
         }}
       />
+
       {/* 로딩 오버레이 */}
       {isLeaving && (
         <LoaderOverlay>
@@ -602,7 +670,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           )}
         </ContentWrapper>
       </TOC>
-      <MoreButton onClick={handleMoreClick}>
+      <MoreButton onClick={handleMoreClick} ref={moreBtnRef}>
         {isArticleVisible ? "간단히 보기" : `즉시 상세 요약 확인하기 👇`}
       </MoreButton>
       <ArticleWrapper
@@ -628,7 +696,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           <strong>
             📢 매일 {detailData.section} 분야의 <br /> 유튜브 TOP5 영상 요약만{" "}
             <br />
-            카톡으로 받아보세요!
+            카톡으로 편하게 받아보세요!
           </strong>
         </HookingCopy>
         <ButtonGroup>
@@ -636,7 +704,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             primary
             onClick={async () => {
               logCtaClick(
-                "daily_top5_survey_like",
+                "daily_top5_survey_like_kakako",
                 user?.id,
                 user?.email,
                 getOrCreateAnonId()
@@ -669,26 +737,52 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             />
           </>
         )}
+        {/* ── 이메일 신청 섹션 ── */}
+        <EmailSection>
+          <EmailHookingCopy>
+            카톡 알림을 놓치셨나요?
+            <br />
+            📧 이메일로도 편하게 TOP5 영상 요약을 받아보실 수 있습니다!
+          </EmailHookingCopy>
+          <ButtonGroup>
+            <SurveyButton
+              primary
+              onClick={async () => {
+                logCtaClick(
+                  "daily_top5_survey_like_email",
+                  user?.id ?? null,
+                  detailData.video_id,
+                  getOrCreateAnonId()
+                );
+                setIsEmailModalOpen(true);
+              }}
+            >
+              이메일 알림으로 신청하기
+            </SurveyButton>
+          </ButtonGroup>
+          {/* (선택) 이메일 예시 썸네일이 있다면 아래에 추가 */}
+          {/* <Caption>📧 이메일 요약 예시</Caption>
+    <Thumbnail src="/images/email_example.png" alt="이메일 요약 예시" /> */}
+        </EmailSection>
       </HookSection>
       {/* 설문 아래, 관심 없어요 눌렀을 때만 보이는 섹션 */}
       {showChannelInputSection && (
         <ChannelPrioritySection>
           <h4>
             {" "}
-            🤔 잠깐, {detailData.section} TOP5 영상 요약에서 <br />
-            우선 반영하고 싶은 채널이 있으신가요?
+            🤔 잠깐! <br /> 관심 채널을 등록해 보셨나요?
           </h4>
           <p>
-            관심 채널을 등록하면 매일 TOP5 선정 시
+            등록하신 채널의 새 영상은
             <br />
-            해당 채널의 신규 영상이 있다면 우선 노출됩니다.
+            TOP5 영상 리스트 최상단에 먼저 보여 드려요!
           </p>
           <Input
             placeholder="예) 삼프로TV"
             value={channelInput}
             onChange={(e) => setChannelInput(e.target.value)}
           />
-          <Footer style={{ justifyContent: "center", gap: "12px" }}>
+          <FooterResiter style={{ justifyContent: "center", gap: "12px" }}>
             <SurveyButton primary onClick={handleRegisterChannel}>
               채널 등록하기
             </SurveyButton>{" "}
@@ -705,7 +799,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             >
               다시 숨기기{" "}
             </SurveyButton>{" "}
-          </Footer>
+          </FooterResiter>
         </ChannelPrioritySection>
       )}
       <RecommendWrapper
@@ -728,12 +822,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       {isModalOpen && (
         <ModalOverlay style={{ background: "rgba(0, 0, 0, 0.4)" }}>
           <ModalContent>
-            <Header>✨ 새로운 기능 체험 신청!</Header>
+            <Header>🎉 TOP5 요약 알림 무료 체험하기!</Header>
             <Body>
-              아직 준비 중인 <b>TOP5 영상 카톡 알림</b>을<br />
-              가장 먼저 받아보고 싶으신가요?
+              매일 <strong>{detailData.section}</strong> 분야 최고 인기 영상
               <br />
-              아래에 전화번호와 알림 시간을 남겨주세요!
+              TOP5 영상 내용 핵심만 요약해 드려요.
+              <br />
+              지금 바로 편하게 경험해 보세요!
             </Body>
 
             <Form>
@@ -744,7 +839,10 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
-
+              <PrivacyNote>
+                입력하신 번호는 알림 발송 외 다른 용도로 사용되지 않으며,
+                안전하게 관리됩니다.
+              </PrivacyNote>
               <Label>알림 받을 시간</Label>
               <RadioGroup>
                 {TIME_OPTIONS.map((o) => (
@@ -784,7 +882,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
               )} */}
             </Form>
 
-            <Footer>
+            <FooterKaKaoEmail>
               <PrimaryButton onClick={handleModalSubmit}>
                 신청하고 카톡 알림 받기
               </PrimaryButton>
@@ -803,11 +901,41 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                 {" "}
                 나중에 할게요
               </SecondaryButton>
-            </Footer>
+            </FooterKaKaoEmail>
           </ModalContent>
         </ModalOverlay>
       )}
-
+      {isEmailModalOpen && (
+        <ModalOverlay style={{ background: "rgba(0,0,0,0.4)" }}>
+          <ModalContent>
+            <Header>📧 이메일 알림 기능 준비 중</Header>
+            <Body>
+              현재 이메일 알림 기능은 준비 중입니다.
+              <br />
+              기능 오픈 즉시, 연동된 Google 계정 이메일로
+              <br />
+              TOP5 영상 요약을 보내드립니다!
+            </Body>
+            <FooterKaKaoEmail>
+              <GoogleLogin onLoginSuccess={handleLoginSuccess} />
+              <SecondaryButton
+                onClick={() => {
+                  logCtaClick(
+                    "email_apply_later",
+                    user?.id ?? null,
+                    detailData.video_id,
+                    getOrCreateAnonId()
+                  );
+                  setIsEmailModalOpen(false);
+                  setShowChannelInputSection(true); // 2) 채널 우선 반영 섹션 활성화
+                }}
+              >
+                나중에 신청하기
+              </SecondaryButton>
+            </FooterKaKaoEmail>
+          </ModalContent>
+        </ModalOverlay>
+      )}
       {isCompleteModalOpen && (
         <ModalOverlay style={{ background: "rgba(0, 0, 0, 0.4)" }}>
           <ModalContent>
@@ -844,16 +972,99 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
               />
             </Form>
 
-            <Footer style={{ gap: "12px" }}>
+            <FooterResiter style={{ gap: "12px" }}>
               <PrimaryButton onClick={handleRegisterChannel}>
                 채널 등록하기
               </PrimaryButton>
               <SecondaryButton onClick={() => setIsCompleteModalOpen(false)}>
                 건너뛰기
               </SecondaryButton>
-            </Footer>
+            </FooterResiter>
           </ModalContent>
         </ModalOverlay>
+      )}
+      {isEmailCompleteModalOpen && (
+        <ModalOverlay style={{ background: "rgba(0, 0, 0, 0.4)" }}>
+          <ModalContent>
+            <Header style={{ marginBottom: "24px" }}>
+              🎉 신청이 완료되었습니다!
+            </Header>
+            <Body style={{ marginBottom: "32px" }}>
+              TOP5 영상 요약 이메일 알림 기능의 오픈 즉시 <br /> 연동한 구글
+              이메일로 가장 먼저 안내해드립니다.
+            </Body>
+            {/* 2. 채널 우선 반영 upsell with new hook */}
+            <SubHeader style={{ margin: "24px 0 12px", color: "#007bff" }}>
+              🤔 혹시 TOP5 영상 요약에서 <br />
+              우선 반영하고 싶은 채널이 있으신가요?
+            </SubHeader>
+            <SubBody style={{ marginBottom: "24px" }}>
+              관심 채널을 등록하면 매일 TOP5 선정 시
+              <br />
+              해당 채널의 신규 영상이 있다면 우선 노출됩니다.
+              {/* <br />
+              <br /> */}
+              {/* 예) 즐겨보는 <strong>@YouticleLab</strong> 채널이
+              <br />
+              항상 최상위 리스트에 오르게 돼요. */}
+            </SubBody>
+
+            <Form>
+              <Label htmlFor="channel">등록할 채널명</Label>
+              <Input
+                id="channel"
+                placeholder="예) 삼프로TV"
+                value={channelInput}
+                onChange={(e) => setChannelInput(e.target.value)}
+              />
+            </Form>
+
+            <FooterResiter style={{ gap: "12px" }}>
+              <PrimaryButton onClick={handleRegisterChannel}>
+                채널 등록하기
+              </PrimaryButton>
+              <SecondaryButton
+                onClick={() => setIsEmailCompleteModalOpen(false)}
+              >
+                건너뛰기
+              </SecondaryButton>
+            </FooterResiter>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+      {!isAnyModalOpen && !stickyDismissed && (
+        <StickyBar>
+          <BarText>👇 오늘 TOP5 유튜브 영상 요약 편하게 확인하세요!</BarText>
+          <BarButtons>
+            <BarButton
+              primary
+              onClick={() => {
+                logCtaClick(
+                  "sticky_kakao",
+                  user?.id ?? null,
+                  detailData.video_id,
+                  getOrCreateAnonId()
+                );
+                setIsModalOpen(true);
+              }}
+            >
+              카카오톡 알림받기
+            </BarButton>
+            <BarButton
+              onClick={() => {
+                logCtaClick(
+                  "sticky_email",
+                  user?.id ?? null,
+                  detailData.video_id,
+                  getOrCreateAnonId()
+                );
+                setIsEmailModalOpen(true);
+              }}
+            >
+              이메일 알림받기
+            </BarButton>
+          </BarButtons>
+        </StickyBar>
       )}
     </Container>
   );
@@ -1649,20 +1860,26 @@ const SubBody = styled.p`
 `;
 
 // Footer 버튼 비율 유지
-const Footer = styled.div`
+const FooterResiter = styled.div`
   display: flex;
   gap: 12px;
+`;
+
+const FooterKaKaoEmail = styled.div`
+  display: flex;
+  flex-direction: column;
 `;
 
 const PrimaryButton = styled.button`
   flex: 0 0 60%;
   background: #007bff;
   color: #fff;
-  padding: 12px 0;
+  padding: 16px 0;
   border: none;
   border-radius: 6px;
   font-size: 16px;
   font-weight: 700;
+  margin-bottom: 12px;
   cursor: pointer;
 `;
 
@@ -1674,6 +1891,8 @@ const SecondaryButton = styled.button`
   border: none;
   border-radius: 6px;
   font-size: 15px;
+  margin-bottom: 12px;
+
   cursor: pointer;
 `;
 const fadeIn = keyframes`
@@ -1720,4 +1939,118 @@ const RegisterButton = styled.button`
   &:hover {
     background: #0056b3;
   }
+`;
+
+const PrivacyNote = styled.p`
+  font-size: 12px;
+  color: #555;
+  margin-top: -18px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+  text-align: left;
+  span {
+    font-weight: 600;
+  }
+`;
+const EmailSection = styled.div`
+  margin-top: 32px;
+  padding: 24px;
+  background: #eef6ff;
+  border: 1px solid #007bff;
+  border-radius: 8px;
+  text-align: center;
+`;
+
+const EmailHookingCopy = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #0056b3;
+  margin-bottom: 16px;
+`;
+const StickyBar = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  z-index: 10000;
+  flex-direction: column;
+`;
+
+const BarText = styled.span`
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+`;
+
+const BarButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  width: 100%;
+`;
+
+const BarButton = styled.button<{ primary?: boolean }>`
+  padding: 12px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  width: 100%;
+  color: ${({ primary }) => (primary ? "#fff" : "#007bff")};
+  background: ${({ primary }) => (primary ? "#007bff" : "transparent")};
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: ${({ primary }) =>
+      primary ? "#0056b3" : "rgba(0,123,255,0.1)"};
+  }
+`;
+const slideIn = keyframes`
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+`;
+
+const Banner = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0056b3;
+  color: #fff;
+  padding: 12px 16px;
+  animation: ${slideIn} 0.3s ease-out;
+  z-index: 1001;
+`;
+
+const BannerText = styled.span`
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const BannerButton = styled.button`
+  background: #fff;
+  color: #0056b3;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+`;
+
+const Close = styled.button`
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 12px;
 `;

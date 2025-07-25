@@ -57,7 +57,7 @@ export async function generateMetadata({
         {
           url: detailData?.thumbnail,
           width: 1200,
-          height: 630,
+          height: 560,
           alt: detailData?.summary_data.headline_title,
         },
       ],
