@@ -182,9 +182,11 @@ export const timeSinceUpload = (uploadTime: string) => {
 };
 
 export const removeMarkTags = (text: string): string => {
+  if (!text) return "";
   // 정규식을 사용하여 <mark></mark> 태그를 삭제
   return text.replace(/<mark[^>]*>/g, "").replace(/<\/mark>/g, "");
 };
+
 export function timeAgo(dateStr: string): string {
   const now = new Date();
   const dateObj = new Date(dateStr);

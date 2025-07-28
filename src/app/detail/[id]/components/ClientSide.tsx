@@ -728,15 +728,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             관심 없어요
           </SurveyButton> */}
         </ButtonGroup>
-        {!showChannelInputSection && (
-          <>
-            <Caption>{`[주식 분야 카카오톡 알림 예시]`}</Caption>
-            <Thumbnail
-              src="/images/TOP5알림톡3.png"
-              alt="오늘의 주식 TOP5 알림톡 예시"
-            />
-          </>
-        )}
+        <Caption>{`[주식 분야 카카오톡 알림 예시]`}</Caption>
+        <Thumbnail
+          src="/images/TOP5알림톡3.png"
+          alt="오늘의 주식 TOP5 알림톡 예시"
+        />
         {/* ── 이메일 신청 섹션 ── */}
         <EmailSection>
           <EmailHookingCopy>
@@ -1980,6 +1976,15 @@ const StickyBar = styled.div`
   padding: 12px 16px;
   z-index: 10000;
   flex-direction: column;
+
+  /* PC(데스크탑) 모드일 때 */
+  @media (min-width: 768px) {
+    max-width: 420px; /* 컨테이너 너비와 동일하게 */
+    left: 50%; /* 화면 중앙으로 옮기고 */
+    transform: translateX(-50%);
+    padding: 12px; /* 여백 조절 (선택) */
+    border-radius: 8px 8px 0 0; /* 양끝에 둥근 모서리 주기 (선택) */
+  }
 `;
 
 const BarText = styled.span`

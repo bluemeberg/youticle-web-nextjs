@@ -80,7 +80,7 @@ const Recommend = ({
     async function loadVideos() {
       setLoading(true);
       try {
-        if (section == "국내 주식") {
+        if (section == "국내 주식" || section == "국내 가상자산") {
           const data = await fetchStockVideo();
           setVideos(data);
           const editorData = await fetchEditorArticle();

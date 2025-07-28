@@ -259,7 +259,7 @@ const Summary = styled.div`
 
   span.line-break {
     font-weight: 400;
-    line-height: 128%;
+    line-height: 140%;
     margin-bottom: 12px;
   }
 `;

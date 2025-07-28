@@ -427,7 +427,9 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
             </>
           ) : (
             /* 8개 미만일 땐 그냥 쭉 나열 */
-            sections.map((sec, i) => <Item key={i}>{sec.title}</Item>)
+            sections.map((sec, i) => (
+              <Item key={i}>{removeMarkTags(sec.title)}</Item>
+            ))
           )}
         </ContentWrapper>
 
