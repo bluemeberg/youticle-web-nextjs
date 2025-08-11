@@ -153,7 +153,7 @@ const TopicNav = ({
             "🌐"}
         </span>
         {selectedTopic === "전체"
-          ? "전체 섹션 별 TOP5 영상"
+          ? "전체 키워드 별 TOP5 영상"
           : `${selectedTopic} TOP5 영상`}
       </Subtitle>
     </>

@@ -3,7 +3,15 @@
 import styled from "styled-components";
 import TodayIcon from "@/assets/today.svg";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+
 import CountdownTimer from "./CountdownTimerCenter";
+// 🔽 추가: 구글 로그인용
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth } from "@/firebase";
+import { useSetRecoilState } from "recoil";
+import { userState } from "@/store/user";
+import { getUserByEmail } from "@/api/apiClient"; // (이메일로 유저 조회/생성)
 
 interface ServiceIntroduceProps {
   subjects: string[]; // 추가된 subjects prop
@@ -18,7 +26,7 @@ const getCurrentDateWithDay = () => {
   return `${year}.${month}.${day} (${weekDay})`; // YYYY.MM.DD (요일) 형식
 };
 
-const SERVICE_TITLE = "오늘의 유튜브 TOP5";
+const SERVICE_TITLE = "오늘의 유튜브 TOP5 브리핑";
 const SERVICE_DESCRIPTION =
   "오늘 업로드된 주요 키워드의 영상들을 단 1초만에 아티클로 읽을 수 있습니다.";
 const NO_SUBSCRIBED_TOPIC_MSG =
@@ -36,6 +44,52 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   console.log(subjects.length);
   const goToPage = (url: string) => router.push(url);
   const currentDateWithDay = getCurrentDateWithDay();
+  // 🔽 추가: 로그인 상태 제어
+  const setUser = useSetRecoilState(userState);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // 🔽 추가: 구글 로그인 핸들러
+  const handleGoogleLogin = async () => {
+    if (/KAKAOTALK/i.test(navigator.userAgent)) {
+      alert(
+        "카카오톡 인앱 브라우저에서는 Google 로그인이 동작하지 않을 수 있어요.\nSafari/Chrome 등 외부 브라우저에서 다시 시도해 주세요."
+      );
+      return;
+    }
+    try {
+      setIsLoggingIn(true);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const result = await signInWithPopup(auth, provider);
+
+      // 백엔드에 유저 존재 확인(없으면 생성) 후 id 획득
+      const data = await getUserByEmail(
+        result.user.email!,
+        result.user.displayName || "User"
+      );
+
+      // 전역 상태 저장
+      setUser({
+        name: result.user.displayName || "",
+        email: result.user.email || "",
+        picture: result.user.photoURL || "",
+        id: data.id,
+      });
+
+      // next 파라미터 지원 (있으면 거기로, 없으면 홈)
+      const next =
+        new URLSearchParams(window.location.search).get("next") || "/";
+      router.push(next);
+    } catch (e) {
+      console.error(e);
+      alert(
+        "로그인에 실패했어요. Safari/Chrome 등 외부 브라우저에서 다시 시도해 주세요."
+      );
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   return (
     <Container>
@@ -50,17 +104,24 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
             오늘 업로드된 주요 영상들을 자동 요약된 아티클로 읽어보세요!
           </Title> */}
           <Description>
-            주요 키워드별 반응 좋은 <Highlight>TOP5 영상</Highlight>을
+            주요 키워드별 시청자 반응 좋은 <Highlight>TOP5 영상</Highlight>을
             <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
           </Description>
         </Announcement>{" "}
-        {/* {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
+        {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
           <>
             <ButtonContainer>
-              <ServiceButton onClick={() => goToPage("subject")}>
-                관심 키워드 무료 구독하러가기
+              <ServiceButton onClick={() => goToPage("briefing")}>
+                키워드 무료 구독하기
               </ServiceButton>
             </ButtonContainer>
+            {/* 🔽 추가: 로그인 유도 행 */}
+            <LoginRow>
+              <LoginText>이미 구독하고 있나요?</LoginText>
+              <LoginButton onClick={handleGoogleLogin} disabled={isLoggingIn}>
+                {isLoggingIn ? "로그인 중..." : "로그인하기"}
+              </LoginButton>
+            </LoginRow>
           </>
         ) : (
           <ButtonContainer>
@@ -71,7 +132,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
               구독 키워드 변경하기
             </ServiceButton>
           </ButtonContainer>
-        )} */}
+        )}
       </ContentBox>
     </Container>
   );
@@ -107,7 +168,7 @@ const ContentBox = styled.div`
 const TitleContainer = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 `;
 
 const ServiceTitle = styled.h1`
@@ -181,7 +242,7 @@ const CTAButton = styled.button`
 `;
 const ServiceButton = styled.button<{ change?: boolean }>`
   width: 100%;
-  height: 60px;
+  padding: 14px 18px;
   background-color: ${(props) => (props.change ? "#000" : "#007bff")};
   color: #ffffff;
   font-family: "Pretendard Variable";
@@ -189,13 +250,15 @@ const ServiceButton = styled.button<{ change?: boolean }>`
   font-weight: 700;
   line-height: 22px;
   text-align: center;
-  border-radius: 4px;
+  border-radius: 8px;
+  font-weight: 800;
 `;
 
 const ButtonContainer = styled.div`
   width: 100%;
   display: flex;
   justify-content: center;
+  margin-bottom: 20px;
 `;
 const Announcement = styled.div`
   margin-bottom: 20px;
@@ -211,7 +274,7 @@ const Title = styled.h2`
 `;
 
 const Description = styled.p`
-  font-size: 18px;
+  font-size: 16px;
   line-height: 132%;
   font-weight: 400;
   color: #000;
@@ -228,4 +291,33 @@ const CallToAction = styled.p`
   font-weight: 600;
   color: #333;
   margin-top: 16px;
+`;
+/* 🔽 추가된 스타일 */
+const LoginRow = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-top: -16px;
+`;
+
+const LoginText = styled.span`
+  font-size: 14px;
+  color: #333;
+`;
+
+const LoginButton = styled.button`
+  border: none;
+  background: transparent;
+  color: #007bff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+
+  &:hover {
+    text-decoration: none;
+  }
 `;

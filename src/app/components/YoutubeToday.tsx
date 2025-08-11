@@ -107,6 +107,25 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     );
     return g ? g[0] : sec;
   };
+
+  // 상위 주제 → 하위 토픽 확장 맵
+  const SUB_EXPAND_MAP: Record<string, string[]> = {
+    주식: ["국내 주식", "해외 주식"],
+    가상자산: ["국내 가상자산", "해외 가상자산"],
+  };
+
+  // 구독 목록을 확장(원본 + 하위 토픽)
+  const expandSubjects = (subs: string[]) => {
+    const out = new Set<string>(subs);
+    subs.forEach((s) => SUB_EXPAND_MAP[s]?.forEach((t) => out.add(t)));
+    return Array.from(out);
+  };
+  // 구독(상위) → 하위 토픽까지 확장
+  const expandedSubjects = useMemo(() => expandSubjects(subjects), [subjects]);
+  const expandedSubsSet = useMemo(
+    () => new Set(expandedSubjects),
+    [expandedSubjects]
+  );
   // useEffect(() => {
   //   if (subjects.length > 0) {
   //     setSelectedTopic(subjects[0]);
@@ -152,29 +171,41 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     router.push("/today/unsubscribe");
   };
   const [showSubscribedOnly, setShowSubscribedOnly] = useState(false); // 토글 상태
-
   const filteredAndSortedData = useMemo(() => {
     const seen = new Set<string>();
 
     return (
       clientData
         .filter((item) => {
-          // 1) “구독중만 보기” 로직(이전대로)
-          if (showSubscribedOnly && subjects.length > 0) {
+          // 1) “구독중만 보기”일 때는 확장된 구독 집합으로 필터
+          if (showSubscribedOnly && expandedSubsSet.size > 0) {
             if (selectedTopic === "전체") {
-              return subjects.includes(item.section);
+              return expandedSubsSet.has(item.section);
             }
+
+            // 선택한 토픽이 상위 그룹인 경우(예: 주식) → 그 하위까지 허용
+            const group = GROUPED_TOPICS[selectedTopic];
+            if (group) {
+              return (
+                (group.includes(item.section) &&
+                  group.some((g) => expandedSubsSet.has(g))) ||
+                expandedSubsSet.has(selectedTopic)
+              ); // 상위 자체 구독도 인정
+            }
+
+            // 일반 토픽
             return (
-              subjects.includes(selectedTopic) && item.section === selectedTopic
+              expandedSubsSet.has(item.section) &&
+              item.section === selectedTopic
             );
           }
 
-          // 2) 전체 토픽
+          // 2) 전체 보기일 때는 기존 로직
           if (selectedTopic === "전체") {
             return true;
           }
 
-          // 3) 그룹 토픽 처리 (“주식”이면 국내 주식 + 해외 주식 포함)
+          // 3) 상위 그룹(주식/가상자산) 클릭 시 하위 토픽 포함
           const group = GROUPED_TOPICS[selectedTopic];
           if (group) {
             return group.includes(item.section);
@@ -185,21 +216,22 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
         })
         // 중복 video_id 제거
         .filter((item) => {
-          if (seen.has(item.video_id)) {
-            return false;
-          }
+          if (seen.has(item.video_id)) return false;
           seen.add(item.video_id);
           return true;
         })
         .sort((a, b) => {
-          // 기존 정렬 로직 그대로
-          if (sortCriteria === "engagement") {
-            return b.score - a.score;
-          }
+          if (sortCriteria === "engagement") return b.score - a.score;
           return b.views + b.likes * 10 - (a.views + a.likes * 10);
         })
     );
-  }, [clientData, showSubscribedOnly, subjects, selectedTopic, sortCriteria]);
+  }, [
+    clientData,
+    showSubscribedOnly,
+    expandedSubsSet,
+    selectedTopic,
+    sortCriteria,
+  ]);
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -226,7 +258,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   };
 
   const filteredSubjects = showSubscribedOnly
-    ? subjects
+    ? expandedSubjects // 상위 구독시 하위(국내/해외)까지 네비에 노출
     : YOUTUBE_TOPICS.map((t) => t.topic);
   // ① 필터＋정렬된 리스트가 바뀔 때마다, 각 메트릭별 랭킹 맵을 계산
 
@@ -269,7 +301,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
       <Header>
         {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
           <ToggleContainer>
-            <ToggleLabel>📌 구독중인 키워드 아티클만 보기</ToggleLabel>
+            <ToggleLabel>📌 구독중인 키워드 브리핑만 보기</ToggleLabel>
             <ToggleButtonContainer>
               <ToggleButton
                 isActive={showSubscribedOnly}
@@ -302,7 +334,7 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             subjects={filteredSubjects} // 구독 주제 전달
             unSubscribe={[]}
             showSubscribedOnly={showSubscribedOnly}
-            subscribedSubjects={subjects} // 구독 주제 전달 (색상 변경용)
+            subscribedSubjects={expandedSubjects} // 구독 주제 전달 (색상 변경용)
           ></TopicNav>
         </TopicNavContainer>
         {/* <CountdownTimer /> */}
@@ -326,8 +358,10 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             const topicInfo = YOUTUBE_TOPICS.find(
               (topic) => topic.topic === item.section
             );
-            const isSubscribed = subjects.includes(item.section);
-
+            const isSubscribed =
+              expandedSubsSet.has(item.section) ||
+              // 상위 토픽(주식/가상자산)을 직접 구독한 경우도 안전망으로 케어
+              expandedSubsSet.has(toNavTopic(item.section));
             // ② 이 아이템에 대해 가장 좋은(=작은) 랭킹을 가진 key 찾기
             let bestKey: MetricKey = METRIC_KEYS[0];
             let bestRank = metricRanks[bestKey].get(item.video_id)!;
