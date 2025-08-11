@@ -44,12 +44,17 @@ const SubscriptionPage = () => {
   const [initialSubscribedSubjects, setInitialSubscribedSubjects] = useState<
     string[]
   >([]);
+  const [isRouting, setIsRouting] = useState(false);
 
+  useEffect(() => {
+    router.prefetch("/"); // 이동 체감속도 개선
+  }, [router]);
   const [unsubscribedTopics, setUnsubscribedTopics] = useState<
     { name: string; icon: string }[]
   >(topics.filter((topic) => !subscribedSubjects.includes(topic.name)));
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(false); // ← 기본값 false로
   const [modalMessage, setModalMessage] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false); // 인디케이터
 
   useEffect(() => {
     // 구독된 주제를 API로 가져와서 상태에 설정
@@ -101,33 +106,45 @@ const SubscriptionPage = () => {
     console.log(removedTopics);
     // 변경된 구독 키워드가 없을 때 팝업 발생
     if (removedTopics.length === 0 && newTopics.length === 0) {
-      setModalMessage("구독 키워드가 변경되지 않았습니다.");
+      setModalMessage("변경된 구독 키워드가 없습니다.");
       setShowModal(true);
       return;
     }
     try {
+      setIsUpdating(true); // ← 시작
+      const data = await getUserByEmail(user.email, user.name);
       // 변경된 항목을 PUT 요청으로 전송
       for (let i = 0; i < newTopics.length; i++) {
-        const data = await getUserByEmail(user.email, user.name);
         // 주제 등록
-        console.log(data.id);
         await updateUserSubject(data.id, removedTopics[i] || "", newTopics[i]);
       }
-      setModalMessage("구독 키워드가 성공적으로 업데이트되었습니다.");
+      // ✅ 줄바꿈 포함 메시지
+      setModalMessage(
+        "구독 키워드가 성공적으로 업데이트되었습니다.\n" +
+          "내일부터 변경된 키워드가 반영된 브리핑을 이메일로 보내드릴게요."
+      );
       setShowModal(true);
+      setIsUpdating(false); // ← 종료
+      setIsRouting(true); // ← 오버레이 켜기
+
       router.push(`/`);
     } catch (error) {
       console.error("주제 업데이트 중 오류 발생:", error);
       setModalMessage(
-        "주제를 업데이트하는 데 문제가 발생했습니다. 다시 시도해 주세요."
+        "주제를 업데이트하는 데 문제가 발생했습니다.\n다시 시도해 주세요."
       );
       setShowModal(true);
+    } finally {
+      setIsUpdating(false); // ← 종료
     }
   };
-
+  const handleBack = () => {
+    setIsRouting(true); // 오버레이 켜기
+    router.push("/"); // 브리핑 피드로 이동
+  };
   return (
     <Container>
-      <LogoHeader />
+      <LogoHeader onBack={handleBack} onBackHome={handleBack} />
       <Title>구독 키워드 변경</Title>
       <Subtitle>
         현재 구독 중인 키워드를 구독 해제 후 새 키워드를 선택해주세요. 3개의
@@ -169,8 +186,23 @@ const SubscriptionPage = () => {
         </TopicContainer>
       </Section>
       <ButtonContainer>
-        <ConfirmButton onClick={handleConfirm}>변경하기</ConfirmButton>
+        <ConfirmButton onClick={handleConfirm}>
+          {" "}
+          {isUpdating ? "업데이트 중..." : "변경하기"}
+        </ConfirmButton>
       </ButtonContainer>
+      {isUpdating && (
+        <Overlay role="status" aria-live="polite" aria-busy="true">
+          <Spinner />
+          <OverlayText>키워드 변경 반영 중…</OverlayText>
+        </Overlay>
+      )}
+      {isRouting && (
+        <RouteOverlay role="status" aria-live="polite" aria-busy="true">
+          <RouteSpinner />
+          <RouteText>브리핑 피드로 이동 중…</RouteText>
+        </RouteOverlay>
+      )}
     </Container>
   );
 };
@@ -210,7 +242,7 @@ const ModalContent = styled.div`
 
 const ModalClose = styled.span`
   position: absolute;
-  top: 10px;
+  top: 4px;
   right: 10px;
   cursor: pointer;
   font-size: 20px;
@@ -220,6 +252,7 @@ const ModalMessage = styled.p`
   font-size: 16px;
   font-weight: 500;
   text-align: center;
+  white-space: pre-line; /* ← \n 줄바꿈 적용 */
 `;
 
 const Title = styled.h1`
@@ -298,20 +331,83 @@ const ButtonContainer = styled.div`
   margin-top: 15px;
 `;
 
-const ConfirmButton = styled.button`
+const ConfirmButton = styled.button<{ disabled?: boolean }>`
   background-color: #007bff;
   color: white;
   padding: 16px 20px;
   border-radius: 5px;
   cursor: pointer;
   border: none;
-  font-weight: 700;
-  transition: background-color 0.3s;
   width: 90%;
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 100px;
+  transition: background-color 0.3s;
   &:hover {
     background-color: #0056b3;
   }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+const Overlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+`;
+const Spinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #cfe2ff;
+  border-top-color: #007bff;
+  animation: spin 0.8s linear infinite;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+const OverlayText = styled.div`
+  font-weight: 700;
+  color: #0b1220;
+  font-size: 14px;
+`;
+const RouteOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+`;
+
+const RouteSpinner = styled.div`
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid #cfe2ff;
+  border-top-color: #007bff;
+  animation: spin 0.8s linear infinite;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const RouteText = styled.div`
+  font-weight: 800;
+  color: #0b1220;
+  font-size: 14px;
 `;

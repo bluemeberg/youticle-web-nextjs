@@ -230,7 +230,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     }, 500); // UI 자연스럽게 변경을 위해 0.8초 딜레이
   };
 
-  const MENU_ITEMS = [
+  const MENU_ITEMS_ALL = [
     {
       icon: "🎬",
       label: "요약 스튜디오",
@@ -239,9 +239,9 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     },
     {
       icon: "🏠",
-      label: "유티클 투데이",
-      href: "/today",
-      loadingMsg: "투데이 로딩 중...",
+      label: "유티클 브리핑",
+      href: "/",
+      loadingMsg: "브리핑 로딩 중...",
     },
     {
       icon: "📂",
@@ -262,7 +262,15 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     //   loadingMsg: "소개 페이지 로딩 중...",
     // },
   ];
-
+  // ✅ 권한 체크: 지정된 id만 확장 메뉴 노출
+  const privilegedIds = new Set<number>([3, 4, 5, 6, 7, 9, 58]);
+  const isPrivileged = privilegedIds.has(Number(user?.id));
+  // ✅ 누구나 볼 수 있는 기본 메뉴: 유티클 브리핑만
+  //    권한 있는 사용자만 나머지(스튜디오/아카이브) 추가
+  const VISIBLE_MENU_ITEMS = [
+    MENU_ITEMS_ALL[1], // 유티클 브리핑
+    ...(isPrivileged ? [MENU_ITEMS_ALL[0], MENU_ITEMS_ALL[2]] : []),
+  ];
   return (
     <>
       <Container
@@ -305,7 +313,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
             {/* 드롭다운 */}
             {menuOpen && (
               <Dropdown>
-                {MENU_ITEMS.map((item) => (
+                {VISIBLE_MENU_ITEMS.map((item) => (
                   <DropdownItem
                     key={item.href}
                     onClick={() =>
@@ -367,7 +375,7 @@ const Container = styled.header<{
       ? "rgba(244, 244, 244, 1)"
       : $isDetailPage
       ? "rgba(244, 244, 244, 1)"
-      : "rgba(0, 123, 255, 1)"};
+      : "rgb(0, 123, 255)"};
 
   color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) =>
     $isUnsubscribeOrModifyPage || $isDetailPage ? "black" : "white"};
