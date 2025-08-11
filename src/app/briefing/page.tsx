@@ -365,8 +365,7 @@ export default function SubscribePage() {
             loop
             playsInline
             aria-label="브리핑 영상 예시"
-            controls
-            controlsList="nodownload"
+            controlsList="nodownload noplaybackrate nofullscreen"
             disablePictureInPicture
           >
             <source src="/videos/유티클브리핑_250810_up.mp4" type="video/mp4" />
@@ -374,12 +373,12 @@ export default function SubscribePage() {
           </Video>
         </HeroVideoWrapper>
 
-        <ExamplePoints>
+        {/* <ExamplePoints>
           <li>영상 5개 × 각 5줄 핵심 요약</li>
           <li>쟁점/댓글 요약과 참고 링크 제공</li>
         </ExamplePoints>
 
-        <SecondaryBtn onClick={openPicker}>키워드 골라서 받아보기</SecondaryBtn>
+        <SecondaryBtn onClick={openPicker}>키워드 골라서 받아보기</SecondaryBtn> */}
       </Section>
 
       {/* 베네핏 */}
@@ -935,7 +934,7 @@ const HeroVideoWrapper = styled.div`
   margin: 14px 0 10px;
 `;
 const Video = styled.video`
-  width: min(640px, 90%);
+  width: min(640px, 84%);
   aspect-ratio: 9 / 16;
   background: #000;
   border-radius: 40px 40px 4px 4px;
