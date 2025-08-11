@@ -8,7 +8,8 @@ import { fetchSubscribedSubjects, getUserByEmail } from "../../api/apiClient";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { updateUserSubject } from "../../api/apiClient";
-
+import { logCtaClick } from "@/api/apiClient";
+import { getOrCreateAnonId } from "@/utils/formatter";
 // 전체 주제 목록 및 아이콘
 const topics = [
   { name: "주식", icon: "📈" },
@@ -186,7 +187,17 @@ const SubscriptionPage = () => {
         </TopicContainer>
       </Section>
       <ButtonContainer>
-        <ConfirmButton onClick={handleConfirm}>
+        <ConfirmButton
+          onClick={() => {
+            logCtaClick(
+              "confirm_channel_change", // CTA 액션명
+              user?.id ?? null, // 유저 ID
+              user?.email ?? null, // 유저 이메일
+              getOrCreateAnonId() // 익명 ID
+            );
+            handleConfirm();
+          }}
+        >
           {" "}
           {isUpdating ? "업데이트 중..." : "변경하기"}
         </ConfirmButton>

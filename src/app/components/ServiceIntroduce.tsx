@@ -9,9 +9,11 @@ import CountdownTimer from "./CountdownTimerCenter";
 // 🔽 추가: 구글 로그인용
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/firebase";
-import { useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import { getUserByEmail } from "@/api/apiClient"; // (이메일로 유저 조회/생성)
+import { logCtaClick } from "@/api/apiClient";
+import { getOrCreateAnonId } from "@/utils/formatter";
 
 interface ServiceIntroduceProps {
   subjects: string[]; // 추가된 subjects prop
@@ -47,6 +49,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   // 🔽 추가: 로그인 상태 제어
   const setUser = useSetRecoilState(userState);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const user = useRecoilValue(userState);
 
   // 🔽 추가: 구글 로그인 핸들러
   const handleGoogleLogin = async () => {
@@ -111,14 +114,36 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
         {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
           <>
             <ButtonContainer>
-              <ServiceButton onClick={() => goToPage("briefing")}>
+              <ServiceButton
+                onClick={() => {
+                  logCtaClick(
+                    "subscribe_keyword", // 액션 이름
+                    user?.id ?? null, // 유저 ID
+                    user?.email ?? null, // 유저 이메일
+                    getOrCreateAnonId() // 익명 ID
+                  );
+                  goToPage("briefing"); // 페이지 이동
+                }}
+              >
                 키워드 무료 구독하기
               </ServiceButton>
             </ButtonContainer>
             {/* 🔽 추가: 로그인 유도 행 */}
             <LoginRow>
               <LoginText>이미 구독하고 있나요?</LoginText>
-              <LoginButton onClick={handleGoogleLogin} disabled={isLoggingIn}>
+              <LoginButton
+                onClick={() => {
+                  logCtaClick(
+                    "login_button_click", // 액션 이름
+                    user?.id ?? null, // 유저 ID
+                    user?.email ?? null, // 유저 이메일
+                    getOrCreateAnonId() // 익명 ID
+                  );
+                  handleGoogleLogin(); // 기존 로그인 로직
+                }}
+                disabled={isLoggingIn}
+              >
+                {" "}
                 {isLoggingIn ? "로그인 중..." : "로그인하기"}
               </LoginButton>
             </LoginRow>
@@ -127,7 +152,15 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
           <ButtonContainer>
             <ServiceButton
               change={subjects.length !== 0}
-              onClick={() => goToPage("/subject/modify")}
+              onClick={() => {
+                logCtaClick(
+                  "modify_subscribe_keyword", // CTA 액션명
+                  user?.id ?? null, // 유저 ID
+                  user?.email ?? null, // 유저 이메일
+                  getOrCreateAnonId() // 익명 ID
+                );
+                goToPage("/subject/modify");
+              }}
             >
               구독 키워드 변경하기
             </ServiceButton>

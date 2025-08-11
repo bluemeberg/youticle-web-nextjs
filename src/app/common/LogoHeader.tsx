@@ -204,6 +204,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   const handleClickProfile = () => setMenuOpen((prev) => !prev);
 
   const handleMenuClick = () => {
+    logCtaClick("menu_click", user?.id, user?.email, getOrCreateAnonId());
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "menu_open", {
         event_category: "interaction",
@@ -339,7 +340,17 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
               </LoadingOverlay>
             )}
             {user.picture !== "" && (
-              <ProfileImage onClick={handleClickProfile}>
+              <ProfileImage
+                onClick={() => {
+                  logCtaClick(
+                    "menu_open",
+                    user?.id ?? null,
+                    user?.email ?? null,
+                    getOrCreateAnonId()
+                  );
+                  handleClickProfile();
+                }}
+              >
                 <img src={user.picture} alt="User profile" />
               </ProfileImage>
             )}
