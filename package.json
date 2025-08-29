@@ -13,6 +13,7 @@
     "axios": "^1.7.7",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "dayjs": "^1.11.15",
     "firebase": "^10.13.1",
     "geoip-lite": "^1.4.10",
     "lucide-react": "^0.525.0",
