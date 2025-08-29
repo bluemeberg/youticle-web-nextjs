@@ -50,7 +50,11 @@ import CommentsInsightSectionDimmed from "@/editor/[id]/components/CommentInsigh
 import Recommend from "./Recommend";
 import { DailyTop5PreferenceSurvey } from "./DailyTop5PreferenceSurvey";
 import GoogleLogin from "@/common/RegisterEmailByGoogle";
-
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import weekday from "dayjs/plugin/weekday";
+import "dayjs/locale/ko";
 export interface ClientContext {
   country: string;
   acceptLanguage: string;
@@ -65,8 +69,9 @@ interface ClientSideProps {
 }
 
 const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
-  console.log(detailData);
-  console.log(clientContext);
+  dayjs.extend(utc);
+  dayjs.extend(timezone);
+  dayjs.locale("ko");
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -520,7 +525,10 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         </LoaderOverlay>
       )}
       <PageInfo ref={scrollRef}>
-        <Category>7/19, {detailData.section} TOP5 유튜브 영상</Category>
+        <Category>
+          {dayjs().tz("Asia/Seoul").format("M/D(dd)")},{detailData.section} TOP5
+          유튜브 영상
+        </Category>
         <Title>{removeMarkTags(detailData.summary_data.headline_title)}</Title>
         <UploadContainer>
           <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
