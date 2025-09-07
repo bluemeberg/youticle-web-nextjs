@@ -36,7 +36,7 @@ const YOUTUBE_TOPICS = [
   { topic: "요리", icon: "🍳" },
   { topic: "자동차", icon: "🚗" },
   { topic: "여행", icon: "✈️" },
-  // { topic: "과학", icon: "🔬" },
+  { topic: "과학", icon: "🔬" },
   // { topic: "역사", icon: "📜" },
 ];
 

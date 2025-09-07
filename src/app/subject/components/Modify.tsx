@@ -36,7 +36,7 @@ const topics = [
   { name: "요리", icon: "🍳" },
   { name: "여행", icon: "✈️" },
   // 필요 시 과학/역사 재오픈
-  // { name: "과학", icon: "🔬" },
+  { name: "과학", icon: "🔬" },
   // { name: "역사", icon: "📜" },
 ];
 

@@ -28,6 +28,38 @@ interface ClientSideProps {
   detailData: DataProps;
 }
 
+function buildCtaMeta() {
+  const ref = typeof document !== "undefined" ? document.referrer || "" : "";
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+  const lang =
+    typeof navigator !== "undefined"
+      ? (navigator.languages && navigator.languages.join(",")) ||
+        navigator.language ||
+        ""
+      : "";
+
+  // 카카오 버튼에 붙인 추적 파라미터도 같이 넘기기 (없으면 빈 값)
+  const url =
+    typeof window !== "undefined" ? new URL(window.location.href) : null;
+  const src = url?.searchParams.get("src") || "";
+  const campaign = url?.searchParams.get("campaign") || "";
+  const mid = url?.searchParams.get("mid") || ""; // 선택
+
+  return {
+    referer: ref,
+    user_agent: ua,
+    accept_language: lang,
+    // 서버의 ab_variant 필드에 함께 실어두면 조회/집계가 편함
+    ab_variant: [
+      src && `src=${src}`,
+      campaign && `campaign=${campaign}`,
+      mid && `mid=${mid}`,
+    ]
+      .filter(Boolean)
+      .join("&"),
+  };
+}
+
 const ClientSide = ({ id, detailData }: ClientSideProps) => {
   const [videoPlayer, setVideoPlayer] = useState<any>(null);
   const [isFixed, setIsFixed] = useState(false);
@@ -99,7 +131,8 @@ const ClientSide = ({ id, detailData }: ClientSideProps) => {
           "channel_article_open",
           user?.id ?? null,
           detailData.video_id ?? null,
-          getOrCreateAnonId()
+          getOrCreateAnonId(),
+          buildCtaMeta() // ← referer/UA/lang/src/campaign 포함
         );
       } catch (err) {
         console.error("CTA 로그 저장 실패:", err);
