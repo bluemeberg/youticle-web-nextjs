@@ -291,7 +291,7 @@ const Recommend = ({
                     </ThumbWrapper>
                     <Info>
                       <VideoTitle>
-                        {item.summary_data.headline_title}
+                        {removeMarkTags(item.summary_data.headline_title)}
                       </VideoTitle>
 
                       <Meta>

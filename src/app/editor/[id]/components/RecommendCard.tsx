@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
 import { DataProps } from "@/types/dataProps";
+import { removeMarkTags } from "@/utils/formatter";
 
 interface RecommendCardProps extends DataProps {
   icon: React.ReactNode;
@@ -25,7 +26,7 @@ const RecommendCard = (props: RecommendCardProps) => {
       <Thumbnail src={thumbnail} />
       <Info>
         <Title>
-          {summary_data.headline_title}, <br />{" "}
+          {removeMarkTags(summary_data.headline_title)}, <br />{" "}
           {summary_data.headline_sub_title}
         </Title>
         <UploadTime>{upload_date.slice(0, -3)}</UploadTime>
