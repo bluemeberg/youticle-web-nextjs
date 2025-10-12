@@ -889,7 +889,19 @@ const StockCard = ({
       </LevelsVisualWrapper>
     );
   };
-  const handleToggleDetails = () => setShowDetails((prev) => !prev);
+  const user = useRecoilValue(userState);
+  const handleToggleDetails = () => {
+  setShowDetails(prev => {
+    const next = !prev;
+    void logCtaClick(
+      "stock_detail_toggle",
+      user?.id,
+      stock.stock_name,
+      getOrCreateAnonId(),
+    ).catch(() => {});
+    return next;
+  });
+  };
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
