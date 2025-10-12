@@ -27,15 +27,13 @@ export const metadata = {
   },
 };
 
-export default async function LandingPage({
-  searchParams,
-}: LandingPageProps = {}) {
+export default async function LandingPage(props: LandingPageProps) {
   const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
   const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
   const INSIGHTS_SECTION_URL = "https://youticle.shop/insights/sections";
 
   let integratedSections: InsightSectionsResponse | null = null;
-  const keywordParam = searchParams?.keyword;
+  const keywordParam = props.searchParams?.keyword;
   const initialTopicRaw = Array.isArray(keywordParam)
     ? keywordParam[0]
     : keywordParam;
