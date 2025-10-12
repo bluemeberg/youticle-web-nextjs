@@ -1,6 +1,12 @@
 import TodayPageClient from "./components/TodayPageClient"; // 클라이언트 컴포넌트
 import type { InsightSection, InsightSectionsResponse } from "@/types/insight";
 
+type LandingPageProps = {
+  searchParams?: {
+    keyword?: string | string[];
+  };
+};
+
 export const metadata = {
   title: "YouTicle",
   description:
@@ -21,12 +27,19 @@ export const metadata = {
   },
 };
 
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: LandingPageProps = {}) {
   const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
   const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
   const INSIGHTS_SECTION_URL = "https://youticle.shop/insights/sections";
 
   let integratedSections: InsightSectionsResponse | null = null;
+  const keywordParam = searchParams?.keyword;
+  const initialTopicRaw = Array.isArray(keywordParam)
+    ? keywordParam[0]
+    : keywordParam;
+  const initialTopic = initialTopicRaw?.trim();
 
   try {
     const sectionKeys = ["domestic_stock", "overseas_stock", "domestic_crypto", "overseas_crypto"] as const;
@@ -66,6 +79,7 @@ export default async function LandingPage() {
         <TodayPageClient
           apiData={combinedData}
           integratedSections={integratedSections?.sections ?? []}
+          initialTopic={initialTopic}
         />
       </>
     );

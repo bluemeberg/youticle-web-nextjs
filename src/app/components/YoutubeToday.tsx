@@ -30,6 +30,7 @@ interface YoutubeTodayProps {
   subjects: string[]; // 추가된 subjects prop
   marketInsightCards?: MarketInsightCardData[];
   integratedSections?: InsightSection[];
+  initialTopic?: string | null;
 }
 
 const YOUTUBE_TOPICS = [
@@ -109,6 +110,30 @@ const INTEGRATED_SECTION_MAP: Record<string, string> = {
   "해외 가상자산": "overseas_crypto",
 };
 
+const normalizeTopicKey = (value: string) =>
+  value.replace(/[\s_-]+/g, "").toLowerCase();
+
+const TOPIC_LOOKUP_BY_NORMALIZED = new Map<string, string>(
+  YOUTUBE_TOPICS.map(({ topic }) => [normalizeTopicKey(topic), topic])
+);
+
+const TOPIC_ALIASES: Record<string, string> = {
+  domesticstock: "국내 주식",
+  overseasstock: "해외 주식",
+  domesticcrypto: "국내 가상자산",
+  overseascrypto: "해외 가상자산",
+};
+
+const resolveTopicFromQuery = (raw?: string | null): string | undefined => {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const normalizedKey = normalizeTopicKey(trimmed);
+  return (
+    TOPIC_LOOKUP_BY_NORMALIZED.get(normalizedKey) ?? TOPIC_ALIASES[normalizedKey]
+  );
+};
+
 const inferCardTopics = (card: MarketInsightCardData): string[] => {
   if (card.topics.length > 0) {
     return card.topics;
@@ -138,6 +163,7 @@ const YoutubeToday = ({
   subjects,
   marketInsightCards = [],
   integratedSections = [],
+  initialTopic,
 }: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
   const setSelectedTopic = useSetRecoilState(topicState);
@@ -151,6 +177,24 @@ const YoutubeToday = ({
   const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
   const user = useRecoilValue(userState);
   const [isRendered, setIsRendered] = useState(false); // 애니메이션을 위한 상태
+  const selectedTopicRef = useRef(selectedTopic);
+  const appliedInitialTopicRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedTopicRef.current = selectedTopic;
+  }, [selectedTopic]);
+
+  useEffect(() => {
+    if (!initialTopic) return;
+    const resolved = resolveTopicFromQuery(initialTopic);
+    if (!resolved) return;
+    if (appliedInitialTopicRef.current === resolved) return;
+    appliedInitialTopicRef.current = resolved;
+    if (selectedTopicRef.current === resolved) {
+      return;
+    }
+    setSelectedTopic(resolved);
+  }, [initialTopic, setSelectedTopic]);
 
   const requestedMarketInsightTopics = useMemo<string[]>(() => {
     if (selectedTopic === "전체") {

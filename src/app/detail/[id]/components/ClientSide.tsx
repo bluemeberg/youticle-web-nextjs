@@ -1663,6 +1663,7 @@ const StockMentionsSection = ({
     }
     return normaliseSegmentStart(segment.start_time).seconds;
   }, []);
+const user = useRecoilValue(userState);
 
   const shouldShowEmptyState =
     !loading && !error && (!mentions || mentions.length === 0);
@@ -1712,7 +1713,21 @@ const StockMentionsSection = ({
 
             return (
               <StockMentionItem key={key}>
-                <StockMentionButton type="button" onClick={() => toggle(key)}>
+                <StockMentionButton
+  type="button"
+  onClick={() => {
+    // 1) CTA 로그 (비동기여도 기다리지 않음)
+    void logCtaClick(
+      "stock_mention",
+      user?.id,
+      mention.stock_name ?? null,
+      getOrCreateAnonId()
+    ).catch(() => {}); // 에러 무시(선택)
+
+    // 2) 상태 토글
+    toggle(key);
+  }}
+>
                   <StockMentionTitleGroup>
                     <span>{mention.stock_name}</span>
                     {mention.ticker ? (

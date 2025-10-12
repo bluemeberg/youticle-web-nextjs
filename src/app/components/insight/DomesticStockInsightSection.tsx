@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import styled from "styled-components";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { userState } from "@/store/user";
 
 import type {
   InsightSection,
@@ -12,7 +14,9 @@ import type {
   InsightStrategy,
 } from "@/types/insight";
 import type { ReactNode } from "react";
-import { removeMarkTags } from "@/utils/formatter";
+import { getOrCreateAnonId, removeMarkTags } from "@/utils/formatter";
+import { useState } from "react";
+import { logCtaClick } from "@/api/apiClient";
 
 const COLOR_POSITIVE = "#ff6b6b";
 const COLOR_NEGATIVE = "#0b63f6";
@@ -467,6 +471,7 @@ const StockCard = ({
   stock: InsightStock;
   hideInsightSectionList?: boolean;
 }) => {
+  const [showDetails, setShowDetails] = useState(false);
   const metrics = stock.metrics;
   const priceInfo = metrics?.price_info;
   const changePct = priceInfo?.change_pct ?? metrics?.chg_pct;
@@ -674,7 +679,6 @@ const StockCard = ({
       </PriceVisualGrid>
     );
   };
-  const standalonePriceVisuals = !hasPriceSection ? renderPriceVisuals() : null;
   const renderValuationVisuals = () => {
     if (!valuationDetail) return null;
 
@@ -771,9 +775,6 @@ const StockCard = ({
       </ValuationVisualWrapper>
     );
   };
-  const standaloneValuationVisuals = !hasValuationSection
-    ? renderValuationVisuals()
-    : null;
   const renderFlowVisuals = () => {
     if (!flowDetail) return null;
     return (
@@ -822,7 +823,6 @@ const StockCard = ({
       </FlowVisualWrapper>
     );
   };
-  const standaloneFlowVisuals = !hasFlowSection ? renderFlowVisuals() : null;
   const renderLiquidityVisuals = () => {
     if (!liquidityDetail) return null;
     return (
@@ -857,9 +857,6 @@ const StockCard = ({
       </LiquidityVisualWrapper>
     );
   };
-  const standaloneLiquidityVisuals = !hasLiquiditySection
-    ? renderLiquidityVisuals()
-    : null;
   const renderLevelsVisuals = () => {
     if (!levelsDetail) return null;
     return (
@@ -892,9 +889,28 @@ const StockCard = ({
       </LevelsVisualWrapper>
     );
   };
-  const standaloneLevelsVisuals = !hasLevelsSection
-    ? renderLevelsVisuals()
-    : null;
+  const handleToggleDetails = () => setShowDetails((prev) => !prev);
+  const detailToggleLabel = showDetails
+    ? "상세 인사이트 접기"
+    : "상세 인사이트 펼치기";
+  const hasStandalonePriceVisual =
+    !hasPriceSection &&
+    (Boolean(intradayRange) || typeof range?.position_pct === "number");
+  const hasStandaloneValuationVisual =
+    !hasValuationSection && Boolean(valuationDetail);
+  const hasStandaloneFlowVisual = !hasFlowSection && Boolean(flowDetail);
+  const hasStandaloneLiquidityVisual =
+    !hasLiquiditySection && Boolean(liquidityDetail?.stats?.length);
+  const hasInsightSectionList =
+    !hideInsightSectionList && insightSections.length > 0;
+  const hasVideoSources = Array.isArray(stock.sources) && stock.sources.length > 0;
+  const hasDetailContent =
+    hasStandalonePriceVisual ||
+    hasStandaloneValuationVisual ||
+    hasStandaloneFlowVisual ||
+    hasStandaloneLiquidityVisual ||
+    hasInsightSectionList ||
+    hasVideoSources;
 
   return (
     <StockCardWrapper>
@@ -946,11 +962,108 @@ const StockCard = ({
           />
         </CommentBox>
       )}
-      {standalonePriceVisuals}
-      {standaloneValuationVisuals}
-      {standaloneFlowVisuals}
-      {standaloneLiquidityVisuals}
-      {/* {standaloneLevelsVisuals} */}
+      {hasDetailContent ? (
+        <>
+          <StockDetailToggleRow>
+            <StockDetailToggleButton
+              type="button"
+              onClick={handleToggleDetails}
+              aria-expanded={showDetails}
+            >
+              {detailToggleLabel}
+              <ToggleChevron aria-hidden={true} $expanded={showDetails}>
+                <span />
+              </ToggleChevron>
+            </StockDetailToggleButton>
+          </StockDetailToggleRow>
+          {showDetails ? (
+            <StockDetailBody>
+              {hasStandalonePriceVisual ? renderPriceVisuals() : null}
+              {hasStandaloneValuationVisual ? renderValuationVisuals() : null}
+              {hasStandaloneFlowVisual ? renderFlowVisuals() : null}
+              {hasStandaloneLiquidityVisual ? renderLiquidityVisuals() : null}
+              {/* {!hasLevelsSection ? renderLevelsVisuals() : null} */}
+              {hasInsightSectionList ? (
+                <InsightSectionList>
+                  {insightSections.map((section) => {
+                    if (!section) return null;
+                    const isPriceSection =
+                      (section.category &&
+                        section.category.toLowerCase() === "price_position") ||
+                      (section.title &&
+                        (section.title.includes("가격") ||
+                          section.title.toLowerCase().includes("price")));
+                    const isValuationSection =
+                      (section.category &&
+                        section.category.toLowerCase() === "valuation") ||
+                      (section.title &&
+                        (section.title.includes("밸류") ||
+                          section.title.toLowerCase().includes("valuation")));
+                    const isFlowSection =
+                      (section.category &&
+                        section.category.toLowerCase() === "flows") ||
+                      (section.title &&
+                        (section.title.includes("수급") ||
+                          section.title.toLowerCase().includes("flow")));
+                    const isLiquiditySection =
+                      (section.category &&
+                        section.category.toLowerCase() === "liquidity") ||
+                      (section.title &&
+                        (section.title.includes("유동성") ||
+                          section.title.toLowerCase().includes("liquidity")));
+                    // const isLevelsSection =
+                    //   (section.category &&
+                    //     section.category.toLowerCase() === "levels") ||
+                    //   (section.title &&
+                    //     (section.title.includes("레벨") ||
+                    //       section.title.toLowerCase().includes("level")));
+
+                    return (
+                      <InsightSectionItem
+                        key={section.category || section.title}
+                      >
+                        <InsightSectionHeader>
+                          {section.category && (
+                            <InsightSectionBadge>
+                              {section.category}
+                            </InsightSectionBadge>
+                          )}
+                          {section.title && <span>{section.title}</span>}
+                        </InsightSectionHeader>
+                        {section.summary && (
+                          <InsightSectionSummary
+                            dangerouslySetInnerHTML={{
+                              __html: emphasizeNumbers(section.summary),
+                            }}
+                          />
+                        )}
+                        {isPriceSection ? renderPriceVisuals() : null}
+                        {isValuationSection ? renderValuationVisuals() : null}
+                        {isFlowSection ? renderFlowVisuals() : null}
+                        {isLiquiditySection ? renderLiquidityVisuals() : null}
+                        {/* {isLevelsSection ? renderLevelsVisuals() : null} */}
+                        {section.highlights && (
+                          <InsightSectionHighlights
+                            dangerouslySetInnerHTML={{
+                              __html: emphasizeNumbers(section.highlights),
+                            }}
+                          />
+                        )}
+                      </InsightSectionItem>
+                    );
+                  })}
+                </InsightSectionList>
+              ) : null}
+              {hasVideoSources ? (
+                <StockVideoSources
+                  stockName={stock.stock_name}
+                  sources={stock.sources}
+                />
+              ) : null}
+            </StockDetailBody>
+          ) : null}
+        </>
+      ) : null}
       {/* {stock.thesis?.length ? (
         <BulletGroup>
           {stock.thesis.slice(0, 3).map((item, index) => (
@@ -982,76 +1095,6 @@ const StockCard = ({
           <p>{stock.action_idea.reason}</p>
         </ActionIdea>
       )} */}
-      {!hideInsightSectionList && insightSections.length > 0 && (
-        <InsightSectionList>
-          {insightSections.map((section) => {
-            if (!section) return null;
-            const isPriceSection =
-              (section.category &&
-                section.category.toLowerCase() === "price_position") ||
-              (section.title &&
-                (section.title.includes("가격") ||
-                  section.title.toLowerCase().includes("price")));
-            const isValuationSection =
-              (section.category &&
-                section.category.toLowerCase() === "valuation") ||
-              (section.title &&
-                (section.title.includes("밸류") ||
-                  section.title.toLowerCase().includes("valuation")));
-            const isFlowSection =
-              (section.category &&
-                section.category.toLowerCase() === "flows") ||
-              (section.title &&
-                (section.title.includes("수급") ||
-                  section.title.toLowerCase().includes("flow")));
-            const isLiquiditySection =
-              (section.category &&
-                section.category.toLowerCase() === "liquidity") ||
-              (section.title &&
-                (section.title.includes("유동성") ||
-                  section.title.toLowerCase().includes("liquidity")));
-            // const isLevelsSection =
-            //   (section.category &&
-            //     section.category.toLowerCase() === "levels") ||
-            //   (section.title &&
-            //     (section.title.includes("레벨") ||
-            //       section.title.toLowerCase().includes("level")));
-
-            return (
-              <InsightSectionItem key={section.category || section.title}>
-                <InsightSectionHeader>
-                  {section.category && (
-                    <InsightSectionBadge>
-                      {section.category}
-                    </InsightSectionBadge>
-                  )}
-                  {section.title && <span>{section.title}</span>}
-                </InsightSectionHeader>
-                {section.summary && (
-                  <InsightSectionSummary
-                    dangerouslySetInnerHTML={{
-                      __html: emphasizeNumbers(section.summary),
-                    }}
-                  />
-                )}
-                {isPriceSection ? renderPriceVisuals() : null}
-                {isValuationSection ? renderValuationVisuals() : null}
-                {isFlowSection ? renderFlowVisuals() : null}
-                {isLiquiditySection ? renderLiquidityVisuals() : null}
-                {/* {isLevelsSection ? renderLevelsVisuals() : null} */}
-                {section.highlights && (
-                  <InsightSectionHighlights
-                    dangerouslySetInnerHTML={{
-                      __html: emphasizeNumbers(section.highlights),
-                    }}
-                  />
-                )}
-              </InsightSectionItem>
-            );
-          })}
-        </InsightSectionList>
-      )}
-      <StockVideoSources stockName={stock.stock_name} sources={stock.sources} />
     </StockCardWrapper>
   );
 };
@@ -1063,6 +1106,7 @@ const StockVideoSources = ({
   sources?: InsightStock["sources"];
   stockName: string;
 }) => {
+  const user = useRecoilValue(userState);
   if (!sources || sources.length === 0) return null;
 
   return (
@@ -1087,47 +1131,58 @@ const StockVideoSources = ({
           const uploadText = formatVideoDate(source.upload_date);
           const hasChannel = Boolean(source.channel_name);
 
+          const handleVideoLinkClick = () => {
+            // 네비게이션을 막지 않도록 await 금지
+            void logCtaClick(
+              "metion_button_click",
+              user?.id,
+              source.video_id,
+              getOrCreateAnonId()
+            ).catch(() => {});
+          };
+
           return (
             <VideoSourceCard key={source.video_id}>
               <VideoSourceContainer>
-              <VideoThumbnailWrapper>
-                {source.thumbnail ? (
-                  <VideoThumbnailImage
-                    src={source.thumbnail}
-                    alt={headlineTitle}
-                    width={120}
-                    height={68}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                ) : (
-                  <VideoThumbnailFallback>
-                    <span>{stockName}</span>
-                  </VideoThumbnailFallback>
-                )}
-              </VideoThumbnailWrapper>
-              <VideoSourceBody>
-                <VideoTitle>{headlineTitle}</VideoTitle>
-                {summaryText ? <VideoSummary>{summaryText}</VideoSummary> : null}
-              </VideoSourceBody>
-
+                <VideoThumbnailWrapper>
+                  {source.thumbnail ? (
+                    <VideoThumbnailImage
+                      src={source.thumbnail}
+                      alt={headlineTitle}
+                      width={120}
+                      height={68}
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  ) : (
+                    <VideoThumbnailFallback>
+                      <span>{stockName}</span>
+                    </VideoThumbnailFallback>
+                  )}
+                </VideoThumbnailWrapper>
+                <VideoSourceBody>
+                  <VideoTitle>{headlineTitle}</VideoTitle>
+                  {summaryText ? <VideoSummary>{summaryText}</VideoSummary> : null}
+                </VideoSourceBody>
               </VideoSourceContainer>
-                {(hasChannel || uploadText) && (
-                  <VideoMetaRow>
-                    {source.channel_thumbnail ? (
-                      <ChannelAvatarImage
-                        src={source.channel_thumbnail}
-                        alt={source.channel_name || "채널"}
-                        width={20}
-                        height={20}
-                        style={{ width: 20, height: 20 }}
-                      />
-                    ) : null}
-                    {hasChannel ? <span>{source.channel_name}</span> : null}
-                    {hasChannel && uploadText ? <VideoMetaDot>•</VideoMetaDot> : null}
-                    {uploadText ? <time>{uploadText}</time> : null}
-                  </VideoMetaRow>
-                )}
-              <VideoLink href={href}>영상에서 언급된 요약 바로 보기</VideoLink>
+              {(hasChannel || uploadText) && (
+                <VideoMetaRow>
+                  {source.channel_thumbnail ? (
+                    <ChannelAvatarImage
+                      src={source.channel_thumbnail}
+                      alt={source.channel_name || "채널"}
+                      width={20}
+                      height={20}
+                      style={{ width: 20, height: 20 }}
+                    />
+                  ) : null}
+                  {hasChannel ? <span>{source.channel_name}</span> : null}
+                  {hasChannel && uploadText ? <VideoMetaDot>•</VideoMetaDot> : null}
+                  {uploadText ? <time>{uploadText}</time> : null}
+                </VideoMetaRow>
+              )}
+              <VideoLink href={href} onClick={handleVideoLinkClick}>
+                영상에서 언급된 요약 바로 보기
+              </VideoLink>
             </VideoSourceCard>
           );
         })}
@@ -2502,6 +2557,62 @@ const StockCardWrapper = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+`;
+
+const StockDetailToggleRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+`;
+
+const StockDetailToggleButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: ${COLOR_NEGATIVE};
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+  line-height: 1.4;
+
+  &:hover,
+  &:focus {
+    color: ${COLOR_POSITIVE};
+  }
+
+  &:focus {
+    outline: 2px solid ${COLOR_POSITIVE};
+    outline-offset: 2px;
+  }
+`;
+
+const ToggleChevron = styled.span<{ $expanded: boolean }>`
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  transform: rotate(${({ $expanded }) => ($expanded ? 180 : 0)}deg);
+
+  span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+  }
+`;
+
+const StockDetailBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
 `;
 
 const StockHeader = styled.div`

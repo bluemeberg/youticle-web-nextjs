@@ -268,11 +268,13 @@ function normalizeIntegratedSection(section: InsightSection): InsightSection {
 interface LandingPageClientProps {
   apiData: any;
   integratedSections: InsightSection[];
+  initialTopic?: string | null;
 }
 
 export default function LandingPageClient({
   apiData,
   integratedSections,
+  initialTopic,
 }: LandingPageClientProps) {
   const setApiData = useSetRecoilState(dataState);
   const user = useRecoilValue(userState);
@@ -336,6 +338,7 @@ export default function LandingPageClient({
           subjects={subscribedSubjects}
           marketInsightCards={marketInsightCards}
           integratedSections={normalizedSections}
+          initialTopic={initialTopic}
         />
       </>
       <Footer />
