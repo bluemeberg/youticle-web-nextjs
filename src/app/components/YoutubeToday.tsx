@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 
 import styled, { keyframes, css } from "styled-components";
 import TopicCard from "./TopicCard";
+import MarketInsightSection from "./marketInsight/MarketInsightSection";
+import DomesticStockInsightSection from "./insight/DomesticStockInsightSection";
+import CryptoInsightSection from "./insight/CryptoInsightSection";
 import { DataProps } from "@/types/dataProps";
 import TodayIcon from "@/assets/today.svg";
 // import { YOUTUBE_TOPICS } from "@/constants/topic";
@@ -16,12 +19,17 @@ import { topicState } from "@/store/topic";
 import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
 import { unsubscribedDataState } from "@/store/unsubscribeData";
 import { userState } from "@/store/user";
+import type { MarketInsightCardData } from "@/utils/marketInsight";
+import type { InsightSection, InsightSource } from "@/types/insight";
+import { removeMarkTags } from "@/utils/formatter";
 
 const TODAY_TITLE = "미구독 중인 키워드 아티클";
 const SUBS_TODAY_TITLE = "구독 중인 키워드 아티클";
 interface YoutubeTodayProps {
   data: DataProps[];
   subjects: string[]; // 추가된 subjects prop
+  marketInsightCards?: MarketInsightCardData[];
+  integratedSections?: InsightSection[];
 }
 
 const YOUTUBE_TOPICS = [
@@ -82,7 +90,55 @@ const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
   comment_rate_pct: { icon: "💬", name: "댓글율" },
 };
 
-const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
+const MARKET_INSIGHT_TARGET_TOPICS = [
+  "국내 주식",
+  "해외 주식",
+  "국내 가상자산",
+  "해외 가상자산",
+] as const;
+
+const MARKET_INSIGHT_TOPIC_GROUPS: Record<string, string[]> = {
+  주식: ["국내 주식", "해외 주식"],
+  가상자산: ["국내 가상자산", "해외 가상자산"],
+};
+
+const INTEGRATED_SECTION_MAP: Record<string, string> = {
+  "국내 주식": "domestic_stock",
+  "해외 주식": "overseas_stock",
+  "국내 가상자산": "domestic_crypto",
+  "해외 가상자산": "overseas_crypto",
+};
+
+const inferCardTopics = (card: MarketInsightCardData): string[] => {
+  if (card.topics.length > 0) {
+    return card.topics;
+  }
+
+  const normalized = (card.marketKey ?? card.market ?? "").toUpperCase();
+  const inferred: string[] = [];
+
+  if (/(KOSPI|KOSDAQ|KRX)/.test(normalized)) {
+    inferred.push("국내 주식");
+  }
+  if (/(NASDAQ|S&P|DOW|NYSE|AMEX)/.test(normalized)) {
+    inferred.push("해외 주식");
+  }
+  if (/(KRW)/.test(normalized)) {
+    inferred.push("국내 가상자산");
+  }
+  if (/(USD|USDT)/.test(normalized)) {
+    inferred.push("해외 가상자산");
+  }
+
+  return inferred;
+};
+
+const YoutubeToday = ({
+  data,
+  subjects,
+  marketInsightCards = [],
+  integratedSections = [],
+}: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
   const setSelectedTopic = useSetRecoilState(topicState);
   const [sortCriteria, setSortCriteria] = useState("engagement");
@@ -95,6 +151,33 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
   const user = useRecoilValue(userState);
   const [isRendered, setIsRendered] = useState(false); // 애니메이션을 위한 상태
+
+  const requestedMarketInsightTopics = useMemo<string[]>(() => {
+    if (selectedTopic === "전체") {
+      return [...MARKET_INSIGHT_TARGET_TOPICS];
+    }
+
+    if (MARKET_INSIGHT_TOPIC_GROUPS[selectedTopic]) {
+      return [...MARKET_INSIGHT_TOPIC_GROUPS[selectedTopic]];
+    }
+
+    if (MARKET_INSIGHT_TARGET_TOPICS.includes(selectedTopic as (typeof MARKET_INSIGHT_TARGET_TOPICS)[number])) {
+      return [selectedTopic];
+    }
+
+    return [];
+  }, [selectedTopic]);
+
+  const visibleMarketInsightCards = useMemo(() => {
+    if (marketInsightCards.length === 0) return [];
+    const desired = new Set<string>(requestedMarketInsightTopics);
+    if (desired.size === 0) return [];
+
+    return marketInsightCards.filter((card) => {
+      const topics = inferCardTopics(card);
+      return topics.some((topic) => desired.has(topic));
+    });
+  }, [marketInsightCards, requestedMarketInsightTopics]);
 
   // 미구독 데이터 필터링
   const unsubscribedData = data.filter(
@@ -158,6 +241,90 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
   };
 
   const [clientData, setClientData] = useState<DataProps[]>([]);
+
+  const videoMetaMap = useMemo(() => {
+    const map = new Map<string, InsightSource>();
+    clientData.forEach((item) => {
+      if (!item?.video_id) return;
+      const summaryText = removeMarkTags(item.summary_data?.short_summary || "").trim();
+      map.set(item.video_id, {
+        video_id: item.video_id,
+        channel_subscribers: item.channel_details?.channel_subscribers,
+        channel_id: item.channel_details?.channel_id,
+        title: item.title,
+        thumbnail: item.thumbnail,
+        upload_date: item.upload_date,
+        channel_name: item.channel_details?.channel_name,
+        channel_thumbnail: item.channel_details?.channel_thumbnail,
+        summary: summaryText.length > 0 ? summaryText : undefined,
+        summary_data: item.summary_data,
+      });
+    });
+    return map;
+  }, [clientData]);
+
+  const enrichedIntegratedSections = useMemo(() => {
+    if (!integratedSections || integratedSections.length === 0) {
+      return integratedSections;
+    }
+
+    return integratedSections.map((section) => {
+      const stocks = section.data?.stocks?.map((stock) => {
+        if (!stock || !stock.sources || stock.sources.length === 0) return stock;
+
+        const sources = stock.sources.map((source) => {
+          if (!source) return source;
+          const meta = videoMetaMap.get(source.video_id);
+          if (!meta) return source;
+          const summary = meta.summary?.trim();
+
+          return {
+            ...source,
+            channel_subscribers: source.channel_subscribers ?? meta.channel_subscribers,
+            channel_id: source.channel_id ?? meta.channel_id,
+            title: meta.title ?? source.title,
+            thumbnail: meta.thumbnail ?? source.thumbnail,
+            upload_date: meta.upload_date ?? source.upload_date,
+            channel_name: source.channel_name ?? meta.channel_name,
+            channel_thumbnail: source.channel_thumbnail ?? meta.channel_thumbnail,
+            summary: summary && summary.length > 0 ? summary : source.summary,
+            summary_data: source.summary_data ?? meta.summary_data,
+          };
+        });
+
+        return {
+          ...stock,
+          sources,
+        };
+      });
+
+      return {
+        ...section,
+        data: {
+          ...section.data,
+          stocks,
+        },
+      };
+    });
+  }, [integratedSections, videoMetaMap]);
+
+  const integratedMap = useMemo(() => {
+    const map = new Map<string, InsightSection>();
+    enrichedIntegratedSections.forEach((section) => {
+      map.set(section.key, section);
+      map.set(section.label, section);
+    });
+    return map;
+  }, [enrichedIntegratedSections]);
+
+  const selectedIntegratedSection = useMemo(() => {
+    const key = INTEGRATED_SECTION_MAP[selectedTopic];
+    if (key) {
+      const byKey = integratedMap.get(key);
+      if (byKey) return byKey;
+    }
+    return integratedMap.get(selectedTopic);
+  }, [integratedMap, selectedTopic]);
 
   useEffect(() => {
     // 클라이언트 측에서만 데이터를 세팅 (서버와 클라이언트의 데이터를 일치시키기 위해 초기 데이터 사용)
@@ -245,7 +412,6 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
     handleScroll();
 
     return () => {
-      console.log("Removing scroll listener");
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
@@ -335,6 +501,20 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             unSubscribe={[]}
             showSubscribedOnly={showSubscribedOnly}
             subscribedSubjects={expandedSubjects} // 구독 주제 전달 (색상 변경용)
+            belowNavContent=
+              <>
+                {selectedIntegratedSection ? (
+                  (selectedIntegratedSection.label === "국내 가상자산" ||
+                    selectedIntegratedSection.label === "해외 가상자산" ||
+                    /_crypto$/.test(selectedIntegratedSection.key)) ? (
+                    <CryptoInsightSection section={selectedIntegratedSection} />
+                  ) : (
+                    <DomesticStockInsightSection
+                      section={selectedIntegratedSection}
+                    />
+                  )
+                ) : null}
+              </>
           ></TopicNav>
         </TopicNavContainer>
         {/* <CountdownTimer /> */}
@@ -381,44 +561,16 @@ const YoutubeToday = ({ data, subjects }: YoutubeTodayProps) => {
             const navTopic = toNavTopic(item.section);
 
             return (
-              <>
-                <CardContainer>
-                  <Section
-                    isSubscribed={isSubscribed}
-                    onClick={() => handleTopicClick(navTopic)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {topicInfo?.icon} {item.section}
-                  </Section>
-                  {/* <MetricsContainer>
-                    <MetricBadge bg="#FFF4E5" color="#302d28">
-                      <Value>
-                        {topicInfo?.icon} {topicInfo?.topic || item.section}
-                      </Value>
-                      <Value> - {metric.label}</Value>
-                    </MetricBadge> */}
-                  {/* <Metric>
-                      <Badge>ΔViews</Badge>
-                      <Value>20%</Value>
-                    </Metric>
-                    <Metric>
-                      <Badge>Recency</Badge>
-                      <Value>15</Value>
-                    </Metric> */}
-                  {/* </MetricsContainer> */}
-                </CardContainer>
-                <TopicCard
-                  key={item.video_id}
-                  icon={topicInfo?.icon}
-                  subjects={subjects}
-                  // ③ 새로 추가된 props
-                  metricIcon={metricIcon}
-                  metricLabel={metricLabel}
-                  metricValue={metricValue}
-                  rank={bestRank}
-                  {...item}
-                />
-              </>
+              <TopicCard
+                key={item.video_id}
+                icon={topicInfo?.icon}
+                subjects={subjects}
+                metricIcon={metricIcon}
+                metricLabel={metricLabel}
+                metricValue={metricValue}
+                rank={bestRank}
+                {...item}
+              />
             );
           })}
         </EditorContainer>
@@ -611,37 +763,6 @@ const EditorContainer = styled.div`
   border-radius: 8px;
   background-color: #f9f9f9;
 `;
-export const MetricsContainer = styled.div`
-  display: flex;
-  background: #f5f7fa;
-  padding: 8px;
-  border-radius: 8px;
-  min-width: 80px;
-  margin-top: 12px;
-`;
-
-export const Metric = styled.div`
-  text-align: center;
-  margin-bottom: 8px;
-  display: flex;
-`;
-
-export const Badge = styled.span`
-  font-size: 10px;
-  color: #777;
-`;
-
-export const Value = styled.span`
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  margin-right: 4px;
-`;
-export const CardContainer = styled.div`
-  display: flex;
-  align-items: flex-start;
-`;
-
 const Subtitle = styled.div`
   width: 100%;
   padding: 12px 16px;
@@ -651,18 +772,4 @@ const Subtitle = styled.div`
   background-color: #f0f4ff;
   border-bottom: 1px solid #e0e0e0;
   margin-top: 8px;
-`;
-const MetricBadge = styled.span<{
-  bg?: string;
-  color?: string;
-}>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  background-color: ${({ bg }) => bg || "#f5f7fa"};
-  color: ${({ color }) => color || "#333"};
-  font-size: 12px;
-  border-radius: 12px;
-  margin-right: 8px;
-  white-space: nowrap;
 `;

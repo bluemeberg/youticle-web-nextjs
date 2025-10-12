@@ -13,6 +13,80 @@ export interface DataProps {
   summary_data: SummaryData;
   id?: string;
   channel_details: ChannelDetails;
+  stock_mentions?: StockMention[];
+}
+
+export interface MarketInsightSentences {
+  intraday_flow?: string;
+  market_breadth?: string;
+  liquidity?: string;
+  order_flow?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightIntraday {
+  open?: number | string;
+  high?: number | string;
+  low?: number | string;
+  close_pos_text?: string;
+  open_delta?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightBreadth {
+  adv?: number | string;
+  unch?: number | string;
+  dec?: number | string;
+  adv_ratio_text?: string;
+  bias_text?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightLiquidity {
+  volume?: number | string;
+  prev_volume?: number | string;
+  x_volume?: string;
+  value?: number | string;
+  prev_value?: number | string;
+  x_value?: string;
+  state_text?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightOrderbook {
+  bid_qty?: number | string;
+  ask_qty?: number | string;
+  bid_pct?: number | string;
+  ask_pct?: number | string;
+  net_qty_text?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightTopic {
+  market?: string;
+  price_str?: string;
+  chg_point?: number | string;
+  chg_pct?: number | string;
+  chg_point_str?: string;
+  chg_pct_str?: string;
+  comment_title?: string;
+  comment_body?: string;
+  topic_category?: string;
+  related_topics?: string[];
+  intraday?: MarketInsightIntraday;
+  breadth?: MarketInsightBreadth;
+  liquidity?: MarketInsightLiquidity;
+  orderbook?: MarketInsightOrderbook;
+  sentences?: MarketInsightSentences;
+  asof?: string;
+  date_kst?: string;
+  [key: string]: unknown;
+}
+
+export interface MarketInsightPayload {
+  date_kst?: string;
+  by_market?: Record<string, MarketInsightTopic | undefined>;
+  [key: string]: unknown;
 }
 
 export interface Overview {
@@ -176,6 +250,29 @@ export interface StockAnalysis {
   description: string;
 }
 
+export interface StockMentionSegment {
+  start_time?: string | number;
+  label?: string;
+  summary?: string;
+  seconds?: number | null;
+  confidence?: string;
+}
+
+export interface StockMention {
+  stock_name: string;
+  ticker?: string;
+  mention_count?: number;
+  segments: StockMentionSegment[];
+  actionIdea?: StockMentionActionIdea;
+  companyDescription?: string;
+  commentBody?: string;
+}
+
+export interface StockMentionActionIdea {
+  stance?: string;
+  reason?: string;
+}
+
 export interface InvestmentStrategy {
   strategy_title: string;
   strategy_description: string;
@@ -250,6 +347,7 @@ export interface SummaryData {
   comment_rate_pct: number;
   score: number;
   hooking_content: HookingContent;
+  stock_mentions?: StockMention[];
 }
 
 export interface FiveLineSummary {

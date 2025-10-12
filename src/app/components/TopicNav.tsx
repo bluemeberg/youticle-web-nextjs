@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, ReactNode } from "react";
 import styled from "styled-components";
 import { isDesktop } from "react-device-detect";
 
@@ -12,6 +12,7 @@ interface TopicNavProps {
   unSubscribe: string[];
   showSubscribedOnly: boolean;
   subscribedSubjects: string[]; // 구독한 주제 전달
+  belowNavContent?: ReactNode;
 }
 
 const YOUTUBE_TOPICS = [
@@ -48,6 +49,7 @@ const TopicNav = ({
   unSubscribe,
   showSubscribedOnly,
   subscribedSubjects,
+  belowNavContent,
 }: TopicNavProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -146,6 +148,7 @@ const TopicNav = ({
           </Topic>
         ))}
       </Container>
+      {belowNavContent}
       <Subtitle>
         {/* 아이콘 + 텍스트 */}
         <span style={{ marginRight: 6 }}>

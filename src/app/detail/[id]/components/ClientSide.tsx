@@ -2,7 +2,14 @@
 import { Search, HelpCircle } from "lucide-react";
 import { BarChart2, BellRing } from "lucide-react";
 
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  type RefObject,
+} from "react";
 import styled, { keyframes } from "styled-components";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -22,14 +29,21 @@ import {
   BusinessTrend,
   ApplicationTip,
   RelatedTool,
+  StockMention,
+  StockMentionSegment,
 } from "@/types/dataProps";
+import type {
+  InsightVideoMentionsResponse,
+  InsightVideoMention,
+  InsightVideoMentionSegmentApi,
+  InsightVideoOutlineResponse,
+  InsightVideoOutlineEntry,
+} from "@/types/insight";
 import { playerState } from "@/store/player";
 import { base64ToBlobUrl } from "@/utils/base64";
 import {
-  formatMinutesToTime,
   formatSecondsToMmSs,
   formatSummary,
-  formatTimeRange,
   getOrCreateAnonId,
   parseTimeStringToSeconds,
   removeMarkTags,
@@ -37,7 +51,7 @@ import {
 import { timeAgo } from "@/utils/formatter";
 import { isDesktop } from "react-device-detect";
 // import Footer from "@/components/Footer";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { userState } from "@/store/user";
 import {
   fetchSubscribedSubjects,
@@ -62,6 +76,396 @@ export interface ClientContext {
   referer: string;
 }
 
+const INSIGHTS_API_ORIGIN =
+  process.env.NEXT_PUBLIC_INSIGHTS_API_ORIGIN ?? "https://youticle.shop";
+
+const STOCK_MENTION_SEGMENT_KEYS = [
+  "segments",
+  "timeline",
+  "timeline_items",
+  "occurrences",
+  "highlights",
+  "transcript_segments",
+  "transcript_mentions",
+  "mention_segments",
+  "reference_points",
+];
+
+const ITEM_SEGMENT_KEYS = [
+  "segments",
+  "timeline",
+  "timeline_items",
+  "occurrences",
+  "highlights",
+];
+
+const ISO_DURATION_REGEX = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i;
+
+const normaliseKeyValue = (value?: string | number | null) => {
+  if (value == null) return null;
+  return String(value).trim().toLowerCase() || null;
+};
+
+const normaliseSegmentStart = (
+  raw: unknown
+): { value?: string | number; seconds: number | null } => {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return { value: raw, seconds: raw };
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return { value: undefined, seconds: null };
+    if (trimmed.includes(":")) {
+      return {
+        value: trimmed,
+        seconds: parseTimeStringToSeconds(trimmed) ?? null,
+      };
+    }
+    const isoMatch = trimmed.match(ISO_DURATION_REGEX);
+    if (isoMatch) {
+      const hours = Number(isoMatch[1] ?? 0);
+      const minutes = Number(isoMatch[2] ?? 0);
+      const secs = Number(isoMatch[3] ?? 0);
+      const totalSeconds = hours * 3600 + minutes * 60 + secs;
+      return {
+        value: trimmed,
+        seconds: totalSeconds,
+      };
+    }
+    const numeric = Number(trimmed);
+    if (!Number.isNaN(numeric) && Number.isFinite(numeric)) {
+      return { value: trimmed, seconds: numeric };
+    }
+    return { value: trimmed, seconds: null };
+  }
+
+  return { value: undefined, seconds: null };
+};
+
+const mergeSegmentsUnique = (
+  primary: StockMentionSegment[],
+  secondary: StockMentionSegment[]
+): StockMentionSegment[] => {
+  const result: StockMentionSegment[] = [];
+  const dedupe = new Set<string>();
+
+  const addSegment = (segment?: StockMentionSegment) => {
+    if (!segment) return;
+
+    const { value, seconds } = normaliseSegmentStart(segment.start_time);
+    const normalizedSeconds =
+      segment.seconds != null && Number.isFinite(segment.seconds)
+        ? (segment.seconds as number)
+        : seconds;
+    const normalizedStart =
+      segment.start_time != null ? segment.start_time : value;
+    const normalizedLabel = segment.label?.trim();
+    const normalizedSummary = segment.summary?.trim();
+    const normalizedConfidence = segment.confidence?.trim();
+
+    const dedupeKey = [
+      normalizedSeconds != null ? `s:${normalizedSeconds}` : undefined,
+      normalizedStart != null ? `v:${String(normalizedStart)}` : undefined,
+      normalizedLabel ? `l:${normalizedLabel}` : undefined,
+      normalizedSummary ? `m:${normalizedSummary}` : undefined,
+    ]
+      .filter(Boolean)
+      .join("|");
+
+    if (dedupe.has(dedupeKey)) return;
+    dedupe.add(dedupeKey);
+
+    result.push({
+      start_time: normalizedStart,
+      seconds: normalizedSeconds ?? null,
+      label: normalizedLabel,
+      summary: normalizedSummary ?? normalizedLabel,
+      confidence: normalizedConfidence,
+    });
+  };
+
+  primary.forEach(addSegment);
+  secondary.forEach(addSegment);
+
+  if (result.length <= 1) return result;
+
+  return result.sort((a, b) => {
+    const aSeconds = a.seconds ?? Number.MAX_SAFE_INTEGER;
+    const bSeconds = b.seconds ?? Number.MAX_SAFE_INTEGER;
+    return aSeconds - bSeconds;
+  });
+};
+
+const extractSegmentsFromMention = (
+  mention: InsightVideoMention
+): StockMentionSegment[] => {
+  const candidates: InsightVideoMentionSegmentApi[] = [];
+
+  const mentionSource = mention as unknown as Record<string, unknown>;
+
+  STOCK_MENTION_SEGMENT_KEYS.forEach((key) => {
+    const candidate = mentionSource?.[key];
+    if (Array.isArray(candidate)) {
+      candidates.push(...(candidate as InsightVideoMentionSegmentApi[]));
+    }
+  });
+
+  if (mention.item) {
+    const itemSource = mention.item as unknown as Record<string, unknown>;
+    ITEM_SEGMENT_KEYS.forEach((key) => {
+      const candidate = itemSource?.[key];
+      if (Array.isArray(candidate)) {
+        candidates.push(...(candidate as InsightVideoMentionSegmentApi[]));
+      }
+    });
+  }
+
+  if (candidates.length === 0) return [];
+
+  const converted = candidates.map((entry) => {
+    if (!entry) return null;
+    const rawStart =
+      entry.start_time ??
+      entry.start ??
+      entry.timestamp ??
+      entry.offset_seconds ??
+      entry.offset ??
+      (entry as Record<string, unknown>).time;
+    const { value, seconds } = normaliseSegmentStart(rawStart);
+
+    const labelSource =
+      entry.label ??
+      entry.title ??
+      entry.topic ??
+      entry.text ??
+      entry.summary ??
+      entry.description;
+    const summarySource =
+      entry.summary ?? entry.description ?? entry.text ?? entry.title;
+
+    const label =
+      typeof labelSource === "string" && labelSource.trim()
+        ? labelSource.trim()
+        : undefined;
+    const summary =
+      typeof summarySource === "string" && summarySource.trim()
+        ? summarySource.trim()
+        : label;
+
+    return {
+      start_time: value,
+      seconds: seconds ?? null,
+      label,
+      summary,
+    } as StockMentionSegment;
+  });
+
+  return mergeSegmentsUnique(
+    converted.filter(Boolean) as StockMentionSegment[],
+    []
+  );
+};
+
+interface OutlineSegmentsRecord {
+  stockName?: string;
+  ticker?: string;
+  segments: StockMentionSegment[];
+}
+
+interface OutlineSegmentsIndex {
+  byKey: Map<string, OutlineSegmentsRecord>;
+  ordered: OutlineSegmentsRecord[];
+}
+
+const buildOutlineSegmentsIndex = (
+  payload?: InsightVideoOutlineResponse | null
+): OutlineSegmentsIndex => {
+  const index: OutlineSegmentsIndex = {
+    byKey: new Map<string, OutlineSegmentsRecord>(),
+    ordered: [],
+  };
+
+  if (!payload) return index;
+
+  const outlineArray: InsightVideoOutlineEntry[] = Array.isArray(
+    payload.outline
+  )
+    ? (payload.outline as InsightVideoOutlineEntry[])
+    : Array.isArray(payload.outline?.outline)
+    ? payload.outline.outline ?? []
+    : [];
+
+  outlineArray.forEach((entry) => {
+    if (!entry) return;
+    const rawSegments = entry.segments ?? [];
+    if (!Array.isArray(rawSegments) || rawSegments.length === 0) return;
+
+    const segments = rawSegments
+      .map((segment) => {
+        if (!segment) return null;
+        const { value, seconds } = normaliseSegmentStart(segment.start_time);
+        const summarySource =
+          segment.key_point ?? segment.summary ?? segment.description;
+        const summary =
+          typeof summarySource === "string" && summarySource.trim()
+            ? summarySource.trim()
+            : undefined;
+        const confidence =
+          typeof segment.confidence === "string" && segment.confidence.trim()
+            ? segment.confidence.trim()
+            : undefined;
+
+        return {
+          start_time: segment.start_time ?? value,
+          seconds: seconds ?? null,
+          label: summary,
+          summary,
+          confidence,
+        } as StockMentionSegment;
+      })
+      .filter(Boolean) as StockMentionSegment[];
+
+    if (segments.length === 0) return;
+
+    const sortedSegments = mergeSegmentsUnique(segments, []);
+
+    const record: OutlineSegmentsRecord = {
+      stockName: entry.stock_name ?? undefined,
+      ticker: entry.ticker ?? undefined,
+      segments: sortedSegments,
+    };
+
+    index.ordered.push(record);
+
+    const keyCandidates = new Set<string>();
+    const byName = normaliseKeyValue(entry.stock_name);
+    if (byName) keyCandidates.add(byName);
+    const byTicker = normaliseKeyValue(entry.ticker);
+    if (byTicker) keyCandidates.add(byTicker);
+
+    if (keyCandidates.size === 0 && record.stockName) {
+      const fallbackKey = normaliseKeyValue(record.stockName);
+      if (fallbackKey) keyCandidates.add(fallbackKey);
+    }
+
+    keyCandidates.forEach((key) => {
+      if (!key) return;
+      const existing = index.byKey.get(key);
+      if (existing) {
+        existing.segments = mergeSegmentsUnique(
+          existing.segments,
+          record.segments
+        );
+      } else {
+        index.byKey.set(key, record);
+      }
+    });
+  });
+
+  return index;
+};
+
+const adaptStockMentionsFromResponse = (
+  payload: InsightVideoMentionsResponse | null,
+  outlineIndex?: OutlineSegmentsIndex
+): StockMention[] => {
+  const outlineRecordsUsed = new Set<OutlineSegmentsRecord>();
+  const result: StockMention[] = [];
+
+  const mentions = payload?.mentions?.filter(
+    (mention) =>
+      mention && (mention.kind === undefined || mention.kind === "stock")
+  );
+
+  if (mentions && mentions.length > 0) {
+    mentions.forEach((mention) => {
+      if (!mention) return;
+
+      const stockNameRaw =
+        mention.name ??
+        mention.item?.stock_name ??
+        mention.ticker ??
+        mention.item?.ticker ??
+        "";
+      const stockName = stockNameRaw.trim();
+      if (!stockName) return;
+
+      const ticker = mention.ticker ?? mention.item?.ticker;
+
+      const keyCandidates = [
+        normaliseKeyValue(stockName),
+        normaliseKeyValue(ticker),
+      ].filter(Boolean) as string[];
+
+      let outlineRecord: OutlineSegmentsRecord | undefined;
+      if (outlineIndex) {
+        for (const key of keyCandidates) {
+          const candidate = outlineIndex.byKey.get(key);
+          if (candidate) {
+            outlineRecord = candidate;
+            break;
+          }
+        }
+      }
+
+      const outlineSegments = outlineRecord
+        ? outlineRecord.segments.map((segment) => ({ ...segment }))
+        : [];
+      const fallbackSegments = extractSegmentsFromMention(mention);
+      const segments = mergeSegmentsUnique(outlineSegments, fallbackSegments);
+
+      if (outlineRecord) {
+        outlineRecordsUsed.add(outlineRecord);
+      }
+
+      const mentionCount =
+        mention.mention_count ??
+        (segments.length > 0 ? segments.length : undefined) ??
+        (Array.isArray(mention.item?.sources)
+          ? mention.item?.sources?.length
+          : undefined);
+
+      const actionIdea =
+        mention.action_idea ?? mention.item?.action_idea ?? undefined;
+
+      const companyDescription = mention.item?.company_description;
+      const commentBody =
+        mention.metric_insight?.comment_body ??
+        mention.item?.metric_insight?.comment_body;
+
+      result.push({
+        stock_name: stockName,
+        ticker,
+        mention_count: mentionCount,
+        segments,
+        actionIdea,
+        companyDescription,
+        commentBody,
+      });
+    });
+  }
+
+  if (outlineIndex) {
+    outlineIndex.ordered.forEach((record) => {
+      if (!record || outlineRecordsUsed.has(record)) return;
+      if (!record.segments || record.segments.length === 0) return;
+
+      const stockName = record.stockName?.trim() || record.ticker?.trim();
+      if (!stockName) return;
+
+      result.push({
+        stock_name: stockName,
+        ticker: record.ticker,
+        mention_count: record.segments.length,
+        segments: record.segments.map((segment) => ({ ...segment })),
+      });
+    });
+  }
+
+  return result;
+};
+
 interface ClientSideProps {
   id: string;
   detailData: DataProps;
@@ -78,6 +482,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const isPlayerVisible = useRecoilValue(playerState);
   const setIsPlayerVisible = useSetRecoilState(playerState);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stockMentionsRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledToMentionsRef = useRef(false);
+  const searchParams = useSearchParams();
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
@@ -97,6 +504,131 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     // 클라이언트에서만 isDesktop 값을 설정
     setIsClientDesktop(isDesktop);
   }, []);
+
+  const [stockMentions, setStockMentions] = useState<StockMention[]>([]);
+  const [stockMentionsLoading, setStockMentionsLoading] = useState(false);
+  const [stockMentionsError, setStockMentionsError] = useState<string | null>(
+    null
+  );
+  const hasStockMentions =
+    stockMentionsLoading ||
+    stockMentions.length > 0 ||
+    Boolean(stockMentionsError);
+  const hasStockMentionsReady =
+    !stockMentionsLoading &&
+    (stockMentions.length > 0 || Boolean(stockMentionsError));
+
+  useEffect(() => {
+    if (hasScrolledToMentionsRef.current) return;
+    if (typeof window === "undefined") return;
+    if (searchParams?.get("focus") !== "stock-mentions") return;
+    if (!hasStockMentionsReady) return;
+    if (!stockMentionsRef.current) return;
+
+    hasScrolledToMentionsRef.current = true;
+    requestAnimationFrame(() => {
+      const element = stockMentionsRef.current;
+      if (!element) return;
+      const top = element.getBoundingClientRect().top + window.scrollY - 84;
+      window.scrollTo({ top, behavior: "smooth" });
+    });
+  }, [searchParams, hasStockMentionsReady]);
+
+  useEffect(() => {
+    let canceled = false;
+
+    const fetchMentions = async () => {
+      setStockMentions([]);
+      setStockMentionsLoading(true);
+      setStockMentionsError(null);
+
+      try {
+        const mentionsPromise = fetch(
+          `${INSIGHTS_API_ORIGIN}/insights/videos/${id}/mentions`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }
+        );
+
+        const outlinePromise = fetch(
+          `${INSIGHTS_API_ORIGIN}/insights/videos/${id}/outline?refresh=false`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }
+        ).catch(() => null);
+
+        const [mentionsResponse, outlineResponse] = await Promise.all([
+          mentionsPromise,
+          outlinePromise,
+        ]);
+
+        if (
+          mentionsResponse.status === 404 &&
+          (!outlineResponse || outlineResponse?.status === 404)
+        ) {
+          if (!canceled) {
+            setStockMentions([]);
+            setStockMentionsError(null);
+          }
+          return;
+        }
+
+        if (!mentionsResponse.ok && mentionsResponse.status !== 404) {
+          throw new Error(
+            `Mentions request failed (${mentionsResponse.status})`
+          );
+        }
+
+        const mentionsPayload =
+          mentionsResponse.status === 404
+            ? null
+            : ((await mentionsResponse.json()) as InsightVideoMentionsResponse);
+
+        let outlinePayload: InsightVideoOutlineResponse | null = null;
+        if (outlineResponse) {
+          if (outlineResponse.status === 404) {
+            outlinePayload = null;
+          } else if (outlineResponse.ok) {
+            outlinePayload =
+              (await outlineResponse.json()) as InsightVideoOutlineResponse;
+          } else {
+            throw new Error(
+              `Outline request failed (${outlineResponse.status})`
+            );
+          }
+        }
+
+        if (canceled) return;
+
+        const outlineIndex = buildOutlineSegmentsIndex(outlinePayload);
+        const adapted = adaptStockMentionsFromResponse(
+          mentionsPayload,
+          outlineIndex
+        );
+        setStockMentions(adapted);
+      } catch (error) {
+        console.error("Failed to fetch stock mentions", error);
+        if (canceled) return;
+        setStockMentionsError("종목 정보를 불러오지 못했습니다.");
+      } finally {
+        if (!canceled) {
+          setStockMentionsLoading(false);
+        }
+      }
+    };
+
+    fetchMentions().catch(() => {
+      /* already handled */
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [id]);
 
   const handleTocItemClick = (start: number) => {
     logCtaClick(
@@ -121,6 +653,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       disablekb: 1,
     },
   };
+
+  const handleStockAnchorClick = useCallback(() => {
+    const target = document.getElementById("stock-mentions");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -534,6 +1073,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           <Upload>업로드 {timeAgo(detailData.upload_date)} </Upload> *
           <Upload>{detailData.duration}</Upload>
         </UploadContainer>
+        {hasStockMentions ? (
+          <AnchorLinkRow>
+            <AnchorButton type="button" onClick={handleStockAnchorClick}>
+              📈 언급 종목 바로가기
+            </AnchorButton>
+          </AnchorLinkRow>
+        ) : null}
       </PageInfo>
       <VideoContainer
         ref={videoContainerRef}
@@ -692,6 +1238,16 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           handleTocItemClick={handleTocItemClick}
         />
       </ArticleWrapper>
+      {hasStockMentions ? (
+        <StockMentionsSection
+          id="stock-mentions"
+          mentions={stockMentions}
+          loading={stockMentionsLoading}
+          error={stockMentionsError}
+          onSegmentClick={handleTocItemClick}
+          containerRef={stockMentionsRef}
+        />
+      ) : null}
       {/* ─── Hook for Daily Top5 Survey ─── */}
       <HookSection>
         <HookingCopy>
@@ -1074,6 +1630,193 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   );
 };
 
+const StockMentionsSection = ({
+  id,
+  mentions,
+  loading,
+  error,
+  onSegmentClick,
+  containerRef,
+}: {
+  id: string;
+  mentions: StockMention[];
+  loading: boolean;
+  error?: string | null;
+  onSegmentClick: (start: number) => void;
+  containerRef?: RefObject<HTMLDivElement>;
+}) => {
+  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+
+  const toggle = useCallback((key: string) => {
+    setExpandedMap((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }, []);
+
+  const resolveSegmentSeconds = useCallback((segment: StockMentionSegment) => {
+    if (
+      typeof segment.seconds === "number" &&
+      Number.isFinite(segment.seconds)
+    ) {
+      return segment.seconds;
+    }
+    return normaliseSegmentStart(segment.start_time).seconds;
+  }, []);
+
+  const shouldShowEmptyState =
+    !loading && !error && (!mentions || mentions.length === 0);
+
+  return (
+    <StockMentionsContainer id={id} ref={containerRef}>
+      <StockMentionsHeader>
+        <StockMentionsTitle>📈 이 영상에서 언급된 종목</StockMentionsTitle>
+        <StockMentionsSubtitle>
+          관심 종목 구간을 바로 선택해 핵심 내용을 확인해 보세요.
+        </StockMentionsSubtitle>
+      </StockMentionsHeader>
+      {loading ? (
+        <StockMentionsState>종목 정보를 불러오는 중이에요…</StockMentionsState>
+      ) : null}
+      {error ? (
+        <StockMentionsState $variant="error">{error}</StockMentionsState>
+      ) : null}
+      {shouldShowEmptyState ? (
+        <StockMentionsState>
+          현재 추출된 종목이 확인되지 않았습니다.
+        </StockMentionsState>
+      ) : null}
+      {mentions && mentions.length > 0 ? (
+        <StockMentionList>
+          {mentions.map((mention, index) => {
+            if (!mention) return null;
+            const key = `${mention.stock_name ?? "stock"}-${
+              mention.ticker ?? index
+            }`;
+            const isExpanded = expandedMap[key] ?? false;
+            const occurrences =
+              mention.mention_count ??
+              (mention.segments ? mention.segments.length : 0) ??
+              0;
+            const occurrenceLabel =
+              occurrences > 0 ? `언급 ${occurrences}회` : "언급 정보 없음";
+            const sanitizedReason = mention.actionIdea?.reason
+              ? removeMarkTags(mention.actionIdea.reason)
+              : undefined;
+            const sanitizedCompany = mention.companyDescription
+              ? removeMarkTags(mention.companyDescription)
+              : undefined;
+            const sanitizedComment = mention.commentBody
+              ? removeMarkTags(mention.commentBody)
+              : undefined;
+
+            return (
+              <StockMentionItem key={key}>
+                <StockMentionButton type="button" onClick={() => toggle(key)}>
+                  <StockMentionTitleGroup>
+                    <span>{mention.stock_name}</span>
+                    {mention.ticker ? (
+                      <TickerBadge>{mention.ticker}</TickerBadge>
+                    ) : null}
+                  </StockMentionTitleGroup>
+                  <StockMentionMeta>{occurrenceLabel}</StockMentionMeta>
+                  <StockMentionCaret $expanded={isExpanded}>
+                    ›
+                  </StockMentionCaret>
+                </StockMentionButton>
+                {isExpanded ? (
+                  <StockMentionPanel>
+                    {mention.segments && mention.segments.length > 0 ? (
+                      mention.segments.map((segment, segIndex) => {
+                        if (!segment) return null;
+                        const seconds = resolveSegmentSeconds(segment);
+                        const timeLabel =
+                          seconds != null
+                            ? formatSecondsToMmSs(seconds)
+                            : typeof segment.start_time === "string"
+                            ? segment.start_time
+                            : "--:--";
+                        const rawLabel =
+                          segment.label ??
+                          segment.summary ??
+                          `구간 ${segIndex + 1}`;
+                        const sanitizedLabel = removeMarkTags(rawLabel);
+                        const summarySource =
+                          segment.summary && segment.summary !== rawLabel
+                            ? removeMarkTags(segment.summary)
+                            : undefined;
+                        const confidenceLabel = segment.confidence
+                          ? segment.confidence.toUpperCase()
+                          : undefined;
+
+                        return (
+                          <StockMentionSegmentButton
+                            key={`${key}-${segIndex}`}
+                            type="button"
+                            disabled={seconds == null}
+                            onClick={() => {
+                              if (seconds != null) {
+                                onSegmentClick(seconds);
+                              }
+                            }}
+                          >
+                            <StockMentionSegmentTime>
+                              {timeLabel}
+                            </StockMentionSegmentTime>
+                            <StockMentionSegmentBody>
+                              <StockMentionSegmentLabel>
+                                {sanitizedLabel}
+                              </StockMentionSegmentLabel>
+                              {confidenceLabel ? (
+                                <StockMentionSegmentConfidence
+                                  $level={segment.confidence}
+                                >
+                                  {confidenceLabel}
+                                </StockMentionSegmentConfidence>
+                              ) : null}
+                              {summarySource ? (
+                                <StockMentionSegmentSummary>
+                                  {summarySource}
+                                </StockMentionSegmentSummary>
+                              ) : null}
+                            </StockMentionSegmentBody>
+                          </StockMentionSegmentButton>
+                        );
+                      })
+                    ) : (
+                      <StockMentionEmpty>
+                        아직 타임라인이 준비되지 않았습니다.
+                      </StockMentionEmpty>
+                    )}
+                    {mention.actionIdea?.stance || sanitizedReason ? (
+                      <StockMentionAction>
+                        {mention.actionIdea?.stance ? (
+                          <strong>{mention.actionIdea.stance}</strong>
+                        ) : null}
+                        {sanitizedReason ? <p>{sanitizedReason}</p> : null}
+                      </StockMentionAction>
+                    ) : null}
+                    {!sanitizedReason && sanitizedCompany ? (
+                      <StockMentionAction>
+                        <p>{sanitizedCompany}</p>
+                      </StockMentionAction>
+                    ) : null}
+                    {sanitizedComment ? (
+                      <StockMentionComment>
+                        {sanitizedComment}
+                      </StockMentionComment>
+                    ) : null}
+                  </StockMentionPanel>
+                ) : null}
+              </StockMentionItem>
+            );
+          })}
+        </StockMentionList>
+      ) : null}
+    </StockMentionsContainer>
+  );
+};
+
 export default ClientSide;
 
 const Container = styled.div<{ $isFixed: boolean }>`
@@ -1236,6 +1979,264 @@ const Loader = styled.div`
   );
   background-size: 200% 100%;
   animation: ${LoaderAnimation} 1.5s infinite;
+`;
+
+const AnchorLinkRow = styled.div`
+  margin-top: 8px;
+  display: flex;
+`;
+
+const AnchorButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0b63f6;
+  background: rgba(11, 99, 246, 0.12);
+  border-radius: 999px;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(11, 99, 246, 0.2);
+  }
+`;
+
+const StockMentionsContainer = styled.section`
+  margin-top: 40px;
+  padding: 24px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const StockMentionsHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const StockMentionsTitle = styled.h2`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+`;
+
+const StockMentionsSubtitle = styled.span`
+  font-size: 13px;
+  color: #475569;
+`;
+
+const StockMentionsState = styled.div<{ $variant?: "error" | "info" }>`
+  font-size: 12px;
+  color: ${({ $variant }) => ($variant === "error" ? "#dc2626" : "#475569")};
+  background: ${({ $variant }) =>
+    $variant === "error"
+      ? "rgba(220, 38, 38, 0.08)"
+      : "rgba(148, 163, 184, 0.12)"};
+  border-radius: 12px;
+  padding: 10px 12px;
+`;
+
+const StockMentionList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const StockMentionItem = styled.div`
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+`;
+
+const StockMentionButton = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.08);
+  }
+`;
+
+const StockMentionTitleGroup = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: #1f2937;
+`;
+
+const TickerBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 2px 6px;
+`;
+
+const StockMentionMeta = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+  color: #0b63f6;
+  background: rgba(11, 99, 246, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-left: 8px;
+`;
+
+const StockMentionCaret = styled.span<{ $expanded: boolean }>`
+  margin-left: auto;
+  font-size: 18px;
+  color: #94a3b8;
+  transform: rotate(${({ $expanded }) => ($expanded ? "90deg" : "0deg")});
+  transition: transform 0.2s ease;
+`;
+
+const StockMentionPanel = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  background: #fff;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+`;
+
+const StockMentionSegmentButton = styled.button`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(241, 245, 249, 0.7);
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  text-align: left;
+  cursor: pointer;
+  transition: border 0.2s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(11, 99, 246, 0.35);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+`;
+
+const StockMentionSegmentTime = styled.span`
+  min-width: 48px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b63f6;
+`;
+
+const StockMentionSegmentBody = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #1f2937;
+`;
+
+const StockMentionSegmentLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+`;
+
+const confidenceColorMap = ($level?: string) => {
+  const level = ($level ?? "").toLowerCase();
+  switch (level) {
+    case "high":
+    case "높음":
+      return { bg: "rgba(34, 197, 94, 0.18)", color: "#166534" };
+    case "medium":
+    case "중간":
+      return { bg: "rgba(234, 179, 8, 0.22)", color: "#854d0e" };
+    case "low":
+    case "낮음":
+      return { bg: "rgba(147, 197, 253, 0.24)", color: "#1d4ed8" };
+    default:
+      return { bg: "rgba(148, 163, 184, 0.2)", color: "#475569" };
+  }
+};
+
+const StockMentionSegmentConfidence = styled.span<{ $level?: string }>`
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  background: ${({ $level }) => confidenceColorMap($level).bg};
+  color: ${({ $level }) => confidenceColorMap($level).color};
+`;
+
+const StockMentionSegmentSummary = styled.span`
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+`;
+
+const StockMentionEmpty = styled.div`
+  padding: 16px;
+  font-size: 12px;
+  color: #94a3b8;
+  background: #fff;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+`;
+
+const StockMentionAction = styled.div`
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.08);
+  font-size: 12px;
+  color: #1f2937;
+  line-height: 1.5;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #0b63f6;
+    text-transform: uppercase;
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-line;
+  }
+`;
+
+const StockMentionComment = styled.div`
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.16);
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
 `;
 
 const OverviewTitle = styled.div`
