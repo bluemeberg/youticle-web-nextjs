@@ -147,11 +147,11 @@ const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
     return (
       <CryptoMarketIntro>
         {marketCards.map((card) => (
-          <MarketComment key={card.market ?? card.comment_title}>
+          <MarketComment key={card.market ?? card.comment_title} $withBorder>
             <MarketCommentTitle>
               {card.comment_title ?? "마켓 코멘트"}
             </MarketCommentTitle>
-            <div
+            <MarketCommentBody
               dangerouslySetInnerHTML={{
                 __html: formatCommentText(card.comment_body ?? ""),
               }}
@@ -179,3 +179,7 @@ const CryptoMarketIntro = styled.div`
   flex-direction: column;
   gap: 12px;
 `;
+
+const MarketCommentBody = styled.div`
+  font-size : 14px;
+`

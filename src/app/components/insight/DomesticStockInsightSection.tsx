@@ -14,7 +14,7 @@ import type {
   InsightStrategy,
 } from "@/types/insight";
 import type { ReactNode } from "react";
-import { getOrCreateAnonId, removeMarkTags } from "@/utils/formatter";
+import { getOrCreateAnonId, parseSubscribersCount, removeMarkTags, timeAgo } from "@/utils/formatter";
 import { useState } from "react";
 import { logCtaClick } from "@/api/apiClient";
 
@@ -145,14 +145,38 @@ const DomesticStockInsightSection = ({
       : rawStocks;
   const strategies = data?.investment_strategies || [];
   const tags = data?.tags || [];
-  const introText =
-    "TOP5 영상에서 포착한 국내 주식 시황을 실시간 시장 지표와 함께 다시 정리한 요약입니다.";
+  const introText = (() => {
+    switch (label) {
+      case "해외 주식":
+        return "TOP5 영상에서 포착한 해외 주식 흐름을 글로벌 지표와 함께 다시 정리한 요약입니다.";
+      case "국내 가상자산":
+        return "TOP5 영상에서 포착한 국내 가상자산 흐름을 주요 온체인·거래 데이터를 묶어 정리한 요약입니다.";
+      case "해외 가상자산":
+        return "TOP5 영상에서 포착한 해외 가상자산 흐름을 글로벌 거래소의 데이터와 함께 정리한 요약입니다.";
+      default:
+        return "TOP5 영상에서 포착한 국내 주식 시황을 실시간 시장 지표와 함께 다시 정리한 요약입니다.";
+    }
+  })();
+  const stockIntroText =
+    label === "국내 가상자산" || label === "해외 가상자산"
+      ? "종목 인사이트에서는 온체인 지표와 거래 흐름을 기반으로 TOP5 영상에 등장한 코인을 정리합니다."
+      : "종목 인사이트에서는 TOP5 영상에 등장한 종목을 현재 시세, 밸류에이션, 수급, 유동성까지 한눈에 정리합니다.";
+  const hasMarketDetailToggle = label === "국내 주식" || label === "해외 주식";
+  const [showMarketDetails, setShowMarketDetails] = useState(
+    !hasMarketDetailToggle
+  );
+  const marketCardsAvailable =
+    !hideMarketCards && Object.keys(marketInsights).length > 0;
+  const marketDetailContentExists =
+    Boolean(renderMarketIntro) || marketCardsAvailable;
+  const isCryptoSection =
+    label === "국내 가상자산" || label === "해외 가상자산";
   return (
     <Wrapper>
       <SectionHeader>
         <Title>{label} 마켓 인사이트</Title>
         {updated_at && (
-          <Timestamp>업데이트 {formatDateTime(updated_at)}</Timestamp>
+          <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
         )}
       </SectionHeader>
       <SectionIntro>{introText}</SectionIntro>
@@ -202,17 +226,65 @@ const DomesticStockInsightSection = ({
         </OverviewCard>
       )} */}
 
-      {renderMarketIntro ? (
-        <MarketIntroContainer>{renderMarketIntro}</MarketIntroContainer>
-      ) : null}
-
-      {!hideMarketCards && Object.keys(marketInsights).length > 0 && (
+      {hasMarketDetailToggle && marketCardsAvailable ? (
         <MarketGrid>
           {Object.entries(marketInsights).map(([key, value]) =>
-            value ? <MarketCard key={key} card={value} /> : null
+            value ? <MarketSummaryCard key={key} card={value} /> : null
           )}
         </MarketGrid>
-      )}
+      ) : null}
+
+      {marketDetailContentExists ? (
+        hasMarketDetailToggle ? (
+          <>
+            <StockDetailToggleRow>
+              <StockDetailToggleButton
+                type="button"
+                onClick={() => setShowMarketDetails((prev) => !prev)}
+                aria-expanded={showMarketDetails}
+              >
+                {showMarketDetails
+                  ? "마켓 인사이트 접기"
+                  : "마켓 인사이트 펼치기"}
+                <ToggleChevron aria-hidden={true} $expanded={showMarketDetails}>
+                  <span />
+                </ToggleChevron>
+              </StockDetailToggleButton>
+            </StockDetailToggleRow>
+            {showMarketDetails ? (
+              <StockDetailBody>
+                {renderMarketIntro ? (
+                  <MarketIntroContainer $compact={isCryptoSection}>
+                    {renderMarketIntro}
+                  </MarketIntroContainer>
+                ) : null}
+                {marketCardsAvailable ? (
+                  <MarketGrid>
+                    {Object.entries(marketInsights).map(([key, value]) =>
+                      value ? <MarketCard key={key} card={value} /> : null
+                    )}
+                  </MarketGrid>
+                ) : null}
+              </StockDetailBody>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {renderMarketIntro ? (
+              <MarketIntroContainer $compact={isCryptoSection}>
+                {renderMarketIntro}
+              </MarketIntroContainer>
+            ) : null}
+            {marketCardsAvailable ? (
+              <MarketGrid>
+                {Object.entries(marketInsights).map(([key, value]) =>
+                  value ? <MarketCard key={key} card={value} /> : null
+                )}
+              </MarketGrid>
+            ) : null}
+          </>
+        )
+      ) : null}
 
       {/* {tags.length > 0 && (
         <TagRow>
@@ -221,12 +293,16 @@ const DomesticStockInsightSection = ({
           ))}
         </TagRow>
       )} */}
-      
+
       {stocks.length > 0 && (
         <>
           <SubSectionHeader>
             <SubSectionTitle>📊 종목 인사이트</SubSectionTitle>
+            {updated_at && (
+              <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
+            )}
           </SubSectionHeader>
+          <SubSectionIntro>{stockIntroText}</SubSectionIntro>
           <StockList>
             {stocks.map((stock) => (
               <StockCard
@@ -252,6 +328,26 @@ const DomesticStockInsightSection = ({
 
 export default DomesticStockInsightSection;
 
+const MarketCardHeaderContent = ({ card }: { card: InsightMarketCard }) => (
+  <MarketCardHeader>
+    <MarketTitle>
+      {card.market} <strong>{card.price_str}</strong>
+    </MarketTitle>
+    <MarketChange
+      $positive={!!card.chg_pct_str && card.chg_pct_str.includes("+")}
+    >
+      {card.chg_point_str && <span>{card.chg_point_str}</span>}{" "}
+      {card.chg_pct_str}
+    </MarketChange>
+  </MarketCardHeader>
+);
+
+const MarketSummaryCard = ({ card }: { card: InsightMarketCard }) => (
+  <MarketCardWrapper>
+    <MarketCardHeaderContent card={card} />
+  </MarketCardWrapper>
+);
+
 const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const quickLines = card.quick_lines || [];
   const highlightLabels = Object.entries(card.labels || {})
@@ -265,17 +361,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
 
   return (
     <MarketCardWrapper>
-      <MarketCardHeader>
-        <MarketTitle>
-          {card.market} <strong>{card.price_str}</strong>
-        </MarketTitle>
-        <MarketChange
-          $positive={!!card.chg_pct_str && card.chg_pct_str.includes("+")}
-        >
-          {card.chg_point_str && <span>{card.chg_point_str}</span>}{" "}
-          {card.chg_pct_str}
-        </MarketChange>
-      </MarketCardHeader>
+      <MarketCardHeaderContent card={card} />
       {/* {highlightLabels.length > 0 && (
         <MarketLabelRow>
           {highlightLabels.map((label) => (
@@ -289,7 +375,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
           <MarketCommentTitle>
             {card.comment_title || "마켓 코멘트"}
           </MarketCommentTitle>
-          <div
+          <MarketCommentBody
             dangerouslySetInnerHTML={{
               __html: formatCommentText(card.comment_body),
             }}
@@ -360,7 +446,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
             <StatDescriptor
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
-                  `상승 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 ${breadthDetail.down.toLocaleString()}`
+                  `상승 종목 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 종목 ${breadthDetail.down.toLocaleString()}`
                 ),
               }}
             />
@@ -891,20 +977,22 @@ const StockCard = ({
   };
   const user = useRecoilValue(userState);
   const handleToggleDetails = () => {
-  setShowDetails(prev => {
-    const next = !prev;
-    void logCtaClick(
-      "stock_detail_toggle",
-      user?.id,
-      stock.stock_name,
-      getOrCreateAnonId(),
-    ).catch(() => {});
-    return next;
-  });
+    setShowDetails((prev) => {
+      const next = !prev;
+      void logCtaClick(
+        "stock_detail_toggle",
+        user?.id,
+        stock.stock_name,
+        getOrCreateAnonId()
+      ).catch(() => {});
+      return next;
+    });
   };
+
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
+  const hasComment = Boolean(comment);
   const hasStandalonePriceVisual =
     !hasPriceSection &&
     (Boolean(intradayRange) || typeof range?.position_pct === "number");
@@ -915,8 +1003,10 @@ const StockCard = ({
     !hasLiquiditySection && Boolean(liquidityDetail?.stats?.length);
   const hasInsightSectionList =
     !hideInsightSectionList && insightSections.length > 0;
-  const hasVideoSources = Array.isArray(stock.sources) && stock.sources.length > 0;
+  const hasVideoSources =
+    Array.isArray(stock.sources) && stock.sources.length > 0;
   const hasDetailContent =
+    hasComment ||
     hasStandalonePriceVisual ||
     hasStandaloneValuationVisual ||
     hasStandaloneFlowVisual ||
@@ -966,14 +1056,6 @@ const StockCard = ({
           </StatValue>
         </StatBlock>
       </StatRow> */}
-      {comment && (
-        <CommentBox>
-          <CommentTitle>{commentTitle}</CommentTitle>
-          <div
-            dangerouslySetInnerHTML={{ __html: formatCommentText(comment) }}
-          />
-        </CommentBox>
-      )}
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -990,6 +1072,16 @@ const StockCard = ({
           </StockDetailToggleRow>
           {showDetails ? (
             <StockDetailBody>
+              {hasComment ? (
+                <CommentBox>
+                  <CommentTitle>{commentTitle}</CommentTitle>
+                  <CommentBody
+                    dangerouslySetInnerHTML={{
+                      __html: formatCommentText(comment ?? ""),
+                    }}
+                  />
+                </CommentBox>
+              ) : null}
               {hasStandalonePriceVisual ? renderPriceVisuals() : null}
               {hasStandaloneValuationVisual ? renderValuationVisuals() : null}
               {hasStandaloneFlowVisual ? renderFlowVisuals() : null}
@@ -1042,13 +1134,13 @@ const StockCard = ({
                           )}
                           {section.title && <span>{section.title}</span>}
                         </InsightSectionHeader>
-                        {section.summary && (
+                        {/* {section.summary && (
                           <InsightSectionSummary
                             dangerouslySetInnerHTML={{
                               __html: emphasizeNumbers(section.summary),
                             }}
                           />
-                        )}
+                        )} */}
                         {isPriceSection ? renderPriceVisuals() : null}
                         {isValuationSection ? renderValuationVisuals() : null}
                         {isFlowSection ? renderFlowVisuals() : null}
@@ -1057,7 +1149,7 @@ const StockCard = ({
                         {section.highlights && (
                           <InsightSectionHighlights
                             dangerouslySetInnerHTML={{
-                              __html: emphasizeNumbers(section.highlights),
+                              __html: formatHighlightText(section.highlights),
                             }}
                           />
                         )}
@@ -1124,14 +1216,18 @@ const StockVideoSources = ({
   return (
     <VideoSourcesSection>
       <VideoSourcesHeader>
-        <VideoSourcesTitle>{stockName} 언급된 오늘 TOP5 영상</VideoSourcesTitle>
+        <VideoSourcesTitle>
+          &ldquo;{stockName}&rdquo; 언급된 오늘 TOP5 영상
+        </VideoSourcesTitle>
         {/* <VideoCountBadge>{sources.length}편</VideoCountBadge> */}
       </VideoSourcesHeader>
       <VideoSourceList>
         {sources.map((source) => {
           const summaryData = source.summary_data;
           const headlineTitle = removeMarkTags(
-            summaryData?.headline_title ?? source.title ?? `${stockName} 관련 영상`
+            summaryData?.headline_title ??
+              source.title ??
+              `${stockName} 관련 영상`
           );
           const summaryText = removeMarkTags(
             summaryData?.short_summary ?? source.summary ?? ""
@@ -1154,7 +1250,11 @@ const StockVideoSources = ({
           };
 
           return (
-            <VideoSourceCard key={source.video_id}>
+            <VideoSourceCard
+              key={source.video_id}
+              href={href}
+              onClick={handleVideoLinkClick}
+            >
               <VideoSourceContainer>
                 <VideoThumbnailWrapper>
                   {source.thumbnail ? (
@@ -1173,7 +1273,9 @@ const StockVideoSources = ({
                 </VideoThumbnailWrapper>
                 <VideoSourceBody>
                   <VideoTitle>{headlineTitle}</VideoTitle>
-                  {summaryText ? <VideoSummary>{summaryText}</VideoSummary> : null}
+                  {summaryText ? (
+                    <VideoSummary>{summaryText}</VideoSummary>
+                  ) : null}
                 </VideoSourceBody>
               </VideoSourceContainer>
               {(hasChannel || uploadText) && (
@@ -1182,19 +1284,22 @@ const StockVideoSources = ({
                     <ChannelAvatarImage
                       src={source.channel_thumbnail}
                       alt={source.channel_name || "채널"}
-                      width={20}
-                      height={20}
-                      style={{ width: 20, height: 20 }}
+                      width={40}
+                      height={40}
+                      style={{ width: 40, height: 40 }}
                     />
                   ) : null}
-                  {hasChannel ? <span>{source.channel_name}</span> : null}
-                  {hasChannel && uploadText ? <VideoMetaDot>•</VideoMetaDot> : null}
-                  {uploadText ? <time>{uploadText}</time> : null}
+                  <VideoMetaRowContainer>
+                    {hasChannel ? <span>{source.channel_name}</span> : null}
+                    <VideoMetaRowSubContainer>
+                      {parseSubscribersCount(source.channel_subscribers ?? 0)}
+                      {uploadText ? (
+                        <strong>{timeAgo(source.upload_date ?? "")}</strong>
+                      ) : null}
+                    </VideoMetaRowSubContainer>
+                  </VideoMetaRowContainer>
                 </VideoMetaRow>
               )}
-              <VideoLink href={href} onClick={handleVideoLinkClick}>
-                영상에서 언급된 요약 바로 보기
-              </VideoLink>
             </VideoSourceCard>
           );
         })}
@@ -1298,7 +1403,8 @@ function buildLiquidityDetail(card: InsightMarketCard) {
     }
     const pointer = ((r - capLow) / (capHigh - capLow)) * 100;
     const changePct = (ratio - 1) * 100;
-    const tone: "up" | "down" | "flat" = changePct > 0 ? "up" : changePct < 0 ? "down" : "flat";
+    const tone: "up" | "down" | "flat" =
+      changePct > 0 ? "up" : changePct < 0 ? "down" : "flat";
     return {
       left,
       width,
@@ -1352,14 +1458,15 @@ function buildStockIntradayDetail(metrics?: InsightStockMetrics) {
   if (high == null || low == null || current_price == null) return null;
 
   const openValue =
-    open != null
-      ? open
-      : prev_close != null
-      ? prev_close
-      : current_price;
-  const openLabelShort = open != null ? "시" : prev_close != null ? "전일" : "기준";
+    open != null ? open : prev_close != null ? prev_close : current_price;
+  const openLabelShort =
+    open != null ? "시" : prev_close != null ? "전일" : "기준";
   const openLabelLong =
-    open != null ? "시가" : prev_close != null ? "전일 종가 기준" : "시가 데이터 없음";
+    open != null
+      ? "시가"
+      : prev_close != null
+      ? "전일 종가 기준"
+      : "시가 데이터 없음";
 
   const spread = high - low || 1;
   const clamp = (value: number) => Math.max(0, Math.min(100, value));
@@ -1501,7 +1608,10 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
     netSum !== 0
       ? `${
           netSum > 0 ? "외국인·기관 순매수" : "외국인·기관 순매도"
-        } ${formatNumberWithUnit(netSum, { sign: false }).replace(/^[-+]/, "")}주`
+        } ${formatNumberWithUnit(netSum, { sign: false }).replace(
+          /^[-+]/,
+          ""
+        )}주`
       : "외국인·기관 순매수/순매도 중립";
 
   const stats: FlowStat[] = [];
@@ -1572,33 +1682,45 @@ function buildStockLiquidityDetail(
   })();
 
   const volume = toFiniteNumber(liquidity.volume);
-  const volumeChange = toFiniteNumber(liquidity.volume_change_pct);
+  const volumeSharePct = toFiniteNumber(liquidity.volume_change_pct);
   if (volume != null) {
+    const volumeShareText =
+      volumeSharePct != null
+        ? `전일 대비 비중 ${Math.abs(volumeSharePct).toFixed(0)}%`
+        : undefined;
     stats.push({
       key: "volume",
       label: "거래량",
-      value: `${formatNumberWithUnit(volume)}${assetUnit === "주" ? "주" : ` ${assetUnit}`}`,
-      changeText: formatChangeDelta(volumeChange),
-      changePct: volumeChange ?? undefined,
-      tone: changeTone(volumeChange),
-      description:
+      value: `${formatNumberWithUnit(volume)}${
+        assetUnit === "주" ? "주" : ` ${assetUnit}`
+      }`,
+      changeText: volumeShareText,
+      changePct: volumeSharePct ?? undefined,
+      tone: "flat",
+      description: `${
         assetUnit === "주"
           ? "하루 동안 실제 손바뀜이 일어난 주식 수"
-          : `하루 동안 체결된 ${assetUnit} 수량`,
+          : `하루 동안 체결된 ${assetUnit} 수량`
+      } · 전일 대비 비중은 전일 거래량 대비 오늘 거래량 비율이에요.`,
     });
   }
 
   const value = toFiniteNumber(liquidity.value);
-  const valueChange = toFiniteNumber(liquidity.value_change_pct);
+  const valueSharePct = toFiniteNumber(liquidity.value_change_pct);
   if (value != null) {
+    const valueShareText =
+      valueSharePct != null
+        ? `전일 대비 비중 ${Math.abs(valueSharePct).toFixed(0)}%`
+        : undefined;
     stats.push({
       key: "value",
       label: "거래대금",
       value: formatCurrencyWithUnit(value, currency, { compact: true }),
-      changeText: formatChangeDelta(valueChange),
-      changePct: valueChange ?? undefined,
-      tone: changeTone(valueChange),
-      description: "해당일 체결된 금액 총합",
+      changeText: valueShareText,
+      changePct: valueSharePct ?? undefined,
+      tone: "flat",
+      description:
+        "해당일 체결된 금액 총합 · 전일 대비 비중은 전일 거래대금 대비 오늘 거래대금 비율이에요.",
     });
   }
 
@@ -1845,7 +1967,7 @@ function formatDateTime(value: string) {
     const dd = String(date.getDate()).padStart(2, "0");
     const hh = String(date.getHours()).padStart(2, "0");
     const min = String(date.getMinutes()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    return `오늘 ${hh}:${min}`;
   } catch (error) {
     return value;
   }
@@ -1941,7 +2063,8 @@ function formatCurrencyWithUnit(
 
   const formatted = abs.toLocaleString("en-US", {
     maximumFractionDigits: cryptoDecimals,
-    minimumFractionDigits: abs >= 1 ? Math.min(2, cryptoDecimals) : Math.min(4, cryptoDecimals),
+    minimumFractionDigits:
+      abs >= 1 ? Math.min(2, cryptoDecimals) : Math.min(4, cryptoDecimals),
   });
   const sign = value < 0 ? "-" : options.sign && value > 0 ? "+" : "";
   return `${sign}${formatted} ${normalized}`;
@@ -1961,7 +2084,10 @@ function formatKrwFromHundredMillion(value?: number | null) {
   return `${sign}${formatter.format(base)}${unit} 원`;
 }
 
-function formatNumberWithUnit(value?: number | null, options?: { sign?: boolean }) {
+function formatNumberWithUnit(
+  value?: number | null,
+  options?: { sign?: boolean }
+) {
   if (value == null || Number.isNaN(value)) return "—";
 
   const abs = Math.abs(value);
@@ -2033,6 +2159,18 @@ function emphasizeNumbers(text?: string | null) {
   );
 }
 
+function formatTextWithSentenceBreaks(text?: string | null) {
+  if (typeof text !== "string") {
+    return text == null ? "" : String(text);
+  }
+  const highlighted = emphasizeNumbers(text);
+  const parts = highlighted
+    .split(/(?<=\.)\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.join("<br/>");
+}
+
 function formatChangePct(value: number) {
   if (!Number.isFinite(value)) return "—";
   if (Math.abs(value) < 0.05) return "—";
@@ -2079,12 +2217,11 @@ function formatVideoDate(value?: string | null) {
 }
 
 function formatCommentText(text: string) {
-  const highlighted = emphasizeNumbers(text);
-  const parts = highlighted
-    .split(/(?<=\.)\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.join("<br/>");
+  return formatTextWithSentenceBreaks(text);
+}
+
+function formatHighlightText(text: string) {
+  return formatTextWithSentenceBreaks(text);
 }
 
 const Wrapper = styled.section`
@@ -2109,14 +2246,15 @@ const Title = styled.h3`
 `;
 
 const Timestamp = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   color: #64748b;
+  font-weight: 700;
 `;
 
 const SectionIntro = styled.p`
-  margin: -4px 0 8px;
+  margin: 8px;
   font-size: 16px;
-  color: #475569;
+  color: #000;
   line-height: 1.4;
 `;
 
@@ -2196,11 +2334,11 @@ const HeatmapChip = styled.span<{ $tone: "positive" | "negative" }>`
       : "rgba(37, 99, 235, 0.08)"};
 `;
 
-const MarketIntroContainer = styled.div`
+const MarketIntroContainer = styled.div<{ $compact?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin: 16px 4px 12px;
+  margin: ${({ $compact }) => ($compact ? "0 0 12px" : "16px 4px 12px")};
 `;
 
 const MarketGrid = styled.div`
@@ -2280,8 +2418,9 @@ const MarketStat = styled.div`
 const SubSectionHeader = styled.div`
   margin: 28px 4px 4px;
   display: flex;
-  align-items: center;
   gap: 8px;
+  justify-content: space-between;
+  align-items: baseline;
 `;
 
 const SubSectionTitle = styled.h3`
@@ -2291,8 +2430,15 @@ const SubSectionTitle = styled.h3`
   color: #0f172a;
 `;
 
+const SubSectionIntro = styled.p`
+  margin: 4px 4px 12px;
+  font-size: 16px;
+  color: #000;
+  line-height: 1.5;
+`;
+
 const MarketStatLabel = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: ${COLOR_NEGATIVE};
   text-transform: uppercase;
@@ -2354,7 +2500,7 @@ const IntradayLabels = styled.div`
 `;
 
 const IntradaySummary = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   color: ${COLOR_TEXT};
   line-height: 1.5;
 `;
@@ -2404,7 +2550,8 @@ const StackedFill = styled.div<{ $tone: "up" | "flat" | "down" }>`
 `;
 
 const StatDescriptor = styled.div`
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.4;
   color: ${COLOR_TEXT};
 `;
 
@@ -2511,11 +2658,13 @@ const ChangeValue = styled.span<{ $tone: "up" | "down" | "flat" }>`
       : COLOR_NEUTRAL};
 `;
 
-const MarketComment = styled.div`
+const MarketComment = styled.div<{ $withBorder?: boolean }>`
   background: ${COLOR_CARD_BG};
   padding: 12px;
   border-radius: 10px;
-  font-size: 13px;
+  border: ${({ $withBorder }) =>
+    $withBorder ? `1px solid ${COLOR_TRACK}` : "none"};
+  font-size: 14px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
   strong {
@@ -2527,6 +2676,10 @@ const MarketCommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 4px;
   color: #0b63f6;
+`;
+
+const MarketCommentBody = styled.div`
+  font-size: 14px;
 `;
 
 const QuickLines = styled.div`
@@ -2583,7 +2736,7 @@ const StockDetailToggleButton = styled.button`
   gap: 8px;
   border: none;
   background: transparent;
-  color: ${COLOR_NEGATIVE};
+  color: #2563eb;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -2592,11 +2745,11 @@ const StockDetailToggleButton = styled.button`
 
   &:hover,
   &:focus {
-    color: ${COLOR_POSITIVE};
+    color: #1d4ed8;
   }
 
   &:focus {
-    outline: 2px solid ${COLOR_POSITIVE};
+    outline: 2px solid rgba(37, 99, 235, 0.4);
     outline-offset: 2px;
   }
 `;
@@ -2816,7 +2969,7 @@ const FlowDistributionBar = styled.div`
   background: ${COLOR_TRACK};
   font-size: 10px;
   color: #fff;
-  min-height : 32px;
+  min-height: 32px;
 `;
 
 const FlowDistributionSegment = styled.div<{
@@ -2920,13 +3073,13 @@ const LiquidityStatCard = styled.div`
   color: #64748b;
   span {
     font-weight: 700;
-    color : #0b63f6
+    color: #0b63f6;
   }
   strong {
     font-size: 16px;
     color: #0f172a;
-    font-weight : 700;
-    margin-top : 4px;
+    font-weight: 700;
+    margin-top: 4px;
   }
 `;
 
@@ -3225,6 +3378,11 @@ const CommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 4px;
   color: #0b63f6;
+  font-size: 14px;
+`;
+
+const CommentBody = styled.div`
+  font-size: 14px;
 `;
 
 const InsightSectionList = styled.div`
@@ -3250,6 +3408,7 @@ const InsightSectionHeader = styled.div`
   gap: 8px;
   align-items: center;
   font-weight: 700;
+  font-size: 14px;
   color: ${COLOR_TEXT};
 `;
 
@@ -3269,9 +3428,12 @@ const InsightSectionSummary = styled.div`
 `;
 
 const InsightSectionHighlights = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   color: ${COLOR_TEXT};
   line-height: 1.5;
+  strong {
+    font-weight: 700;
+  }
 `;
 
 const VideoSourcesSection = styled.div`
@@ -3279,13 +3441,13 @@ const VideoSourcesSection = styled.div`
   flex-direction: column;
   gap: 12px;
   border-radius: 12px;
-  margin-top : 20px;
+  margin-top: 20px;
 `;
 
 const VideoSourceContainer = styled.div`
-  display : flex;
-  flex-direction : row;
-`
+  display: flex;
+  flex-direction: row;
+`;
 
 const VideoSourcesHeader = styled.div`
   display: flex;
@@ -3314,14 +3476,24 @@ const VideoSourceList = styled.div`
   gap: 10px;
 `;
 
-const VideoSourceCard = styled.div`
+const VideoSourceCard = styled(Link)`
   display: flex;
-  flex-direction : column;
+  flex-direction: column;
   gap: 12px;
   padding: 10px;
   border-radius: 10px;
   background: #fff;
   border: 1px solid rgba(148, 163, 184, 0.25);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+    outline: none;
+  }
 
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
@@ -3336,11 +3508,11 @@ const VideoThumbnailWrapper = styled.div`
   border-radius: 8px;
   overflow: hidden;
   background: rgba(148, 163, 184, 0.15);
-  min-width : 160px;
+  min-width: 160px;
   @media (max-width: 480px) {
     width: 100%;
-    min-width : 160px;
-    aspect-ratio : 16/9;
+    min-width: 160px;
+    aspect-ratio: 16/9;
   }
 `;
 
@@ -3365,12 +3537,13 @@ const VideoSourceBody = styled.div`
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  margin-left : 4px;
+  margin-left: 8px;
 `;
 
 const VideoTitle = styled.span`
   font-size: 16px;
   font-weight: 700;
+  line-height : 1.4;
   color: ${COLOR_TEXT};
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3399,8 +3572,8 @@ const VideoMetaRow = styled.div`
 `;
 
 const ChannelAvatarImage = styled(Image)`
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(148, 163, 184, 0.3);
@@ -3411,27 +3584,21 @@ const VideoMetaDot = styled.span`
   color: #94a3b8;
 `;
 
-const VideoLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  background: ${COLOR_NEGATIVE};
-  padding: 14px 12px;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: background 0.2s ease;
-  text-align : center;
-  justify-content : center;
-  &:hover {
-    background: #0a4ec4;
+const VideoMetaRowContainer = styled.div`
+  display : flex;
+  flex-direction : column;
+  font-size : 15px;
+  font-weight : 600;
+  strong {
+    margin-left : 6px;
   }
+`
 
-  @media (max-width: 480px) {
-    justify-content : center;
-  }
+const VideoMetaRowSubContainer = styled.div`
+  display : flex;
+  margin-top : 4px;
+  font-size : 13px;
+  font-weight : 400;
 `;
 const StrategyGrid = styled.div`
   display: grid;

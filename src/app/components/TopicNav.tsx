@@ -219,7 +219,7 @@ const Subtitle = styled.div`
   font-weight: 700;
   color: #000;
   /* 배경을 아주 연하게 줘서 구분 */
-  background-color: #fff;
+  /* background-color: #fff; */
   /* 탭 하단 경계와 컬러를 맞춤 */
   /* border-bottom: 1px solid #dde2e6; */
 
@@ -228,5 +228,5 @@ const Subtitle = styled.div`
   /* 네비 및 본문 컨테이너와 동일한 max-width & centering */
   max-width: 430px;
   margin: 0 auto;
-  margin-bottom: 12px;
+  /* margin-bottom: 12px; */
 `;
