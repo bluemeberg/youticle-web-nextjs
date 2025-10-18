@@ -510,6 +510,24 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const [stockMentionsError, setStockMentionsError] = useState<string | null>(
     null
   );
+  const rawSections = detailData.section;
+  const sections = useMemo(() => {
+    if (Array.isArray(rawSections)) {
+      return rawSections.filter((item): item is string => typeof item === "string");
+    }
+    return typeof rawSections === "string" && rawSections.trim()
+      ? [rawSections.trim()]
+      : [];
+  }, [rawSections]);
+  const shouldFetchStockMentions = useMemo(() => {
+    const eligibleSections = new Set([
+      "국내 주식",
+      "해외 주식",
+      "국내 가상자산",
+      "해외 가상자산",
+    ]);
+    return sections.some((section) => eligibleSections.has(section));
+  }, [sections]);
   const hasStockMentions =
     stockMentionsLoading ||
     stockMentions.length > 0 ||
@@ -535,6 +553,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   }, [searchParams, hasStockMentionsReady]);
 
   useEffect(() => {
+    if (!shouldFetchStockMentions) {
+      setStockMentions([]);
+      setStockMentionsError(null);
+      setStockMentionsLoading(false);
+      return;
+    }
+
     let canceled = false;
 
     const fetchMentions = async () => {
@@ -628,7 +653,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     return () => {
       canceled = true;
     };
-  }, [id]);
+  }, [id, shouldFetchStockMentions]);
 
   const handleTocItemClick = (start: number) => {
     logCtaClick(
@@ -818,8 +843,8 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const [maxHeight, setMaxHeight] = useState("0px");
 
   // calculate split for TOC sections
-  const sections = detailData.summary_data.section;
-  const sectionCount = sections.length;
+  const summarySections = detailData.summary_data.section ?? [];
+  const sectionCount = summarySections.length;
   const isMultiPart = sectionCount >= 8;
   const midIndex = Math.ceil(sectionCount / 2);
 
@@ -980,7 +1005,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     }
   };
 
-  const sortedSections = [...sections].sort(
+  const sortedSections = [...summarySections].sort(
     (a, b) =>
       parseTimeStringToSeconds(a.start_time) -
       parseTimeStringToSeconds(b.start_time)
@@ -1148,7 +1173,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       <MainBodyTitle>📝 영상 목차</MainBodyTitle>
       <TOC>
         <ContentWrapper
-          fullPadding={detailData.summary_data.section.length < 8}
+          fullPadding={summarySections.length < 8}
         >
           {isMultiPart ? (
             <>
