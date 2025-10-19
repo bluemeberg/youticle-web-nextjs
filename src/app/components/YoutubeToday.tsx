@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 import styled, { keyframes, css } from "styled-components";
 import TopicCard from "./TopicCard";
-import MarketInsightSection from "./marketInsight/MarketInsightSection";
 import DomesticStockInsightSection from "./insight/DomesticStockInsightSection";
 import CryptoInsightSection from "./insight/CryptoInsightSection";
 import { DataProps } from "@/types/dataProps";
@@ -22,6 +21,7 @@ import { userState } from "@/store/user";
 import type { MarketInsightCardData } from "@/utils/marketInsight";
 import type { InsightSection, InsightSource } from "@/types/insight";
 import { removeMarkTags } from "@/utils/formatter";
+import StockMarketSection from "./insight/StockMarketSection";
 
 const TODAY_TITLE = "미구독 중인 키워드 아티클";
 const SUBS_TODAY_TITLE = "구독 중인 키워드 아티클";
@@ -506,6 +506,37 @@ const YoutubeToday = ({
 
   const feedRef = useRef<HTMLDivElement>(null);
 
+  const renderIntegratedSection = () => {
+    if (!selectedIntegratedSection) return null;
+
+    const key = selectedIntegratedSection.key ?? "";
+    const label = selectedIntegratedSection.label ?? "";
+
+    const hasDeltaData = Boolean(
+      selectedIntegratedSection.data?.market_delta_insights?.by_market &&
+        Object.keys(
+          selectedIntegratedSection.data?.market_delta_insights?.by_market ?? {}
+        ).length > 0
+    );
+
+    const isCryptoSection =
+      label.includes("가상자산") || /_crypto$/.test(key) || /crypto/.test(key);
+    const isStockSection =
+      label.includes("주식") || /_stock/.test(key) || /stock/.test(key);
+
+    if (isCryptoSection) {
+      return <CryptoInsightSection section={selectedIntegratedSection} />;
+    }
+
+    if (isStockSection && hasDeltaData) {
+      return (
+        <StockMarketSection section={selectedIntegratedSection}/>
+      );
+    }
+
+    return <DomesticStockInsightSection section={selectedIntegratedSection} />;
+  };
+
   return (
     <Container ref={feedRef}>
       <Header>
@@ -545,20 +576,7 @@ const YoutubeToday = ({
             unSubscribe={[]}
             showSubscribedOnly={showSubscribedOnly}
             subscribedSubjects={expandedSubjects} // 구독 주제 전달 (색상 변경용)
-            belowNavContent=
-              <>
-                {selectedIntegratedSection ? (
-                  (selectedIntegratedSection.label === "국내 가상자산" ||
-                    selectedIntegratedSection.label === "해외 가상자산" ||
-                    /_crypto$/.test(selectedIntegratedSection.key)) ? (
-                    <CryptoInsightSection section={selectedIntegratedSection} />
-                  ) : (
-                    <DomesticStockInsightSection
-                      section={selectedIntegratedSection}
-                    />
-                  )
-                ) : null}
-              </>
+            belowNavContent={<>{renderIntegratedSection()}</>}
           ></TopicNav>
         </TopicNavContainer>
         {/* <CountdownTimer /> */}

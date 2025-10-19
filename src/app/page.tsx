@@ -29,9 +29,10 @@ export const metadata = {
 
 export default async function LandingPage(props: LandingPageProps) {
   const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
+  const LOCAL_STOCK_API_URL = "http://0.0.0.0:8001/briefing/top_videos/stock"
   const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
   const INSIGHTS_SECTION_URL = "https://youticle.shop/insights/sections";
-
+  const LOCAL_INSIGHTS_SECTION_URL = "http://0.0.0.0:8001/insights/sections"
   let integratedSections: InsightSectionsResponse | null = null;
   const keywordParam = props.searchParams?.keyword;
   const initialTopicRaw = Array.isArray(keywordParam)

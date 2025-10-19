@@ -14,9 +14,15 @@ import type {
   InsightStrategy,
 } from "@/types/insight";
 import type { ReactNode } from "react";
-import { getOrCreateAnonId, parseSubscribersCount, removeMarkTags, timeAgo } from "@/utils/formatter";
+import {
+  getOrCreateAnonId,
+  parseSubscribersCount,
+  removeMarkTags,
+  timeAgo,
+} from "@/utils/formatter";
 import { useState } from "react";
 import { logCtaClick } from "@/api/apiClient";
+import MarketInsightSection from "../marketInsight/MarketInsightSection";
 
 const COLOR_POSITIVE = "#ff6b6b";
 const COLOR_NEGATIVE = "#0b63f6";
@@ -135,6 +141,7 @@ const DomesticStockInsightSection = ({
   renderMarketIntro,
 }: Props) => {
   const { data, label, updated_at } = section;
+  console.log(section);
   const overview = data?.overview;
   const marketInsights = data?.market_insights?.by_market || {};
   const rawStocks = data?.stocks ?? [];
@@ -171,6 +178,7 @@ const DomesticStockInsightSection = ({
     Boolean(renderMarketIntro) || marketCardsAvailable;
   const isCryptoSection =
     label === "국내 가상자산" || label === "해외 가상자산";
+  console.log(marketInsights)
   return (
     <Wrapper>
       <SectionHeader>
@@ -348,17 +356,17 @@ const MarketSummaryCard = ({ card }: { card: InsightMarketCard }) => (
   </MarketCardWrapper>
 );
 
+
 const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const quickLines = card.quick_lines || [];
   const highlightLabels = Object.entries(card.labels || {})
     .map(([, value]) => value)
     .filter(Boolean) as string[];
-
+  console.log(card)
   const intradayDetail = buildIntradayDetail(card);
   const breadthDetail = buildBreadthDetail(card);
   const liquidityDetail = buildLiquidityDetail(card);
   const flowDetail = buildOrderFlowDetail(card);
-
   return (
     <MarketCardWrapper>
       <MarketCardHeaderContent card={card} />
@@ -473,10 +481,12 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
                     />
                   </LiquidityTrack>
                   <LiquidityMeta>
-                    <span>{liquidityDetail.volumeRatio.toFixed(2)}x</span>
-                    <ChangeValue $tone={liquidityDetail.volumeTone}>
-                      {formatChangePct(liquidityDetail.volumeChangePct)}
-                    </ChangeValue>
+                    <span>{liquidityDetail.volumeRatioText}</span>
+                    {liquidityDetail.volumeSummary ? (
+                      <ChangeValue $tone={liquidityDetail.volumeTone}>
+                        {liquidityDetail.volumeSummary}
+                      </ChangeValue>
+                    ) : null}
                   </LiquidityMeta>
                 </LiquidityMeter>
               </LiquidityRow>
@@ -497,17 +507,19 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
                     />
                   </LiquidityTrack>
                   <LiquidityMeta>
-                    <span>{liquidityDetail.valueRatio.toFixed(2)}x</span>
-                    <ChangeValue $tone={liquidityDetail.valueTone}>
-                      {formatChangePct(liquidityDetail.valueChangePct)}
-                    </ChangeValue>
+                    <span>{liquidityDetail.valueRatioText}</span>
+                    {liquidityDetail.valueSummary ? (
+                      <ChangeValue $tone={liquidityDetail.valueTone}>
+                        {liquidityDetail.valueSummary}
+                      </ChangeValue>
+                    ) : null}
                   </LiquidityMeta>
                 </LiquidityMeter>
               </LiquidityRow>
             </LiquidityBox>
             <StatDescriptor
               dangerouslySetInnerHTML={{
-                __html: emphasizeNumbers(liquidityDetail.text),
+                __html: emphasizeNumbers(liquidityDetail.summaryHtml),
               }}
             />
           </MarketStat>
@@ -1019,10 +1031,10 @@ const StockCard = ({
       <StockHeader>
         <StockTitle>
           {stock.stock_name}
-          <StockPriceValue>{currentPriceText}</StockPriceValue>
+          {/* <StockPriceValue>{currentPriceText}</StockPriceValue> */}
         </StockTitle>
         <StockDeltaBlock $positive={deltaPositive}>
-          {amountText ? <span>{amountText}</span> : null}
+          {/* {amountText ? <span>{amountText}</span> : null} */}
           <strong>{deltaText}</strong>
         </StockDeltaBlock>
       </StockHeader>
@@ -1369,30 +1381,70 @@ function buildBreadthDetail(card: InsightMarketCard) {
 }
 
 function buildLiquidityDetail(card: InsightMarketCard) {
-  const sourceText = card.sentences?.liquidity || card.volume_value_str;
-  if (!sourceText) return null;
-  const match = sourceText.match(
-    /거래량\s([\d,]+)\(전일\s([\d,]+).*?\)\s*,?\s*거래대금\s([\d,\.]+)억\s원\(전일\s([\d,\.]+)억\s원\)/
-  );
-  if (!match) return null;
-  const [, volume, prevVolume, value, prevValue] = match;
-  const volumeNum = parseNumber(volume) ?? 0;
-  const prevVolumeNum = parseNumber(prevVolume) ?? 0;
-  const valueNum = parseFloat((value || "0").replace(/,/g, "")) || 0;
-  const prevValueNum = parseFloat((prevValue || "0").replace(/,/g, "")) || 0;
+  const rawText = card.sentences?.liquidity || card.volume_value_str;
+  if (!rawText) return null;
+  console.log(rawText)
+  const normalized = rawText
+    .replace(/<br\s*\/?\>/gi, " ")
+    .replace(/\s+/g, " ");
 
-  const volumeRatio = prevVolumeNum ? volumeNum / prevVolumeNum : 1;
-  const valueRatio = prevValueNum ? valueNum / prevValueNum : 1;
-  const capHigh = 2;
-  const capLow = 0;
-  const base = 50;
+  const volumeMatch = normalized.match(
+    /거래량[^0-9]*([\d,]+)\s*주?\s*\(전일\s*([\d,]+)\s*주?(?:[^0-9]+([\d.]+)x)?/i
+  );
+  const valueMatch = normalized.match(
+    /거래대금[^0-9]*([\d,]+)(억)?\s*원?\s*\(전일\s*([\d,]+)(억)?\s*원?(?:[^0-9]+([\d.]+)x)?/i
+  );
+  const volumeSummaryMatch = normalized.match(
+    /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+  );
+  const valueSummaryMatch = normalized.match(
+    /거래대금은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+  );
+
+  if (!volumeMatch || !valueMatch) {
+    return null;
+  }
+
+  const volumeCurrent = parseNumber(volumeMatch[1]) ?? 0;
+  const volumePrev = parseNumber(volumeMatch[2]) ?? 0;
+  const volumeRatioFromText = volumeMatch[3]
+    ? parseFloat(volumeMatch[3])
+    : null;
+
+  const valueCurrentRaw = parseNumber(valueMatch[1]) ?? 0;
+  const valuePrevRaw = parseNumber(valueMatch[3]) ?? 0;
+  const valueRatioFromText = valueMatch[5]
+    ? parseFloat(valueMatch[5])
+    : null;
+  console.log(valueCurrentRaw)
+  console.log(valuePrevRaw)
+  const valueCurrent = valueMatch[2] ? valueCurrentRaw * 100_000_000 : valueCurrentRaw;
+  const valuePrev = valueMatch[4] ? valuePrevRaw * 100_000_000 : valuePrevRaw;
+
+  const volumeRatio =
+    volumeRatioFromText && Number.isFinite(volumeRatioFromText)
+      ? volumeRatioFromText
+      : volumePrev > 0
+      ? volumeCurrent / volumePrev
+      : 1;
+
+  const valueRatio =
+    valueRatioFromText && Number.isFinite(valueRatioFromText)
+      ? valueRatioFromText
+      : valuePrev > 0
+      ? valueCurrent / valuePrev
+      : 1;
 
   const compute = (ratio: number) => {
+    const capHigh = 2;
+    const capLow = 0;
+    const base = 50;
     const r = Math.min(Math.max(ratio, capLow), capHigh);
     const maxAbove = capHigh - 1;
     const maxBelow = 1 - capLow;
     let left = base;
     let width = 0;
+
     if (r >= 1) {
       const diff = r - 1;
       width = maxAbove ? (diff / maxAbove) * 50 : 0;
@@ -1401,10 +1453,12 @@ function buildLiquidityDetail(card: InsightMarketCard) {
       width = maxBelow ? (diff / maxBelow) * 50 : 0;
       left = base - width;
     }
+
     const pointer = ((r - capLow) / (capHigh - capLow)) * 100;
     const changePct = (ratio - 1) * 100;
     const tone: "up" | "down" | "flat" =
       changePct > 0 ? "up" : changePct < 0 ? "down" : "flat";
+
     return {
       left,
       width,
@@ -1417,21 +1471,79 @@ function buildLiquidityDetail(card: InsightMarketCard) {
   const volumeData = compute(volumeRatio);
   const valueData = compute(valueRatio);
 
+ const volumeSummaryRaw = volumeSummaryMatch?.[1]?.trim();
+ const valueSummaryRaw = valueSummaryMatch?.[1]?.trim();
+
+  const volumeRatioText = volumeRatioFromText
+    ? `${volumeRatioFromText}x`
+    : `${volumeRatio.toFixed(2)}x`;
+  const valueRatioText = valueRatioFromText
+    ? `${valueRatioFromText}x`
+    : `${valueRatio.toFixed(2)}x`;
+
+  const volumeCurrentText = `${formatNumberCompact(volumeCurrent)}주`;
+  const volumePrevText = `${formatNumberCompact(volumePrev)}주`;
+  const valueCurrentText = formatCurrencyCompact(valueCurrent);
+  const valuePrevText = formatCurrencyCompact(valuePrev);
+
+  const summaryHtml = `거래량 ${volumeCurrentText} (전일 ${volumePrevText}) · 거래대금 ${valueCurrentText} (전일 ${valuePrevText})`;
+  const volumeLabel = volumeSummaryRaw
+    ? `거래량 ${volumeSummaryRaw}`
+    : `전일 대비 ${volumeRatioText}`;
+  const valueLabel = valueSummaryRaw
+    ? `거래대금 ${valueSummaryRaw}`
+    : `전일 대비 ${valueRatioText}`;
+
   return {
-    text: sourceText,
+    text: rawText,
+    summaryHtml,
     volumeRatio,
+    volumeRatioText,
     valueRatio,
+    valueRatioText,
     volumeLeft: volumeData.left,
     volumeWidth: volumeData.width,
     volumePointer: volumeData.pointer,
     volumeChangePct: volumeData.changePct,
     volumeTone: volumeData.tone,
+    volumeSummary: volumeLabel,
     valueLeft: valueData.left,
     valueWidth: valueData.width,
     valuePointer: valueData.pointer,
     valueChangePct: valueData.changePct,
     valueTone: valueData.tone,
+    valueSummary: valueLabel,
   };
+}
+
+function formatNumberCompact(value: number) {
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (abs >= 100_000_000) {
+    return `${sign}${(abs / 100_000_000).toFixed(2)}억`;
+  }
+  if (abs >= 10_000) {
+    return `${sign}${(abs / 10_000).toFixed(2)}만`;
+  }
+  return `${sign}${abs.toLocaleString()}`;
+}
+
+function formatCurrencyCompact(value: number) {
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000_000) {
+    return `${sign}${(abs / 1_000_000_000_000).toFixed(2)}조원`;
+  }
+  if (abs >= 100_000_000) {
+    return `${sign}${(abs / 100_000_000).toFixed(2)}억원`;
+  }
+  if (abs >= 10_000_000) {
+    return `${sign}${(abs / 10_000_000).toFixed(2)}천만원`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}${(abs / 1_000_000).toFixed(2)}백만원`;
+  }
+  return `${sign}${abs.toLocaleString()}원`;
 }
 
 function buildOrderFlowDetail(card: InsightMarketCard) {
@@ -3543,7 +3655,7 @@ const VideoSourceBody = styled.div`
 const VideoTitle = styled.span`
   font-size: 16px;
   font-weight: 700;
-  line-height : 1.4;
+  line-height: 1.4;
   color: ${COLOR_TEXT};
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3585,20 +3697,42 @@ const VideoMetaDot = styled.span`
 `;
 
 const VideoMetaRowContainer = styled.div`
-  display : flex;
-  flex-direction : column;
-  font-size : 15px;
-  font-weight : 600;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  font-weight: 600;
   strong {
-    margin-left : 6px;
+    margin-left: 6px;
   }
-`
+`;
 
 const VideoMetaRowSubContainer = styled.div`
-  display : flex;
-  margin-top : 4px;
-  font-size : 13px;
-  font-weight : 400;
+  display: flex;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+`;
+const VideoLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: ${COLOR_NEGATIVE};
+  padding: 14px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+  text-align: center;
+  justify-content: center;
+  &:hover {
+    background: #0a4ec4;
+  }
+
+  @media (max-width: 480px) {
+    justify-content: center;
+  }
 `;
 const StrategyGrid = styled.div`
   display: grid;

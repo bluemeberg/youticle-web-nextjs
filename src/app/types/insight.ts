@@ -20,6 +20,7 @@ export interface InsightSectionData {
   investment_strategies?: InsightStrategy[];
   tags?: string[];
   market_insights?: InsightMarketInsights;
+  market_delta_insights?: InsightMarketDelta;
   [key: string]: unknown;
 }
 
@@ -37,6 +38,58 @@ export interface InsightMarketInsights {
   date_kst?: string;
   by_market?: Record<string, InsightMarketCard | undefined>;
   quick?: string[];
+  [key: string]: unknown;
+}
+
+export interface InsightMarketDelta {
+  date_kst?: string;
+  quick?: string[];
+  by_market?: Record<string, InsightMarketDeltaCard | undefined>;
+  [key: string]: unknown;
+}
+
+export interface InsightMarketDeltaCard {
+  market?: string;
+  price_str?: string;
+  chg_point_str?: string;
+  chg_pct_str?: string;
+  range_str?: string;
+  quick_lines?: string[];
+  comment_title?: string;
+  comment_body?: string;
+  labels?: Record<string, string | undefined>;
+  sentences?: InsightMarketDeltaSentences;
+  flows?: InsightMarketDeltaFlows;
+  [key: string]: unknown;
+}
+
+export interface InsightMarketDeltaSentences {
+  headline?: string;
+  comment?: string;
+  price_intraday?: string;
+  liquidity_change?: string;
+  flows_summary?: string;
+  [key: string]: string | undefined;
+}
+
+export interface InsightMarketDeltaFlows {
+  summary?: string;
+  segments?: Array<{
+    key: string;
+    label?: string;
+    value?: number;
+    ratio?: number;
+    tone?: string;
+    direction?: string;
+  }>;
+  stats?: Array<{
+    key: string;
+    label?: string;
+    value?: string;
+    tone?: string;
+    description?: string;
+  }>;
+  sentences?: Record<string, string | undefined>;
   [key: string]: unknown;
 }
 
