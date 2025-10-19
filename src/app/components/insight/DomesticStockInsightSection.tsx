@@ -1215,7 +1215,7 @@ const StockCard = ({
   );
 };
 
-const StockVideoSources = ({
+export const StockVideoSources = ({
   sources,
   stockName,
 }: {
