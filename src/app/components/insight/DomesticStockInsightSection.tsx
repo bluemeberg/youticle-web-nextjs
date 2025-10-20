@@ -3655,7 +3655,7 @@ const VideoSourceBody = styled.div`
 const VideoTitle = styled.span`
   font-size: 16px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.2;
   color: ${COLOR_TEXT};
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3667,7 +3667,7 @@ const VideoSummary = styled.p`
   margin: 0;
   font-size: 13px;
   color: #475569;
-  line-height: 1.4;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
