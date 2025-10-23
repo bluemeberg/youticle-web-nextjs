@@ -56,6 +56,60 @@ const HUNDRED_MILLION_KEYWORDS = [
   "순이익",
 ];
 
+type StockPriceMetrics = {
+  close?: number;
+  prev_close?: number;
+  change_pct?: number; // 퍼센트(예: 0.2 => 0.2%)
+  open?: number;
+  high?: number;
+  low?: number;
+};
+
+function buildPriceInfoFromMetrics(mp?: StockPriceMetrics) {
+  if (!mp || mp.close == null) return null;
+
+  const close = mp.close;
+  const prev = mp.prev_close;
+  // change_pct가 없으면 prev 기반으로 계산
+  const pct =
+    typeof mp.change_pct === "number" && Number.isFinite(mp.change_pct)
+      ? mp.change_pct
+      : prev != null && prev !== 0
+      ? ((close - prev) / prev) * 100
+      : undefined;
+
+  const diff = prev != null ? close - prev : undefined;
+
+  const tone: PriceTone =
+    pct != null
+      ? pct > 0
+        ? "positive"
+        : pct < 0
+        ? "negative"
+        : "neutral"
+      : diff != null
+      ? diff > 0
+        ? "positive"
+        : diff < 0
+        ? "negative"
+        : "neutral"
+      : "neutral";
+
+  const sign = (v: number) => (v > 0 ? "+" : v < 0 ? "−" : "");
+
+  const closeText = close.toLocaleString(); // 종가 숫자만 깔끔 표시
+  const changeText =
+    pct != null && diff != null
+      ? `${sign(pct)}${Math.abs(pct).toFixed(2)}%`
+      : pct != null
+      ? `${sign(pct)}${Math.abs(pct).toFixed(2)}%`
+      : diff != null
+      ? `${sign(diff)}${Math.abs(diff).toLocaleString()}`
+      : "";
+
+  return { closeText, changeText, tone };
+}
+
 const StockMarketSection = ({
   section,
   showHeader = true,
@@ -389,30 +443,39 @@ const StockMarketSection = ({
 export default StockMarketSection;
 
 const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
+  console.log(stock.metrics?.price)
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
     StockInsightSectionDetail | null | undefined
   >;
   const priceSection = findPricePositionSection(insightSections);
+
+  // ✅ metrics.price 우선 사용
+  const metricsPriceInfo = buildPriceInfoFromMetrics(stock.metrics?.price as any);
+  // 섹션 파싱은 fallback
+  const parsedPriceInfo = parsePricePosition(priceSection ?? undefined);
+
+  const priceInfo = metricsPriceInfo ?? parsedPriceInfo ?? null;
+
+  console.log(priceInfo)
   const additionalSections = insightSections
-    // .filter((section): section is StockInsightSectionDetail =>
-    //   Boolean(section && section !== priceSection)
-    // )
     .filter((section): section is StockInsightSectionDetail => {
       return Boolean(section && (section.summary || section.highlights));
     });
-  const priceInfo = parsePricePosition(priceSection ?? undefined);
+
   const commentTitle = insight?.comment_title || stock.action_idea?.stance || null;
   const commentBody = insight?.comment_body || stock.action_idea?.reason || null;
-  const priceSummary = priceSection?.summary;
-  const priceHighlights = priceSection?.highlights;
+
   const hasDetailContent = Boolean(
-    priceSummary || priceHighlights || commentBody || additionalSections.length
+    (priceSection?.summary || priceSection?.highlights) ||
+      commentBody ||
+      additionalSections.length
   );
   const [showDetails, setShowDetails] = useState(false);
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
+
 
   return (
     <StockCardWrapper>
@@ -553,7 +616,7 @@ const MarketCardHeaderContent = ({
           card.chg_pct_str && card.chg_pct_str.includes("+")
         )}
       >
-        {card.chg_point_str ? <span>{card.chg_point_str}</span> : null}
+        {/* {card.chg_point_str ? <span>{card.chg_point_str}</span> : null} */}
         {card.chg_pct_str}
       </MarketChange>
     ) : null}
@@ -607,7 +670,7 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
         <FlowShiftLabel>{item.label}</FlowShiftLabel>
         <FlowShiftBars>
           <FlowShiftRow>
-            <FlowShiftBadge>오늘</FlowShiftBadge>
+            <FlowShiftBadge>어제</FlowShiftBadge>
             <FlowShiftTrack>
               <FlowShiftBar
                 $tone={item.todayAmount >= 0 ? "positive" : "negative"}
@@ -619,7 +682,7 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
             </FlowShiftValue>
           </FlowShiftRow>
           <FlowShiftRow>
-            <FlowShiftBadge $variant="muted">전일</FlowShiftBadge>
+            <FlowShiftBadge $variant="muted">그제</FlowShiftBadge>
             <FlowShiftTrack>
               <FlowShiftBar
                 $tone={item.prevAmount >= 0 ? "positive" : "negative"}

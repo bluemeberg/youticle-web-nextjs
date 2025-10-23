@@ -149,14 +149,14 @@ export function buildLiquidityDetailFromSentence(
 
   const summaryHtml = `거래량 ${formatNumberCompact(
     volumeCurrent
-  )} (전일 ${formatNumberCompact(
+  )} (전전일 ${formatNumberCompact(
     volumePrevious
-  )}) · 거래대금 ${valueCurrentText} (전일 ${valuePreviousText})`;
+  )}) · 거래대금 ${valueCurrentText} (전전일 ${valuePreviousText})`;
 
   const volumeSummary = volumeLabelRaw
     ? `${volumeLabelRaw}`
     : `거래량 ${describeLiquidityChange(volumeRatio)} (${volumeRatioText})`;
-  const valueSummary = `전일 대비 거래대금 ${describeLiquidityChange(
+  const valueSummary = `전전일 대비 거래대금 ${describeLiquidityChange(
     valueRatio
   )}`;
 
