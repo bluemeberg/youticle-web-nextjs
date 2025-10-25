@@ -141,7 +141,6 @@ const DomesticStockInsightSection = ({
   renderMarketIntro,
 }: Props) => {
   const { data, label, updated_at } = section;
-  console.log(section);
   const overview = data?.overview;
   const marketInsights = data?.market_insights?.by_market || {};
   const rawStocks = data?.stocks ?? [];
@@ -178,7 +177,6 @@ const DomesticStockInsightSection = ({
     Boolean(renderMarketIntro) || marketCardsAvailable;
   const isCryptoSection =
     label === "국내 가상자산" || label === "해외 가상자산";
-  console.log(marketInsights)
   return (
     <Wrapper>
       <SectionHeader>
@@ -362,7 +360,6 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const highlightLabels = Object.entries(card.labels || {})
     .map(([, value]) => value)
     .filter(Boolean) as string[];
-  console.log(card)
   const intradayDetail = buildIntradayDetail(card);
   const breadthDetail = buildBreadthDetail(card);
   const liquidityDetail = buildLiquidityDetail(card);
@@ -454,7 +451,8 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
             <StatDescriptor
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
-                  `상승 종목 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 종목 ${breadthDetail.down.toLocaleString()}`
+                  breadthDetail.text ||
+                    `상승 종목 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 종목 ${breadthDetail.down.toLocaleString()}`
                 ),
               }}
             />
@@ -544,7 +542,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
             <StatDescriptor
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
-                  `${flowDetail.direction} ${flowDetail.netText}`
+                  flowDetail.text || `${flowDetail.direction} ${flowDetail.netText}`
                 ),
               }}
             />
@@ -1369,6 +1367,9 @@ function buildBreadthDetail(card: InsightMarketCard) {
   const upPct = Math.round((upVal / total) * 100);
   const flatPct = Math.round((flatVal / total) * 100);
   const downPct = 100 - upPct - flatPct;
+  const text =
+    card.sentences?.market_breadth ||
+    `상승 종목 ${upVal.toLocaleString()} · 보합 ${flatVal.toLocaleString()} · 하락 종목 ${downVal.toLocaleString()}`;
 
   return {
     up: upVal,
@@ -1377,22 +1378,24 @@ function buildBreadthDetail(card: InsightMarketCard) {
     upPct,
     flatPct,
     downPct,
+    text,
   };
 }
 
 function buildLiquidityDetail(card: InsightMarketCard) {
   const rawText = card.sentences?.liquidity || card.volume_value_str;
   if (!rawText) return null;
-  console.log(rawText)
+
   const normalized = rawText
     .replace(/<br\s*\/?\>/gi, " ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
 
   const volumeMatch = normalized.match(
-    /거래량[^0-9]*([\d,]+)\s*주?\s*\(전일\s*([\d,]+)\s*주?(?:[^0-9]+([\d.]+)x)?/i
+    /거래량(?:은)?[^0-9가-힣-]*([\d,.]+(?:\s*[가-힣]+)?)\s*\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i
   );
   const valueMatch = normalized.match(
-    /거래대금[^0-9]*([\d,]+)(억)?\s*원?\s*\(전일\s*([\d,]+)(억)?\s*원?(?:[^0-9]+([\d.]+)x)?/i
+    /거래대금(?:은)?[^0-9가-힣-]*([\d,.\s가-힣]+?)\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i
   );
   const volumeSummaryMatch = normalized.match(
     /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
@@ -1405,35 +1408,39 @@ function buildLiquidityDetail(card: InsightMarketCard) {
     return null;
   }
 
-  const volumeCurrent = parseNumber(volumeMatch[1]) ?? 0;
-  const volumePrev = parseNumber(volumeMatch[2]) ?? 0;
   const volumeRatioFromText = volumeMatch[3]
     ? parseFloat(volumeMatch[3])
     : null;
-
-  const valueCurrentRaw = parseNumber(valueMatch[1]) ?? 0;
-  const valuePrevRaw = parseNumber(valueMatch[3]) ?? 0;
-  const valueRatioFromText = valueMatch[5]
-    ? parseFloat(valueMatch[5])
+  const valueRatioFromText = valueMatch[3]
+    ? parseFloat(valueMatch[3])
     : null;
-  console.log(valueCurrentRaw)
-  console.log(valuePrevRaw)
-  const valueCurrent = valueMatch[2] ? valueCurrentRaw * 100_000_000 : valueCurrentRaw;
-  const valuePrev = valueMatch[4] ? valuePrevRaw * 100_000_000 : valuePrevRaw;
+  const derivedVolumeRatio = toNumeric(card.derived?.volume_ratio_vs_prev);
+  const derivedValueRatio = toNumeric(card.derived?.value_ratio_vs_prev);
 
-  const volumeRatio =
-    volumeRatioFromText && Number.isFinite(volumeRatioFromText)
-      ? volumeRatioFromText
-      : volumePrev > 0
-      ? volumeCurrent / volumePrev
-      : 1;
+  const volumeCurrent =
+    parseKoreanAmount(volumeMatch[1]) ?? parseNumber(volumeMatch[1]) ?? 0;
+  const volumePrevRawText = stripRatioText(volumeMatch[2]);
+  const volumePrev =
+    parseKoreanAmount(volumePrevRawText) ?? parseNumber(volumePrevRawText) ?? 0;
 
-  const valueRatio =
-    valueRatioFromText && Number.isFinite(valueRatioFromText)
-      ? valueRatioFromText
-      : valuePrev > 0
-      ? valueCurrent / valuePrev
-      : 1;
+  const valueCurrentRawText = valueMatch[1]?.trim();
+  const valuePrevRawText = stripRatioText(valueMatch[2]);
+  const valueCurrent =
+    parseKoreanAmount(valueCurrentRawText) ?? parseNumber(valueCurrentRawText) ?? 0;
+  const valuePrev =
+    parseKoreanAmount(valuePrevRawText) ?? parseNumber(valuePrevRawText) ?? 0;
+
+  const volumeRatio = (() => {
+    const candidate = volumeRatioFromText ?? derivedVolumeRatio;
+    if (candidate && Number.isFinite(candidate)) return candidate;
+    return volumePrev > 0 ? volumeCurrent / volumePrev : 1;
+  })();
+
+  const valueRatio = (() => {
+    const candidate = valueRatioFromText ?? derivedValueRatio;
+    if (candidate && Number.isFinite(candidate)) return candidate;
+    return valuePrev > 0 ? valueCurrent / valuePrev : 1;
+  })();
 
   const compute = (ratio: number) => {
     const capHigh = 2;
@@ -1546,21 +1553,81 @@ function formatCurrencyCompact(value: number) {
   return `${sign}${abs.toLocaleString()}원`;
 }
 
+function compactLargeNumbersInText(text?: string | null) {
+  if (text == null) return "";
+  if (typeof text !== "string") return String(text);
+  if (text.trim().length === 0) return text;
+
+  return text.replace(/(-?[\d,]+(?:\.[\d]+)?)/g, (match) => {
+    const numeric = Number(match.replace(/,/g, ""));
+    if (!Number.isFinite(numeric) || Math.abs(numeric) < 10_000) {
+      return match;
+    }
+    return formatNumberCompact(numeric);
+  });
+}
+
+function parseKoreanAmount(value?: string | null) {
+  if (!value) return null;
+  const normalized = value
+    .replace(/원|주|건|개/g, "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  if (!normalized) return null;
+
+  const unitMap: Record<string, number> = {
+    조: 1_000_000_000_000,
+    억: 100_000_000,
+    만: 10_000,
+  };
+
+  let total = 0;
+  let matched = false;
+  normalized.replace(/([+-]?\d+(?:\.\d+)?)(조|억|만)?/g, (_, numStr, unit) => {
+    if (!numStr) return "";
+    matched = true;
+    const multiplier = unit ? unitMap[unit] ?? 1 : 1;
+    const numeric = Number(numStr);
+    if (Number.isFinite(numeric)) {
+      total += numeric * multiplier;
+    }
+    return "";
+  });
+
+  if (matched) return total;
+  const fallback = Number(normalized);
+  return Number.isFinite(fallback) ? fallback : null;
+}
+
+function stripRatioText(value?: string | null) {
+  if (!value) return "";
+  return value.replace(/,?\s*(?:약\s*)?[\d.]+x/gi, "").trim();
+}
+
 function buildOrderFlowDetail(card: InsightMarketCard) {
   const match = card.order_imbalance_str?.match(
-    /매도잔량\s([\d,]+) · 매수잔량\s([\d,]+) \(매도\s([\d.]+)% · 매수\s([\d.]+)% · 순매수\s([\d,]+)/
+    /매도잔량\s([\d,.]+(?:\s*[가-힣]+)?) · 매수잔량\s([\d,.]+(?:\s*[가-힣]+)?) \(매도\s([\d.]+)% · 매수\s([\d.]+)% · 순매수\s(?:약\s*)?([\d,.]+(?:\s*[가-힣]+)?)\)/
   );
   if (!match) return null;
   const [, sell, buy, sellPct, buyPct, net] = match;
-  const netValue = Number(net.replace(/,/g, "")) || 0;
+  const parseQuantity = (value?: string | null) =>
+    parseKoreanAmount(value) ?? parseNumber(value) ?? 0;
+  const netValue = parseQuantity(net);
   const netText = formatNumberWithUnit(netValue, { sign: true });
   const netDirection: "buy" | "sell" | "neutral" =
     netValue > 0 ? "buy" : netValue < 0 ? "sell" : "neutral";
+  const rawText =
+    card.sentences?.order_flow ||
+    card.order_imbalance_str ||
+    `${netDirection === "buy" ? "매수" : netDirection === "sell" ? "매도" : "중립"} ${netText}`;
+  const text = compactLargeNumbersInText(rawText);
   return {
     sellPct: Number(sellPct),
     buyPct: Number(buyPct),
     netText,
     direction: netDirection,
+    text,
   };
 }
 
