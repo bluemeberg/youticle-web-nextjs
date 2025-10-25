@@ -57,6 +57,8 @@ export interface MarketFlowShiftDetail {
   items: MarketFlowShiftItem[];
 }
 
+const DEFAULT_FLOW_MONETARY_UNIT = 1_000_000;
+
 export function buildLiquidityDetailFromSentence(
   card: Pick<InsightMarketDeltaCard, "sentences"> & {
     volume_value_str?: string | null;
@@ -103,11 +105,11 @@ export function buildLiquidityDetailFromSentence(
   const valueRatioFromText = valueMatch[5] ? parseFloat(valueMatch[5]) : null;
 
   const valueCurrent =
-    valueCurrentUnit === "억" ? valueCurrentRaw * 100_000_000 : valueCurrentRaw;
+    parseAmountWithUnit(String(valueMatch[1]), valueCurrentUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
+    valueCurrentRaw;
   const valuePrevious =
-    valuePreviousUnit === "억"
-      ? valuePreviousRaw * 100_000_000
-      : valuePreviousRaw;
+    parseAmountWithUnit(String(valueMatch[3]), valuePreviousUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
+    valuePreviousRaw;
 
   const volumeRatio =
     volumeRatioFromText && Number.isFinite(volumeRatioFromText)
@@ -499,13 +501,24 @@ function parseFlowShiftSentence(
     .trim();
 
   const pattern =
-    /(외국인|기관|개인)\s+(순매수|순매도):\s*오늘\s*수량\s*([-\d,]+)주,\s*오늘\s*금액\s*([-\d,.]+)\s*(억|조)?\s*원\s*\(전일\s*(순매수|순매도):\s*전일\s*수량\s*([-\d,]+)주,\s*전일\s*금액\s*([-\d,.]+)\s*(억|조)?\s*원\)/i;
+    /(외국인|기관|개인)\s+(순매수|순매도)[:：]?\s*오늘\s*수량\s*([-+\d,]+)주,\s*오늘\s*금액\s*([-+\d,.]+)(?:\s*(억|조))?\s*(?:원|KRW)?\s*\(\s*전일\s*(?:(순매수|순매도)[:：]?\s*)?전일\s*수량\s*([-+\d,]+)주,\s*전일\s*금액\s*([-+\d,.]+)(?:\s*(억|조))?\s*(?:원|KRW)?\s*\)/i;
   const match = pattern.exec(normalized);
   if (!match) {
     return null;
   }
 
-  const [, labelRaw, direction, todayQtyRaw, todayAmtRaw, todayAmtUnit, prevDirection, prevQtyRaw, prevAmtRaw, prevAmtUnit] = match;
+  const [
+    ,
+    labelRaw,
+    direction,
+    todayQtyRaw,
+    todayAmtRaw,
+    todayAmtUnit,
+    prevDirection,
+    prevQtyRaw,
+    prevAmtRaw,
+    prevAmtUnit,
+  ] = match;
 
   const todayQty = parseSignedNumber(todayQtyRaw, direction) ?? 0;
   const prevQty = parseSignedNumber(prevQtyRaw, prevDirection) ?? 0;
@@ -524,25 +537,23 @@ function parseFlowShiftSentence(
   };
 }
 
-function parseAmountWithUnit(value?: string | null, unit?: string | null) {
+function parseAmountWithUnit(
+  value?: string | null,
+  unit?: string | null,
+  fallbackMultiplier = 1
+) {
   const numeric = parseNumber(value);
   if (numeric == null) return null;
-  if (!unit) return numeric;
-  if (unit.includes("조")) {
-    return numeric * 1_000_000_000_000;
-  }
-  if (unit.includes("억")) {
-    return numeric * 100_000_000;
-  }
-  return numeric;
+  return applyUnitMultiplier(numeric, unit, fallbackMultiplier);
 }
 
 function parseSignedAmount(
   value?: string | null,
   unit?: string | null,
-  direction?: string
+  direction?: string,
+  fallbackMultiplier = DEFAULT_FLOW_MONETARY_UNIT
 ) {
-  const base = parseAmountWithUnit(value, unit);
+  const base = parseAmountWithUnit(value, unit, fallbackMultiplier);
   if (base == null) return null;
   return applyDirectionSign(base, direction);
 }
@@ -576,4 +587,33 @@ function toNumeric(value: string | number | null | undefined): number | null {
     return Number.isFinite(num) ? num : null;
   }
   return null;
+}
+
+function applyUnitMultiplier(
+  value: number,
+  unit?: string | null,
+  fallbackMultiplier = 1
+) {
+  if (!Number.isFinite(value)) return value;
+  if (!unit || unit.trim().length === 0) {
+    return value * fallbackMultiplier;
+  }
+
+  const normalized = unit.trim();
+  if (/조/.test(normalized)) {
+    return value * 1_000_000_000_000;
+  }
+  if (/억/.test(normalized)) {
+    return value * 100_000_000;
+  }
+  if (/만/.test(normalized)) {
+    return value * 10_000;
+  }
+  if (/백만/.test(normalized) || /million/i.test(normalized)) {
+    return value * 1_000_000;
+  }
+  if (/원|krw/i.test(normalized)) {
+    return value;
+  }
+  return value * fallbackMultiplier;
 }

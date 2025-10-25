@@ -56,6 +56,8 @@ const HUNDRED_MILLION_KEYWORDS = [
   "순이익",
 ];
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 type StockPriceMetrics = {
   close?: number;
   prev_close?: number;
@@ -128,22 +130,49 @@ const StockMarketSection = ({
     );
   }, [delta?.by_market]);
 
+  const headerTimestamp = useMemo(() => {
+    const dateFromMarket = marketEntries.find(([, card]) =>
+      typeof card?.date_today === "string"
+    )?.[1].date_today;
+
+    return dateFromMarket || delta?.date_kst || null;
+  }, [marketEntries, delta?.date_kst]);
+
   const [showDetails, setShowDetails] = useState(
     defaultExpanded ?? !showHeader
   );
   const shouldRenderDetails = showHeader ? showDetails : true;
 
+  const stockUpdatedAt = section.updated_at ?? null;
+  const stockTimestampText = stockUpdatedAt
+    ? formatDateTime(stockUpdatedAt)
+    : null;
+  const stockRelativeText = stockUpdatedAt
+    ? formatRelativeDay(
+        stockUpdatedAt,
+        headerTimestamp || delta?.date_kst || null
+      )
+    : null;
+  const sharedTimestampText =
+    stockTimestampText || (headerTimestamp ? formatDateTime(headerTimestamp) : null);
+  const sharedRelativeText = stockTimestampText ? stockRelativeText : null;
+
   if (!delta || marketEntries.length === 0) {
     return null;
   }
-
+  console.log(marketEntries)
   return (
     <Wrapper>
       {showHeader ? (
         <SectionHeader>
           <Title>{section.label || "주식"} 마켓 인사이트</Title>
-          {delta.date_kst ? (
-            <Timestamp>업데이트 : {formatDateTime(delta.date_kst)}</Timestamp>
+          {sharedTimestampText ? (
+            <Timestamp>
+              업데이트 : {sharedTimestampText}
+              {/* {sharedRelativeText ? (
+                <RelativeTimestamp>{sharedRelativeText}</RelativeTimestamp>
+              ) : null} */}
+            </Timestamp>
           ) : null}
         </SectionHeader>
       ) : null}
@@ -194,12 +223,13 @@ const StockMarketSection = ({
                   : undefined,
             });
             const flowDetail = buildFlowDetail(card);
+            console.log(flowDetail)
             const extraSentences = extractAdditionalSentences(card);
 
             const headline =
               card.sentences?.headline || card.comment_title || card.sentences?.comment;
             const commentBody = card.comment_body || card.sentences?.comment;
-
+            
             return (
               <MarketCardWrapper key={marketKey}>
                 <MarketCardHeaderContent card={card} marketKey={marketKey} />
@@ -419,9 +449,12 @@ const StockMarketSection = ({
         <>
           <StockSubSectionHeader>
             <StockSubSectionTitle>📊 종목 인사이트</StockSubSectionTitle>
-            {section.updated_at ? (
+            {stockTimestampText ? (
               <Timestamp>
-                업데이트 : {formatDateTime(section.updated_at)}
+                업데이트 : {stockTimestampText}
+                {/* {stockRelativeText ? (
+                  <RelativeTimestamp>{stockRelativeText}</RelativeTimestamp>
+                ) : null} */}
               </Timestamp>
             ) : null}
           </StockSubSectionHeader>
@@ -604,27 +637,31 @@ const MarketCardHeaderContent = ({
 }: {
   card: InsightMarketDeltaCard;
   marketKey: string;
-}) => (
-  <MarketCardHeader className="StockMarketSection__MarketCardHeader">
-    <MarketTitle>
-      {card.market || marketKey}
-      {card.price_str ? <strong>{card.price_str}</strong> : null}
-    </MarketTitle>
-    {card.chg_point_str || card.chg_pct_str ? (
-      <MarketChange
-        $positive={Boolean(
-          card.chg_pct_str && card.chg_pct_str.includes("+")
-        )}
-      >
-        {/* {card.chg_point_str ? <span>{card.chg_point_str}</span> : null} */}
-        {card.chg_pct_str}
-      </MarketChange>
-    ) : null}
-  </MarketCardHeader>
-);
+}) => {
+  const changeMeta = buildMarketChangeMeta(card);
+
+  return (
+    <MarketCardHeader className="StockMarketSection__MarketCardHeader">
+      <MarketTitle>
+        {card.market || marketKey}
+        {card.price_str ? <strong>{card.price_str}</strong> : null}
+      </MarketTitle>
+      {changeMeta.text ? (
+        <MarketChange $positive={changeMeta.isPositive}>
+          {changeMeta.text}
+        </MarketChange>
+      ) : null}
+    </MarketCardHeader>
+  );
+};
 
 function buildFlowDetail(card: InsightMarketDeltaCard) {
-  const summary = card.flows?.summary || card.sentences?.flows_summary;
+  const summary = [
+    card.flows?.summary,
+    card.sentences?.flows_summary,
+    card.sentences?.flow_detail,
+    card.sentences?.flow_shift,
+  ].find((value): value is string => Boolean(value && value.trim().length > 0));
   const stats = (card.flows?.stats || [])
     .filter((stat) => Boolean(stat && (stat.label || stat.value)))
     .map((stat, index) => ({
@@ -664,7 +701,7 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
     const prevWidth = Math.min(50, (Math.abs(item.prevAmount) / safeMax) * 50);
     const todayLeft = item.todayAmount >= 0 ? 50 : 50 - todayWidth;
     const prevLeft = item.prevAmount >= 0 ? 50 : 50 - prevWidth;
-
+    console.log(item)
     return (
       <FlowShiftItem key={item.key}>
         <FlowShiftLabel>{item.label}</FlowShiftLabel>
@@ -961,6 +998,10 @@ function formatDateTime(value: string) {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
   const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -969,6 +1010,72 @@ function formatDateTime(value: string) {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `오늘 ${hh}:${mm}`;
+}
+
+function formatRelativeDay(value: string, reference?: string | Date | null) {
+  const target = parseDateValue(value);
+  if (!target) return null;
+
+  let referenceDate: Date | null;
+  if (reference instanceof Date) {
+    referenceDate = reference;
+  } else if (typeof reference === "string" && reference.trim().length > 0) {
+    referenceDate = parseDateValue(reference);
+  } else {
+    referenceDate = new Date();
+  }
+
+  if (!referenceDate || Number.isNaN(referenceDate.getTime())) {
+    return null;
+  }
+
+  const diffDays = Math.round(
+    (startOfDay(referenceDate).getTime() - startOfDay(target).getTime()) /
+      DAY_IN_MS
+  );
+
+  if (diffDays === 0) return "오늘";
+  if (diffDays > 0) return `${diffDays}일 전`;
+  return `${Math.abs(diffDays)}일 후`;
+}
+
+function parseDateValue(input?: string | null) {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  if (/^\d{8}$/.test(trimmed)) {
+    const yyyy = Number(trimmed.slice(0, 4));
+    const mm = Number(trimmed.slice(4, 6)) - 1;
+    const dd = Number(trimmed.slice(6, 8));
+    if (Number.isNaN(yyyy) || Number.isNaN(mm) || Number.isNaN(dd)) {
+      return null;
+    }
+    return new Date(Date.UTC(yyyy, mm, dd));
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [yyyy, mm, dd] = trimmed.split("-").map((token) => Number(token));
+    if (
+      Number.isFinite(yyyy) &&
+      Number.isFinite(mm) &&
+      Number.isFinite(dd)
+    ) {
+      return new Date(Date.UTC(yyyy, mm - 1, dd));
+    }
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+}
+
+function startOfDay(date: Date) {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
 }
 
 function emphasizeNumbers(text?: string | null) {
@@ -998,6 +1105,42 @@ function convertMarkToStrong(text: string) {
   return text
     .replace(/<mark\b[^>]*>/g, "<strong>")
     .replace(/<\/mark>/g, "</strong>");
+}
+
+function parseNumericChange(value?: string | null) {
+  if (typeof value !== "string") return null;
+  const sanitized = value.replace(/[^0-9+-.]/g, "");
+  if (!sanitized || sanitized === "+" || sanitized === "-" || sanitized === ".") {
+    return null;
+  }
+  const parsed = Number.parseFloat(sanitized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function buildMarketChangeMeta(card: InsightMarketDeltaCard) {
+  const pctValue = parseNumericChange(card.chg_pct_str);
+  const pointValue = parseNumericChange(card.chg_point_str);
+
+  let sign: -1 | 0 | 1 | null = null;
+  if (pctValue != null) {
+    sign = pctValue > 0 ? 1 : pctValue < 0 ? -1 : 0;
+  } else if (pointValue != null) {
+    sign = pointValue > 0 ? 1 : pointValue < 0 ? -1 : 0;
+  }
+
+  const displaySource = card.chg_pct_str?.trim() || card.chg_point_str?.trim() || "";
+  const hasExplicitSign = /^[+\-▲▼]/.test(displaySource);
+  const text =
+    sign === 1 && displaySource && !hasExplicitSign ? `+${displaySource}` : displaySource;
+
+  const fallbackPositive = hasExplicitSign
+    ? /^[+▲]/.test(displaySource)
+    : Boolean(card.chg_pct_str?.includes("+") || card.chg_point_str?.includes("+"));
+
+  return {
+    text,
+    isPositive: sign !== null ? sign > 0 : fallbackPositive,
+  };
 }
 
 function toneFromValue(value: number) {
@@ -1061,6 +1204,12 @@ const Timestamp = styled.span`
   font-size: 14px;
   color: #64748b;
   font-weight: 700;
+`;
+
+const RelativeTimestamp = styled.span`
+  margin-left: 6px;
+  font-weight: 600;
+  color: #94a3b8;
 `;
 
 const QuickLines = styled.div`

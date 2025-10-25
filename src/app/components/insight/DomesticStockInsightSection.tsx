@@ -3621,6 +3621,7 @@ const VideoThumbnailWrapper = styled.div`
   overflow: hidden;
   background: rgba(148, 163, 184, 0.15);
   min-width: 160px;
+  max-height : 90px;
   @media (max-width: 480px) {
     width: 100%;
     min-width: 160px;
