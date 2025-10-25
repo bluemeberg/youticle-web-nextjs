@@ -130,10 +130,10 @@ const StockMarketSection = ({
     );
   }, [delta?.by_market]);
 
-  const headerTimestamp = useMemo(() => {
-    const dateFromMarket = marketEntries.find(([, card]) =>
-      typeof card?.date_today === "string"
-    )?.[1].date_today;
+  const headerTimestamp = useMemo<string | null>(() => {
+    const dateFromMarket = marketEntries
+      .map(([, card]) => (card as { date_today?: string | null })?.date_today)
+      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
 
     return dateFromMarket || delta?.date_kst || null;
   }, [marketEntries, delta?.date_kst]);
