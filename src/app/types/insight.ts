@@ -109,6 +109,11 @@ export interface InsightMarketCard {
   comment_title?: string;
   comment_body?: string;
   labels?: Record<string, string | undefined>;
+  derived?: {
+    volume_ratio_vs_prev?: number | string;
+    value_ratio_vs_prev?: number | string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
