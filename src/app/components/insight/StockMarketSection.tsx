@@ -119,7 +119,10 @@ const StockMarketSection = ({
 }: StockMarketSectionProps) => {
   const delta = section.data?.market_delta_insights;
   const rawStocks = (section.data?.stocks ?? []) as InsightStock[];
-  const stocks = rawStocks;
+  const stocks = rawStocks.filter(
+    (stock) =>
+      typeof stock.ticker === "string" && stock.ticker.trim().length > 0
+  );
   const stockIntroText = getStockIntroText(section.label);
   const hasStocks = stocks.length > 0;
 
@@ -133,7 +136,10 @@ const StockMarketSection = ({
   const headerTimestamp = useMemo<string | null>(() => {
     const dateFromMarket = marketEntries
       .map(([, card]) => (card as { date_today?: string | null })?.date_today)
-      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+      .find(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0
+      );
 
     return dateFromMarket || delta?.date_kst || null;
   }, [marketEntries, delta?.date_kst]);
@@ -154,13 +160,14 @@ const StockMarketSection = ({
       )
     : null;
   const sharedTimestampText =
-    stockTimestampText || (headerTimestamp ? formatDateTime(headerTimestamp) : null);
+    stockTimestampText ||
+    (headerTimestamp ? formatDateTime(headerTimestamp) : null);
   const sharedRelativeText = stockTimestampText ? stockRelativeText : null;
 
   if (!delta || marketEntries.length === 0) {
     return null;
   }
-  console.log(marketEntries)
+  console.log(marketEntries);
   return (
     <Wrapper>
       {showHeader ? (
@@ -223,13 +230,15 @@ const StockMarketSection = ({
                   : undefined,
             });
             const flowDetail = buildFlowDetail(card);
-            console.log(flowDetail)
+            console.log(flowDetail);
             const extraSentences = extractAdditionalSentences(card);
 
             const headline =
-              card.sentences?.headline || card.comment_title || card.sentences?.comment;
+              card.sentences?.headline ||
+              card.comment_title ||
+              card.sentences?.comment;
             const commentBody = card.comment_body || card.sentences?.comment;
-            
+
             return (
               <MarketCardWrapper key={marketKey}>
                 <MarketCardHeaderContent card={card} marketKey={marketKey} />
@@ -269,7 +278,8 @@ const StockMarketSection = ({
                               style={{
                                 left: `${intradayDetail.lowPct}%`,
                                 width: `${Math.max(
-                                  intradayDetail.highPct - intradayDetail.lowPct,
+                                  intradayDetail.highPct -
+                                    intradayDetail.lowPct,
                                   1
                                 )}%`,
                               }}
@@ -284,9 +294,15 @@ const StockMarketSection = ({
                             />
                           </IntradayIndicator>
                           <IntradayLabels>
-                            <strong>저 {intradayDetail.low.toLocaleString()}</strong>
-                            <span>시 {intradayDetail.open.toLocaleString()}</span>
-                            <strong>고 {intradayDetail.high.toLocaleString()}</strong>
+                            <strong>
+                              저 {intradayDetail.low.toLocaleString()}
+                            </strong>
+                            <span>
+                              시 {intradayDetail.open.toLocaleString()}
+                            </span>
+                            <strong>
+                              고 {intradayDetail.high.toLocaleString()}
+                            </strong>
                           </IntradayLabels>
                           <IntradaySummary
                             dangerouslySetInnerHTML={{
@@ -325,7 +341,9 @@ const StockMarketSection = ({
                               <LiquidityMeta>
                                 <span>{liquidityDetail.volumeRatioText}</span>
                                 {liquidityDetail.volumeSummary ? (
-                                  <ChangeValue $tone={liquidityDetail.volumeTone}>
+                                  <ChangeValue
+                                    $tone={liquidityDetail.volumeTone}
+                                  >
                                     {liquidityDetail.volumeSummary}
                                   </ChangeValue>
                                 ) : null}
@@ -356,7 +374,9 @@ const StockMarketSection = ({
                               <LiquidityMeta>
                                 <span>{liquidityDetail.valueRatioText}</span>
                                 {liquidityDetail.valueSummary ? (
-                                  <ChangeValue $tone={liquidityDetail.valueTone}>
+                                  <ChangeValue
+                                    $tone={liquidityDetail.valueTone}
+                                  >
                                     {liquidityDetail.valueSummary}
                                   </ChangeValue>
                                 ) : null}
@@ -366,7 +386,9 @@ const StockMarketSection = ({
                         </LiquidityBox>
                         <StatDescriptor
                           dangerouslySetInnerHTML={{
-                            __html: emphasizeNumbers(liquidityDetail.summaryHtml),
+                            __html: emphasizeNumbers(
+                              liquidityDetail.summaryHtml
+                            ),
                           }}
                         />
                       </MarketStat>
@@ -380,7 +402,10 @@ const StockMarketSection = ({
                             {flowDetail.share.segments.map((segment) => (
                               <FlowShareSegment
                                 key={segment.key}
-                                $color={FLOW_COLORS[segment.tone] || FLOW_COLORS.others}
+                                $color={
+                                  FLOW_COLORS[segment.tone] ||
+                                  FLOW_COLORS.others
+                                }
                                 style={{ width: `${segment.percent}%` }}
                               >
                                 {segment.label} {segment.percent}%
@@ -399,7 +424,9 @@ const StockMarketSection = ({
                           <FlowStatList>
                             {flowDetail.stats.map((stat) => (
                               <li key={stat.key}>
-                                {stat.label ? <strong>{stat.label}</strong> : null}
+                                {stat.label ? (
+                                  <strong>{stat.label}</strong>
+                                ) : null}
                                 {stat.value ? (
                                   <span
                                     dangerouslySetInnerHTML={{
@@ -476,7 +503,7 @@ const StockMarketSection = ({
 export default StockMarketSection;
 
 const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
-  console.log(stock.metrics?.price)
+  console.log(stock.metrics?.price);
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
     StockInsightSectionDetail | null | undefined
@@ -484,23 +511,29 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
   const priceSection = findPricePositionSection(insightSections);
 
   // ✅ metrics.price 우선 사용
-  const metricsPriceInfo = buildPriceInfoFromMetrics(stock.metrics?.price as any);
+  const metricsPriceInfo = buildPriceInfoFromMetrics(
+    stock.metrics?.price as any
+  );
   // 섹션 파싱은 fallback
   const parsedPriceInfo = parsePricePosition(priceSection ?? undefined);
 
   const priceInfo = metricsPriceInfo ?? parsedPriceInfo ?? null;
 
-  console.log(priceInfo)
-  const additionalSections = insightSections
-    .filter((section): section is StockInsightSectionDetail => {
+  console.log(priceInfo);
+  const additionalSections = insightSections.filter(
+    (section): section is StockInsightSectionDetail => {
       return Boolean(section && (section.summary || section.highlights));
-    });
+    }
+  );
 
-  const commentTitle = insight?.comment_title || stock.action_idea?.stance || null;
-  const commentBody = insight?.comment_body || stock.action_idea?.reason || null;
+  const commentTitle =
+    insight?.comment_title || stock.action_idea?.stance || null;
+  const commentBody =
+    insight?.comment_body || stock.action_idea?.reason || null;
 
   const hasDetailContent = Boolean(
-    (priceSection?.summary || priceSection?.highlights) ||
+    priceSection?.summary ||
+      priceSection?.highlights ||
       commentBody ||
       additionalSections.length
   );
@@ -508,7 +541,6 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
-
 
   return (
     <StockCardWrapper>
@@ -586,14 +618,20 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
 
                     return (
                       <StockInsightItem
-                        key={`${section.category || "section"}-${section.title || index}`}
+                        key={`${section.category || "section"}-${
+                          section.title || index
+                        }`}
                       >
-                        {(section.category || section.title) ? (
+                        {section.category || section.title ? (
                           <StockInsightHeader>
                             {section.category ? (
-                              <StockInsightBadge>{section.category}</StockInsightBadge>
+                              <StockInsightBadge>
+                                {section.category}
+                              </StockInsightBadge>
                             ) : null}
-                            {section.title ? <span>{section.title}</span> : null}
+                            {section.title ? (
+                              <span>{section.title}</span>
+                            ) : null}
                           </StockInsightHeader>
                         ) : null}
                         {formattedSummary ? (
@@ -619,7 +657,6 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
           ) : null}
         </>
       ) : null}
-
 
       {showDetails ? (
         <StockVideoSources
@@ -697,11 +734,14 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
   const safeMax = maxAmount > 0 ? maxAmount : 1;
 
   return detail.items.map((item) => {
-    const todayWidth = Math.min(50, (Math.abs(item.todayAmount) / safeMax) * 50);
+    const todayWidth = Math.min(
+      50,
+      (Math.abs(item.todayAmount) / safeMax) * 50
+    );
     const prevWidth = Math.min(50, (Math.abs(item.prevAmount) / safeMax) * 50);
     const todayLeft = item.todayAmount >= 0 ? 50 : 50 - todayWidth;
     const prevLeft = item.prevAmount >= 0 ? 50 : 50 - prevWidth;
-    console.log(item)
+    console.log(item);
     return (
       <FlowShiftItem key={item.key}>
         <FlowShiftLabel>{item.label}</FlowShiftLabel>
@@ -731,7 +771,8 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
             </FlowShiftValue>
           </FlowShiftRow>
           <FlowShiftQuantity>
-            수량 {formatSignedNumberCompact(item.todayQty)}주 (전일 {formatSignedNumberCompact(item.prevQty)}주)
+            수량 {formatSignedNumberCompact(item.todayQty)}주 (전일{" "}
+            {formatSignedNumberCompact(item.prevQty)}주)
           </FlowShiftQuantity>
         </FlowShiftBars>
       </FlowShiftItem>
@@ -753,9 +794,10 @@ function findPricePositionSection(
   });
 }
 
-function parsePricePosition(
-  section?: { summary?: string | null; highlights?: string | null }
-) {
+function parsePricePosition(section?: {
+  summary?: string | null;
+  highlights?: string | null;
+}) {
   if (!section) return null;
   const source = section.highlights || section.summary;
   if (!source) return null;
@@ -787,15 +829,19 @@ function parsePricePosition(
   }
   const descriptor = changeMatch?.[2] || directionMatch;
   if (descriptor) {
-    changeTextParts.push(descriptor.includes("세") ? descriptor : `${descriptor}`);
+    changeTextParts.push(
+      descriptor.includes("세") ? descriptor : `${descriptor}`
+    );
   }
 
   const changeText = changeTextParts.join(" ");
 
   const tone: PriceTone = (() => {
     if (descriptor) {
-      if (descriptor.includes("상") || descriptor.includes("강")) return "positive";
-      if (descriptor.includes("하") || descriptor.includes("약")) return "negative";
+      if (descriptor.includes("상") || descriptor.includes("강"))
+        return "positive";
+      if (descriptor.includes("하") || descriptor.includes("약"))
+        return "negative";
     }
     if (changeMatch?.[1]) {
       const raw = changeMatch[1];
@@ -806,7 +852,9 @@ function parsePricePosition(
   })();
 
   const closeText = closeMatch
-    ? `${closeMatch[1]}${closeMatch[2] && closeMatch[2] !== "$" ? closeMatch[2] : ""}`
+    ? `${closeMatch[1]}${
+        closeMatch[2] && closeMatch[2] !== "$" ? closeMatch[2] : ""
+      }`
     : undefined;
 
   if (!closeText && !changeText) {
@@ -825,7 +873,9 @@ function formatInsightText(
   text?: string | null
 ) {
   if (!text) return text ?? "";
-  const context = `${section.category ?? ""} ${section.title ?? ""} ${text}`.toLowerCase();
+  const context = `${section.category ?? ""} ${
+    section.title ?? ""
+  } ${text}`.toLowerCase();
   const isHundredMillionContext = HUNDRED_MILLION_KEYWORDS.some((keyword) =>
     context.includes(keyword)
   );
@@ -1056,11 +1106,7 @@ function parseDateValue(input?: string | null) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     const [yyyy, mm, dd] = trimmed.split("-").map((token) => Number(token));
-    if (
-      Number.isFinite(yyyy) &&
-      Number.isFinite(mm) &&
-      Number.isFinite(dd)
-    ) {
+    if (Number.isFinite(yyyy) && Number.isFinite(mm) && Number.isFinite(dd)) {
       return new Date(Date.UTC(yyyy, mm - 1, dd));
     }
   }
@@ -1100,17 +1146,25 @@ function formatTextWithSentenceBreaks(text?: string | null) {
     .filter(Boolean);
   return parts.join("<br/>");
 }
-
-function convertMarkToStrong(text: string) {
-  return text
-    .replace(/<mark\b[^>]*>/g, "<strong>")
-    .replace(/<\/mark>/g, "</strong>");
+// ✅ mark → strong 으로 완전히 치환
+function convertMarkToStrong(html: string) {
+  if (typeof html !== "string" || html.length === 0) return html ?? "";
+  // 여는 태그(<mark ...>)는 통째로 <strong>으로
+  // 닫는 태그(</mark>)는 </strong>으로 교체
+  return html
+    .replace(/<mark\b[^>]*>/gi, "<strong>")
+    .replace(/<\/mark>/gi, "</strong>");
 }
 
 function parseNumericChange(value?: string | null) {
   if (typeof value !== "string") return null;
   const sanitized = value.replace(/[^0-9+-.]/g, "");
-  if (!sanitized || sanitized === "+" || sanitized === "-" || sanitized === ".") {
+  if (
+    !sanitized ||
+    sanitized === "+" ||
+    sanitized === "-" ||
+    sanitized === "."
+  ) {
     return null;
   }
   const parsed = Number.parseFloat(sanitized);
@@ -1128,14 +1182,19 @@ function buildMarketChangeMeta(card: InsightMarketDeltaCard) {
     sign = pointValue > 0 ? 1 : pointValue < 0 ? -1 : 0;
   }
 
-  const displaySource = card.chg_pct_str?.trim() || card.chg_point_str?.trim() || "";
+  const displaySource =
+    card.chg_pct_str?.trim() || card.chg_point_str?.trim() || "";
   const hasExplicitSign = /^[+\-▲▼]/.test(displaySource);
   const text =
-    sign === 1 && displaySource && !hasExplicitSign ? `+${displaySource}` : displaySource;
+    sign === 1 && displaySource && !hasExplicitSign
+      ? `+${displaySource}`
+      : displaySource;
 
   const fallbackPositive = hasExplicitSign
     ? /^[+▲]/.test(displaySource)
-    : Boolean(card.chg_pct_str?.includes("+") || card.chg_point_str?.includes("+"));
+    : Boolean(
+        card.chg_pct_str?.includes("+") || card.chg_point_str?.includes("+")
+      );
 
   return {
     text,
@@ -1492,9 +1551,10 @@ const StockCommentBody = styled.div`
   font-size: 14px;
   color: #1f2937;
   line-height: 1.6;
+  strong {
+    font-weight: 700;
+  }
 `;
-
-
 
 const MarketToggleButton = styled.button`
   display: inline-flex;
@@ -1568,6 +1628,20 @@ const MarketCommentTitle = styled.div`
 
 const MarketCommentBody = styled.div`
   font-size: 14px;
+  line-height: 1.6;
+
+  /* mark 기본 스타일 제거 + 폰트 강조만 */
+  mark,
+  .StockMarketSection__highlight {
+    background: transparent !important;
+    color: inherit !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    text-decoration: none !important;
+    display: inline;
+    font-weight: 700; /* 강조는 굵기만 */
+    font-style: normal;
+  }
 `;
 
 const MarketStatGrid = styled.div`
@@ -1818,8 +1892,7 @@ const FlowShiftBadge = styled.span<{ $variant?: "muted" }>`
   font-weight: 600;
   background: ${({ $variant }) =>
     $variant === "muted" ? "#e2e8f0" : "rgba(37, 99, 235, 0.15)"};
-  color: ${({ $variant }) =>
-    $variant === "muted" ? "#475569" : "#1d4ed8"};
+  color: ${({ $variant }) => ($variant === "muted" ? "#475569" : "#1d4ed8")};
 `;
 
 const FlowShiftTrack = styled.div`
@@ -1850,7 +1923,9 @@ const FlowShiftBar = styled.div<{ $tone: "positive" | "negative" }>`
     $tone === "positive" ? COLOR_POSITIVE : COLOR_NEGATIVE};
 `;
 
-const FlowShiftValue = styled.span<{ $tone: "positive" | "negative" | "neutral" }>`
+const FlowShiftValue = styled.span<{
+  $tone: "positive" | "negative" | "neutral";
+}>`
   min-width: 96px;
   text-align: right;
   font-weight: 600;

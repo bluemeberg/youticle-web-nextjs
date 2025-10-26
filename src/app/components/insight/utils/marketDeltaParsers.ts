@@ -501,7 +501,7 @@ function parseFlowShiftSentence(
     .trim();
 
   const pattern =
-    /(외국인|기관|개인)\s+(순매수|순매도)[:：]?\s*오늘\s*수량\s*([-+\d,]+)주,\s*오늘\s*금액\s*([-+\d,.]+)(?:\s*(억|조))?\s*(?:원|KRW)?\s*\(\s*전일\s*(?:(순매수|순매도)[:：]?\s*)?전일\s*수량\s*([-+\d,]+)주,\s*전일\s*금액\s*([-+\d,.]+)(?:\s*(억|조))?\s*(?:원|KRW)?\s*\)/i;
+    /(외국인|기관|개인)\s+(순매수|순매도)[:：]?\s*오늘\s*수량\s*([-+\d,]+)주,\s*오늘\s*금액\s*([-+\d,.]+)(?:\s*([가-힣A-Za-z]+))?\s*(?:원|KRW)?\s*\(\s*전일\s*(?:(순매수|순매도)[:：]?\s*)?전일\s*수량\s*([-+\d,]+)주,\s*전일\s*금액\s*([-+\d,.]+)(?:\s*([가-힣A-Za-z]+))?\s*(?:원|KRW)?\s*\)/i;
   const match = pattern.exec(normalized);
   if (!match) {
     return null;
@@ -606,11 +606,17 @@ function applyUnitMultiplier(
   if (/억/.test(normalized)) {
     return value * 100_000_000;
   }
-  if (/만/.test(normalized)) {
-    return value * 10_000;
+  if (/천만/.test(normalized)) {
+    return value * 10_000_000;
   }
   if (/백만/.test(normalized) || /million/i.test(normalized)) {
     return value * 1_000_000;
+  }
+  if (/십만/.test(normalized)) {
+    return value * 100_000;
+  }
+  if (/만/.test(normalized)) {
+    return value * 10_000;
   }
   if (/원|krw/i.test(normalized)) {
     return value;
