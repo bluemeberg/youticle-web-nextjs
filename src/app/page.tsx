@@ -53,13 +53,10 @@ export default async function LandingPage(props: LandingPageProps) {
       fetch(STOCK_API_URL, { method: "GET", cache: "no-store" }),
       Promise.all(
         sectionKeys.map(async (key) => {
-          const res = await fetch(
-            `${LOCAL_INSIGHTS_SECTION_URL}?sections=${key}`,
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          );
+          const res = await fetch(`${INSIGHTS_SECTION_URL}?sections=${key}`, {
+            method: "GET",
+            cache: "no-store",
+          });
           if (!res.ok) {
             throw new Error(
               `Insight section ${key} request failed (${res.status})`
