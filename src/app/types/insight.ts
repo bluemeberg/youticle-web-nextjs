@@ -333,6 +333,19 @@ export interface InsightStockMetrics {
     institution_net_buy_qty?: number;
     foreign_netbuy_share_pct?: number;
     institution_netbuy_share_pct?: number;
+    foreign?: {
+      qty?: number;
+      [key: string]: unknown;
+    };
+    institution?: {
+      qty?: number;
+      [key: string]: unknown;
+    };
+    individual?: {
+      qty?: number;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
   };
   liquidity?: {
     volume?: number;
@@ -340,6 +353,14 @@ export interface InsightStockMetrics {
     turnover_pct?: number;
     volume_change_pct?: number;
     value_change_pct?: number | null;
+    latest?: {
+      volume?: number;
+      value?: number;
+    };
+    previous?: {
+      volume?: number;
+      value?: number;
+    };
   };
   levels?: {
     pivot?: number;
@@ -349,6 +370,25 @@ export interface InsightStockMetrics {
     s2?: number;
     dist_to_resistance_pct?: number;
     dist_to_support_pct?: number;
+  };
+  earnings?: {
+    sales_growth_pct?: number;
+    op_profit_growth_pct?: number;
+    net_profit_growth_pct?: number;
+  };
+  capital?: {
+    total_assets?: number;
+    total_equity?: number;
+  };
+  profitability?: {
+    roe_pct?: number;
+    gpm_pct?: number;
+    npm_pct?: number;
+  };
+  stability_liquidity?: {
+    current_ratio_pct?: number;
+    quick_ratio_pct?: number;
+    debt_ratio_pct?: number;
   };
   quote_raw?: {
     output?: {

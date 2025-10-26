@@ -29,10 +29,10 @@ export const metadata = {
 
 export default async function LandingPage(props: LandingPageProps) {
   const STOCK_API_URL = "https://youticle.shop/briefing/top_videos/stock";
-  const LOCAL_STOCK_API_URL = "http://0.0.0.0:8001/briefing/top_videos/stock"
+  const LOCAL_STOCK_API_URL = "http://0.0.0.0:8001/briefing/top_videos/stock";
   const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
   const INSIGHTS_SECTION_URL = "https://youticle.shop/insights/sections";
-  const LOCAL_INSIGHTS_SECTION_URL = "http://0.0.0.0:8001/insights/sections"
+  const LOCAL_INSIGHTS_SECTION_URL = "http://0.0.0.0:8001/insights/sections";
   let integratedSections: InsightSectionsResponse | null = null;
   const keywordParam = props.searchParams?.keyword;
   const initialTopicRaw = Array.isArray(keywordParam)
@@ -41,19 +41,29 @@ export default async function LandingPage(props: LandingPageProps) {
   const initialTopic = initialTopicRaw?.trim();
 
   try {
-    const sectionKeys = ["domestic_stock", "overseas_stock", "domestic_crypto", "overseas_crypto"] as const;
+    const sectionKeys = [
+      "domestic_stock",
+      "overseas_stock",
+      "domestic_crypto",
+      "overseas_crypto",
+    ] as const;
 
     const [response1, response2, sectionResponses] = await Promise.all([
       fetch(EXCEPT_STOCK_API_URL, { method: "GET", cache: "no-store" }),
       fetch(STOCK_API_URL, { method: "GET", cache: "no-store" }),
       Promise.all(
         sectionKeys.map(async (key) => {
-          const res = await fetch(`${INSIGHTS_SECTION_URL}?sections=${key}`, {
-            method: "GET",
-            cache: "no-store",
-          });
+          const res = await fetch(
+            `${LOCAL_INSIGHTS_SECTION_URL}?sections=${key}`,
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          );
           if (!res.ok) {
-            throw new Error(`Insight section ${key} request failed (${res.status})`);
+            throw new Error(
+              `Insight section ${key} request failed (${res.status})`
+            );
           }
           return res.json() as Promise<InsightSectionsResponse>;
         })

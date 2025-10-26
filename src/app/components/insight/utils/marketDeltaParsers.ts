@@ -59,6 +59,21 @@ export interface MarketFlowShiftDetail {
 
 const DEFAULT_FLOW_MONETARY_UNIT = 1_000_000;
 
+interface ParsedLiquiditySentence {
+  volumeCurrent: number;
+  volumePrevious: number;
+  volumeRatioFromText?: number | null;
+  valueCurrent: number;
+  valuePrevious: number;
+  valueRatioFromText?: number | null;
+  volumeSummaryText?: string | null;
+  valueSummaryText?: string | null;
+  valueCurrentRaw?: number;
+  valuePreviousRaw?: number;
+  valueCurrentUnit?: string | null;
+  valuePreviousUnit?: string | null;
+}
+
 export function buildLiquidityDetailFromSentence(
   card: Pick<InsightMarketDeltaCard, "sentences"> & {
     volume_value_str?: string | null;
@@ -75,41 +90,32 @@ export function buildLiquidityDetailFromSentence(
     .replace(/<br\s*\/?\>/gi, " ")
     .replace(/\s+/g, " ");
 
-  const volumeMatch = normalized.match(
-    /거래량[^0-9]*([\d,]+)\s*주?\s*\(전일\s*([\d,]+)\s*주?(?:[^0-9]+([\d.]+)x)?/i
-  );
-  const valueMatch = normalized.match(
-    /거래대금[^0-9]*([\d,]+)(억)?\s*원?\s*\(전일\s*([\d,]+)(억)?\s*원?(?:[^0-9]+([\d.]+)x)?/i
-  );
-  const volumeSummaryMatch = normalized.match(
-    /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
-  );
-  const valueSummaryMatch = normalized.match(
-    /거래대금은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
-  );
+  const parsedSentence =
+    parseStandardLiquiditySentence(normalized) ??
+    parseDeltaStyleLiquiditySentence(normalized);
 
-  if (!volumeMatch || !valueMatch) {
+  if (!parsedSentence) {
     return null;
   }
 
-  const volumeCurrent = parseNumber(volumeMatch[1]) ?? 0;
-  const volumePrevious = parseNumber(volumeMatch[2]) ?? 0;
-  const volumeRatioFromText = volumeMatch[3]
-    ? parseFloat(volumeMatch[3])
-    : null;
+  const {
+    volumeCurrent,
+    volumePrevious,
+    volumeRatioFromText,
+    valueCurrent,
+    valuePrevious,
+    valueRatioFromText,
+    volumeSummaryText,
+    valueSummaryText,
+    valueCurrentRaw = valueCurrent,
+    valuePreviousRaw = valuePrevious,
+    valueCurrentUnit,
+    valuePreviousUnit,
+  } = parsedSentence;
 
-  const valueCurrentRaw = parseNumber(valueMatch[1]) ?? 0;
-  const valuePreviousRaw = parseNumber(valueMatch[3]) ?? 0;
-  const valueCurrentUnit = valueMatch[2];
-  const valuePreviousUnit = valueMatch[4];
-  const valueRatioFromText = valueMatch[5] ? parseFloat(valueMatch[5]) : null;
-
-  const valueCurrent =
-    parseAmountWithUnit(String(valueMatch[1]), valueCurrentUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
-    valueCurrentRaw;
-  const valuePrevious =
-    parseAmountWithUnit(String(valueMatch[3]), valuePreviousUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
-    valuePreviousRaw;
+  if (!Number.isFinite(volumeCurrent) || !Number.isFinite(valueCurrent)) {
+    return null;
+  }
 
   const volumeRatio =
     volumeRatioFromText && Number.isFinite(volumeRatioFromText)
@@ -128,8 +134,8 @@ export function buildLiquidityDetailFromSentence(
   const volumeData = computeLiquidityPosition(volumeRatio);
   const valueData = computeLiquidityPosition(valueRatio);
 
-  const volumeLabelRaw = volumeSummaryMatch?.[1]?.trim();
-  const valueLabelRaw = valueSummaryMatch?.[1]?.trim();
+  const volumeLabelRaw = volumeSummaryText?.trim();
+  const valueLabelRaw = valueSummaryText?.trim();
 
   const volumeRatioText = volumeRatioFromText
     ? `${volumeRatioFromText}x`
@@ -158,9 +164,9 @@ export function buildLiquidityDetailFromSentence(
   const volumeSummary = volumeLabelRaw
     ? `${volumeLabelRaw}`
     : `거래량 ${describeLiquidityChange(volumeRatio)} (${volumeRatioText})`;
-  const valueSummary = `전전일 대비 거래대금 ${describeLiquidityChange(
-    valueRatio
-  )}`;
+  const valueSummary = valueLabelRaw
+    ? `${valueLabelRaw}`
+    : `전전일 대비 거래대금 ${describeLiquidityChange(valueRatio)}`;
 
   return {
     text: rawTextCandidate,
@@ -180,6 +186,238 @@ export function buildLiquidityDetailFromSentence(
     valuePointer: valueData.pointer,
     valueTone: valueData.tone,
   };
+}
+
+function parseStandardLiquiditySentence(
+  normalized: string
+): ParsedLiquiditySentence | null {
+  const numberPattern = "[\\d,]+(?:\\.\\d+)?";
+  const volumeMatch = normalized.match(
+    new RegExp(
+      `거래량[^0-9]*(${numberPattern})\\s*주?\\s*\\(전일\\s*(${numberPattern})\\s*주?(?:[^0-9]+([\\d.]+)x)?`,
+      "i"
+    )
+  );
+  const valueMatch = normalized.match(
+    new RegExp(
+      `거래대금[^0-9]*(${numberPattern})(억)?\\s*원?\\s*\\(전일\\s*(${numberPattern})(억)?\\s*원?(?:[^0-9]+([\\d.]+)x)?`,
+      "i"
+    )
+  );
+  if (!volumeMatch || !valueMatch) {
+    return null;
+  }
+
+  const volumeSummaryMatch = normalized.match(
+    /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+  );
+  const valueSummaryMatch = normalized.match(
+    /거래대금은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+  );
+
+  const volumeCurrent = parseNumber(volumeMatch[1]) ?? 0;
+  const volumePrevious = parseNumber(volumeMatch[2]) ?? 0;
+  const volumeRatioFromText = volumeMatch[3]
+    ? parseFloat(volumeMatch[3])
+    : null;
+
+  const valueCurrentRaw = parseNumber(valueMatch[1]) ?? 0;
+  const valuePreviousRaw = parseNumber(valueMatch[3]) ?? 0;
+  const valueCurrentUnit = valueMatch[2];
+  const valuePreviousUnit = valueMatch[4];
+  const valueRatioFromText = valueMatch[5] ? parseFloat(valueMatch[5]) : null;
+
+  const valueCurrent =
+    parseAmountWithUnit(String(valueMatch[1]), valueCurrentUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
+    valueCurrentRaw;
+  const valuePrevious =
+    parseAmountWithUnit(String(valueMatch[3]), valuePreviousUnit, DEFAULT_FLOW_MONETARY_UNIT) ??
+    valuePreviousRaw;
+
+  return {
+    volumeCurrent,
+    volumePrevious,
+    volumeRatioFromText,
+    valueCurrent,
+    valuePrevious,
+    valueRatioFromText,
+    volumeSummaryText: volumeSummaryMatch?.[1]?.trim(),
+    valueSummaryText: valueSummaryMatch?.[1]?.trim(),
+    valueCurrentRaw,
+    valuePreviousRaw,
+    valueCurrentUnit,
+    valuePreviousUnit,
+  };
+}
+
+function parseDeltaStyleLiquiditySentence(
+  normalized: string
+): ParsedLiquiditySentence | null {
+  const volumeCurrentMatch = normalized.match(
+    /최근\s*거래량(?:은)?\s*([\d,.]+)\s*주/i
+  );
+  const valueCurrentMatch = normalized.match(
+    /거래대금(?:은)?\s*([\d,.]+)\s*(?:원|krw)?/i
+  );
+
+  const volumeCurrent = parseNumber(volumeCurrentMatch?.[1]) ?? null;
+  const valueCurrentRaw = parseNumber(valueCurrentMatch?.[1]) ?? null;
+
+  if (volumeCurrent == null || valueCurrentRaw == null) {
+    return null;
+  }
+
+  const volumeDeltaMatch = /거래량(?:은)?\s*전일\s*대비\s*([\d,.]+)\s*주(?:\s*\(([-+]?[\d.,]+)%\))?/i.exec(
+    normalized
+  );
+  const valueDeltaMatch = /거래대금(?:은)?\s*전일\s*대비\s*([\d,.]+)\s*(?:원|krw)?(?:\s*\(([-+]?[\d.,]+)%\))?/i.exec(
+    normalized
+  );
+
+  if (!volumeDeltaMatch || !valueDeltaMatch) {
+    return null;
+  }
+
+  const volumeDeltaAbs = parseNumber(volumeDeltaMatch[1]) ?? null;
+  const volumePctRaw = volumeDeltaMatch[2]?.trim();
+  const volumeDeltaPct = volumePctRaw
+    ? parseFloat(volumePctRaw.replace(/,/g, ""))
+    : null;
+  const volumePctHasExplicitSign = Boolean(volumePctRaw && /^[+-]/.test(volumePctRaw));
+
+  const valueDeltaAbs = parseNumber(valueDeltaMatch[1]) ?? null;
+  const valuePctRaw = valueDeltaMatch[2]?.trim();
+  const valueDeltaPct = valuePctRaw
+    ? parseFloat(valuePctRaw.replace(/,/g, ""))
+    : null;
+  const valuePctHasExplicitSign = Boolean(valuePctRaw && /^[+-]/.test(valuePctRaw));
+
+  let volumeDirection: ChangeDirection | null =
+    detectChangeDirection(normalized, volumeDeltaMatch.index) ||
+    directionFromDeltaString(volumeDeltaMatch[2]);
+  let valueDirection: ChangeDirection | null =
+    detectChangeDirection(normalized, valueDeltaMatch.index) ||
+    directionFromDeltaString(valueDeltaMatch[2]);
+
+  if (!volumeDirection && volumeDeltaPct != null && volumeDeltaPct !== 0) {
+    volumeDirection = volumeDeltaPct > 0 ? 1 : -1;
+  }
+  if (!valueDirection && valueDeltaPct != null && valueDeltaPct !== 0) {
+    valueDirection = valueDeltaPct > 0 ? 1 : -1;
+  }
+
+  const volumeComputed = computePreviousFromChange({
+    current: volumeCurrent,
+    deltaAbs: volumeDeltaAbs,
+    deltaPct: volumeDeltaPct,
+    direction: volumeDirection,
+    pctHasExplicitSign: volumePctHasExplicitSign,
+  });
+  const valueComputed = computePreviousFromChange({
+    current: valueCurrentRaw,
+    deltaAbs: valueDeltaAbs,
+    deltaPct: valueDeltaPct,
+    direction: valueDirection,
+    pctHasExplicitSign: valuePctHasExplicitSign,
+  });
+
+  if (!volumeComputed || !valueComputed) {
+    return null;
+  }
+
+  return {
+    volumeCurrent,
+    volumePrevious: volumeComputed.previous,
+    volumeRatioFromText: volumeComputed.ratioFromDelta,
+    valueCurrent: valueCurrentRaw,
+    valuePrevious: valueComputed.previous,
+    valueRatioFromText: valueComputed.ratioFromDelta,
+    valueCurrentRaw: valueCurrentRaw,
+    valuePreviousRaw: valueComputed.previous,
+    volumeSummaryText: volumeDirection
+      ? `거래량 ${volumeDirection === 1 ? "증가" : "감소"}`
+      : undefined,
+    valueSummaryText: valueDirection
+      ? `거래대금 ${valueDirection === 1 ? "증가" : "감소"}`
+      : undefined,
+  };
+}
+
+type ChangeDirection = 1 | -1;
+
+function computePreviousFromChange({
+  current,
+  deltaAbs,
+  deltaPct,
+  direction,
+  pctHasExplicitSign,
+}: {
+  current: number;
+  deltaAbs?: number | null;
+  deltaPct?: number | null;
+  direction?: ChangeDirection | null;
+  pctHasExplicitSign?: boolean;
+}): { previous: number; ratioFromDelta?: number } | null {
+  if (!Number.isFinite(current) || current <= 0) {
+    return null;
+  }
+
+  if (deltaPct != null && Number.isFinite(deltaPct)) {
+    let pctValue = deltaPct;
+    if (!pctHasExplicitSign && direction != null) {
+      pctValue = direction === -1 ? -Math.abs(pctValue) : Math.abs(pctValue);
+    }
+
+    const ratio = 1 + pctValue / 100;
+    if (ratio > 0) {
+      return {
+        previous: current / ratio,
+        ratioFromDelta: ratio,
+      };
+    }
+  }
+
+  if (direction && deltaAbs != null && Number.isFinite(deltaAbs)) {
+    const previous = current - direction * deltaAbs;
+    if (previous > 0) {
+      return {
+        previous,
+        ratioFromDelta: current / previous,
+      };
+    }
+  }
+
+  return null;
+}
+
+function detectChangeDirection(
+  text: string,
+  anchorIndex?: number | null
+): ChangeDirection | null {
+  if (anchorIndex == null || anchorIndex < 0) return null;
+  const window = text.slice(
+    Math.max(0, anchorIndex - 20),
+    Math.min(text.length, anchorIndex + 80)
+  );
+  if (/감소|위축|축소|둔화|줄어|하락/i.test(window)) {
+    return -1;
+  }
+  if (/증가|확대|늘어|풍부|강화|상승/i.test(window)) {
+    return 1;
+  }
+  return null;
+}
+
+function directionFromDeltaString(value?: string | null): ChangeDirection | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.startsWith("-")) {
+    return -1;
+  }
+  if (trimmed.startsWith("+")) {
+    return 1;
+  }
+  return null;
 }
 
 export function buildIntradayDetailFromCard(

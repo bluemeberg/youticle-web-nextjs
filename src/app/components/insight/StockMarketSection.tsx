@@ -7,6 +7,7 @@ import type {
   InsightMarketDeltaCard,
   InsightSection,
   InsightStock,
+  InsightStockMetrics,
 } from "@/types/insight";
 import {
   buildIntradayDetailFromCard,
@@ -30,6 +31,72 @@ type StockInsightSectionDetail = {
 };
 
 type PriceTone = "positive" | "negative" | "neutral";
+
+type RangeMarker = {
+  key: string;
+  label: string;
+  value: number;
+  tone?: PriceTone;
+};
+
+type InsightBarItem = {
+  key: string;
+  label: string;
+  value: number;
+  display?: string;
+  tone?: PriceTone;
+};
+
+type InsightDeltaItem = {
+  key: string;
+  label: string;
+  current: number;
+  previous?: number;
+  currentDisplay?: string;
+  previousDisplay?: string;
+};
+
+type InsightVisualizationBase = {
+  contextLabel?: string;
+};
+
+type InsightMetricEntry = {
+  key: string;
+  label: string;
+  value: string;
+  description?: string;
+  tone?: PriceTone;
+};
+
+type InsightVisualization =
+  | ({
+      type: "range";
+      low: number;
+      high: number;
+      markers: RangeMarker[];
+      formatter?: (value: number) => string;
+    } & InsightVisualizationBase)
+  | ({
+      type: "signedBars";
+      items: InsightBarItem[];
+      formatter?: (value: number) => string;
+      max?: number;
+    } & InsightVisualizationBase)
+  | ({
+      type: "bars";
+      items: InsightBarItem[];
+      formatter?: (value: number) => string;
+      max?: number;
+    } & InsightVisualizationBase)
+  | ({
+      type: "delta";
+      items: InsightDeltaItem[];
+      formatter?: (value: number) => string;
+    } & InsightVisualizationBase)
+  | ({
+      type: "entries";
+      items: InsightMetricEntry[];
+    } & InsightVisualizationBase);
 
 const COLOR_POSITIVE = "#ff6b6b";
 const COLOR_NEGATIVE = "#0b63f6";
@@ -111,6 +178,12 @@ function buildPriceInfoFromMetrics(mp?: StockPriceMetrics) {
 
   return { closeText, changeText, tone };
 }
+
+// 퍼센트 값 안전 변환 (기본 left=50, width=0, pointer=50)
+const toPct = (v: unknown, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
 
 const StockMarketSection = ({
   section,
@@ -322,19 +395,25 @@ const StockMarketSection = ({
                             <LiquidityMeter>
                               <LiquidityTrack>
                                 <LiquidityFill
-                                  $tone={liquidityDetail.volumeTone}
+                                  $tone={liquidityDetail.volumeTone ?? "flat"}
                                   style={{
-                                    left: `${liquidityDetail.volumeLeft}%`,
+                                    left: `${toPct(
+                                      liquidityDetail.volumeLeft,
+                                      50
+                                    )}%`,
                                     width: `${Math.max(
-                                      liquidityDetail.volumeWidth,
+                                      toPct(liquidityDetail.volumeWidth, 0),
                                       1
                                     )}%`,
                                   }}
                                 />
                                 <LiquidityPointer
-                                  $tone={liquidityDetail.volumeTone}
+                                  $tone={liquidityDetail.volumeTone ?? "flat"}
                                   style={{
-                                    left: `${liquidityDetail.volumePointer}%`,
+                                    left: `${toPct(
+                                      liquidityDetail.volumePointer,
+                                      50
+                                    )}%`,
                                   }}
                                 />
                               </LiquidityTrack>
@@ -520,11 +599,18 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
   const priceInfo = metricsPriceInfo ?? parsedPriceInfo ?? null;
 
   console.log(priceInfo);
-  const additionalSections = insightSections.filter(
-    (section): section is StockInsightSectionDetail => {
+  const additionalSections = insightSections
+    .filter((section): section is StockInsightSectionDetail => {
       return Boolean(section && (section.summary || section.highlights));
-    }
-  );
+    })
+    .filter((section) => {
+      const category = section.category?.toLowerCase() ?? "";
+      const title = section.title?.toLowerCase() ?? "";
+      const skipKeywords = ["안정", "유동", "stability", "liquidity"];
+      return !skipKeywords.some(
+        (keyword) => category.includes(keyword) || title.includes(keyword)
+      );
+    });
 
   const commentTitle =
     insight?.comment_title || stock.action_idea?.stance || null;
@@ -607,40 +693,63 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
               {additionalSections.length ? (
                 <StockInsightList>
                   {additionalSections.map((section, index) => {
+                    const itemKey =
+                      section.category ||
+                      section.title ||
+                      `${stock.ticker || stock.stock_name}-section-${index}`;
+                    const normalizedCategory = section.category?.trim();
+                    const normalizedTitle = section.title?.trim();
+                    const isProfitabilitySection = Boolean(
+                      (normalizedCategory &&
+                        /수익성/i.test(normalizedCategory)) ||
+                        (normalizedTitle && /수익성/i.test(normalizedTitle))
+                    );
+                    const displayCategory = isProfitabilitySection
+                      ? "수익성, 재무 안정 지표"
+                      : normalizedCategory;
+                    const displayTitle = isProfitabilitySection
+                      ? "수익성, 재무 안정 지표"
+                      : normalizedTitle;
                     const formattedSummary = formatInsightText(
                       section,
                       section.summary
                     );
-                    const formattedHighlights = formatInsightText(
+                    const isMergedProfitSection = Boolean(
+                      displayTitle &&
+                        displayTitle.trim() === "수익성, 재무 안정 지표"
+                    );
+                    const formattedHighlights = isMergedProfitSection
+                      ? null
+                      : formatInsightText(section, section.highlights);
+                    const visualization = buildInsightVisualization(
                       section,
-                      section.highlights
+                      stock
                     );
 
                     return (
-                      <StockInsightItem
-                        key={`${section.category || "section"}-${
-                          section.title || index
-                        }`}
-                      >
+                      <StockInsightItem key={itemKey}>
                         {section.category || section.title ? (
                           <StockInsightHeader>
-                            {section.category ? (
+                            {displayCategory ? (
                               <StockInsightBadge>
-                                {section.category}
+                                {displayCategory}
                               </StockInsightBadge>
                             ) : null}
-                            {section.title ? (
-                              <span>{section.title}</span>
-                            ) : null}
+                            {displayTitle ? <span>{displayTitle}</span> : null}
                           </StockInsightHeader>
                         ) : null}
-                        {formattedSummary ? (
+                        {visualization ? (
+                          <StockInsightVisualization
+                            visualization={visualization}
+                          />
+                        ) : null}
+                        {/* {formattedSummary ? (
                           <StockInsightSummary
                             dangerouslySetInnerHTML={{
                               __html: emphasizeNumbers(formattedSummary),
                             }}
                           />
-                        ) : null}
+                        ) : null} */}
                         {formattedHighlights ? (
                           <StockInsightHighlights
                             dangerouslySetInnerHTML={{
@@ -665,6 +774,308 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
         />
       ) : null}
     </StockCardWrapper>
+  );
+};
+
+const StockInsightVisualization = ({
+  visualization,
+}: {
+  visualization: InsightVisualization;
+}) => {
+  if (!visualization) return null;
+  switch (visualization.type) {
+    case "range":
+      return <StockInsightRangeViz data={visualization} />;
+    case "signedBars":
+      return <StockInsightSignedBars data={visualization} />;
+    case "bars":
+      return <StockInsightPositiveBars data={visualization} />;
+    case "delta":
+      return <StockInsightDeltaViz data={visualization} />;
+    case "entries":
+      return <StockInsightMetricEntries data={visualization} />;
+    default:
+      return null;
+  }
+};
+
+const StockInsightRangeViz = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "range" }>;
+}) => {
+  const range = Math.max(data.high - data.low, 1);
+  const toPercent = (value: number) =>
+    Math.min(100, Math.max(0, ((value - data.low) / range) * 100));
+  const openMarker = data.markers.find((marker) => marker.key === "open");
+  const closeMarker = data.markers.find((marker) => marker.key === "close");
+  const formatValue = (value: number) =>
+    data.formatter ? data.formatter(value) : value.toLocaleString();
+
+  return (
+    <IntradayChart>
+      <IntradayIndicator>
+        <IntradayRail />
+        <IntradayFill
+          style={{
+            left: "0%",
+            width: "100%",
+          }}
+        />
+        {openMarker ? (
+          <IntradayMarker
+            $tone="open"
+            style={{ left: `${toPercent(openMarker.value)}%` }}
+          />
+        ) : null}
+        {closeMarker ? (
+          <IntradayMarker
+            $tone="close"
+            style={{ left: `${toPercent(closeMarker.value)}%` }}
+          />
+        ) : null}
+      </IntradayIndicator>
+      <IntradayLabels>
+        <strong>저 {formatValue(data.low)}</strong>
+        <span>
+          {openMarker ? `시 ${formatValue(openMarker.value)}` : ""}
+          {openMarker && closeMarker ? " · " : ""}
+          {closeMarker ? `종 ${formatValue(closeMarker.value)}` : ""}
+        </span>
+        <strong>고 {formatValue(data.high)}</strong>
+      </IntradayLabels>
+      {/* {closeMarker ? (
+        <IntradaySummary>
+          종가 위치: {formatValue(closeMarker.value)}
+        </IntradaySummary>
+      ) : null} */}
+    </IntradayChart>
+  );
+};
+
+const StockInsightSignedBars = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "signedBars" }>;
+}) => {
+  const absMax =
+    data.max ??
+    data.items.reduce((acc, item) => Math.max(acc, Math.abs(item.value)), 0);
+  const safeMax = absMax > 0 ? absMax : 1;
+
+  return (
+    <>
+      {data.contextLabel ? (
+        <InsightContextLabel>{data.contextLabel}</InsightContextLabel>
+      ) : null}
+      <InsightBarList>
+        {data.items.map((item) => {
+          const width = Math.min(50, (Math.abs(item.value) / safeMax) * 50);
+          const left = item.value >= 0 ? 50 : 50 - width;
+          const tone = item.tone || toneFromValue(item.value);
+          const valueText =
+            item.display ||
+            data.formatter?.(item.value) ||
+            item.value.toLocaleString();
+          return (
+            <InsightBarRow key={item.key}>
+              <InsightBarLabel>{item.label}</InsightBarLabel>
+              <SignedBarTrack>
+                <SignedCenterLine />
+                <SignedBarSegment
+                  $tone={tone}
+                  style={{ left: `${left}%`, width: `${width}%` }}
+                />
+              </SignedBarTrack>
+              <InsightBarValue $tone={tone}>{valueText}</InsightBarValue>
+            </InsightBarRow>
+          );
+        })}
+      </InsightBarList>
+    </>
+  );
+};
+
+const StockInsightPositiveBars = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "bars" }>;
+}) => {
+  const maxValue =
+    data.max ?? data.items.reduce((acc, item) => Math.max(acc, item.value), 0);
+  const safeMax = maxValue > 0 ? maxValue : 1;
+
+  return (
+    <InsightBarList>
+      {data.items.map((item) => {
+        const positiveValue = Math.max(0, item.value);
+        const width = Math.min(100, (positiveValue / safeMax) * 100);
+        const tone = item.tone || (item.value >= 0 ? "positive" : "negative");
+        const valueText =
+          item.display ||
+          data.formatter?.(item.value) ||
+          item.value.toLocaleString();
+        return (
+          <InsightBarRow key={item.key}>
+            <InsightBarLabel>{item.label}</InsightBarLabel>
+            <PositiveBarTrack>
+              <PositiveBarFill $tone={tone} style={{ width: `${width}%` }} />
+            </PositiveBarTrack>
+            <InsightBarValue $tone={tone}>{valueText}</InsightBarValue>
+          </InsightBarRow>
+        );
+      })}
+    </InsightBarList>
+  );
+};
+
+const StockInsightDeltaViz = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "delta" }>;
+}) => {
+  const formatValue = (value: number, preset?: string) => {
+    if (preset) return preset;
+    if (data.formatter) return data.formatter(value);
+    return formatNumberCompact(value);
+  };
+
+  const derivedItems = data.items.map((item) => {
+    const previousValue = isFiniteNumber(item.previous)
+      ? (item.previous as number)
+      : null;
+    const changePct =
+      previousValue != null && previousValue !== 0
+        ? ((item.current - previousValue) / previousValue) * 100
+        : null;
+    const currentValueText = formatValue(item.current, item.currentDisplay);
+    const previousValueText =
+      previousValue != null
+        ? formatValue(previousValue, item.previousDisplay)
+        : null;
+    return {
+      item,
+      previousValue,
+      changePct,
+      currentValueText,
+      previousValueText,
+    };
+  });
+
+  const maxAbsChange = derivedItems.reduce((acc, entry) => {
+    if (entry.changePct == null) return acc;
+    return Math.max(acc, Math.abs(entry.changePct));
+  }, 0);
+  const safeChangeMax = maxAbsChange > 0 ? maxAbsChange : 1;
+
+  return (
+    <InsightDeltaBox>
+      <InsightContextLabel>
+        {data.contextLabel || "오늘 ↔ 전일 비교"}
+      </InsightContextLabel>
+      <InsightBarList>
+        {derivedItems.map(
+          ({
+            item,
+            previousValue,
+            changePct,
+            currentValueText,
+            previousValueText,
+          }) => {
+            const changeTone =
+              changePct == null
+                ? "neutral"
+                : changePct >= 0
+                ? "positive"
+                : "negative";
+            const changeText =
+              changePct == null
+                ? null
+                : `${changePct >= 0 ? "+" : "-"}${Math.abs(changePct).toFixed(
+                    1
+                  )}%`;
+            const detailText = previousValueText
+              ? `오늘 ${currentValueText} · 전일 ${previousValueText}`
+              : `오늘 ${currentValueText}`;
+            const changeLabel = changeText
+              ? `전일 대비 ${changeText}`
+              : detailText;
+            const widthPct =
+              changePct == null
+                ? 0
+                : Math.min(50, (Math.abs(changePct) / safeChangeMax) * 50);
+            const leftPct =
+              changePct == null ? 50 : changePct >= 0 ? 50 : 50 - widthPct;
+            return (
+              <InsightDeltaRow key={item.key}>
+                <InsightBarLabel>{item.label}</InsightBarLabel>
+                <InsightDeltaTrackWrapper>
+                  <SignedBarTrack className="StockMarketSection__SignedBarTrack">
+                    <SignedCenterLine />
+                    {changePct != null ? (
+                      <SignedBarSegment
+                        $tone={changeTone}
+                        style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                      />
+                    ) : null}
+                  </SignedBarTrack>
+                </InsightDeltaTrackWrapper>
+                <InsightDeltaValues
+                  className="StockMarketSection__InsightDeltaValues"
+                  title={detailText}
+                  aria-label={changeLabel}
+                >
+                  {changeText ? (
+                    <InsightDeltaChange
+                      as="strong"
+                      className="StockMarketSection__InsightDeltaChange"
+                      $tone={changeTone}
+                    >
+                      {changeText}
+                    </InsightDeltaChange>
+                  ) : (
+                    <>
+                      <strong>{currentValueText}</strong>
+                      {previousValueText ? (
+                        <span>전일 {previousValueText}</span>
+                      ) : null}
+                    </>
+                  )}
+                </InsightDeltaValues>
+              </InsightDeltaRow>
+            );
+          }
+        )}
+      </InsightBarList>
+    </InsightDeltaBox>
+  );
+};
+
+const StockInsightMetricEntries = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "entries" }>;
+}) => {
+  if (!data.items.length) return null;
+  return (
+    <InsightMetricEntriesWrapper>
+      {/* {data.contextLabel ? (
+        <InsightContextLabel>{data.contextLabel}</InsightContextLabel>
+      ) : null} */}
+      <InsightMetricEntryGrid>
+        {data.items.map((item) => (
+          <InsightMetricEntryCard key={item.key}>
+            <InsightMetricEntryLabel>
+              {item.label}
+              {item.description ? <small>{item.description}</small> : null}
+            </InsightMetricEntryLabel>
+            <InsightMetricEntryValue $tone={item.tone}>
+              {item.value}
+            </InsightMetricEntryValue>
+          </InsightMetricEntryCard>
+        ))}
+      </InsightMetricEntryGrid>
+    </InsightMetricEntriesWrapper>
   );
 };
 
@@ -719,6 +1130,493 @@ function buildFlowDetail(card: InsightMarketDeltaCard) {
     share,
     shift,
   };
+}
+
+function buildInsightVisualization(
+  section: StockInsightSectionDetail,
+  stock: InsightStock
+): InsightVisualization | null {
+  const metrics = stock.metrics;
+  if (!metrics || !section) return null;
+
+  const matches = (...keywords: string[]) =>
+    sectionMatches(section, keywords.filter(Boolean));
+  const currency = (metrics as { currency?: string | null })?.currency;
+
+  if (matches("price_position", "가격", "price")) {
+    const price = metrics.price as StockPriceMetrics | undefined;
+    if (!price) return null;
+    const candidates = [price.low, price.high, price.open, price.close].filter(
+      isFiniteNumber
+    );
+    if (candidates.length < 2) return null;
+    const low = isFiniteNumber(price.low) ? price.low : Math.min(...candidates);
+    const high = isFiniteNumber(price.high)
+      ? price.high
+      : Math.max(...candidates);
+    if (high <= low) return null;
+
+    const markers: RangeMarker[] = [];
+    if (isFiniteNumber(price.open)) {
+      markers.push({ key: "open", label: "시가", value: price.open! });
+    }
+    if (isFiniteNumber(price.close)) {
+      const deltaTone = (() => {
+        if (isFiniteNumber(price.change_pct)) {
+          return toneFromValue(price.change_pct!);
+        }
+        if (isFiniteNumber(price.prev_close)) {
+          return toneFromValue((price.close ?? 0) - (price.prev_close ?? 0));
+        }
+        return "neutral" as PriceTone;
+      })();
+      markers.push({
+        key: "close",
+        label: "종가",
+        value: price.close!,
+        tone: deltaTone,
+      });
+    }
+
+    return {
+      type: "range",
+      low,
+      high,
+      markers,
+      formatter: (value) => formatPriceWithCurrency(value, currency),
+    };
+  }
+
+  if (matches("flows", "수급", "flow")) {
+    const flows = metrics.flows;
+    if (!flows) return null;
+    const items: InsightBarItem[] = [
+      flows.foreign?.qty,
+      flows.institution?.qty,
+      flows.individual?.qty,
+    ]
+      .map((value, index) => {
+        if (!isFiniteNumber(value)) return null;
+        const labels = ["외국인", "기관", "개인"];
+        const key = ["foreign", "institution", "individual"][index];
+        return {
+          key,
+          label: labels[index],
+          value: value!,
+          display: `${formatSignedNumberCompact(value!)}주`,
+          tone: toneFromValue(value!),
+        } satisfies InsightBarItem;
+      })
+      .filter(Boolean) as InsightBarItem[];
+    if (!items.length) return null;
+    return {
+      type: "signedBars",
+      items,
+      formatter: (value) => `${formatSignedNumberCompact(value)}주`,
+    };
+  }
+
+  if (matches("liquidity", "유동성")) {
+    const liquidity = metrics.liquidity;
+    if (!liquidity) return null;
+
+    const pickNumber = (
+      ...candidates: Array<number | null | undefined>
+    ): number | null => {
+      for (const candidate of candidates) {
+        if (isFiniteNumber(candidate)) {
+          return candidate as number;
+        }
+      }
+      return null;
+    };
+
+    const buildDeltaItem = ({
+      key,
+      label,
+      currentCandidates,
+      previousCandidates = [],
+      changePct,
+      formatter,
+    }: {
+      key: string;
+      label: string;
+      currentCandidates: Array<number | null | undefined>;
+      previousCandidates?: Array<number | null | undefined>;
+      changePct?: number | null;
+      formatter?: (value: number) => string;
+    }): InsightDeltaItem | null => {
+      const current = pickNumber(...currentCandidates);
+      if (current == null) return null;
+
+      let previous = pickNumber(...previousCandidates);
+      const pctValue = isFiniteNumber(changePct) ? (changePct as number) : null;
+      if (previous == null && pctValue != null) {
+        const ratio = 1 + pctValue / 100;
+        if (Math.abs(ratio) > 1e-6) {
+          const derived = current / ratio;
+          if (Number.isFinite(derived)) {
+            previous = derived;
+          }
+        }
+      }
+
+      const item: InsightDeltaItem = {
+        key,
+        label,
+        current,
+      };
+
+      if (isFiniteNumber(previous)) {
+        item.previous = previous as number;
+      }
+
+      if (formatter) {
+        item.currentDisplay = formatter(current);
+        if (item.previous != null) {
+          item.previousDisplay = formatter(item.previous);
+        }
+      }
+
+      return item;
+    };
+
+    const items: InsightDeltaItem[] = [];
+    const volumeItem = buildDeltaItem({
+      key: "volume",
+      label: "거래량",
+      currentCandidates: [liquidity.latest?.volume, liquidity.volume],
+      previousCandidates: [liquidity.previous?.volume],
+      changePct: liquidity.volume_change_pct,
+      formatter: (value) => `${formatNumberCompact(value)}주`,
+    });
+    if (volumeItem) {
+      items.push(volumeItem);
+    }
+
+    const valueItem = buildDeltaItem({
+      key: "value",
+      label: "거래대금",
+      currentCandidates: [liquidity.latest?.value, liquidity.value],
+      previousCandidates: [liquidity.previous?.value],
+      changePct: liquidity.value_change_pct,
+      formatter: (value) => formatKrwLarge(value),
+    });
+    if (valueItem) {
+      items.push(valueItem);
+    }
+
+    if (!items.length) return null;
+
+    return {
+      type: "delta",
+      items,
+      formatter: (value) => formatNumberCompact(value),
+      contextLabel: "오늘 ↔ 전일",
+    };
+  }
+
+  if (matches("earnings_growth", "실적", "성장")) {
+    const earnings = metrics.earnings;
+    if (!earnings) return null;
+    const items: InsightBarItem[] = [
+      {
+        key: "sales_growth",
+        label: "매출",
+        value: earnings.sales_growth_pct,
+      },
+      {
+        key: "op_growth",
+        label: "영업이익",
+        value: earnings.op_profit_growth_pct,
+      },
+      {
+        key: "net_growth",
+        label: "순이익",
+        value: earnings.net_profit_growth_pct,
+      },
+    ]
+      .filter((item) => isFiniteNumber(item.value))
+      .map((item) => ({
+        ...item,
+        display:
+          formatPercentValue(item.value, { showSign: true }) ?? undefined,
+      })) as InsightBarItem[];
+    if (!items.length) return null;
+    return {
+      type: "signedBars",
+      items,
+      formatter: (value) =>
+        formatPercentValue(value, { showSign: true }) ?? `${value}%`,
+      contextLabel: "전년 동기간 대비",
+    };
+  }
+
+  if (matches("capital_scale", "규모", "자산")) {
+    const capital = metrics.capital;
+    const capitalChange = parseCapitalChangeFromSection(section);
+
+    const changeItems = buildCapitalChangeItems(capitalChange);
+    if (changeItems.length) {
+      return {
+        type: "signedBars",
+        items: changeItems,
+        formatter: (value) =>
+          formatPercentValue(value, { showSign: true }) ?? `${value}%`,
+        contextLabel: "자산·자본 증감률",
+      };
+    }
+
+    if (!capital) return null;
+    const items: InsightBarItem[] = [
+      {
+        key: "total_assets",
+        label: "총자산",
+        value: capital.total_assets,
+      },
+      {
+        key: "total_equity",
+        label: "총자본",
+        value: capital.total_equity,
+      },
+    ]
+      .filter((item) => isFiniteNumber(item.value))
+      .map((item) => ({
+        key: item.key,
+        label: item.label,
+        value: item.value as number,
+        display: formatKrwLarge(item.value as number),
+      }));
+    if (!items.length) return null;
+    return {
+      type: "bars",
+      items,
+      formatter: (value) => formatKrwLarge(value),
+    };
+  }
+
+  if (matches("profitability", "수익성")) {
+    const entries = [
+      ...buildProfitabilityEntries(metrics),
+      ...buildStabilityEntries(metrics),
+    ];
+    if (!entries.length) return null;
+    return {
+      type: "entries",
+      items: entries,
+      contextLabel: "수익성, 재무 안정 지표",
+    };
+  }
+
+  if (matches("stability_liquidity", "안정", "부채")) {
+    const stabilityEntries = buildStabilityEntries(metrics);
+    if (!stabilityEntries.length) return null;
+    const hasProfitEntries = buildProfitabilityEntries(metrics).length > 0;
+    if (hasProfitEntries) {
+      return null;
+    }
+    return {
+      type: "entries",
+      items: stabilityEntries,
+      contextLabel: "재무 안정성 지표",
+    };
+  }
+
+  return null;
+}
+
+function sectionMatches(
+  section: StockInsightSectionDetail,
+  keywords: string[]
+) {
+  if (!keywords.length) return false;
+  const category = section.category?.toLowerCase() ?? "";
+  const title = section.title?.toLowerCase() ?? "";
+  return keywords.some((keyword) => {
+    const normalized = keyword.toLowerCase();
+    return (
+      (category &&
+        (category === normalized || category.includes(normalized))) ||
+      (title && title.includes(normalized))
+    );
+  });
+}
+
+type CapitalChangeDetail = {
+  assets?: number | null;
+  equity?: number | null;
+};
+
+function parseCapitalChangeFromSection(
+  section: StockInsightSectionDetail
+): CapitalChangeDetail | null {
+  const source = section.highlights || section.summary;
+  if (!source || typeof source !== "string") return null;
+  const normalized = source
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return null;
+
+  const assets = extractCapitalChange(normalized, ["총자산", "자산"]);
+  const equity = extractCapitalChange(normalized, [
+    "총자본",
+    "자본",
+    "자본총계",
+  ]);
+
+  if (!isFiniteNumber(assets) && !isFiniteNumber(equity)) {
+    return null;
+  }
+
+  return { assets: assets ?? null, equity: equity ?? null };
+}
+
+const POSITIVE_HINT_REGEX = /(증가|확대|강화|확장|개선|상승|호전|늘어)/i;
+const NEGATIVE_HINT_REGEX = /(감소|축소|위축|약화|악화|둔화|하락|줄어)/i;
+
+function extractCapitalChange(text: string, keywords: string[]) {
+  for (const keyword of keywords) {
+    const regex = new RegExp(
+      `${keyword}[^0-9+\-]{0,20}([+\-]?\d[\d.,]*)\s*%([^.,;)]*)`,
+      "i"
+    );
+    const match = regex.exec(text);
+    if (!match) continue;
+    const rawValue = match[1]?.replace(/,/g, "");
+    if (!rawValue) continue;
+    let value = Number.parseFloat(rawValue);
+    if (!Number.isFinite(value)) continue;
+    const hasExplicitSign = /^[+-]/.test(match[1]?.trim() ?? "");
+    if (!hasExplicitSign) {
+      const afterContext = (match[2] ?? "").trim();
+      const numberOffset = match[0].indexOf(match[1] ?? "");
+      const keywordIndex = match.index ?? text.indexOf(match[0]);
+      const numberStartIndex =
+        keywordIndex + (numberOffset >= 0 ? numberOffset : 0);
+      const beforeContext = text.slice(
+        Math.max(0, numberStartIndex - 12),
+        numberStartIndex
+      );
+      const context = `${beforeContext} ${afterContext}`.trim();
+      if (NEGATIVE_HINT_REGEX.test(context)) {
+        value = -Math.abs(value);
+      } else if (POSITIVE_HINT_REGEX.test(context)) {
+        value = Math.abs(value);
+      }
+    }
+    return value;
+  }
+  return null;
+}
+
+function buildCapitalChangeItems(change?: CapitalChangeDetail | null) {
+  const items: InsightBarItem[] = [];
+  if (!change) return items;
+
+  const pushItem = (key: string, label: string, value?: number | null) => {
+    if (!isFiniteNumber(value)) return;
+    const numericValue = value as number;
+    items.push({
+      key,
+      label,
+      value: numericValue,
+      display:
+        formatPercentValue(numericValue, { showSign: true }) ??
+        `${numericValue}%`,
+      tone:
+        numericValue > 0
+          ? "positive"
+          : numericValue < 0
+          ? "negative"
+          : "neutral",
+    });
+  };
+
+  pushItem("assets_change_pct", "총자산", change.assets);
+  pushItem("equity_change_pct", "총자본", change.equity);
+
+  return items;
+}
+
+function buildProfitabilityEntries(metrics?: InsightStockMetrics | null) {
+  const entries: InsightMetricEntry[] = [];
+  const profitability = metrics?.profitability;
+  if (!profitability) return entries;
+
+  const addEntry = (
+    key: string,
+    label: string,
+    description: string,
+    value?: number | null
+  ) => {
+    if (!isFiniteNumber(value)) return;
+    entries.push({
+      key,
+      label,
+      description,
+      value: formatPercentDisplay(value),
+      tone: value != null && value < 0 ? "negative" : "positive",
+    });
+  };
+
+  addEntry("roe_pct", "ROE", "자기자본이익률", profitability.roe_pct);
+  addEntry(
+    "gpm_pct",
+    "매출총이익률",
+    "원가를 뺀 뒤 남는 비율",
+    profitability.gpm_pct
+  );
+  addEntry(
+    "npm_pct",
+    "순이익률",
+    "모든 비용을 뺀 남는 비율",
+    profitability.npm_pct
+  );
+
+  return entries;
+}
+
+function buildStabilityEntries(metrics?: InsightStockMetrics | null) {
+  const entries: InsightMetricEntry[] = [];
+  const stability = metrics?.stability_liquidity;
+  if (!stability) return entries;
+
+  const addEntry = (
+    key: string,
+    label: string,
+    description: string,
+    value?: number | null
+  ) => {
+    if (!isFiniteNumber(value)) return;
+    entries.push({
+      key,
+      label,
+      description,
+      value: formatPercentDisplay(value),
+    });
+  };
+
+  addEntry(
+    "current_ratio",
+    "유동비율",
+    "단기 부채 상환 능력",
+    stability.current_ratio_pct
+  );
+  addEntry(
+    "quick_ratio",
+    "당좌비율",
+    "재고 제외 단기 지급능력",
+    stability.quick_ratio_pct
+  );
+  addEntry(
+    "debt_ratio",
+    "부채비율",
+    "자본 대비 부채 규모",
+    stability.debt_ratio_pct
+  );
+
+  return entries;
 }
 
 function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
@@ -928,9 +1826,13 @@ function formatInsightText(
 
 function formatHundredMillionNumber(value: number) {
   const sign = value < 0 ? "-" : "";
-  const abs = Math.abs(value);
+  let abs = Math.abs(value);
   if (!Number.isFinite(abs)) {
     return String(value);
+  }
+
+  if (abs >= 100_000_000) {
+    abs = abs / 100_000_000;
   }
 
   const jo = Math.floor(abs / 10000);
@@ -1116,6 +2018,81 @@ function parseDateValue(input?: string | null) {
     return null;
   }
   return parsed;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function formatPriceWithCurrency(value: number, currency?: string | null) {
+  if (!isFiniteNumber(value)) return "-";
+  if (!currency || currency === "KRW") {
+    return `${value.toLocaleString()}원`;
+  }
+  if (currency === "USD") {
+    return `$${value.toLocaleString()}`;
+  }
+  return `${value.toLocaleString()} ${currency}`;
+}
+
+function formatPercentValue(
+  value?: number | null,
+  options: { showSign?: boolean } = {}
+) {
+  if (!isFiniteNumber(value)) return null;
+  const { showSign = false } = options;
+  const digits = Math.abs(value) >= 10 ? 1 : 2;
+  const absValue = Math.abs(value);
+  const base = absValue.toFixed(digits);
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const displaySign = showSign ? sign : value < 0 ? "-" : "";
+  return `${displaySign}${base}%`;
+}
+
+function formatPercentDisplay(
+  value?: number | null,
+  options: { showSign?: boolean } = {}
+) {
+  const formatted = formatPercentValue(value, options);
+  if (formatted) return formatted;
+  if (isFiniteNumber(value)) {
+    const digits = Math.abs(value) >= 10 ? 1 : 2;
+    return `${value.toFixed(digits)}%`;
+  }
+  return "-";
+}
+
+function formatNumberCompact(value: number) {
+  if (!isFiniteNumber(value)) return "-";
+  const abs = Math.abs(value);
+  if (abs >= 100_000_000) {
+    return `${(abs / 100_000_000).toFixed(2)}억`;
+  }
+  if (abs >= 10_000) {
+    return `${(abs / 10_000).toFixed(2)}만`;
+  }
+  if (abs >= 1_000) {
+    return `${(abs / 1_000).toFixed(1)}천`;
+  }
+  return abs.toLocaleString();
+}
+
+function formatKrwLarge(value: number) {
+  if (!isFiniteNumber(value)) return "-";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000_000) {
+    return `${(abs / 1_000_000_000_000).toFixed(1)}조원`;
+  }
+  if (abs >= 100_000_000) {
+    return `${(abs / 100_000_000).toFixed(1)}억원`;
+  }
+  return `${abs.toLocaleString()}원`;
+}
+
+function toneColor(tone?: PriceTone) {
+  if (tone === "positive") return COLOR_POSITIVE;
+  if (tone === "negative") return COLOR_NEGATIVE;
+  return "#94a3b8";
 }
 
 function startOfDay(date: Date) {
@@ -1494,7 +2471,7 @@ const StockInsightItem = styled.div`
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
 `;
 
 const StockInsightHeader = styled.div`
@@ -1513,6 +2490,169 @@ const StockInsightBadge = styled.span`
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
+`;
+
+const InsightBarList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+`;
+
+const InsightBarRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const InsightBarLabel = styled.span`
+  min-width: 72px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+`;
+
+const SignedBarTrack = styled.div`
+  position: relative;
+  flex: 1;
+  height: 8px;
+  background: ${COLOR_TRACK};
+  border-radius: 999px;
+  overflow: hidden;
+`;
+
+const SignedCenterLine = styled.span`
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #cbd5f5;
+  transform: translateX(-50%);
+`;
+
+const SignedBarSegment = styled.span<{ $tone?: PriceTone }>`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: ${({ $tone }) => toneColor($tone)};
+`;
+
+const PositiveBarTrack = styled.div`
+  flex: 1;
+  height: 8px;
+  background: ${COLOR_TRACK};
+  border-radius: 999px;
+  overflow: hidden;
+`;
+
+const PositiveBarFill = styled.span<{ $tone?: PriceTone }>`
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: ${({ $tone }) => toneColor($tone)};
+`;
+
+const InsightBarValue = styled.span<{ $tone?: PriceTone }>`
+  min-width: 90px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${({ $tone }) => toneColor($tone)};
+`;
+
+const InsightDeltaBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+`;
+
+const InsightContextLabel = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+`;
+
+const InsightDeltaRow = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+`;
+
+const InsightDeltaValues = styled.div`
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #475569;
+
+  strong:not(.StockMarketSection__InsightDeltaChange) {
+    color: ${COLOR_TEXT};
+  }
+`;
+
+const InsightDeltaChange = styled.span<{ $tone: PriceTone | "neutral" }>`
+  margin-top: 2px;
+  font-weight: 700;
+  color: ${({ $tone }) =>
+    $tone === "positive"
+      ? COLOR_POSITIVE
+      : $tone === "negative"
+      ? COLOR_NEGATIVE
+      : "#94a3b8"};
+`;
+
+const InsightDeltaTrackWrapper = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  max-width: 160px;
+`;
+
+const InsightMetricEntriesWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+`;
+
+const InsightMetricEntryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+`;
+
+const InsightMetricEntryCard = styled.div`
+  background: ${COLOR_CARD_BG};
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const InsightMetricEntryLabel = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  small {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 4px;
+    color: #94a3b8;
+  }
+`;
+
+const InsightMetricEntryValue = styled.span<{ $tone?: PriceTone }>`
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+  margin-top: 8px;
 `;
 
 const StockInsightSummary = styled.div`
