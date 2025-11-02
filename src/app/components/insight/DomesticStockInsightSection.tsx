@@ -20,7 +20,7 @@ import {
   removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { logCtaClick } from "@/api/apiClient";
 import MarketInsightSection from "../marketInsight/MarketInsightSection";
 
@@ -32,11 +32,23 @@ const COLOR_CARD_BG = "#f5f7ff";
 const COLOR_TEXT = "#0f172a";
 const OVERSEAS_STOCK_LABEL = "해외 주식";
 
+function normalizeCommentBullets(value?: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+}
+
+function formatCommentBullet(text: string) {
+  return formatCommentText(text);
+}
+
 interface Props {
   section: InsightSection;
   hideInsightSectionList?: boolean;
   hideMarketCards?: boolean;
   renderMarketIntro?: ReactNode;
+  forceStockPreview?: boolean;
 }
 
 interface ValuationDetail {
@@ -139,6 +151,7 @@ const DomesticStockInsightSection = ({
   hideInsightSectionList = false,
   hideMarketCards = false,
   renderMarketIntro,
+  forceStockPreview = false,
 }: Props) => {
   const { data, label, updated_at } = section;
   const overview = data?.overview;
@@ -177,6 +190,52 @@ const DomesticStockInsightSection = ({
     Boolean(renderMarketIntro) || marketCardsAvailable;
   const isCryptoSection =
     label === "국내 가상자산" || label === "해외 가상자산";
+  const shouldShowSummaryCardPreview =
+    (label === "국내 주식" || label === "해외 주식") && !showMarketDetails;
+  const shouldShowStockPreview =
+    forceStockPreview || (typeof label === "string" && label.includes("주식"));
+  const representativeMarketComment = useMemo(() => {
+    const summaryTargets: Record<string, string[]> = {
+      "국내 주식": ["KOSPI", "KOSDAQ"],
+      "해외 주식": ["NASDAQ"],
+    };
+    const targetKeys = summaryTargets[label ?? ""];
+    if (!targetKeys || targetKeys.length === 0) return null;
+    const representativeKeys = new Set(
+      targetKeys.map((key) => key.toUpperCase())
+    );
+    const bullets: string[] = [];
+    let title: string | null = null;
+
+    Object.entries(marketInsights).forEach(([marketKey, card]) => {
+      if (!card) return;
+      const normalizedKey = (marketKey || "").toString().toUpperCase();
+      const normalizedMarket = (card.market || "").toString().toUpperCase();
+      if (
+        !representativeKeys.has(normalizedKey) &&
+        !representativeKeys.has(normalizedMarket)
+      ) {
+        return;
+      }
+      const cardBullets = normalizeCommentBullets(card.comment_bullets);
+      if (!cardBullets.length) return;
+      if (!title) {
+        title = "오늘 TOP5 유튜브 영상 속 마켓 코멘트";
+      }
+      cardBullets.forEach((bullet) => {
+        if (!bullets.includes(bullet)) {
+          bullets.push(bullet);
+        }
+      });
+    });
+
+    if (!bullets.length) return null;
+    return {
+      title: title || "마켓 코멘트",
+      bullets: bullets.slice(0, 3),
+    };
+  }, [label, marketInsights]);
+
   return (
     <Wrapper>
       <SectionHeader>
@@ -187,57 +246,39 @@ const DomesticStockInsightSection = ({
       </SectionHeader>
       <SectionIntro>{introText}</SectionIntro>
 
-      {/* {overview && (
-        <OverviewCard>
-          {overview.market_snapshot && <OverviewText>{overview.market_snapshot}</OverviewText>}
-          {(overview.macro_drivers?.length || overview.sectors_heatmap) && (
-            <OverviewMeta>
-              {overview.macro_drivers?.length ? (
-                <ChipGroup>
-                  {overview.macro_drivers.map((driver) => (
-                    <Chip key={driver}># {driver}</Chip>
-                  ))}
-                </ChipGroup>
-              ) : null}
-              {overview.sectors_heatmap && (
-                <HeatmapRow>
-                  {overview.sectors_heatmap.leaders?.length ? (
-                    <HeatmapColumn>
-                      <HeatmapTitle>강세</HeatmapTitle>
-                      <HeatmapChips $tone="positive">
-                        {overview.sectors_heatmap.leaders.map((item) => (
-                          <HeatmapChip key={item} $tone="positive">
-                            {item}
-                          </HeatmapChip>
-                        ))}
-                      </HeatmapChips>
-                    </HeatmapColumn>
-                  ) : null}
-                  {overview.sectors_heatmap.laggards?.length ? (
-                    <HeatmapColumn>
-                      <HeatmapTitle>약세</HeatmapTitle>
-                      <HeatmapChips $tone="negative">
-                        {overview.sectors_heatmap.laggards.map((item) => (
-                          <HeatmapChip key={item} $tone="negative">
-                            {item}
-                          </HeatmapChip>
-                        ))}
-                      </HeatmapChips>
-                    </HeatmapColumn>
-                  ) : null}
-                </HeatmapRow>
-              )}
-            </OverviewMeta>
-          )}
-        </OverviewCard>
-      )} */}
-
       {hasMarketDetailToggle && marketCardsAvailable ? (
-        <MarketGrid>
-          {Object.entries(marketInsights).map(([key, value]) =>
-            value ? <MarketSummaryCard key={key} card={value} /> : null
-          )}
-        </MarketGrid>
+        <>
+          <MarketGrid>
+            {Object.entries(marketInsights).map(([key, value]) =>
+              value ? (
+                <MarketSummaryCard
+                  key={key}
+                  card={value}
+                  showCommentPreview={shouldShowSummaryCardPreview}
+                />
+              ) : null
+            )}
+          </MarketGrid>
+          {shouldShowSummaryCardPreview && representativeMarketComment ? (
+            <MarketSummaryComment>
+              {representativeMarketComment.title ? (
+                <MarketCommentTitle>
+                  {representativeMarketComment.title}
+                </MarketCommentTitle>
+              ) : null}
+              <MarketCommentBulletList>
+                {representativeMarketComment.bullets.map((bullet, index) => (
+                  <MarketCommentBulletItem
+                    key={`domestic-representative-market-bullet-${index}`}
+                    dangerouslySetInnerHTML={{
+                      __html: formatCommentBullet(bullet),
+                    }}
+                  />
+                ))}
+              </MarketCommentBulletList>
+            </MarketSummaryComment>
+          ) : null}
+        </>
       ) : null}
 
       {marketDetailContentExists ? (
@@ -315,6 +356,7 @@ const DomesticStockInsightSection = ({
                 key={`${stock.ticker}-${stock.stock_name}`}
                 stock={stock}
                 hideInsightSectionList={hideInsightSectionList}
+                showCommentPreview={shouldShowStockPreview}
               />
             ))}
           </StockList>
@@ -348,12 +390,24 @@ const MarketCardHeaderContent = ({ card }: { card: InsightMarketCard }) => (
   </MarketCardHeader>
 );
 
-const MarketSummaryCard = ({ card }: { card: InsightMarketCard }) => (
-  <MarketCardWrapper>
-    <MarketCardHeaderContent card={card} />
-  </MarketCardWrapper>
-);
+const MarketSummaryCard = ({
+  card,
+  showCommentPreview = false,
+}: {
+  card: InsightMarketCard;
+  showCommentPreview?: boolean;
+}) => {
+  const commentBullets = normalizeCommentBullets(card.comment_bullets);
+  const previewBullets = showCommentPreview ? commentBullets.slice(0, 3) : [];
+  const hasPreview = previewBullets.length > 0;
+  const commentTitle = card.comment_title || "마켓 코멘트";
 
+  return (
+    <MarketCardWrapper>
+      <MarketCardHeaderContent card={card} />
+    </MarketCardWrapper>
+  );
+};
 
 const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const quickLines = card.quick_lines || [];
@@ -364,6 +418,35 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const breadthDetail = buildBreadthDetail(card);
   const liquidityDetail = buildLiquidityDetail(card);
   const flowDetail = buildOrderFlowDetail(card);
+  const commentBody = card.comment_body;
+  const commentBullets = normalizeCommentBullets(card.comment_bullets);
+  const commentTitle = card.comment_title || "마켓 코멘트";
+  const hasComment = Boolean(commentBody || commentBullets.length > 0);
+  const commentContent = hasComment ? (
+    <MarketComment $withBorder={!commentBody && commentBullets.length === 0}>
+      {commentTitle ? (
+        <MarketCommentTitle>{commentTitle}</MarketCommentTitle>
+      ) : null}
+      {commentBullets.length > 0 ? (
+        <MarketCommentBulletList>
+          {commentBullets.map((bullet, index) => (
+            <MarketCommentBulletItem
+              key={`market-comment-bullet-${index}`}
+              dangerouslySetInnerHTML={{
+                __html: formatCommentBullet(bullet),
+              }}
+            />
+          ))}
+        </MarketCommentBulletList>
+      ) : commentBody ? (
+        <MarketCommentBody
+          dangerouslySetInnerHTML={{
+            __html: formatCommentText(commentBody),
+          }}
+        />
+      ) : null}
+    </MarketComment>
+  ) : null;
   return (
     <MarketCardWrapper>
       <MarketCardHeaderContent card={card} />
@@ -374,19 +457,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
           ))}
         </MarketLabelRow>
       )} */}
-
-      {card.comment_body && (
-        <MarketComment>
-          <MarketCommentTitle>
-            {card.comment_title || "마켓 코멘트"}
-          </MarketCommentTitle>
-          <MarketCommentBody
-            dangerouslySetInnerHTML={{
-              __html: formatCommentText(card.comment_body),
-            }}
-          />
-        </MarketComment>
-      )}
+      {commentContent}
       <MarketStatGrid>
         {intradayDetail ? (
           <MarketStat>
@@ -542,7 +613,8 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
             <StatDescriptor
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
-                  flowDetail.text || `${flowDetail.direction} ${flowDetail.netText}`
+                  flowDetail.text ||
+                    `${flowDetail.direction} ${flowDetail.netText}`
                 ),
               }}
             />
@@ -563,9 +635,11 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
 const StockCard = ({
   stock,
   hideInsightSectionList = false,
+  showCommentPreview = false,
 }: {
   stock: InsightStock;
   hideInsightSectionList?: boolean;
+  showCommentPreview?: boolean;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const metrics = stock.metrics;
@@ -621,7 +695,11 @@ const StockCard = ({
   const marketCapText = marketCapDisplay ?? "—";
   const stance = stock.action_idea?.stance;
   const comment = stock.metric_insight?.comment_body;
+  const commentBullets = normalizeCommentBullets(
+    stock.metric_insight?.comment_bullets
+  );
   const commentTitle = stock.metric_insight?.comment_title || "코멘트";
+  const previewBullets = showCommentPreview ? commentBullets.slice(0, 3) : [];
   const insightSections = stock.metric_insight?.insight_sections || [];
   const intradayRange = buildStockIntradayDetail(metrics);
   const hasPriceSection = insightSections.some(
@@ -731,11 +809,11 @@ const StockCard = ({
                   종가
                 </LegendItem>
               </IntradayLegend>
-              <IntradaySummary
+              {/* <IntradaySummary
                 dangerouslySetInnerHTML={{
                   __html: emphasizeNumbers(intradayRange.text),
                 }}
-              />
+              /> */}
             </IntradayChart>
           </PriceVisualCard>
         ) : null}
@@ -1002,7 +1080,7 @@ const StockCard = ({
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
-  const hasComment = Boolean(comment);
+  const hasComment = Boolean(comment || commentBullets.length > 0);
   const hasStandalonePriceVisual =
     !hasPriceSection &&
     (Boolean(intradayRange) || typeof range?.position_pct === "number");
@@ -1015,6 +1093,8 @@ const StockCard = ({
     !hideInsightSectionList && insightSections.length > 0;
   const hasVideoSources =
     Array.isArray(stock.sources) && stock.sources.length > 0;
+  const showPreview =
+    showCommentPreview && !showDetails && previewBullets.length > 0;
   const hasDetailContent =
     hasComment ||
     hasStandalonePriceVisual ||
@@ -1066,6 +1146,27 @@ const StockCard = ({
           </StatValue>
         </StatBlock>
       </StatRow> */}
+      {showPreview ? (
+        <CommentPreviewBox>
+          {commentTitle ? (
+            <CommentPreviewTitle>
+              {" "}
+              오늘 TOP5 유튜브 영상 속 코멘트
+            </CommentPreviewTitle>
+          ) : null}
+          <CommentBulletList>
+            {previewBullets.map((bullet, index) => (
+              <CommentBulletItem
+                key={`${stock.ticker || stock.stock_name}-preview-${index}`}
+                dangerouslySetInnerHTML={{
+                  __html: formatCommentBullet(bullet),
+                }}
+              />
+            ))}
+          </CommentBulletList>
+        </CommentPreviewBox>
+      ) : null}
+
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -1080,16 +1181,34 @@ const StockCard = ({
               </ToggleChevron>
             </StockDetailToggleButton>
           </StockDetailToggleRow>
-          {showDetails ? (
+          <StockDetailCollapse
+            $expanded={showDetails}
+            aria-hidden={!showDetails}
+          >
             <StockDetailBody>
               {hasComment ? (
                 <CommentBox>
                   <CommentTitle>{commentTitle}</CommentTitle>
-                  <CommentBody
-                    dangerouslySetInnerHTML={{
-                      __html: formatCommentText(comment ?? ""),
-                    }}
-                  />
+                  {commentBullets.length > 0 ? (
+                    <CommentBulletList>
+                      {commentBullets.map((bullet, index) => (
+                        <CommentBulletItem
+                          key={`${
+                            stock.ticker || stock.stock_name
+                          }-bullet-${index}`}
+                          dangerouslySetInnerHTML={{
+                            __html: formatCommentBullet(bullet),
+                          }}
+                        />
+                      ))}
+                    </CommentBulletList>
+                  ) : comment ? (
+                    <CommentBody
+                      dangerouslySetInnerHTML={{
+                        __html: formatCommentText(comment ?? ""),
+                      }}
+                    />
+                  ) : null}
                 </CommentBox>
               ) : null}
               {hasStandalonePriceVisual ? renderPriceVisuals() : null}
@@ -1175,7 +1294,7 @@ const StockCard = ({
                 />
               ) : null}
             </StockDetailBody>
-          ) : null}
+          </StockDetailCollapse>
         </>
       ) : null}
       {/* {stock.thesis?.length ? (
@@ -1411,9 +1530,7 @@ function buildLiquidityDetail(card: InsightMarketCard) {
   const volumeRatioFromText = volumeMatch[3]
     ? parseFloat(volumeMatch[3])
     : null;
-  const valueRatioFromText = valueMatch[3]
-    ? parseFloat(valueMatch[3])
-    : null;
+  const valueRatioFromText = valueMatch[3] ? parseFloat(valueMatch[3]) : null;
   const derivedVolumeRatio = toNumeric(card.derived?.volume_ratio_vs_prev);
   const derivedValueRatio = toNumeric(card.derived?.value_ratio_vs_prev);
 
@@ -1426,7 +1543,9 @@ function buildLiquidityDetail(card: InsightMarketCard) {
   const valueCurrentRawText = valueMatch[1]?.trim();
   const valuePrevRawText = stripRatioText(valueMatch[2]);
   const valueCurrent =
-    parseKoreanAmount(valueCurrentRawText) ?? parseNumber(valueCurrentRawText) ?? 0;
+    parseKoreanAmount(valueCurrentRawText) ??
+    parseNumber(valueCurrentRawText) ??
+    0;
   const valuePrev =
     parseKoreanAmount(valuePrevRawText) ?? parseNumber(valuePrevRawText) ?? 0;
 
@@ -1478,8 +1597,8 @@ function buildLiquidityDetail(card: InsightMarketCard) {
   const volumeData = compute(volumeRatio);
   const valueData = compute(valueRatio);
 
- const volumeSummaryRaw = volumeSummaryMatch?.[1]?.trim();
- const valueSummaryRaw = valueSummaryMatch?.[1]?.trim();
+  const volumeSummaryRaw = volumeSummaryMatch?.[1]?.trim();
+  const valueSummaryRaw = valueSummaryMatch?.[1]?.trim();
 
   const volumeRatioText = volumeRatioFromText
     ? `${volumeRatioFromText}x`
@@ -1620,7 +1739,13 @@ function buildOrderFlowDetail(card: InsightMarketCard) {
   const rawText =
     card.sentences?.order_flow ||
     card.order_imbalance_str ||
-    `${netDirection === "buy" ? "매수" : netDirection === "sell" ? "매도" : "중립"} ${netText}`;
+    `${
+      netDirection === "buy"
+        ? "매수"
+        : netDirection === "sell"
+        ? "매도"
+        : "중립"
+    } ${netText}`;
   const text = compactLargeNumbersInText(rawText);
   return {
     sellPct: Number(sellPct),
@@ -2846,9 +2971,16 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   font-size: 14px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   strong {
     font-weight: 700;
   }
+`;
+
+const MarketSummaryComment = styled(MarketComment)`
+  margin-top: 12px;
 `;
 
 const MarketCommentTitle = styled.div`
@@ -2859,6 +2991,21 @@ const MarketCommentTitle = styled.div`
 
 const MarketCommentBody = styled.div`
   font-size: 14px;
+`;
+
+const MarketCommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const MarketCommentBulletItem = styled.li`
+  font-size: 14px;
+  color: ${COLOR_TEXT};
+  line-height: 1.6;
+  list-style: disc;
 `;
 
 const QuickLines = styled.div`
@@ -2952,11 +3099,24 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
   }
 `;
 
+const StockDetailCollapse = styled.div<{ $expanded: boolean }>`
+  overflow: hidden;
+  max-height: ${({ $expanded }) => ($expanded ? "5000px" : "0px")};
+  opacity: ${({ $expanded }) => ($expanded ? 1 : 0)};
+  transform: ${({ $expanded }) =>
+    $expanded ? "translateY(0)" : "translateY(-6px)"};
+  transition: max-height 0.45s ease, opacity 0.3s ease, transform 0.4s ease,
+    padding-top 0.4s ease;
+  padding-top: ${({ $expanded }) => ($expanded ? "12px" : "0")};
+  pointer-events: ${({ $expanded }) => ($expanded ? "auto" : "none")};
+  will-change: max-height, opacity, transform;
+`;
+
 const StockDetailBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 8px;
+  margin-top: 12px;
 `;
 
 const StockHeader = styled.div`
@@ -3547,10 +3707,27 @@ const CommentBox = styled.div`
   font-size: 13px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   strong {
     color: ${COLOR_TEXT};
     font-weight: 700;
   }
+`;
+
+const CommentPreviewBox = styled.div`
+  margin-top: 8px;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const CommentPreviewTitle = styled.div`
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #0b63f6;
+  font-size: 14px;
 `;
 
 const CommentTitle = styled.div`
@@ -3562,6 +3739,21 @@ const CommentTitle = styled.div`
 
 const CommentBody = styled.div`
   font-size: 14px;
+`;
+
+const CommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const CommentBulletItem = styled.li`
+  font-size: 14px;
+  color: ${COLOR_TEXT};
+  line-height: 1.6;
+  list-style: disc;
 `;
 
 const InsightSectionList = styled.div`
@@ -3688,7 +3880,7 @@ const VideoThumbnailWrapper = styled.div`
   overflow: hidden;
   background: rgba(148, 163, 184, 0.15);
   min-width: 160px;
-  max-height : 90px;
+  max-height: 90px;
   @media (max-width: 480px) {
     width: 100%;
     min-width: 160px;
@@ -3829,4 +4021,11 @@ const StrategyDesc = styled.p`
   color: ${COLOR_TEXT};
 `;
 
-export { LiquidityStatCard, MarketComment, MarketCommentTitle };
+export {
+  LiquidityStatCard,
+  MarketComment,
+  MarketCommentTitle,
+  MarketCommentBody,
+  MarketCommentBulletList,
+  MarketCommentBulletItem,
+};

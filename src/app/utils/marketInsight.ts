@@ -420,6 +420,14 @@ function buildSummaryItems(topic: MarketInsightTopic): Array<[string, string]> {
   return items;
 }
 
+const normalizeCommentBullets = (value?: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+};
+
+
 function formatDelta(
   chgPoint?: Primitive,
   chgPct?: Primitive,
@@ -473,6 +481,7 @@ export interface MarketInsightCardData {
   summaryItems: Array<{ index: number; title: string; content: string }>;
   commentTitle: string;
   commentBodyHtml: string;
+  commentBullets?: string[];
   topics: string[];
 }
 
@@ -486,7 +495,11 @@ export function buildMarketInsightCard(
   const asof = getAsOfText(topic);
   const summaryPairs = buildSummaryItems(topic);
 
-  if (summaryPairs.length === 0 && !topic.comment_body) {
+  if (
+    summaryPairs.length === 0 &&
+    !topic.comment_body &&
+    (!Array.isArray(topic.comment_bullets) || topic.comment_bullets.length === 0)
+  ) {
     return null;
   }
 
@@ -497,7 +510,13 @@ export function buildMarketInsightCard(
   }));
 
   const commentTitle = topic.comment_title ?? "마켓 코멘트";
-  const commentBodyHtml = formatCommentHtml(topic.comment_body ?? "");
+  const commentBullets = normalizeCommentBullets(topic.comment_bullets);
+  const commentBodyHtml = commentBullets.length
+    ? ""
+    : formatCommentHtml(topic.comment_body ?? "");
+  const commentBulletHtml = commentBullets.length
+    ? commentBullets.map((bullet) => formatCommentHtml(bullet))
+    : undefined;
   const topics = [
     ...(typeof topic.topic_category === "string" && topic.topic_category.trim()
       ? [topic.topic_category.trim()]
@@ -517,6 +536,7 @@ export function buildMarketInsightCard(
     summaryItems,
     commentTitle,
     commentBodyHtml,
+    commentBullets: commentBulletHtml,
     topics,
   };
 }

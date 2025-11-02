@@ -82,14 +82,14 @@ const Recommend = ({
       try {
         if (section == "국내 주식" || section == "국내 가상자산") {
           const data = await fetchStockVideo();
-          setVideos(data);
+          setVideos(Array.isArray(data) ? data : []);
           const editorData = await fetchEditorArticle();
-          setEditorVideos(editorData);
+          setEditorVideos(Array.isArray(editorData) ? editorData : []);
         } else {
           const data = await fetchTopVideosBySection(section);
-          setVideos(data);
+          setVideos(Array.isArray(data) ? data : []);
           const editorData = await fetchEditorArticle();
-          setEditorVideos(editorData);
+          setEditorVideos(Array.isArray(editorData) ? editorData : []);
         }
       } catch (error) {
         setError("Error fetching videos");
@@ -125,7 +125,8 @@ const Recommend = ({
   }, [videos, sortCriteria]);
 
   const filteredAndSortedEditorData = useMemo(() => {
-    const filteredData = editorVideos.filter(
+    const source = Array.isArray(editorVideos) ? editorVideos : [];
+    const filteredData = source.filter(
       (item) =>
         item.section === section &&
         item.video_id !== videoId &&

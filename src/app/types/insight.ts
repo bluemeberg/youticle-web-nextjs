@@ -57,6 +57,7 @@ export interface InsightMarketDeltaCard {
   quick_lines?: string[];
   comment_title?: string;
   comment_body?: string;
+  comment_bullets?: string[];
   labels?: Record<string, string | undefined>;
   sentences?: InsightMarketDeltaSentences;
   flows?: InsightMarketDeltaFlows;
@@ -108,6 +109,7 @@ export interface InsightMarketCard {
   sentences?: Record<string, string | undefined>;
   comment_title?: string;
   comment_body?: string;
+  comment_bullets?: string[];
   labels?: Record<string, string | undefined>;
   derived?: {
     volume_ratio_vs_prev?: number | string;
@@ -138,6 +140,7 @@ export interface InsightStock {
   catalysts?: Array<{ item: string; when?: string }>;
   risks?: Array<{ item: string }>;
   action_idea?: { stance: string; reason?: string };
+  comment_bullets?: string[];
   sources?: InsightSource[];
   quote_raw?: {
     output?: {
@@ -215,6 +218,7 @@ export interface InsightAsset {
   card_comment?: {
     comment_title?: string;
     comment_body?: string;
+    comment_bullets?: string[];
   };
   levels?: {
     support?: string;
@@ -372,6 +376,9 @@ export interface InsightStockMetrics {
     dist_to_support_pct?: number;
   };
   earnings?: {
+    sales?: number;
+    op_profit?: number;
+    net_profit?: number;
     sales_growth_pct?: number;
     op_profit_growth_pct?: number;
     net_profit_growth_pct?: number;
@@ -403,6 +410,7 @@ export interface InsightStockMetricInsight {
   metric_kind?: string;
   comment_title?: string;
   comment_body?: string;
+  comment_bullets?: string[];
   insight_sections?: Array<{
     category?: string;
     title?: string;

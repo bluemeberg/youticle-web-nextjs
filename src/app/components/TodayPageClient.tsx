@@ -27,6 +27,13 @@ function toFiniteNumber(value?: number | null): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
+function normalizeCommentBullets(value?: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+}
+
 function deriveCurrencyFromTicker(ticker?: string | null): string | undefined {
   if (!ticker) return undefined;
   const [currency] = ticker.split("-");
@@ -40,6 +47,10 @@ function buildMetricInsight(
   const base = asset.metric_insight ? { ...asset.metric_insight } : {};
   const commentTitle = asset.card_comment?.comment_title;
   const commentBody = asset.card_comment?.comment_body;
+  const commentBullets = normalizeCommentBullets(
+    asset.card_comment?.comment_bullets || base.comment_bullets
+  );
+  const baseCommentBullets = normalizeCommentBullets(base.comment_bullets);
 
   const insightSections = [
     asset.metric_insight?.summary_sentence
@@ -87,9 +98,17 @@ function buildMetricInsight(
     ...base,
     comment_title:
       commentTitle ??
-      (typeof base.comment_title === "string" ? base.comment_title : undefined) ??
+      (typeof base.comment_title === "string"
+        ? base.comment_title
+        : undefined) ??
       "코멘트",
     comment_body: commentResolved,
+    comment_bullets:
+      commentBullets.length > 0
+        ? commentBullets
+        : baseCommentBullets.length > 0
+        ? baseCommentBullets
+        : undefined,
   };
 
   if (insightSections.length > 0) {
@@ -109,7 +128,9 @@ function buildMetrics(asset: InsightAsset): InsightStockMetrics | undefined {
   const cryptoMetrics = asset.crypto_metrics ?? {};
 
   const currentPrice = toFiniteNumber(realtime.trade_price);
-  const changeAmount = toFiniteNumber(realtime.signed_change_price ?? realtime.change_price);
+  const changeAmount = toFiniteNumber(
+    realtime.signed_change_price ?? realtime.change_price
+  );
   const changePct =
     toFiniteNumber(cryptoMetrics.chg_pct) ??
     (toFiniteNumber(realtime.signed_change_rate) != null
@@ -156,7 +177,8 @@ function buildMetrics(asset: InsightAsset): InsightStockMetrics | undefined {
     low: toFiniteNumber(realtime.low_price),
     prev_close: toFiniteNumber(realtime.prev_closing_price),
     weighted_avg_price:
-      toFiniteNumber(cryptoMetrics.vwap_day) ?? toFiniteNumber(cryptoMetrics.vwap_24h),
+      toFiniteNumber(cryptoMetrics.vwap_day) ??
+      toFiniteNumber(cryptoMetrics.vwap_24h),
   };
 
   if (Object.values(priceInfoFields).some((value) => value != null)) {
@@ -282,7 +304,8 @@ export default function LandingPageClient({
   const [isLoading, setIsLoading] = useState(true);
 
   const normalizedSections = useMemo(
-    () => integratedSections.map((section) => normalizeIntegratedSection(section)),
+    () =>
+      integratedSections.map((section) => normalizeIntegratedSection(section)),
     [integratedSections]
   );
 

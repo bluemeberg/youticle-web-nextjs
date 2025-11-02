@@ -68,6 +68,14 @@ type InsightMetricEntry = {
   tone?: PriceTone;
 };
 
+type InsightFlowShiftItem = {
+  key: string;
+  label: string;
+  todayAmount: number;
+  prevAmount: number;
+  deltaAmount?: number | null;
+};
+
 type InsightVisualization =
   | ({
       type: "range";
@@ -96,6 +104,11 @@ type InsightVisualization =
   | ({
       type: "entries";
       items: InsightMetricEntry[];
+    } & InsightVisualizationBase)
+  | ({
+      type: "flowShift";
+      items: InsightFlowShiftItem[];
+      unitLabel?: string;
     } & InsightVisualizationBase);
 
 const COLOR_POSITIVE = "#ff6b6b";
@@ -185,6 +198,17 @@ const toPct = (v: unknown, fallback: number) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+function normalizeCommentBullets(value?: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+}
+
+function formatCommentBullet(text: string) {
+  return emphasizeNumbers(convertMarkToStrong(text));
+}
+
 const StockMarketSection = ({
   section,
   showHeader = true,
@@ -205,6 +229,44 @@ const StockMarketSection = ({
       (entry): entry is [string, InsightMarketDeltaCard] => Boolean(entry[1])
     );
   }, [delta?.by_market]);
+
+  const representativeMarketComment = useMemo(() => {
+    if (section.label !== "국내 주식") return null;
+    const representativeKeys = new Set(["KOSPI", "KOSDAQ"]);
+    const bullets: string[] = [];
+    let title: string | null = null;
+
+    marketEntries.forEach(([marketKey, card]) => {
+      const normalizedKey = (marketKey || "").toString().toUpperCase();
+      const normalizedMarket = (card.market || "").toString().toUpperCase();
+      if (
+        !representativeKeys.has(normalizedKey) &&
+        !representativeKeys.has(normalizedMarket)
+      ) {
+        return;
+      }
+      const cardBullets = normalizeCommentBullets(card.comment_bullets);
+      if (!cardBullets.length) return;
+      if (!title) {
+        title =
+          card.comment_title ||
+          card.sentences?.headline ||
+          card.sentences?.comment ||
+          "마켓 코멘트";
+      }
+      cardBullets.forEach((bullet) => {
+        if (!bullets.includes(bullet)) {
+          bullets.push(bullet);
+        }
+      });
+    });
+
+    if (!bullets.length) return null;
+    return {
+      title: "오늘 TOP5 유튜브 영상 속 마켓 코멘트",
+      bullets: bullets.slice(0, 3),
+    };
+  }, [marketEntries, section.label]);
 
   const headerTimestamp = useMemo<string | null>(() => {
     const dateFromMarket = marketEntries
@@ -237,15 +299,29 @@ const StockMarketSection = ({
     (headerTimestamp ? formatDateTime(headerTimestamp) : null);
   const sharedRelativeText = stockTimestampText ? stockRelativeText : null;
 
+  const { data, label, updated_at } = section;
+  const introText = (() => {
+    switch (label) {
+      case "해외 주식":
+        return "TOP5 영상에서 포착한 해외 주식 흐름을 글로벌 지표와 함께 다시 정리한 요약입니다.";
+      case "국내 가상자산":
+        return "TOP5 영상에서 포착한 국내 가상자산 흐름을 주요 온체인·거래 데이터를 묶어 정리한 요약입니다.";
+      case "해외 가상자산":
+        return "TOP5 영상에서 포착한 해외 가상자산 흐름을 글로벌 거래소의 데이터와 함께 정리한 요약입니다.";
+      default:
+        return "TOP5 영상에서 포착한 국내 주식 시황을 실시간 시장 지표와 함께 다시 정리한 요약입니다.";
+    }
+  })();
+
   if (!delta || marketEntries.length === 0) {
     return null;
   }
-  console.log(marketEntries);
   return (
     <Wrapper>
       {showHeader ? (
         <SectionHeader>
           <Title>{section.label || "주식"} 마켓 인사이트</Title>
+
           {sharedTimestampText ? (
             <Timestamp>
               업데이트 : {sharedTimestampText}
@@ -256,6 +332,7 @@ const StockMarketSection = ({
           ) : null}
         </SectionHeader>
       ) : null}
+      <SectionIntro>{introText}</SectionIntro>
 
       {/* {delta.quick?.length ? (
         <SectionQuickLines>
@@ -275,6 +352,26 @@ const StockMarketSection = ({
         </MarketGrid>
       ) : null}
 
+      {showHeader && !showDetails && representativeMarketComment ? (
+        <MarketSummaryComment>
+          {representativeMarketComment.title ? (
+            <MarketCommentTitle>
+              {representativeMarketComment.title}
+            </MarketCommentTitle>
+          ) : null}
+          <CommentBulletList>
+            {representativeMarketComment.bullets.map((bullet, index) => (
+              <CommentBulletItem
+                key={`representative-market-bullet-${index}`}
+                dangerouslySetInnerHTML={{
+                  __html: formatCommentBullet(bullet),
+                }}
+              />
+            ))}
+          </CommentBulletList>
+        </MarketSummaryComment>
+      ) : null}
+
       {showHeader ? (
         <SectionToggleRow>
           <MarketToggleButton
@@ -290,7 +387,10 @@ const StockMarketSection = ({
         </SectionToggleRow>
       ) : null}
 
-      {shouldRenderDetails ? (
+      <MarketDetailCollapse
+        $expanded={shouldRenderDetails}
+        aria-hidden={showHeader ? !shouldRenderDetails : false}
+      >
         <MarketGrid>
           {marketEntries.map(([marketKey, card]) => {
             const quickLines = card.quick_lines?.filter(Boolean) ?? [];
@@ -303,7 +403,6 @@ const StockMarketSection = ({
                   : undefined,
             });
             const flowDetail = buildFlowDetail(card);
-            console.log(flowDetail);
             const extraSentences = extractAdditionalSentences(card);
 
             const headline =
@@ -311,26 +410,37 @@ const StockMarketSection = ({
               card.comment_title ||
               card.sentences?.comment;
             const commentBody = card.comment_body || card.sentences?.comment;
+            const commentBullets = normalizeCommentBullets(
+              card.comment_bullets
+            );
+            const showComment = Boolean(
+              headline || commentBody || commentBullets.length > 0
+            );
 
             return (
               <MarketCardWrapper key={marketKey}>
                 <MarketCardHeaderContent card={card} marketKey={marketKey} />
 
-                {/* {quickLines.length ? (
-                  <QuickLines>
-                    {quickLines.map((line) => (
-                      <QuickLine key={line}>{line}</QuickLine>
-                    ))}
-                  </QuickLines>
-                ) : null} */}
-
                 <MarketDetailBody>
-                  {headline || commentBody ? (
-                    <MarketComment $withBorder={!commentBody}>
+                  {showComment ? (
+                    <MarketComment
+                      $withBorder={!commentBody && commentBullets.length === 0}
+                    >
                       {headline ? (
                         <MarketCommentTitle>{headline}</MarketCommentTitle>
                       ) : null}
-                      {commentBody ? (
+                      {commentBullets.length > 0 ? (
+                        <CommentBulletList>
+                          {commentBullets.map((bullet, index) => (
+                            <CommentBulletItem
+                              key={`${marketKey}-comment-bullet-${index}`}
+                              dangerouslySetInnerHTML={{
+                                __html: formatCommentBullet(bullet),
+                              }}
+                            />
+                          ))}
+                        </CommentBulletList>
+                      ) : commentBody ? (
                         <MarketCommentBody
                           dangerouslySetInnerHTML={{
                             __html: formatTextWithSentenceBreaks(commentBody),
@@ -525,31 +635,12 @@ const StockMarketSection = ({
                       </MarketStat>
                     ) : null}
                   </MarketStatGrid>
-
-                  {/* {extraSentences.length ? (
-                    <MarketStatGrid>
-                      <MarketStat>
-                        <MarketStatLabel>기타 업데이트</MarketStatLabel>
-                        <FlowStatList>
-                          {extraSentences.map((item) => (
-                            <li key={item.key}>
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: emphasizeNumbers(item.text),
-                                }}
-                              />
-                            </li>
-                          ))}
-                        </FlowStatList>
-                      </MarketStat>
-                    </MarketStatGrid>
-                  ) : null} */}
                 </MarketDetailBody>
               </MarketCardWrapper>
             );
           })}
         </MarketGrid>
-      ) : null}
+      </MarketDetailCollapse>
 
       {hasStocks ? (
         <>
@@ -582,7 +673,6 @@ const StockMarketSection = ({
 export default StockMarketSection;
 
 const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
-  console.log(stock.metrics?.price);
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
     StockInsightSectionDetail | null | undefined
@@ -598,7 +688,6 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
 
   const priceInfo = metricsPriceInfo ?? parsedPriceInfo ?? null;
 
-  console.log(priceInfo);
   const additionalSections = insightSections
     .filter((section): section is StockInsightSectionDetail => {
       return Boolean(section && (section.summary || section.highlights));
@@ -616,14 +705,20 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
     insight?.comment_title || stock.action_idea?.stance || null;
   const commentBody =
     insight?.comment_body || stock.action_idea?.reason || null;
+  const commentBullets = normalizeCommentBullets(
+    insight?.comment_bullets || stock.comment_bullets
+  );
+  const previewBullets = commentBullets.slice(0, 3);
 
   const hasDetailContent = Boolean(
     priceSection?.summary ||
       priceSection?.highlights ||
       commentBody ||
+      commentBullets.length > 0 ||
       additionalSections.length
   );
   const [showDetails, setShowDetails] = useState(false);
+  const showPreview = !showDetails && previewBullets.length > 0;
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
@@ -644,6 +739,28 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
         ) : null}
       </StockHeader>
 
+      {showPreview ? (
+        <StockPreviewComment>
+          {commentTitle ? (
+            <StockPreviewCommentTitle>
+              오늘 TOP5 유튜브 영상 속 코멘트
+            </StockPreviewCommentTitle>
+          ) : null}
+          <StockCommentBulletList>
+            {previewBullets.map((bullet, index) => (
+              <StockCommentBulletItem
+                key={`${
+                  stock.ticker || stock.stock_name
+                }-preview-bullet-${index}`}
+                dangerouslySetInnerHTML={{
+                  __html: formatCommentBullet(bullet),
+                }}
+              />
+            ))}
+          </StockCommentBulletList>
+        </StockPreviewComment>
+      ) : null}
+
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -659,7 +776,10 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
             </StockDetailToggleButton>
           </StockDetailToggleRow>
 
-          {showDetails ? (
+          <StockDetailCollapse
+            $expanded={showDetails}
+            aria-hidden={!showDetails}
+          >
             <StockDetailBody>
               {/* {priceSummary ? (
                 <StockSummary
@@ -677,16 +797,31 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
                 />
               ) : null} */}
 
-              {commentBody ? (
+              {commentBody || commentBullets.length > 0 ? (
                 <StockComment>
                   {commentTitle ? (
                     <StockCommentTitle>{commentTitle}</StockCommentTitle>
                   ) : null}
-                  <StockCommentBody
-                    dangerouslySetInnerHTML={{
-                      __html: formatTextWithSentenceBreaks(commentBody),
-                    }}
-                  />
+                  {commentBullets.length > 0 ? (
+                    <StockCommentBulletList>
+                      {commentBullets.map((bullet, index) => (
+                        <StockCommentBulletItem
+                          key={`${
+                            stock.ticker || stock.stock_name
+                          }-comment-bullet-${index}`}
+                          dangerouslySetInnerHTML={{
+                            __html: formatCommentBullet(bullet),
+                          }}
+                        />
+                      ))}
+                    </StockCommentBulletList>
+                  ) : commentBody ? (
+                    <StockCommentBody
+                      dangerouslySetInnerHTML={{
+                        __html: formatTextWithSentenceBreaks(commentBody),
+                      }}
+                    />
+                  ) : null}
                 </StockComment>
               ) : null}
 
@@ -763,15 +898,12 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
                 </StockInsightList>
               ) : null}
             </StockDetailBody>
-          ) : null}
+            <StockVideoSources
+              stockName={stock.stock_name ?? ""}
+              sources={stock.sources}
+            />
+          </StockDetailCollapse>
         </>
-      ) : null}
-
-      {showDetails ? (
-        <StockVideoSources
-          stockName={stock.stock_name ?? ""}
-          sources={stock.sources}
-        />
       ) : null}
     </StockCardWrapper>
   );
@@ -792,6 +924,8 @@ const StockInsightVisualization = ({
       return <StockInsightPositiveBars data={visualization} />;
     case "delta":
       return <StockInsightDeltaViz data={visualization} />;
+    case "flowShift":
+      return <StockInsightFlowShiftViz data={visualization} />;
     case "entries":
       return <StockInsightMetricEntries data={visualization} />;
     default:
@@ -1051,6 +1185,93 @@ const StockInsightDeltaViz = ({
   );
 };
 
+const StockInsightFlowShiftViz = ({
+  data,
+}: {
+  data: Extract<InsightVisualization, { type: "flowShift" }>;
+}) => {
+  const maxAmount = data.items.reduce((acc, item) => {
+    return Math.max(
+      acc,
+      Math.abs(item.todayAmount || 0),
+      Math.abs(item.prevAmount || 0)
+    );
+  }, 0);
+
+  const safeMax = maxAmount > 0 ? maxAmount : 1;
+
+  return (
+    <>
+      {data.contextLabel ? (
+        <InsightContextLabel>{data.contextLabel}</InsightContextLabel>
+      ) : null}
+      <FlowShiftContainer>
+        {data.items.map((item) => {
+          const todayWidth = Math.min(
+            50,
+            (Math.abs(item.todayAmount) / safeMax) * 50
+          );
+          const prevWidth = Math.min(
+            50,
+            (Math.abs(item.prevAmount) / safeMax) * 50
+          );
+          const todayLeft = item.todayAmount >= 0 ? 50 : 50 - todayWidth;
+          const prevLeft = item.prevAmount >= 0 ? 50 : 50 - prevWidth;
+          const deltaAmount =
+            item.deltaAmount != null
+              ? item.deltaAmount
+              : item.todayAmount - item.prevAmount;
+          const unitLabel = data.unitLabel || "주";
+
+          return (
+            <FlowShiftItem key={item.key}>
+              <FlowShiftLabel>{item.label}</FlowShiftLabel>
+              <FlowShiftBars>
+                <FlowShiftRow>
+                  <FlowShiftBadge>오늘</FlowShiftBadge>
+                  <FlowShiftTrack>
+                    <FlowShiftBar
+                      $tone={item.todayAmount >= 0 ? "positive" : "negative"}
+                      style={{
+                        left: `${todayLeft}%`,
+                        width: `${todayWidth}%`,
+                      }}
+                    />
+                  </FlowShiftTrack>
+                  <FlowShiftValue $tone={toneFromValue(item.todayAmount)}>
+                    {formatSignedNumberCompact(item.todayAmount)}
+                    {unitLabel}
+                  </FlowShiftValue>
+                </FlowShiftRow>
+                <FlowShiftRow>
+                  <FlowShiftBadge $variant="muted">전일</FlowShiftBadge>
+                  <FlowShiftTrack>
+                    <FlowShiftBar
+                      $tone={item.prevAmount >= 0 ? "positive" : "negative"}
+                      style={{
+                        left: `${prevLeft}%`,
+                        width: `${prevWidth}%`,
+                      }}
+                    />
+                  </FlowShiftTrack>
+                  <FlowShiftValue $tone={toneFromValue(item.prevAmount)}>
+                    {formatSignedNumberCompact(item.prevAmount)}
+                    {unitLabel}
+                  </FlowShiftValue>
+                </FlowShiftRow>
+                <FlowShiftQuantity>
+                  전일 대비 {formatSignedNumberCompact(deltaAmount)}
+                  {unitLabel}
+                </FlowShiftQuantity>
+              </FlowShiftBars>
+            </FlowShiftItem>
+          );
+        })}
+      </FlowShiftContainer>
+    </>
+  );
+};
+
 const StockInsightMetricEntries = ({
   data,
 }: {
@@ -1190,6 +1411,10 @@ function buildInsightVisualization(
   if (matches("flows", "수급", "flow")) {
     const flows = metrics.flows;
     if (!flows) return null;
+    const flowShiftViz = buildStockFlowShiftVisualization(metrics);
+    if (flowShiftViz) {
+      return flowShiftViz;
+    }
     const items: InsightBarItem[] = [
       flows.foreign?.qty,
       flows.institution?.qty,
@@ -1317,6 +1542,23 @@ function buildInsightVisualization(
   }
 
   if (matches("earnings_growth", "실적", "성장")) {
+    const entries = buildEarningsEntries(
+      section,
+      metrics as InsightStockMetrics
+    );
+    const opGrowth = metrics.earnings?.op_profit_growth_pct;
+    const netGrowth = metrics.earnings?.net_profit_growth_pct;
+    const shouldUseEntries =
+      entries.length > 0 && opGrowth === 0 && netGrowth === 0;
+
+    if (shouldUseEntries) {
+      return {
+        type: "entries",
+        items: entries,
+        contextLabel: "실적 지표",
+      };
+    }
+
     const earnings = metrics.earnings;
     if (!earnings) return null;
     const items: InsightBarItem[] = [
@@ -1537,6 +1779,246 @@ function buildCapitalChangeItems(change?: CapitalChangeDetail | null) {
   pushItem("equity_change_pct", "총자본", change.equity);
 
   return items;
+}
+
+function buildStockFlowShiftVisualization(
+  metrics?: InsightStockMetrics | null
+): Extract<InsightVisualization, { type: "flowShift" }> | null {
+  const flows = metrics?.flows as
+    | (InsightStockMetrics["flows"] & {
+        foreign?: { qty?: number; prev_qty?: number; d_qty?: number };
+        institution?: { qty?: number; prev_qty?: number; d_qty?: number };
+        individual?: { qty?: number; prev_qty?: number; d_qty?: number };
+      })
+    | undefined;
+
+  if (!flows) return null;
+
+  const participants: Array<{
+    key: "foreign" | "institution" | "individual";
+    label: string;
+    node?: { qty?: number; prev_qty?: number; d_qty?: number };
+  }> = [
+    { key: "foreign", label: "외국인", node: flows.foreign },
+    { key: "institution", label: "기관", node: flows.institution },
+    { key: "individual", label: "개인", node: flows.individual },
+  ];
+
+  const items: InsightFlowShiftItem[] = [];
+
+  participants.forEach(({ key, label, node }) => {
+    if (!node) return;
+    const todayAmount = toOptionalNumber(node.qty);
+    const prevAmount = toOptionalNumber(node.prev_qty);
+    if (todayAmount == null && prevAmount == null) return;
+    const deltaAmount =
+      toOptionalNumber(node.d_qty) ??
+      (todayAmount != null && prevAmount != null
+        ? todayAmount - prevAmount
+        : null);
+
+    items.push({
+      key,
+      label,
+      todayAmount: todayAmount ?? 0,
+      prevAmount: prevAmount ?? 0,
+      deltaAmount,
+    });
+  });
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    type: "flowShift",
+    items,
+    contextLabel: "오늘 ↔ 전일 수급",
+    unitLabel: "주",
+  };
+}
+
+function toOptionalNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, ""));
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function buildEarningsEntries(
+  section: StockInsightSectionDetail,
+  metrics?: InsightStockMetrics
+) {
+  const entries: InsightMetricEntry[] = [];
+  const source = section.highlights || section.summary || "";
+  const normalized = source
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const parsedAmounts = parseEarningsAmounts(normalized);
+  const parsedGrowth = parseEarningsGrowth(normalized);
+  const earnings = metrics?.earnings;
+
+  const pushEntry = (
+    key: string,
+    label: string,
+    amount?: number | null,
+    growth?: number | null
+  ) => {
+    if (!isFiniteNumber(amount) && !isFiniteNumber(growth)) {
+      return;
+    }
+
+    const numericAmount = isFiniteNumber(amount) ? (amount as number) : null;
+    const numericGrowth = isFiniteNumber(growth) ? (growth as number) : null;
+
+    const valueText =
+      numericAmount != null
+        ? formatKrwShort(numericAmount)
+        : numericGrowth != null
+        ? formatPercentDisplay(numericGrowth, { showSign: true }) ?? "-"
+        : "-";
+
+    const growthText =
+      numericGrowth != null
+        ? formatPercentValue(numericGrowth, { showSign: true })
+        : null;
+
+    entries.push({
+      key,
+      label,
+      value: valueText,
+      description: growthText ? `전년 대비 ${growthText}` : undefined,
+      tone:
+        numericGrowth == null
+          ? undefined
+          : numericGrowth > 0
+          ? "positive"
+          : numericGrowth < 0
+          ? "negative"
+          : "neutral",
+    });
+  };
+
+  pushEntry(
+    "sales",
+    "매출",
+    earnings?.sales ?? parsedAmounts.sales,
+    earnings?.sales_growth_pct ?? parsedGrowth.sales
+  );
+
+  pushEntry(
+    "op_profit",
+    "영업이익",
+    earnings?.op_profit ?? parsedAmounts.opProfit,
+    earnings?.op_profit_growth_pct ?? parsedGrowth.opProfit
+  );
+
+  pushEntry(
+    "net_profit",
+    "순이익",
+    earnings?.net_profit ?? parsedAmounts.netProfit,
+    earnings?.net_profit_growth_pct ?? parsedGrowth.netProfit
+  );
+
+  return entries.filter(Boolean);
+}
+
+function parseEarningsAmounts(source: string) {
+  const result: {
+    sales?: number | null;
+    opProfit?: number | null;
+    netProfit?: number | null;
+  } = {};
+
+  result.sales = extractCurrencyValue(source, /매출/);
+  result.opProfit = extractCurrencyValue(source, /영업이익/);
+  result.netProfit = extractCurrencyValue(source, /순이익/);
+
+  return result;
+}
+
+function parseEarningsGrowth(source: string) {
+  const normalized = source;
+  return {
+    sales: extractPercentChangeValue(normalized, ["매출"]),
+    opProfit: extractPercentChangeValue(normalized, ["영업이익"]),
+    netProfit: extractPercentChangeValue(normalized, ["순이익"]),
+  } as {
+    sales?: number | null;
+    opProfit?: number | null;
+    netProfit?: number | null;
+  };
+}
+
+function extractPercentChangeValue(text: string, keywords: string[]) {
+  return extractCapitalChange(text, keywords);
+}
+
+function extractCurrencyValue(text: string, keyword: RegExp) {
+  const pattern = new RegExp(
+    `${keyword.source}[^0-9]*([0-9,\\s조억만천]+)(?:원|krw|KRW)`,
+    "i"
+  );
+  const match = pattern.exec(text);
+  if (!match) return null;
+  const rawValue = match[1]?.trim();
+  if (!rawValue) return null;
+  return parseKoreanCurrencyString(rawValue);
+}
+
+function parseKoreanCurrencyString(raw: string) {
+  if (typeof raw !== "string") return null;
+  const sanitized = raw
+    .replace(/,/g, "")
+    .replace(/원|krw/gi, "")
+    .trim();
+  if (!sanitized) return null;
+
+  const tokenRegex = /([0-9]+(?:\.[0-9]+)?)(조|억|만|천)?/g;
+  let match: RegExpExecArray | null;
+  let total = 0;
+  let matched = false;
+
+  while ((match = tokenRegex.exec(sanitized)) !== null) {
+    const value = parseFloat(match[1]);
+    if (!Number.isFinite(value)) continue;
+    matched = true;
+    const unit = match[2];
+    switch (unit) {
+      case "조":
+        total += value * 1_000_000_000_000;
+        break;
+      case "억":
+        total += value * 100_000_000;
+        break;
+      case "만":
+        total += value * 10_000;
+        break;
+      case "천":
+        total += value * 1_000;
+        break;
+      default:
+        total += value;
+        break;
+    }
+  }
+
+  if (matched) {
+    return total;
+  }
+
+  const digitsOnly = sanitized.replace(/[^0-9.]/g, "");
+  if (!digitsOnly) return null;
+  const numeric = Number(digitsOnly);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
 function buildProfitabilityEntries(metrics?: InsightStockMetrics | null) {
@@ -1825,30 +2307,36 @@ function formatInsightText(
 }
 
 function formatHundredMillionNumber(value: number) {
-  const sign = value < 0 ? "-" : "";
-  let abs = Math.abs(value);
-  if (!Number.isFinite(abs)) {
+  if (!isFiniteNumber(value)) {
     return String(value);
   }
 
-  if (abs >= 100_000_000) {
-    abs = abs / 100_000_000;
+  if (value === 0) {
+    return "0";
   }
 
-  const jo = Math.floor(abs / 10000);
-  const remainder = abs - jo * 10000;
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const han = abs / 100_000_000; // 억 단위
+
+  if (han < 1) {
+    return sign + formatKoreanNumberForDisplay(abs);
+  }
+
+  const jo = Math.floor(han / 10_000);
+  const remainderHan = han - jo * 10_000;
   const parts: string[] = [];
 
   if (jo > 0) {
     parts.push(`${formatNumberWithoutTrailingZeros(jo)}조`);
   }
 
-  if (remainder > 0) {
-    parts.push(`${formatNumberWithoutTrailingZeros(remainder)}억`);
+  if (remainderHan > 0) {
+    parts.push(`${formatNumberWithoutTrailingZeros(remainderHan)}억`);
   }
 
   if (parts.length === 0) {
-    parts.push(`${formatNumberWithoutTrailingZeros(abs)}억`);
+    parts.push(`${formatNumberWithoutTrailingZeros(han)}억`);
   }
 
   return sign + parts.join(" ");
@@ -2062,6 +2550,32 @@ function formatPercentDisplay(
   return "-";
 }
 
+function formatKrwShort(value: number) {
+  if (!isFiniteNumber(value)) return "-";
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+
+  const format = (num: number) => {
+    if (num >= 100) return Math.round(num).toString();
+    if (num >= 10) return num.toFixed(1).replace(/\.0$/, "");
+    return num.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  };
+
+  if (abs >= 1_000_000_000_000) {
+    return `${sign}${format(abs / 1_000_000_000_000)}조원`;
+  }
+  if (abs >= 100_000_000) {
+    return `${sign}${format(abs / 100_000_000)}억원`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}${format(abs / 1_000_000)}백만원`;
+  }
+  if (abs >= 10_000) {
+    return `${sign}${format(abs / 10_000)}만원`;
+  }
+  return `${sign}${abs.toLocaleString()}원`;
+}
+
 function formatNumberCompact(value: number) {
   if (!isFiniteNumber(value)) return "-";
   const abs = Math.abs(value);
@@ -2236,6 +2750,13 @@ const Title = styled.h3`
   color: #0f172a;
 `;
 
+const SectionIntro = styled.p`
+  margin: 8px;
+  font-size: 16px;
+  color: #000;
+  line-height: 1.4;
+`;
+
 const Timestamp = styled.span`
   font-size: 14px;
   color: #64748b;
@@ -2388,6 +2909,19 @@ const StockHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+`;
+
+const StockDetailCollapse = styled.div<{ $expanded: boolean }>`
+  overflow: hidden;
+  max-height: ${({ $expanded }) => ($expanded ? "5000px" : "0px")};
+  opacity: ${({ $expanded }) => ($expanded ? 1 : 0)};
+  transform: ${({ $expanded }) =>
+    $expanded ? "translateY(0)" : "translateY(-6px)"};
+  transition: max-height 0.45s ease, opacity 0.3s ease, transform 0.4s ease,
+    padding-top 0.4s ease;
+  padding-top: ${({ $expanded }) => ($expanded ? "12px" : "0")};
+  pointer-events: ${({ $expanded }) => ($expanded ? "auto" : "none")};
+  will-change: max-height, opacity, transform;
 `;
 
 const StockDetailBody = styled.div`
@@ -2671,6 +3205,14 @@ const StockInsightHighlights = styled.div`
   }
 `;
 
+const StockPreviewComment = styled.div``;
+const StockPreviewCommentTitle = styled.div`
+  margin-bottom: 4px;
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  color: ${COLOR_NEGATIVE};
+`;
 const StockComment = styled.div`
   border-radius: 10px;
   border: 1px solid ${COLOR_TRACK};
@@ -2691,6 +3233,24 @@ const StockCommentBody = styled.div`
   font-size: 14px;
   color: #1f2937;
   line-height: 1.6;
+  strong {
+    font-weight: 700;
+  }
+`;
+
+const StockCommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const StockCommentBulletItem = styled.li`
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.6;
+  list-style: disc;
   strong {
     font-weight: 700;
   }
@@ -2739,6 +3299,19 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
   }
 `;
 
+const MarketDetailCollapse = styled.div<{ $expanded: boolean }>`
+  overflow: hidden;
+  max-height: ${({ $expanded }) => ($expanded ? "5000px" : "0px")};
+  opacity: ${({ $expanded }) => ($expanded ? 1 : 0)};
+  transform: ${({ $expanded }) =>
+    $expanded ? "translateY(0)" : "translateY(-6px)"};
+  transition: max-height 0.45s ease, opacity 0.3s ease, transform 0.4s ease,
+    padding-top 0.4s ease;
+  padding-top: ${({ $expanded }) => ($expanded ? "16px" : "0")};
+  pointer-events: ${({ $expanded }) => ($expanded ? "auto" : "none")};
+  will-change: max-height, opacity, transform;
+`;
+
 const MarketDetailBody = styled.div`
   display: flex;
   flex-direction: column;
@@ -2755,6 +3328,9 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   font-size: 14px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   strong {
     font-weight: 700;
   }
@@ -2782,6 +3358,25 @@ const MarketCommentBody = styled.div`
     font-weight: 700; /* 강조는 굵기만 */
     font-style: normal;
   }
+`;
+
+const CommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const CommentBulletItem = styled.li`
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.6;
+  list-style: disc;
+`;
+
+const MarketSummaryComment = styled(MarketComment)`
+  margin-top: 12px;
 `;
 
 const MarketStatGrid = styled.div`

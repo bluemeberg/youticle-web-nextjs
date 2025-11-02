@@ -71,6 +71,7 @@ export interface MarketInsightTopic {
   chg_pct_str?: string;
   comment_title?: string;
   comment_body?: string;
+  comment_bullets?: string[];
   topic_category?: string;
   related_topics?: string[];
   intraday?: MarketInsightIntraday;
@@ -266,6 +267,7 @@ export interface StockMention {
   actionIdea?: StockMentionActionIdea;
   companyDescription?: string;
   commentBody?: string;
+  commentBullets?: string[];
 }
 
 export interface StockMentionActionIdea {

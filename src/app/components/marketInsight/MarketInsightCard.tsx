@@ -9,7 +9,13 @@ interface MarketInsightCardProps {
 }
 
 const MarketInsightCard = ({ data }: MarketInsightCardProps) => {
-  const { summaryItems } = data;
+  const { summaryItems, commentBullets } = data;
+  const normalizedBullets = Array.isArray(commentBullets)
+    ? commentBullets.filter((bullet) => typeof bullet === "string" && bullet.trim())
+    : [];
+  const commentHasBody = Boolean(
+    data.commentBodyHtml && data.commentBodyHtml.trim().length > 0
+  );
 
   return (
     <Card role="article" aria-label={`${data.market} 마켓 인사이트`}>
@@ -47,9 +53,20 @@ const MarketInsightCard = ({ data }: MarketInsightCardProps) => {
 
       <CommentBlock>
         <CommentTitle>{data.commentTitle}</CommentTitle>
-        <CommentBody
-          dangerouslySetInnerHTML={{ __html: data.commentBodyHtml }}
-        />
+        {normalizedBullets.length > 0 ? (
+          <CommentBulletList>
+            {normalizedBullets.map((bullet, index) => (
+              <CommentBulletItem
+                key={`market-insight-bullet-${index}`}
+                dangerouslySetInnerHTML={{ __html: bullet }}
+              />
+            ))}
+          </CommentBulletList>
+        ) : commentHasBody ? (
+          <CommentBody
+            dangerouslySetInnerHTML={{ __html: data.commentBodyHtml }}
+          />
+        ) : null}
       </CommentBlock>
     </Card>
   );
@@ -170,4 +187,19 @@ const CommentTitle = styled.div`
 const CommentBody = styled.div`
   color: #1f2937;
   word-break: keep-all;
+`;
+
+const CommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const CommentBulletItem = styled.li`
+  color: #1f2937;
+  word-break: keep-all;
+  line-height: 1.6;
+  list-style: disc;
 `;

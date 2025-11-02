@@ -7,8 +7,16 @@ import styled from "styled-components";
 import DomesticStockInsightSection, {
   MarketComment,
   MarketCommentTitle,
+  MarketCommentBulletList,
+  MarketCommentBulletItem,
 } from "./DomesticStockInsightSection";
-import type { InsightSection, InsightStock, InsightStockMetrics, InsightMarketInsights, InsightMarketCard } from "@/types/insight";
+import type {
+  InsightSection,
+  InsightStock,
+  InsightStockMetrics,
+  InsightMarketInsights,
+  InsightMarketCard,
+} from "@/types/insight";
 
 interface CryptoInsightSectionProps {
   section: InsightSection;
@@ -18,41 +26,50 @@ function buildCryptoMarketInsights(
   section: InsightSection
 ): InsightMarketInsights | undefined {
   const original = section.data?.market_insights;
-  const byMarket = original?.by_market && Object.keys(original.by_market).length > 0;
+  const byMarket =
+    original?.by_market && Object.keys(original.by_market).length > 0;
   if (byMarket) return original;
 
   const overview = section.data?.overview;
   if (!overview) return original;
 
   const { market_snapshot, macro_drivers } = overview as {
-    market_snapshot?: string;
-    macro_drivers?: string[];
+    market_snapshot?: string | string[] | null;
+    macro_drivers?: string | Array<string | null | undefined> | null;
   };
 
-  const hasSnapshot = !!market_snapshot?.trim();
-  const drivers = Array.isArray(macro_drivers)
-    ? macro_drivers.filter((item): item is string => Boolean(item && item.trim())).map((item) => item.trim())
-    : [];
+  const snapshotLines = normalizeTextEntries(market_snapshot);
+  const drivers = normalizeTextEntries(macro_drivers);
+  const snapshotBullets = snapshotLines.map(convertMarkToStrong);
+  const driverBullets = drivers.map(convertMarkToStrong);
+  const hasSnapshot = snapshotLines.length > 0;
 
   if (!hasSnapshot && drivers.length === 0) {
     return original;
   }
 
   const commentParts: string[] = [];
-  if (hasSnapshot) commentParts.push(market_snapshot!.trim());
-  if (drivers.length > 0) {
-    commentParts.push(drivers.map((driver) => `• ${driver}`).join('<br/>'));
+  if (snapshotBullets.length > 0) {
+    commentParts.push(snapshotBullets.join("<br/>"));
   }
+  // if (driverBullets.length > 0) {
+  //   commentParts.push(
+  //     driverBullets.map((driver) => `• ${driver}`).join("<br/>")
+  //   );
+  // }
 
-  const commentBody = commentParts.join('<br/><br/>');
+  const commentBody =
+    commentParts.length > 0 ? commentParts.join("<br/><br/>") : undefined;
+  const commentBullets = [...snapshotBullets];
   const quickLines: string[] = [];
-  if (hasSnapshot) quickLines.push(market_snapshot!.trim());
-  quickLines.push(...drivers.slice(0, 2));
+  if (hasSnapshot) quickLines.push(convertMarkToStrong(snapshotLines[0]));
+  quickLines.push(...drivers.slice(0, 2).map(convertMarkToStrong));
 
   const card: InsightMarketCard = {
     market: `${section.label} 시장 개요`,
-    comment_title: '마켓 스냅샷',
+    comment_title: "오늘 TOP5 유튜브 영상 속 마켓 코멘트",
     comment_body: commentBody,
+    comment_bullets: commentBullets,
     quick_lines: quickLines,
   };
 
@@ -63,10 +80,35 @@ function buildCryptoMarketInsights(
       ...(original?.by_market ?? {}),
       [`${section.key}_overview`]: card,
     },
-    quick: original?.quick && original.quick.length > 0 ? original.quick : quickLines,
+    quick:
+      original?.quick && original.quick.length > 0
+        ? original.quick
+        : quickLines,
   };
 }
 
+const normalizeCommentBullets = (value?: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+};
+
+const normalizeTextEntries = (value?: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item): item is string => item.length > 0);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+};
+
+const convertMarkToStrong = (text: string): string =>
+  text.replace(/<mark>/g, "<strong>").replace(/<\/mark>/g, "</strong>");
 
 function emphasizeNumbers(text?: string | null) {
   if (typeof text !== "string" || text.length === 0) {
@@ -78,15 +120,16 @@ function emphasizeNumbers(text?: string | null) {
   );
 }
 
-function sanitizeMetrics(metrics?: InsightStockMetrics): InsightStockMetrics | undefined {
+function sanitizeMetrics(
+  metrics?: InsightStockMetrics
+): InsightStockMetrics | undefined {
   if (!metrics) return metrics;
-  const liquidity = metrics.liquidity
-    ? { ...metrics.liquidity }
-    : undefined;
+  const liquidity = metrics.liquidity ? { ...metrics.liquidity } : undefined;
 
   if (liquidity) {
     delete (liquidity as { turnover_pct?: number | null }).turnover_pct;
-    delete (liquidity as { volume_change_pct?: number | null }).volume_change_pct;
+    delete (liquidity as { volume_change_pct?: number | null })
+      .volume_change_pct;
     delete (liquidity as { value_change_pct?: number | null }).value_change_pct;
   }
 
@@ -95,7 +138,6 @@ function sanitizeMetrics(metrics?: InsightStockMetrics): InsightStockMetrics | u
     liquidity,
   };
 }
-
 
 function formatCommentText(text: string) {
   const highlighted = emphasizeNumbers(text);
@@ -138,7 +180,12 @@ const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
     const byMarket = normalizedSection.data.market_insights?.by_market;
     if (!byMarket) return [] as InsightMarketCard[];
     return Object.values(byMarket).filter((card): card is InsightMarketCard =>
-      Boolean(card && card.comment_body)
+      Boolean(
+        card &&
+          (card.comment_body ||
+            (Array.isArray(card.comment_bullets) &&
+              card.comment_bullets.length > 0))
+      )
     );
   }, [normalizedSection]);
 
@@ -146,18 +193,39 @@ const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
     if (marketCards.length === 0) return null;
     return (
       <CryptoMarketIntro>
-        {marketCards.map((card) => (
-          <MarketComment key={card.market ?? card.comment_title} $withBorder>
-            <MarketCommentTitle>
-              {card.comment_title ?? "마켓 코멘트"}
-            </MarketCommentTitle>
-            <MarketCommentBody
-              dangerouslySetInnerHTML={{
-                __html: formatCommentText(card.comment_body ?? ""),
-              }}
-            />
-          </MarketComment>
-        ))}
+        {marketCards.map((card) => {
+          const bullets = normalizeCommentBullets(card.comment_bullets);
+          const body = card.comment_body ?? "";
+          const hasBody = typeof body === "string" && body.trim().length > 0;
+          return (
+            <MarketComment
+              key={card.market ?? card.comment_title}
+              $withBorder={!hasBody && bullets.length === 0}
+            >
+              <MarketCommentTitle>
+                {card.comment_title ?? "마켓 코멘트"}
+              </MarketCommentTitle>
+              {bullets.length > 0 ? (
+                <MarketCommentBulletList>
+                  {bullets.map((bullet, index) => (
+                    <MarketCommentBulletItem
+                      key={`crypto-market-bullet-${index}`}
+                      dangerouslySetInnerHTML={{
+                        __html: formatCommentText(bullet),
+                      }}
+                    />
+                  ))}
+                </MarketCommentBulletList>
+              ) : hasBody ? (
+                <MarketCommentBody
+                  dangerouslySetInnerHTML={{
+                    __html: formatCommentText(body),
+                  }}
+                />
+              ) : null}
+            </MarketComment>
+          );
+        })}
       </CryptoMarketIntro>
     );
   }, [marketCards]);
@@ -168,6 +236,7 @@ const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
       hideInsightSectionList
       hideMarketCards
       renderMarketIntro={marketIntro}
+      forceStockPreview
     />
   );
 };
@@ -181,5 +250,5 @@ const CryptoMarketIntro = styled.div`
 `;
 
 const MarketCommentBody = styled.div`
-  font-size : 14px;
-`
+  font-size: 14px;
+`;
