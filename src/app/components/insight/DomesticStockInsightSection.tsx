@@ -643,6 +643,16 @@ const StockCard = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const metrics = stock.metrics;
+  const metricInsight = stock.metric_insight;
+  const hasValidMetrics =
+    metrics != null &&
+    !("error" in (metrics as Record<string, unknown>)) &&
+    Object.keys(metrics).length > 0;
+  const hasInsight =
+    metricInsight != null && Object.keys(metricInsight).length > 0;
+  if (!hasValidMetrics || !hasInsight) {
+    return null;
+  }
   const priceInfo = metrics?.price_info;
   const changePct = priceInfo?.change_pct ?? metrics?.chg_pct;
   const changeAmount = priceInfo?.change_amount ?? metrics?.change_amount;
