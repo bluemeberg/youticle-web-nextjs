@@ -650,6 +650,7 @@ const StockCard = ({
     Object.keys(metrics).length > 0;
   const hasInsight =
     metricInsight != null && Object.keys(metricInsight).length > 0;
+  const user = useRecoilValue(userState);
   if (!hasValidMetrics || !hasInsight) {
     return null;
   }
@@ -1073,7 +1074,6 @@ const StockCard = ({
       </LevelsVisualWrapper>
     );
   };
-  const user = useRecoilValue(userState);
   const handleToggleDetails = () => {
     setShowDetails((prev) => {
       const next = !prev;
