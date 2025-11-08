@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styled from "styled-components";
+import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 
@@ -41,6 +42,53 @@ function normalizeCommentBullets(value?: unknown): string[] {
 
 function formatCommentBullet(text: string) {
   return formatCommentText(text);
+}
+
+function normalizeNumeric(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const numeric = Number(value.replace(/,/g, ""));
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }
+  return undefined;
+}
+
+function buildEvidenceMetricSnapshot(metrics?: InsightStockMetrics | null) {
+  if (!metrics) return null;
+  const priceInfo = metrics.price_info;
+  const price =
+    normalizeNumeric(priceInfo?.current_price) ??
+    normalizeNumeric((priceInfo as { close?: unknown } | undefined)?.close) ??
+    normalizeNumeric(metrics.price) ??
+    normalizeNumeric((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.close) ??
+    normalizeNumeric((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.current_price);
+  const changePct =
+    normalizeNumeric(priceInfo?.change_pct) ??
+    normalizeNumeric(metrics.chg_pct) ??
+    normalizeNumeric((metrics as { price?: { change_pct?: unknown } }).price?.change_pct);
+  const changeAmount =
+    normalizeNumeric(priceInfo?.change_amount) ??
+    normalizeNumeric(metrics.change_amount) ??
+    normalizeNumeric((metrics as { price?: { change_amount?: unknown } }).price?.change_amount);
+  const volume = normalizeNumeric(metrics.volume);
+  const marketCap = normalizeNumeric(metrics.market_cap);
+  if (
+    price == null &&
+    changePct == null &&
+    changeAmount == null &&
+    volume == null &&
+    marketCap == null
+  ) {
+    return null;
+  }
+  return {
+    currency: metrics.currency,
+    price,
+    change_pct: changePct,
+    change_amount: changeAmount,
+    volume,
+    market_cap: marketCap,
+  };
 }
 
 interface Props {
@@ -357,6 +405,7 @@ const DomesticStockInsightSection = ({
                 stock={stock}
                 hideInsightSectionList={hideInsightSectionList}
                 showCommentPreview={shouldShowStockPreview}
+                sectionLabel={label}
               />
             ))}
           </StockList>
@@ -636,12 +685,15 @@ const StockCard = ({
   stock,
   hideInsightSectionList = false,
   showCommentPreview = false,
+  sectionLabel,
 }: {
   stock: InsightStock;
   hideInsightSectionList?: boolean;
   showCommentPreview?: boolean;
+  sectionLabel?: string;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const router = useRouter();
   const metrics = stock.metrics;
   const metricInsight = stock.metric_insight;
   const hasValidMetrics =
@@ -654,6 +706,42 @@ const StockCard = ({
   if (!hasValidMetrics || !hasInsight) {
     return null;
   }
+  const storeEvidencePayload = () => {
+    if (typeof window === "undefined") return;
+    if (!Array.isArray(stock.sources) || stock.sources.length === 0) return;
+    const payload = {
+      section: sectionLabel ?? null,
+      stock: {
+        stock_name: stock.stock_name,
+        ticker: stock.ticker,
+        metrics: buildEvidenceMetricSnapshot(metrics),
+        sources: stock.sources,
+      },
+    };
+    try {
+      window.sessionStorage.setItem(
+        "evidence:payload",
+        JSON.stringify(payload)
+      );
+    } catch {
+      // ignore storage errors
+    }
+  };
+  const handleEvidenceClick = () => {
+    if (!Array.isArray(stock.sources) || stock.sources.length === 0) return;
+    const params = new URLSearchParams();
+    if (sectionLabel) params.set("section", sectionLabel);
+    if (stock.ticker) params.set("ticker", stock.ticker);
+    if (stock.stock_name) params.set("name", stock.stock_name);
+    storeEvidencePayload();
+    void logCtaClick(
+      "evidence_button_click",
+      user?.id,
+      stock.stock_name,
+      getOrCreateAnonId()
+    ).catch(() => {});
+    router.push(`/evidence?${params.toString()}`);
+  };
   const priceInfo = metrics?.price_info;
   const changePct = priceInfo?.change_pct ?? metrics?.chg_pct;
   const changeAmount = priceInfo?.change_amount ?? metrics?.change_amount;
@@ -1175,6 +1263,11 @@ const StockCard = ({
             ))}
           </CommentBulletList>
         </CommentPreviewBox>
+      ) : null}
+      {hasVideoSources ? (
+        <EvidenceButton type="button" onClick={handleEvidenceClick}>
+          근거 영상 모아보기
+        </EvidenceButton>
       ) : null}
 
       {hasDetailContent ? (
@@ -3726,10 +3819,30 @@ const CommentBox = styled.div`
   }
 `;
 
-const CommentPreviewBox = styled.div`
-  margin-top: 8px;
-  strong {
-    font-weight: 700;
+const CommentPreviewBox = styled(CommentBox)`
+  margin-top: 12px;
+`;
+
+const EvidenceButton = styled.button`
+  margin: 8px 0 4px;
+  border-radius: 999px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover,
+  &:focus {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    outline: none;
   }
 `;
 

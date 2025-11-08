@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import { useRecoilValue } from "recoil";
 
 import type {
   InsightMarketDeltaCard,
@@ -16,6 +18,9 @@ import {
   buildFlowShiftDetail,
 } from "./utils/marketDeltaParsers";
 import { StockVideoSources } from "./DomesticStockInsightSection";
+import { userState } from "@/store/user";
+import { logCtaClick } from "@/api/apiClient";
+import { getOrCreateAnonId } from "@/utils/formatter";
 
 interface StockMarketSectionProps {
   section: InsightSection;
@@ -137,6 +142,51 @@ const HUNDRED_MILLION_KEYWORDS = [
 ];
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function buildEvidenceMetricSnapshot(metrics?: InsightStockMetrics | null) {
+  if (!metrics) return null;
+  const normalize = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const numeric = Number(value.replace(/,/g, ""));
+      return Number.isFinite(numeric) ? numeric : undefined;
+    }
+    return undefined;
+  };
+  const priceInfo = metrics.price_info;
+  const price =
+    normalize(priceInfo?.current_price) ??
+    normalize(metrics.price) ??
+    normalize((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.close) ??
+    normalize((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.current_price);
+  const changePct =
+    normalize(priceInfo?.change_pct) ??
+    normalize(metrics.chg_pct) ??
+    normalize((metrics as { price?: { change_pct?: unknown } }).price?.change_pct);
+  const changeAmount =
+    normalize(priceInfo?.change_amount) ??
+    normalize(metrics.change_amount) ??
+    normalize((metrics as { price?: { change_amount?: unknown } }).price?.change_amount);
+  const volume = normalize(metrics.volume);
+  const marketCap = normalize(metrics.market_cap);
+  if (
+    price == null &&
+    changePct == null &&
+    changeAmount == null &&
+    volume == null &&
+    marketCap == null
+  ) {
+    return null;
+  }
+  return {
+    currency: metrics.currency,
+    price,
+    change_pct: changePct,
+    change_amount: changeAmount,
+    volume,
+    market_cap: marketCap,
+  };
+}
 
 type StockPriceMetrics = {
   close?: number;
@@ -661,6 +711,7 @@ const StockMarketSection = ({
               <StockInsightCard
                 key={stock.ticker || stock.stock_name || `stock-${index}`}
                 stock={stock}
+                sectionLabel={section.label}
               />
             ))}
           </StockList>
@@ -672,7 +723,13 @@ const StockMarketSection = ({
 
 export default StockMarketSection;
 
-const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
+const StockInsightCard = ({
+  stock,
+  sectionLabel,
+}: {
+  stock: InsightStock;
+  sectionLabel?: string | null;
+}) => {
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
     StockInsightSectionDetail | null | undefined
@@ -709,6 +766,8 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
     insight?.comment_bullets || stock.comment_bullets
   );
   const previewBullets = commentBullets.slice(0, 3);
+  const hasVideoSources =
+    Array.isArray(stock.sources) && stock.sources.length > 0;
 
   const hasDetailContent = Boolean(
     priceSection?.summary ||
@@ -722,6 +781,44 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
+  const router = useRouter();
+  const user = useRecoilValue(userState);
+  const storeEvidencePayload = () => {
+    if (typeof window === "undefined") return;
+    if (!hasVideoSources) return;
+    const payload = {
+      section: sectionLabel ?? null,
+      stock: {
+        stock_name: stock.stock_name,
+        ticker: stock.ticker,
+        metrics: buildEvidenceMetricSnapshot(stock.metrics as any),
+        sources: stock.sources,
+      },
+    };
+    try {
+      window.sessionStorage.setItem(
+        "evidence:payload",
+        JSON.stringify(payload)
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+  const handleEvidenceClick = () => {
+    if (!hasVideoSources) return;
+    const params = new URLSearchParams();
+    if (sectionLabel) params.set("section", sectionLabel);
+    if (stock.ticker) params.set("ticker", stock.ticker);
+    if (stock.stock_name) params.set("name", stock.stock_name);
+    storeEvidencePayload();
+    void logCtaClick(
+      "evidence_button_click",
+      user?.id,
+      stock.stock_name,
+      getOrCreateAnonId()
+    ).catch(() => {});
+    router.push(`/evidence?${params.toString()}`);
+  };
 
   return (
     <StockCardWrapper>
@@ -759,6 +856,11 @@ const StockInsightCard = ({ stock }: { stock: InsightStock }) => {
             ))}
           </StockCommentBulletList>
         </StockPreviewComment>
+      ) : null}
+      {hasVideoSources ? (
+        <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
+          근거 영상 모아보기
+        </StockEvidenceButton>
       ) : null}
 
       {hasDetailContent ? (
@@ -3253,6 +3355,26 @@ const StockCommentBulletItem = styled.li`
   list-style: disc;
   strong {
     font-weight: 700;
+  }
+`;
+
+const StockEvidenceButton = styled.button`
+  margin: 10px 0 4px;
+  border-radius: 999px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover,
+  &:focus {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    outline: none;
   }
 `;
 

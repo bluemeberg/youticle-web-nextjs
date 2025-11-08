@@ -43,8 +43,20 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     pathname.startsWith("/keyword/") ||
     pathname.startsWith("/studio/");
 
+  const isEvidencePage = pathname.startsWith("/evidence");
+
   const isUnsubscribeOrModifyPage =
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
+
+  const shouldUseLightTheme =
+    isDetailPage || isEvidencePage || isUnsubscribeOrModifyPage;
+
+  const shouldShowBackIcon =
+    Boolean(onBack) ||
+    pathname.endsWith("/unsubscribe") ||
+    isDetailPage ||
+    isEvidencePage ||
+    isUnsubscribeOrModifyPage;
 
   const previousPage = useRef<string | null>(null);
 
@@ -275,14 +287,12 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
   return (
     <>
       <Container
-        $isDetailPage={isDetailPage}
+        $isDetailPage={shouldUseLightTheme}
         $isDesktop={isClientDesktop}
         $isUnsubscribeOrModifyPage={isUnsubscribeOrModifyPage} // unsubscribe 페이지 스타일 적용
       >
         <PageInfo>
-          {(pathname.endsWith("/unsubscribe") ||
-            isDetailPage ||
-            isUnsubscribeOrModifyPage) && (
+          {shouldShowBackIcon && (
             <BackIcon onClick={handleBackClick} />
           )}
           {title === "" ? (
@@ -293,7 +303,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
             <Title>{removeMarkTags(title)}</Title>
           )}
         </PageInfo>
-        {isDetailPage && title !== "" && (
+        {isDetailPage && !isEvidencePage && title !== "" && (
           <IconSection>
             {player ? (
               <YoutubeOnIcon onClick={togglePlayerVisible} />
