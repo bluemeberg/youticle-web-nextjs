@@ -87,7 +87,6 @@ const TopicCard = (props: TopicCardProps) => {
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
   const specialSections = ["주식"]; // 특정 주제 섹션 목록
-  console.log(props);
   // 해당 섹션이 특정 주제인지 확인
   const isSpecialSection = specialSections.includes(section);
 

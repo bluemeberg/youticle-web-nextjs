@@ -8,7 +8,20 @@ import { useRecoilValue } from "recoil";
 
 import LogoHeader from "@/common/LogoHeader";
 import { userState } from "@/store/user";
-import type { InsightSource } from "@/types/insight";
+import type { InsightSource, InsightStock } from "@/types/insight";
+import {
+  StockInsightVisualization,
+  buildInsightVisualization,
+  type StockInsightSectionDetail,
+} from "@/components/insight/StockMarketSection";
+import {
+  DomesticPriceSectionVisual,
+  DomesticValuationSectionVisual,
+  DomesticFlowSectionVisual,
+  isDomesticPriceSection,
+  isDomesticValuationSection,
+  isDomesticFlowSection,
+} from "@/components/insight/DomesticStockInsightSection";
 import {
   getOrCreateAnonId,
   removeMarkTags,
@@ -17,21 +30,31 @@ import {
 } from "@/utils/formatter";
 import { logCtaClick } from "@/api/apiClient";
 
+interface OutlineSegment {
+  start_time?: string | null;
+  key_point?: string | null;
+}
+
+type OutlineEntry = { segments?: OutlineSegment[] | null } | null;
+
+interface OutlineResponseItem {
+  video_id?: string | null;
+  video?: { video_id?: string | null } | null;
+  outline?:
+    | OutlineEntry[]
+    | {
+        outline?: OutlineEntry[] | null;
+      }
+    | null;
+}
+
+interface OutlineResponsePayload {
+  outlines?: OutlineResponseItem[];
+}
+
 interface StoredEvidencePayload {
   section: string | null;
-  stock: {
-    stock_name: string;
-    ticker?: string;
-    metrics?: {
-      currency?: string;
-      price?: { prev_close?: number | null } | null;
-      change_pct?: number | null;
-      change_amount?: number | null;
-      volume?: number | null;
-      market_cap?: number | null;
-    } | null;
-    sources?: InsightSource[];
-  };
+  stock: InsightStock;
 }
 
 const SECTION_KEYWORD_MAP: Record<string, string> = {
@@ -44,6 +67,15 @@ const EvidencePageClient = () => {
   const user = useRecoilValue(userState);
   const [payload, setPayload] = useState<StoredEvidencePayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [outlineSegments, setOutlineSegments] = useState<
+    Record<string, OutlineSegment[]>
+  >({});
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<"kakao" | "email">(
+    "kakao"
+  );
+  const [emailValue, setEmailValue] = useState(user.email ?? "");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -57,11 +89,12 @@ const EvidencePageClient = () => {
     }
   }, []);
 
-  if (loading) return null;
-
   const stock = payload?.stock;
   const sources = stock?.sources?.filter(Boolean) ?? [];
   const sectionLabel = payload?.section ?? "";
+  const sectionDescription = sectionLabel
+    ? `${sectionLabel} TOP5 영상`
+    : "국내·해외 주식 TOP5 영상";
   const backTargetHref = (() => {
     const section = payload?.section?.trim() ?? "";
     const keyword = SECTION_KEYWORD_MAP[section];
@@ -70,6 +103,104 @@ const EvidencePageClient = () => {
 
   const handleNavigateBack = () => router.push(backTargetHref);
 
+  const openAlertModal = () => {
+    setSelectedChannel("kakao");
+    setEmailValue(user.email ?? "");
+    setEmailError(null);
+    setAlertModalOpen(true);
+  };
+
+  const closeAlertModal = () => setAlertModalOpen(false);
+
+  const handleChannelSelect = (channel: "kakao" | "email") => {
+    setSelectedChannel(channel);
+    if (channel === "kakao") {
+      setEmailError(null);
+    }
+  };
+
+  const handleAlertConfirm = () => {
+    if (selectedChannel === "email") {
+      const trimmed = emailValue.trim();
+      if (!trimmed) {
+        setEmailError("이메일을 입력해 주세요.");
+        return;
+      }
+      const emailRegex =
+        /^(?:[a-zA-Z0-9_'^&+\-])+(?:\.(?:[a-zA-Z0-9_'^&+\-])+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(trimmed)) {
+        setEmailError("유효한 이메일 주소가 아닙니다.");
+        return;
+      }
+      setEmailError(null);
+    }
+    logCtaClick(
+      "alert_modal_confirm",
+      user?.id,
+      `${stock?.ticker ?? "unknown"}:${selectedChannel}`,
+      getOrCreateAnonId()
+    ).catch(() => {});
+    setAlertModalOpen(false);
+  };
+
+  const stockTicker = stock?.ticker ?? null;
+
+  useEffect(() => {
+    if (!stockTicker) {
+      setOutlineSegments({});
+      return;
+    }
+    let canceled = false;
+    const fetchOutlines = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.append("sections", "domestic_stock");
+        params.append("sections", "overseas_stock");
+        params.append("max_videos", "5");
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
+        const endpoint = apiBase
+          ? `${apiBase}/insights/stocks/${stockTicker}/outlines`
+          : `/insights/stocks/${stockTicker}/outlines`;
+        const res = await fetch(`${endpoint}?${params.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          if (!canceled) setOutlineSegments({});
+          return;
+        }
+        const data = (await res.json()) as OutlineResponsePayload;
+        if (canceled) return;
+        const map: Record<string, OutlineSegment[]> = {};
+        data.outlines?.forEach((item) => {
+          const videoId = item.video_id ?? item.video?.video_id ?? null;
+          if (!videoId) return;
+          const outlineEntries = extractOutlineEntries(item);
+          const segments = outlineEntries
+            ?.flatMap((entry) => entry?.segments ?? [])
+            .filter((segment): segment is OutlineSegment => Boolean(segment))
+            .filter(
+              (segment) =>
+                Boolean(segment?.key_point) && Boolean(segment?.start_time)
+            );
+          if (segments && segments.length > 0) {
+            map[videoId] = segments;
+          }
+        });
+        setOutlineSegments(map);
+      } catch {
+        if (!canceled) setOutlineSegments({});
+      }
+    };
+    fetchOutlines();
+    return () => {
+      canceled = true;
+    };
+  }, [stockTicker]);
+
+  if (loading) return null;
+
   if (!stock || sources.length === 0) {
     return (
       <>
@@ -77,6 +208,7 @@ const EvidencePageClient = () => {
           title="근거 영상 모아보기"
           onBack={handleNavigateBack}
           onBackHome={handleNavigateBack}
+          showLogo
         />
         <PageWrapper>
           <EmptyState>
@@ -94,7 +226,125 @@ const EvidencePageClient = () => {
   }
 
   const pageTitle = `${stock.stock_name} 근거 영상 모아보기`;
-  const metricSnapshot = stock.metrics ?? null;
+  const metrics = stock.metrics ?? null;
+  const priceInfo = metrics?.price_info ?? null;
+  const priceField = (
+    metrics as {
+      price?: {
+        close?: unknown;
+        open?: unknown;
+        change_pct?: unknown;
+        change_amount?: unknown;
+      };
+    }
+  )?.price;
+  const priceFieldClose = normalizeNumericInput(priceField?.close);
+  const priceFieldOpen = normalizeNumericInput(priceField?.open);
+  const priceFieldChangeAmount = normalizeNumericInput(
+    (priceField as { change_amount?: unknown } | undefined)?.change_amount
+  );
+  const priceFieldChangePct = normalizeNumericInput(
+    (priceField as { change_pct?: unknown } | undefined)?.change_pct
+  );
+  const currentPriceValue = resolveNumericValue(
+    priceInfo?.current_price,
+    priceFieldClose,
+    typeof metrics?.price === "number" ? metrics.price : null,
+    priceInfo?.prev_close
+  );
+  const openPriceValue = resolveNumericValue(
+    priceInfo?.open,
+    priceFieldOpen,
+    priceInfo?.prev_close
+  );
+  const derivedChangeAmount =
+    currentPriceValue != null && openPriceValue != null
+      ? currentPriceValue - openPriceValue
+      : null;
+  const derivedChangePct =
+    currentPriceValue != null && openPriceValue != null && openPriceValue !== 0
+      ? ((currentPriceValue - openPriceValue) / openPriceValue) * 100
+      : null;
+  const fallbackChangeAmount =
+    derivedChangeAmount ??
+    resolveNumericValue(
+      priceInfo?.change_amount,
+      metrics?.change_amount,
+      priceFieldChangeAmount
+    );
+  const fallbackChangePct =
+    derivedChangePct ??
+    resolveNumericValue(
+      priceInfo?.change_pct,
+      metrics?.chg_pct,
+      priceFieldChangePct
+    );
+  const displayMetrics = metrics
+    ? {
+        change_pct: fallbackChangePct,
+        change_amount: fallbackChangeAmount,
+        currency: metrics.currency ?? null,
+      }
+    : null;
+  const heroChangePositive =
+    currentPriceValue != null && openPriceValue != null
+      ? currentPriceValue >= openPriceValue
+      : fallbackChangePct != null
+      ? fallbackChangePct >= 0
+      : (fallbackChangeAmount ?? 0) >= 0;
+  const heroChangeTextParts: string[] = [];
+  if (typeof fallbackChangePct === "number") {
+    heroChangeTextParts.push(
+      `${fallbackChangePct >= 0 ? "+" : ""}${fallbackChangePct.toFixed(2)}%`
+    );
+  }
+  if (typeof fallbackChangeAmount === "number") {
+    heroChangeTextParts.push(
+      formatCurrency(fallbackChangeAmount, metrics?.currency)
+    );
+  }
+  const heroChangeText = heroChangeTextParts.join(" / ");
+
+  const insightData = stock.metric_insight ?? null;
+  const commentBullets = normalizeCommentBullets(
+    insightData?.comment_bullets && insightData.comment_bullets.length > 0
+      ? insightData.comment_bullets
+      : stock.comment_bullets
+  );
+  const commentBody =
+    insightData?.comment_body || stock.action_idea?.reason || null;
+  const commentTitle =
+    insightData?.comment_title || stock.action_idea?.stance || null;
+  const heroCommentText =
+    (commentBullets[0] ? removeMarkTags(commentBullets[0]) : null) ||
+    (commentBody ? removeMarkTags(commentBody) : null);
+  const insightSections = (insightData?.insight_sections ?? [])
+    .map((section) => ({
+      category: section?.category ?? null,
+      title: section?.title ?? null,
+      summary: section?.summary ?? null,
+      highlights: section?.highlights ?? null,
+      _raw: section as StockInsightSectionDetail,
+    }))
+    .filter((section) =>
+      Boolean(
+        section.category ||
+          section.title ||
+          section.summary ||
+          section.highlights
+      )
+    );
+  const limitedInsightSections = insightSections.slice(0, 3).map((section) => ({
+    ...section,
+    visualization:
+      metrics && section._raw
+        ? buildInsightVisualization(section._raw, stock)
+        : null,
+  }));
+  const hasCommentBlock =
+    commentBullets.length > 0 || Boolean(commentBody || commentTitle);
+  const shouldRenderInsightPanel =
+    hasCommentBlock || limitedInsightSections.some((section) => section);
 
   return (
     <>
@@ -102,6 +352,7 @@ const EvidencePageClient = () => {
         title={pageTitle}
         onBack={handleNavigateBack}
         onBackHome={handleNavigateBack}
+        showLogo
       />
       <PageWrapper>
         {/* ① 종목 헤더 */}
@@ -109,48 +360,165 @@ const EvidencePageClient = () => {
           <HeroMain>
             <StockChip>{stock.ticker || stock.stock_name}</StockChip>
             <StockName>{stock.stock_name}</StockName>
-            {metricSnapshot?.change_pct != null ? (
-              <ChangePill $positive={metricSnapshot.change_pct >= 0}>
-                {metricSnapshot.change_pct >= 0 ? "+" : ""}
-                {metricSnapshot.change_pct.toFixed(2)}%
-              </ChangePill>
-            ) : null}
+            {/* <HeroPriceRow>
+              <HeroPriceValue>
+                {formatCurrency(currentPriceValue, metrics?.currency)}
+              </HeroPriceValue>
+              {heroChangeText ? (
+                <HeroChangeBadge $positive={heroChangePositive}>
+                  {heroChangeText}
+                </HeroChangeBadge>
+              ) : null}
+            </HeroPriceRow> */}
           </HeroMain>
           <HeroActions>
-            <HeroButtonPrimary>알림받기</HeroButtonPrimary>
-            <HeroButtonGhost>워치리스트 추가</HeroButtonGhost>
+            <HeroButtonPrimary type="button" onClick={openAlertModal}>
+              알림받기
+            </HeroButtonPrimary>
+            {/* <HeroButtonGhost type="button">워치리스트 추가</HeroButtonGhost> */}
           </HeroActions>
         </StockHero>
 
         {/* ② 메트릭 스냅샷 (종목 헤더 바로 아래) */}
-        {metricSnapshot ? (
+        {metrics ? (
           <MetricSummary>
             <MetricPrimary>
               <MetricLabel>현재가</MetricLabel>
               <MetricValue>
-                {formatCurrency(
-                  metricSnapshot.price?.prev_close ?? null,
-                  metricSnapshot.currency
-                )}
+                {formatCurrency(currentPriceValue, metrics.currency)}
               </MetricValue>
-              {renderChange(metricSnapshot)}
+              {displayMetrics ? renderChange(displayMetrics) : null}
             </MetricPrimary>
-            <MetricGrid>
+            {heroCommentText ? (
+              <MetricComment>
+                <MetricCommentTitle>
+                  {commentTitle || "오늘 코멘트"}
+                </MetricCommentTitle>
+                <MetricCommentBody>{heroCommentText}</MetricCommentBody>
+              </MetricComment>
+            ) : null}
+            {/* <MetricGrid>
               <MetricItem>
                 <span>거래량</span>
-                <strong>{formatCompactNumber(metricSnapshot.volume)}</strong>
+                <strong>{formatCompactNumber(metrics.volume)}</strong>
               </MetricItem>
               <MetricItem>
                 <span>시가총액</span>
                 <strong>
-                  {formatCompactCurrency(
-                    metricSnapshot.market_cap,
-                    metricSnapshot.currency
-                  )}
+                  {formatCompactCurrency(metrics.market_cap, metrics.currency)}
                 </strong>
               </MetricItem>
-            </MetricGrid>
+            </MetricGrid> */}
           </MetricSummary>
+        ) : null}
+        {shouldRenderInsightPanel ? (
+          <InsightWrapper>
+            {/* {hasCommentBlock ? (
+              <InsightCommentCard>
+                <InsightCommentTitle>
+                  {commentTitle || "오늘 TOP5 유튜브 영상 속 코멘트"}
+                </InsightCommentTitle>
+                {commentBullets.length ? (
+                  <InsightCommentBulletList>
+                    {commentBullets.slice(0, 1).map((bullet, index) => {
+                      const bulletHtml =
+                        formatInsightHtml(bullet) ?? removeMarkTags(bullet);
+                      return (
+                        <li
+                          key={`comment-bullet-${index}`}
+                          dangerouslySetInnerHTML={{ __html: bulletHtml }}
+                        />
+                      );
+                    })}
+                  </InsightCommentBulletList>
+                ) : commentBody ? (
+                  <InsightCommentBody
+                    dangerouslySetInnerHTML={{
+                      __html: formatInsightHtml(commentBody) ?? "",
+                    }}
+                  />
+                ) : null}
+              </InsightCommentCard>
+            ) : null} */}
+
+            {limitedInsightSections.length ? (
+              <InsightSectionList>
+                {limitedInsightSections.map((section, index) => {
+                  const summaryHtml = formatInsightHtml(section.summary);
+                  const highlightsHtml = formatInsightHtml(section.highlights);
+                  const hasHeader = section.category || section.title;
+                  const hasBody = summaryHtml || highlightsHtml;
+                  const hasVisualization = Boolean(section.visualization);
+                  const isPriceSection = isDomesticPriceSection(section._raw);
+                  const isValuationSection = isDomesticValuationSection(
+                    section._raw
+                  );
+                  const isFlowSection = isDomesticFlowSection(section._raw);
+                  const hasPrevDayData = containsPreviousDayData(
+                    section.summary,
+                    section.highlights
+                  );
+                  if (
+                    !hasHeader &&
+                    !hasBody &&
+                    !hasVisualization &&
+                    !isPriceSection &&
+                    !isValuationSection &&
+                    !isFlowSection
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <InsightSectionCard key={`insight-${index}`}>
+                      {hasHeader ? (
+                        <InsightSectionHeader>
+                          {section.category ? (
+                            <InsightBadge>{section.category}</InsightBadge>
+                          ) : null}
+                          {section.title ? (
+                            <InsightSectionTitle>
+                              {removeMarkTags(section.title)}
+                            </InsightSectionTitle>
+                          ) : null}
+                        </InsightSectionHeader>
+                      ) : null}
+                      {/* {summaryHtml ? (
+                        <InsightSectionSummary
+                          dangerouslySetInnerHTML={{ __html: summaryHtml }}
+                        />
+                      ) : null} */}
+                      {isPriceSection ? (
+                        <DomesticPriceSectionVisual
+                          stock={stock}
+                          summaryText={
+                            section.summary || section.highlights || null
+                          }
+                        />
+                      ) : null}
+                      {isValuationSection ? (
+                        <DomesticValuationSectionVisual stock={stock} />
+                      ) : null}
+                      {isFlowSection && !hasPrevDayData ? (
+                        <DomesticFlowSectionVisual stock={stock} />
+                      ) : null}
+                      {section.visualization ? (
+                        <StockInsightVisualization
+                          visualization={section.visualization}
+                        />
+                      ) : null}
+                      {highlightsHtml ? (
+                        <InsightHighlights
+                          dangerouslySetInnerHTML={{
+                            __html: highlightsHtml,
+                          }}
+                        />
+                      ) : null}
+                    </InsightSectionCard>
+                  );
+                })}
+              </InsightSectionList>
+            ) : null}
+          </InsightWrapper>
         ) : null}
 
         {/* ③ 섹션 타이틀: 근거 영상 모아보기 */}
@@ -193,6 +561,36 @@ const EvidencePageClient = () => {
                 getOrCreateAnonId()
               ).catch(() => {});
 
+            const outlineItems = outlineSegments[source.video_id] ?? [];
+            const handleOutlineTimeClick = (startTime?: string | null) => {
+              const videoId = source.video_id;
+              if (!videoId) return;
+              const normalizedStart =
+                typeof startTime === "string"
+                  ? startTime.trim()
+                  : startTime != null
+                  ? String(startTime)
+                  : "";
+              if (!normalizedStart) return;
+
+              const params = new URLSearchParams();
+              params.set("focus", "stock-mentions");
+              if (stock?.ticker) {
+                params.set("stock", stock.ticker);
+              } else if (stock?.stock_name) {
+                params.set("stock_name", stock.stock_name);
+              }
+              params.set("start", normalizedStart);
+
+              logCtaClick(
+                "evidence_outline_click",
+                user?.id,
+                videoId,
+                getOrCreateAnonId()
+              ).catch(() => {});
+
+              router.push(`/detail/${videoId}?${params.toString()}`);
+            };
             return (
               <EvidenceCard
                 key={`${source.video_id}-${stock.ticker ?? stock.stock_name}`}
@@ -252,7 +650,34 @@ const EvidencePageClient = () => {
                     </div>
                   </ChannelInfo>
                 </VideoMeta>
-
+                {outlineItems.length ? (
+                  <OutlineWrapper>
+                    <OutlineTitle>
+                      {`"${stock.stock_name}" 관련 핵심 요약`}
+                    </OutlineTitle>
+                    <OutlineSegmentList>
+                      {outlineItems.map((segment, index) => (
+                        <li
+                          key={`${source.video_id}-outline-${index}`}
+                          title={segment.key_point ?? undefined}
+                        >
+                          <OutlineTime
+                            type="button"
+                            onClick={() =>
+                              handleOutlineTimeClick(segment.start_time)
+                            }
+                            disabled={!segment.start_time}
+                          >
+                            {formatOutlineTime(segment.start_time)}
+                          </OutlineTime>
+                          <OutlineText>
+                            {segment.key_point ?? "관련 하이라이트"}
+                          </OutlineText>
+                        </li>
+                      ))}
+                    </OutlineSegmentList>
+                  </OutlineWrapper>
+                ) : null}
                 <EvidenceActions>
                   <PrimaryLink
                     href={focusHref}
@@ -274,6 +699,76 @@ const EvidencePageClient = () => {
           })}
         </EvidenceList>
       </PageWrapper>
+      {alertModalOpen ? (
+        <AlertModalOverlay>
+          <AlertModal>
+            <AlertHeader>
+              <div>
+                <ModalEyebrow>알림 채널 선택</ModalEyebrow>
+                <AlertTitle>
+                  {stock.stock_name} 언급 영상이 나오면 바로 알려드릴게요
+                </AlertTitle>
+                <ModalDescription>
+                  유티클은 오늘 업로드된 {sectionDescription} 가운데 시청자
+                  반응이 좋은 영상 TOP5를 선정합니다. 관심 종목이 그 TOP5에
+                  등장하면 바로 요약을 보내드려요.
+                </ModalDescription>
+              </div>
+              <CloseButton type="button" onClick={closeAlertModal}>
+                ×
+              </CloseButton>
+            </AlertHeader>
+            <ChannelGrid>
+              <ChannelOption
+                type="button"
+                $selected={selectedChannel === "kakao"}
+                onClick={() => handleChannelSelect("kakao")}
+              >
+                <span className="badge">추천</span>
+                <strong>카카오톡</strong>
+                <p>
+                  TOP5 영상에 {stock.stock_name}이 등장하면 즉시 카톡으로 요약을
+                  보내드려요.
+                </p>
+              </ChannelOption>
+              <ChannelOption
+                type="button"
+                $selected={selectedChannel === "email"}
+                onClick={() => handleChannelSelect("email")}
+              >
+                <strong>이메일</strong>
+                <p>업무 PC에서 편하게 확인하고 싶을 때 선택하세요.</p>
+                {selectedChannel === "email" ? (
+                  <EmailField>
+                    <label htmlFor="alert-email">이메일 주소</label>
+                    <input
+                      id="alert-email"
+                      type="email"
+                      value={emailValue}
+                      onChange={(event) => setEmailValue(event.target.value)}
+                      placeholder="example@youticle.com"
+                    />
+                    {emailError ? <ErrorText>{emailError}</ErrorText> : null}
+                  </EmailField>
+                ) : null}
+              </ChannelOption>
+            </ChannelGrid>
+            <BenefitList>
+              <li>관심 종목이 TOP5에 등장할 때만 알림 전송</li>
+              <li>영상 시청 없이 핵심 요약만 바로 확인</li>
+              <li>언제든 마이페이지에서 알림 해지 가능</li>
+            </BenefitList>
+            <AlertFooter>
+              <AlertConfirmButton type="button" onClick={handleAlertConfirm}>
+                알림 설정 완료
+              </AlertConfirmButton>
+              <AlertCancelButton type="button" onClick={closeAlertModal}>
+                나중에 할게요
+              </AlertCancelButton>
+            </AlertFooter>
+          </AlertModal>
+        </AlertModalOverlay>
+      ) : null}
     </>
   );
 };
@@ -285,7 +780,6 @@ export default EvidencePageClient;
 function buildSummaryLines(source: InsightSource): string[] {
   const raw = removeMarkTags(
     source.summary_data?.short_summary ??
-      source.summary_data?.long_summary ??
       source.summary ??
       ""
   );
@@ -296,6 +790,73 @@ function buildSummaryLines(source: InsightSource): string[] {
     .filter(Boolean);
   if (segments.length === 0) return [raw];
   return segments.slice(0, 3);
+}
+
+function containsPreviousDayData(
+  ...values: Array<string | null | undefined>
+): boolean {
+  return values.some((value) => {
+    if (!value) return false;
+    return value.includes("전일");
+  });
+}
+
+function normalizeCommentBullets(value?: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item): item is string => item.length > 0);
+}
+
+function normalizeNumericInput(value?: unknown): number | string | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  return null;
+}
+
+function formatOutlineTime(value?: string | null) {
+  if (!value) return "";
+  if (value.includes(":")) return value;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return value;
+  const minutes = Math.floor(numeric / 60);
+  const seconds = Math.floor(numeric % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function extractOutlineEntries(item: OutlineResponseItem): OutlineEntry[] {
+  if (Array.isArray(item.outline)) {
+    return item.outline;
+  }
+  const nested =
+    item.outline && typeof item.outline === "object"
+      ? (item.outline as { outline?: OutlineEntry[] | null }).outline
+      : null;
+  return Array.isArray(nested) ? nested : [];
+}
+
+function resolveNumericValue(
+  ...values: Array<number | string | null | undefined>
+): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const parsed = Number(value.replace(/,/g, ""));
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return null;
 }
 
 function formatCurrency(value?: number | null, currency?: string | null) {
@@ -360,6 +921,23 @@ function renderChange(metric: {
   );
 }
 
+const HIGHLIGHT_NUMBER_REGEX =
+  /([0-9]+(?:[.,][0-9]+)*(?:\s?(?:억|만|조|천|원|p|%|배|건|회))?)/g;
+
+function formatInsightHtml(value?: string | null) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withLineBreaks = trimmed.replace(/\n+/g, "<br/>");
+  const highlighted = withLineBreaks.replace(
+    HIGHLIGHT_NUMBER_REGEX,
+    "<strong>$1</strong>"
+  );
+  return highlighted
+    .replace(/<mark\b[^>]*>/gi, "<strong>")
+    .replace(/<\/mark>/gi, "</strong>");
+}
+
 /* ---------- styles ---------- */
 
 const PageWrapper = styled.section`
@@ -416,44 +994,64 @@ const StockName = styled.h2`
   font-size: 18px;
   font-weight: 800;
   color: #0f172a;
+  max-width: 180px;
 `;
 
-const ChangePill = styled.span<{ $positive?: boolean }>`
-  margin-left: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
+const HeroPriceRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 8px;
+`;
+
+const HeroPriceValue = styled.span`
+  font-size: 24px;
   font-weight: 800;
-  color: ${({ $positive }) => ($positive ? "#0b8a42" : "#dc2626")};
-  background: ${({ $positive }) => ($positive ? "#ecfdf5" : "#fef2f2")};
+  color: #0f172a;
+`;
+
+const HERO_POSITIVE_COLOR = "#ff6b6b";
+const HERO_NEGATIVE_COLOR = "#0b63f6";
+
+const HeroChangeBadge = styled.span<{ $positive?: boolean }>`
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: ${({ $positive }) =>
+    $positive ? HERO_POSITIVE_COLOR : HERO_NEGATIVE_COLOR};
+  background: ${({ $positive }) =>
+    $positive ? "rgba(255, 107, 107, 0.12)" : "rgba(11, 99, 246, 0.12)"};
 `;
 
 const HeroActions = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: stretch;
   @media (min-width: 420px) {
-    flex-direction: row;
-    align-items: center;
+    align-items: flex-end;
   }
 `;
 
 const HeroButtonPrimary = styled.button`
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #60a5fa;
-  background: #60a5fa;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
+  cursor: pointer;
 `;
 
 const HeroButtonGhost = styled.button`
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 10px 18px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #0f172a;
-  font-weight: 800;
+  font-weight: 700;
+  cursor: pointer;
 `;
 
 /* 섹션 타이틀 */
@@ -492,6 +1090,30 @@ const MetricPrimary = styled.div`
   gap: 12px;
 `;
 
+const MetricComment = styled.div`
+  /* margin-top: 12px; */
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #edf2ff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const MetricCommentTitle = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  text-transform: uppercase;
+`;
+
+const MetricCommentBody = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+  line-height: 1.4;
+`;
+
 const MetricLabel = styled.span`
   font-size: 13px;
   font-weight: 700;
@@ -508,7 +1130,8 @@ const MetricValue = styled.span`
 const ChangeBadge = styled.span<{ $positive?: boolean }>`
   font-size: 14px;
   font-weight: 700;
-  color: ${({ $positive }) => ($positive ? "#0b8a42" : "#dc2626")};
+  color: ${({ $positive }) =>
+    $positive ? HERO_POSITIVE_COLOR : HERO_NEGATIVE_COLOR};
 `;
 
 const MetricGrid = styled.div`
@@ -619,7 +1242,7 @@ const VideoSummaryList = styled.ul`
 
 const SummaryLine = styled.span`
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -627,6 +1250,343 @@ const SummaryLine = styled.span`
   word-break: break-word;
   line-height: 1.2;
   font-size: 14px;
+`;
+
+const OutlineSegmentList = styled.ul`
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+  }
+`;
+
+const OutlineTime = styled.button`
+  display: inline-flex;
+  min-width: 48px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 8px;
+  border: none;
+  cursor: pointer;
+  line-height: 1.3;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover:enabled {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+`;
+
+const OutlineText = styled.span`
+  font-size: 13px;
+  color: #0f172a;
+  line-height: 1.4;
+`;
+
+const OutlineWrapper = styled.div`
+  margin-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+`;
+
+const OutlineTitle = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-bottom: 8px;
+`;
+
+const AlertModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 2000;
+`;
+
+const AlertModal = styled.div`
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const AlertHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const ModalEyebrow = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+`;
+
+const AlertTitle = styled.h3`
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+`;
+
+const ModalDescription = styled.p`
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+`;
+
+const CloseButton = styled.button`
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+`;
+
+const ChannelGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ChannelOption = styled.button<{ $selected: boolean }>`
+  border-radius: 16px;
+  border: 2px solid
+    ${({ $selected }) => ($selected ? "#2563eb" : "transparent")};
+  background: ${({ $selected }) =>
+    $selected ? "rgba(37, 99, 235, 0.08)" : "#f8fafc"};
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  strong {
+    font-size: 16px;
+    color: #0f172a;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+  }
+
+  .badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+`;
+
+const EmailField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  input {
+    border: 1px solid #cbd5f5;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+`;
+
+const ErrorText = styled.span`
+  font-size: 12px;
+  color: #dc2626;
+`;
+
+const BenefitList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+`;
+
+const AlertFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  @media (min-width: 420px) {
+    flex-direction: row;
+  }
+`;
+
+const AlertConfirmButton = styled.button`
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const AlertCancelButton = styled.button`
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const InsightWrapper = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const InsightCommentCard = styled.article`
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  padding: 16px;
+  background: #eff6ff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const InsightCommentTitle = styled.h3`
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d4ed8;
+`;
+
+const InsightCommentBulletList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  color: #0f172a;
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+
+  li strong {
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+`;
+
+const InsightCommentBody = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0f172a;
+
+  strong {
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+`;
+
+const InsightSectionList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+`;
+
+const InsightSectionCard = styled.article`
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const InsightSectionHeader = styled.header`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+`;
+
+const InsightBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(11, 99, 246, 0.12);
+  color: rgb(11, 99, 246);
+  font-size: 11px;
+  font-weight: 700;
+`;
+
+const InsightSectionTitle = styled.span`
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const InsightSectionSummary = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+
+  strong {
+    color: #dc2626;
+  }
+`;
+
+const InsightHighlights = styled.p`
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+
+  strong {
+    font-weight: 700;
+    color: #000;
+  }
 `;
 
 const VideoMeta = styled.div`
@@ -662,8 +1622,15 @@ const ChannelAvatar = styled.img`
 
 const EvidenceActions = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: center;
   gap: 10px;
+  margin-top: 14px;
+
+  @media (min-width: 520px) {
+    flex-direction: row;
+    justify-content: center;
+  }
 `;
 
 const PrimaryLink = styled(Link)`

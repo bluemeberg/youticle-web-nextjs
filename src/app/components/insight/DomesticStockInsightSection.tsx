@@ -44,6 +44,66 @@ function formatCommentBullet(text: string) {
   return formatCommentText(text);
 }
 
+export const isDomesticPriceSection = (section?: {
+  category?: string | null;
+  title?: string | null;
+}) => {
+  if (!section) return false;
+  const category = section.category?.toLowerCase() ?? "";
+  const title = section.title?.toLowerCase() ?? "";
+  return (
+    category === "price_position" ||
+    title.includes("가격") ||
+    title.includes("price") ||
+    title.includes("위치")
+  );
+};
+
+export const isDomesticValuationSection = (section?: {
+  category?: string | null;
+  title?: string | null;
+}) => {
+  if (!section) return false;
+  const category = section.category?.toLowerCase() ?? "";
+  const title = section.title?.toLowerCase() ?? "";
+  return (
+    category === "valuation" ||
+    title.includes("밸류") ||
+    title.includes("valuation")
+  );
+};
+
+export const isDomesticFlowSection = (section?: {
+  category?: string | null;
+  title?: string | null;
+}) => {
+  if (!section) return false;
+  const category = section.category?.toLowerCase() ?? "";
+  const title = section.title?.toLowerCase() ?? "";
+  return (
+    category === "flows" || title.includes("수급") || title.includes("flow")
+  );
+};
+
+function getValuationDescriptor(key: string): string {
+  switch (key) {
+    case "per":
+      return "주가가 이익의 몇 배인지";
+    case "pbr":
+      return "주가가 자산의 몇 배인지";
+    case "roePct":
+      return "자기자본 수익률";
+    case "eps":
+      return "한 주가 벌어들인 이익";
+    case "bps":
+      return "한 주당 순자산";
+    case "marketCap":
+      return "현재 시가총액";
+    default:
+      return "";
+  }
+}
+
 function normalizeNumeric(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -51,44 +111,6 @@ function normalizeNumeric(value: unknown): number | undefined {
     return Number.isFinite(numeric) ? numeric : undefined;
   }
   return undefined;
-}
-
-function buildEvidenceMetricSnapshot(metrics?: InsightStockMetrics | null) {
-  if (!metrics) return null;
-  const priceInfo = metrics.price_info;
-  const price =
-    normalizeNumeric(priceInfo?.current_price) ??
-    normalizeNumeric((priceInfo as { close?: unknown } | undefined)?.close) ??
-    normalizeNumeric(metrics.price) ??
-    normalizeNumeric((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.close) ??
-    normalizeNumeric((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.current_price);
-  const changePct =
-    normalizeNumeric(priceInfo?.change_pct) ??
-    normalizeNumeric(metrics.chg_pct) ??
-    normalizeNumeric((metrics as { price?: { change_pct?: unknown } }).price?.change_pct);
-  const changeAmount =
-    normalizeNumeric(priceInfo?.change_amount) ??
-    normalizeNumeric(metrics.change_amount) ??
-    normalizeNumeric((metrics as { price?: { change_amount?: unknown } }).price?.change_amount);
-  const volume = normalizeNumeric(metrics.volume);
-  const marketCap = normalizeNumeric(metrics.market_cap);
-  if (
-    price == null &&
-    changePct == null &&
-    changeAmount == null &&
-    volume == null &&
-    marketCap == null
-  ) {
-    return null;
-  }
-  return {
-    currency: metrics.currency,
-    price,
-    change_pct: changePct,
-    change_amount: changeAmount,
-    volume,
-    market_cap: marketCap,
-  };
 }
 
 interface Props {
@@ -108,6 +130,12 @@ interface ValuationDetail {
 }
 
 type TonePositiveNeutralNegative = "positive" | "neutral" | "negative";
+type ValuationMetricEntry = {
+  key: string;
+  label: string;
+  display: string;
+  tone: TonePositiveNeutralNegative;
+};
 
 interface FlowSegment {
   key: string;
@@ -425,6 +453,270 @@ const DomesticStockInsightSection = ({
 
 export default DomesticStockInsightSection;
 
+export function DomesticPriceSectionVisual({
+  stock,
+  summaryText,
+}: {
+  stock: InsightStock;
+  summaryText?: string | null;
+}) {
+  const metrics = stock.metrics;
+  if (!metrics) return null;
+  const currency = normalizeCurrency(metrics.currency);
+  const intradayRange = buildStockIntradayDetail(metrics);
+  const range = metrics.range_52w;
+  const rangeLow = toFiniteNumber(range?.low_52w);
+  const rangeHigh = toFiniteNumber(range?.high_52w);
+  const rangePositionRaw = toFiniteNumber(range?.position_pct);
+  const derivedRangePrice =
+    resolveRangeCurrentPrice(metrics) ??
+    derivePriceFromLow(rangeLow, toFiniteNumber(range?.from_low_pct)) ??
+    derivePriceFromHigh(rangeHigh, toFiniteNumber(range?.from_high_pct));
+  const derivedPositionPct = deriveRangePosition(
+    rangeLow,
+    rangeHigh,
+    derivedRangePrice
+  );
+  const positionPct =
+    typeof rangePositionRaw === "number" && Number.isFinite(rangePositionRaw)
+      ? rangePositionRaw
+      : derivedPositionPct;
+  const hasRangePosition =
+    typeof positionPct === "number" && Number.isFinite(positionPct);
+  const normalizedPosition = Math.min(Math.max(positionPct ?? 0, 0), 100);
+  const lowDate = formatDateLabel(range?.low_52w_date);
+  const highDate = formatDateLabel(range?.high_52w_date);
+  const fallbackText = summaryText ? removeMarkTags(summaryText).trim() : null;
+  const showFallback = !intradayRange && !hasRangePosition && fallbackText;
+  if (!intradayRange && !hasRangePosition && !fallbackText) return null;
+
+  const showVisualGrid = Boolean(intradayRange || hasRangePosition);
+
+  return (
+    <>
+      {showVisualGrid ? (
+        <PriceVisualGrid>
+          {intradayRange ? (
+            <PriceVisualCard>
+              <PriceVisualTitle>장중 흐름</PriceVisualTitle>
+              <IntradayChart>
+                <IntradayIndicator>
+                  <IntradayRail />
+                  <IntradayFill
+                    style={{
+                      left: `${intradayRange.lowPct}%`,
+                      width: `${Math.max(
+                        intradayRange.highPct - intradayRange.lowPct,
+                        1
+                      )}%`,
+                    }}
+                  />
+                  <IntradayMarker
+                    $tone="open"
+                    style={{ left: `${intradayRange.openPct}%` }}
+                  />
+                  <IntradayMarker
+                    $tone="close"
+                    style={{ left: `${intradayRange.closePct}%` }}
+                  />
+                </IntradayIndicator>
+                <IntradayLabels>
+                  <strong>저 {intradayRange.low.toLocaleString()}</strong>
+                  <span>
+                    {intradayRange.openLabelShort}{" "}
+                    {intradayRange.open.toLocaleString()}
+                  </span>
+                  <strong>고 {intradayRange.high.toLocaleString()}</strong>
+                </IntradayLabels>
+                <IntradayLegend>
+                  <LegendItem>
+                    <LegendDot $tone="open" />
+                    {intradayRange.openLabelLong}
+                  </LegendItem>
+                  <LegendItem>
+                    <LegendDot $tone="close" />종가
+                  </LegendItem>
+                </IntradayLegend>
+              </IntradayChart>
+            </PriceVisualCard>
+          ) : null}
+          {hasRangePosition ? (
+            <PriceVisualCard>
+              <PriceVisualTitle>52주 위치</PriceVisualTitle>
+              <RangeBar>
+                <RangeTrack>
+                  <RangeFill style={{ width: `${normalizedPosition}%` }} />
+                </RangeTrack>
+                <RangePosition>
+                  현재 위치 <strong>{Math.round(normalizedPosition)}%</strong>
+                </RangePosition>
+                <RangeLabels>
+                  <span>
+                    52주 저 {formatCurrencyWithUnit(rangeLow, currency)}
+                    {lowDate ? <RangeDate>{lowDate}</RangeDate> : null}
+                  </span>
+                  <span>
+                    52주 고 {formatCurrencyWithUnit(rangeHigh, currency)}
+                    {highDate ? <RangeDate>{highDate}</RangeDate> : null}
+                  </span>
+                </RangeLabels>
+              </RangeBar>
+            </PriceVisualCard>
+          ) : null}
+        </PriceVisualGrid>
+      ) : null}
+      {showFallback ? <PriceFallbackNote>{fallbackText}</PriceFallbackNote> : null}
+    </>
+  );
+}
+
+export function DomesticValuationSectionVisual({
+  stock,
+}: {
+  stock: InsightStock;
+}) {
+  const metrics = stock.metrics;
+  if (!metrics) return null;
+  const currency = normalizeCurrency(metrics.currency);
+  const valuationDetail = buildValuationDetail(metrics);
+  const rawHtsAvls = stock?.quote_raw?.output?.hts_avls;
+  const marketCapHundredMillion =
+    currency === "KRW" ? toFiniteNumber(toNumeric(rawHtsAvls)) : null;
+  const marketCapNonKrw =
+    currency === "KRW" ? null : toFiniteNumber(metrics?.market_cap);
+  const marketCapDisplay = (() => {
+    if (currency === "KRW") {
+      return marketCapHundredMillion != null
+        ? formatKrwFromHundredMillion(marketCapHundredMillion)
+        : null;
+    }
+    return marketCapNonKrw != null
+      ? formatCurrencyWithUnit(marketCapNonKrw, currency, { compact: true })
+      : null;
+  })();
+
+  const entries = [
+    marketCapDisplay
+      ? {
+          key: "marketCap",
+          label: "시가총액",
+          display: marketCapDisplay,
+          tone: "neutral" as TonePositiveNeutralNegative,
+        }
+      : null,
+    valuationDetail?.per != null
+      ? {
+          key: "per",
+          label: "PER",
+          display: `${valuationDetail.per.toFixed(1)}배`,
+          tone: "neutral" as TonePositiveNeutralNegative,
+        }
+      : null,
+    valuationDetail?.pbr != null
+      ? {
+          key: "pbr",
+          label: "PBR",
+          display: `${valuationDetail.pbr.toFixed(2)}배`,
+          tone: "neutral" as TonePositiveNeutralNegative,
+        }
+      : null,
+    valuationDetail?.roePct != null
+      ? {
+          key: "roePct",
+          label: "ROE",
+          display: `${valuationDetail.roePct.toFixed(1)}%`,
+          tone: valuationDetail.roePct >= 0 ? "positive" : "negative",
+        }
+      : null,
+    valuationDetail?.eps != null
+      ? {
+          key: "eps",
+          label: "EPS",
+          display: formatCurrencyWithUnit(valuationDetail.eps, currency),
+          tone: "neutral" as TonePositiveNeutralNegative,
+        }
+      : null,
+    valuationDetail?.bps != null
+      ? {
+          key: "bps",
+          label: "BPS",
+          display: formatCurrencyWithUnit(valuationDetail.bps, currency),
+          tone: "neutral" as TonePositiveNeutralNegative,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    display: string;
+    tone: TonePositiveNeutralNegative;
+  }>;
+
+  if (entries.length === 0) return null;
+
+  return (
+    <ValuationVisualWrapper>
+      <ValuationMetricGrid>
+        {entries.map((entry) => (
+          <ValuationMetricCard key={entry.key}>
+            <ValuationMetricLabel>
+              {entry.label}
+              <small>{getValuationDescriptor(entry.key)}</small>
+            </ValuationMetricLabel>
+            <ValuationMetricValue $tone={entry.tone}>
+              {entry.display}
+            </ValuationMetricValue>
+          </ValuationMetricCard>
+        ))}
+      </ValuationMetricGrid>
+    </ValuationVisualWrapper>
+  );
+}
+
+export function DomesticFlowSectionVisual({ stock }: { stock: InsightStock }) {
+  const metrics = stock.metrics;
+  if (!metrics) return null;
+  const flowDetail = buildFlowDetail(metrics);
+  if (!flowDetail) return null;
+  return (
+    <FlowVisualWrapper>
+      {flowDetail.segments.length > 0 ? (
+        <FlowDistributionBar>
+          {flowDetail.segments.map((segment) => {
+            const directionLabel =
+              segment.direction === "sell"
+                ? "매도"
+                : segment.direction === "buy"
+                ? "매수"
+                : "";
+            return (
+              <FlowDistributionSegment
+                key={segment.key}
+                $tone={segment.tone}
+                $direction={segment.direction}
+                style={{ flexGrow: Math.max(segment.percent, 6) }}
+              >
+                {segment.label}
+                {directionLabel ? ` ${directionLabel}` : ""} {segment.percent}%
+              </FlowDistributionSegment>
+            );
+          })}
+        </FlowDistributionBar>
+      ) : null}
+      {flowDetail.stats.length > 0 ? (
+        <FlowStats>
+          {flowDetail.stats.map((stat) => (
+            <FlowStatCard key={stat.key} $tone={stat.tone}>
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+              {stat.description ? <small>{stat.description}</small> : null}
+            </FlowStatCard>
+          ))}
+        </FlowStats>
+      ) : null}
+    </FlowVisualWrapper>
+  );
+}
+
 const MarketCardHeaderContent = ({ card }: { card: InsightMarketCard }) => (
   <MarketCardHeader>
     <MarketTitle>
@@ -709,14 +1001,18 @@ const StockCard = ({
   const storeEvidencePayload = () => {
     if (typeof window === "undefined") return;
     if (!Array.isArray(stock.sources) || stock.sources.length === 0) return;
+    const sanitizedStock = (() => {
+      try {
+        return typeof structuredClone === "function"
+          ? structuredClone(stock)
+          : JSON.parse(JSON.stringify(stock));
+      } catch {
+        return stock;
+      }
+    })();
     const payload = {
       section: sectionLabel ?? null,
-      stock: {
-        stock_name: stock.stock_name,
-        ticker: stock.ticker,
-        metrics: buildEvidenceMetricSnapshot(metrics),
-        sources: stock.sources,
-      },
+      stock: sanitizedStock,
     };
     try {
       window.sessionStorage.setItem(
@@ -852,250 +1148,19 @@ const StockCard = ({
           (section.title.includes("레벨") ||
             section.title.toLowerCase().includes("level"))))
   );
-  const renderPriceVisuals = () => {
-    const rangePosition = range?.position_pct;
-    const hasRangePosition = typeof rangePosition === "number";
-    if (!intradayRange && !hasRangePosition) {
-      return null;
-    }
-
-    const currentPrice = priceInfo?.current_price || metrics?.price;
-    const normalizedPosition = Math.min(Math.max(rangePosition ?? 0, 0), 100);
-    const lowDate = formatDateLabel(range?.low_52w_date);
-    const highDate = formatDateLabel(range?.high_52w_date);
-
-    return (
-      <PriceVisualGrid>
-        {intradayRange ? (
-          <PriceVisualCard>
-            <PriceVisualTitle>장중 흐름</PriceVisualTitle>
-            <IntradayChart>
-              <IntradayIndicator>
-                <IntradayRail />
-                <IntradayFill
-                  style={{
-                    left: `${intradayRange.lowPct}%`,
-                    width: `${Math.max(
-                      intradayRange.highPct - intradayRange.lowPct,
-                      1
-                    )}%`,
-                  }}
-                />
-                <IntradayMarker
-                  $tone="open"
-                  style={{ left: `${intradayRange.openPct}%` }}
-                />
-                <IntradayMarker
-                  $tone="close"
-                  style={{ left: `${intradayRange.closePct}%` }}
-                />
-              </IntradayIndicator>
-              <IntradayLabels>
-                <strong>저 {intradayRange.low.toLocaleString()}</strong>
-                <span>
-                  {intradayRange.openLabelShort}{" "}
-                  {intradayRange.open.toLocaleString()}
-                </span>
-                <strong>고 {intradayRange.high.toLocaleString()}</strong>
-              </IntradayLabels>
-              <IntradayLegend>
-                <LegendItem>
-                  <LegendDot $tone="open" />
-                  {intradayRange.openLabelLong}
-                </LegendItem>
-                <LegendItem>
-                  <LegendDot $tone="close" />
-                  종가
-                </LegendItem>
-              </IntradayLegend>
-              {/* <IntradaySummary
-                dangerouslySetInnerHTML={{
-                  __html: emphasizeNumbers(intradayRange.text),
-                }}
-              /> */}
-            </IntradayChart>
-          </PriceVisualCard>
-        ) : null}
-        {hasRangePosition ? (
-          <PriceVisualCard>
-            <PriceVisualTitle>52주 위치</PriceVisualTitle>
-            <RangeBar>
-              <RangeTrack>
-                <RangeFill style={{ width: `${normalizedPosition}%` }} />
-              </RangeTrack>
-              <RangePosition>
-                현재 위치 <strong>{Math.round(normalizedPosition)}%</strong>
-              </RangePosition>
-              <RangeLabels>
-                <span>
-                  52주 저{" "}
-                  {formatCurrencyWithUnit(range?.low_52w ?? null, currency)}
-                  {lowDate ? <RangeDate>{lowDate}</RangeDate> : null}
-                </span>
-                <span>
-                  52주 고{" "}
-                  {formatCurrencyWithUnit(range?.high_52w ?? null, currency)}
-                  {highDate ? <RangeDate>{highDate}</RangeDate> : null}
-                </span>
-              </RangeLabels>
-            </RangeBar>
-            {/* {currentPrice != null ? (
-              <RangeMeta>
-                현재가{" "}
-                <strong>
-                  {formatCurrencyWithUnit(currentPrice, currency)}
-                </strong>
-              </RangeMeta>
-            ) : null} */}
-          </PriceVisualCard>
-        ) : null}
-      </PriceVisualGrid>
-    );
-  };
-  const renderValuationVisuals = () => {
-    if (!valuationDetail) return null;
-
-    const descriptor = (key: string) => {
-      switch (key) {
-        case "per":
-          return "주가가 이익의 몇 배인지";
-        case "pbr":
-          return "주가가 자산의 몇 배인지";
-        case "roePct":
-          return "자기자본 수익률";
-        case "eps":
-          return "한 주가 벌어들인 이익";
-        case "bps":
-          return "한 주당 순자산";
-        default:
-          return "";
-      }
-    };
-
-    const entries = [
-      marketCapDisplay
-        ? {
-            key: "marketCap",
-            label: "시가총액",
-            display: marketCapDisplay,
-            tone: "neutral" as TonePositiveNeutralNegative,
-          }
-        : null,
-      valuationDetail.per != null
-        ? {
-            key: "per",
-            label: "PER",
-            display: `${valuationDetail.per.toFixed(1)}배`,
-            tone: "neutral" as TonePositiveNeutralNegative,
-          }
-        : null,
-      valuationDetail.pbr != null
-        ? {
-            key: "pbr",
-            label: "PBR",
-            display: `${valuationDetail.pbr.toFixed(2)}배`,
-            tone: "neutral" as TonePositiveNeutralNegative,
-          }
-        : null,
-      valuationDetail.roePct != null
-        ? {
-            key: "roePct",
-            label: "ROE",
-            display: `${valuationDetail.roePct.toFixed(1)}%`,
-            tone: valuationDetail.roePct >= 0 ? "positive" : "negative",
-          }
-        : null,
-      valuationDetail.eps != null
-        ? {
-            key: "eps",
-            label: "EPS",
-            display: formatCurrencyWithUnit(valuationDetail.eps, currency),
-            tone: "neutral" as TonePositiveNeutralNegative,
-          }
-        : null,
-      valuationDetail.bps != null
-        ? {
-            key: "bps",
-            label: "BPS",
-            display: formatCurrencyWithUnit(valuationDetail.bps, currency),
-            tone: "neutral" as TonePositiveNeutralNegative,
-          }
-        : null,
-    ].filter(Boolean) as Array<{
-      key: string;
-      label: string;
-      display: string;
-      tone: TonePositiveNeutralNegative;
-    }>;
-
-    if (entries.length === 0) return null;
-
-    return (
-      <ValuationVisualWrapper>
-        <ValuationMetricGrid>
-          {entries.map((entry) => (
-            <ValuationMetricCard key={entry.key}>
-              <ValuationMetricLabel>
-                {entry.label}
-                <small>{descriptor(entry.key)}</small>
-              </ValuationMetricLabel>
-              <ValuationMetricValue $tone={entry.tone}>
-                {entry.display}
-              </ValuationMetricValue>
-            </ValuationMetricCard>
-          ))}
-        </ValuationMetricGrid>
-      </ValuationVisualWrapper>
-    );
-  };
-  const renderFlowVisuals = () => {
-    if (!flowDetail) return null;
-    return (
-      <FlowVisualWrapper>
-        {/* <FlowSummary $tone={flowDetail.summary.tone}>
-          {flowDetail.summary.text}
-        </FlowSummary> */}
-        {flowDetail.segments.length > 0 ? (
-          <FlowDistributionBar>
-            {flowDetail.segments.map((segment) => {
-              const directionLabel =
-                segment.direction === "sell"
-                  ? "매도"
-                  : segment.direction === "buy"
-                  ? "매수"
-                  : "";
-              return (
-                <FlowDistributionSegment
-                  key={segment.key}
-                  $tone={segment.tone}
-                  $direction={segment.direction}
-                  style={{
-                    flexGrow: Math.max(segment.percent, 6),
-                    flexBasis: 0,
-                  }}
-                >
-                  {segment.label}
-                  {directionLabel ? ` ${directionLabel}` : ""} {segment.percent}
-                  %
-                </FlowDistributionSegment>
-              );
-            })}
-          </FlowDistributionBar>
-        ) : null}
-        {flowDetail.stats.length > 0 ? (
-          <FlowStats>
-            {flowDetail.stats.map((stat) => (
-              <FlowStatCard key={stat.key} $tone={stat.tone}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                {stat.description ? <small>{stat.description}</small> : null}
-              </FlowStatCard>
-            ))}
-          </FlowStats>
-        ) : null}
-      </FlowVisualWrapper>
-    );
-  };
+  const firstPriceSection = insightSections.find((section) =>
+    isDomesticPriceSection(section)
+  );
+  const priceSectionSummaryText =
+    firstPriceSection?.summary || firstPriceSection?.highlights || null;
+  const priceVisualNode = (
+    <DomesticPriceSectionVisual
+      stock={stock}
+      summaryText={priceSectionSummaryText}
+    />
+  );
+  const valuationVisualNode = <DomesticValuationSectionVisual stock={stock} />;
+  const flowVisualNode = <DomesticFlowSectionVisual stock={stock} />;
   const renderLiquidityVisuals = () => {
     if (!liquidityDetail) return null;
     return (
@@ -1179,12 +1244,10 @@ const StockCard = ({
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
   const hasComment = Boolean(comment || commentBullets.length > 0);
-  const hasStandalonePriceVisual =
-    !hasPriceSection &&
-    (Boolean(intradayRange) || typeof range?.position_pct === "number");
+  const hasStandalonePriceVisual = !hasPriceSection && Boolean(priceVisualNode);
   const hasStandaloneValuationVisual =
-    !hasValuationSection && Boolean(valuationDetail);
-  const hasStandaloneFlowVisual = !hasFlowSection && Boolean(flowDetail);
+    !hasValuationSection && Boolean(valuationVisualNode);
+  const hasStandaloneFlowVisual = !hasFlowSection && Boolean(flowVisualNode);
   const hasStandaloneLiquidityVisual =
     !hasLiquiditySection && Boolean(liquidityDetail?.stats?.length);
   const hasInsightSectionList =
@@ -1264,12 +1327,6 @@ const StockCard = ({
           </CommentBulletList>
         </CommentPreviewBox>
       ) : null}
-      {hasVideoSources ? (
-        <EvidenceButton type="button" onClick={handleEvidenceClick}>
-          근거 영상 모아보기
-        </EvidenceButton>
-      ) : null}
-
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -1314,9 +1371,9 @@ const StockCard = ({
                   ) : null}
                 </CommentBox>
               ) : null}
-              {hasStandalonePriceVisual ? renderPriceVisuals() : null}
-              {hasStandaloneValuationVisual ? renderValuationVisuals() : null}
-              {hasStandaloneFlowVisual ? renderFlowVisuals() : null}
+              {hasStandalonePriceVisual ? priceVisualNode : null}
+              {hasStandaloneValuationVisual ? valuationVisualNode : null}
+              {hasStandaloneFlowVisual ? flowVisualNode : null}
               {hasStandaloneLiquidityVisual ? renderLiquidityVisuals() : null}
               {/* {!hasLevelsSection ? renderLevelsVisuals() : null} */}
               {hasInsightSectionList ? (
@@ -1373,9 +1430,16 @@ const StockCard = ({
                             }}
                           />
                         )} */}
-                        {isPriceSection ? renderPriceVisuals() : null}
-                        {isValuationSection ? renderValuationVisuals() : null}
-                        {isFlowSection ? renderFlowVisuals() : null}
+                        {isPriceSection ? (
+                          <DomesticPriceSectionVisual
+                            stock={stock}
+                            summaryText={
+                              section.summary || section.highlights || null
+                            }
+                          />
+                        ) : null}
+                        {isValuationSection ? valuationVisualNode : null}
+                        {isFlowSection ? flowVisualNode : null}
                         {isLiquiditySection ? renderLiquidityVisuals() : null}
                         {/* {isLevelsSection ? renderLevelsVisuals() : null} */}
                         {section.highlights && (
@@ -1391,10 +1455,18 @@ const StockCard = ({
                 </InsightSectionList>
               ) : null}
               {hasVideoSources ? (
-                <StockVideoSources
-                  stockName={stock.stock_name}
-                  sources={stock.sources}
-                />
+                <>
+                  <StockVideoSources
+                    stockName={stock.stock_name}
+                    sources={stock.sources}
+                  />
+                  <EvidenceButton
+                    type="button"
+                    onClick={handleEvidenceClick}
+                  >
+                    근거 영상 모아보기
+                  </EvidenceButton>
+                </>
               ) : null}
             </StockDetailBody>
           </StockDetailCollapse>
@@ -1435,6 +1507,218 @@ const StockCard = ({
   );
 };
 
+export const StockVisualSummaryBlocks = ({
+  stock,
+}: {
+  stock: InsightStock;
+}) => {
+  console.log(stock);
+  const metrics = stock.metrics;
+  if (!metrics) return null;
+  const currency = normalizeCurrency(metrics.currency);
+  const intradayRange = buildStockIntradayDetail(metrics);
+  const range = metrics.range_52w;
+  const rangePosition = range?.position_pct;
+  const hasRangePosition = typeof rangePosition === "number";
+  console.log(hasRangePosition);
+  const normalizedPosition = Math.min(Math.max(rangePosition ?? 0, 0), 100);
+  const lowDate = formatDateLabel(range?.low_52w_date);
+  const highDate = formatDateLabel(range?.high_52w_date);
+
+  const valuationDetail = buildValuationDetail(metrics);
+  const valuationEntries: ValuationMetricEntry[] = valuationDetail
+    ? ([
+        valuationDetail.per != null
+          ? {
+              key: "per",
+              label: "PER",
+              display: `${valuationDetail.per.toFixed(2)}배`,
+              tone: valuationDetail.per >= 0 ? "positive" : "negative",
+            }
+          : null,
+        valuationDetail.pbr != null
+          ? {
+              key: "pbr",
+              label: "PBR",
+              display: `${valuationDetail.pbr.toFixed(2)}배`,
+              tone: "neutral" as TonePositiveNeutralNegative,
+            }
+          : null,
+        valuationDetail.roePct != null
+          ? {
+              key: "roePct",
+              label: "ROE",
+              display: `${valuationDetail.roePct.toFixed(1)}%`,
+              tone: valuationDetail.roePct >= 0 ? "positive" : "negative",
+            }
+          : null,
+        valuationDetail.eps != null
+          ? {
+              key: "eps",
+              label: "EPS",
+              display: formatCurrencyWithUnit(valuationDetail.eps, currency),
+              tone: "neutral" as TonePositiveNeutralNegative,
+            }
+          : null,
+        valuationDetail.bps != null
+          ? {
+              key: "bps",
+              label: "BPS",
+              display: formatCurrencyWithUnit(valuationDetail.bps, currency),
+              tone: "neutral" as TonePositiveNeutralNegative,
+            }
+          : null,
+      ].filter((entry): entry is ValuationMetricEntry => Boolean(entry)))
+    : [];
+
+  const flowDetail = buildFlowDetail(metrics);
+
+  const showPriceVisuals = Boolean(intradayRange || hasRangePosition);
+  const showValuation = valuationEntries.length > 0;
+  const showFlow = Boolean(flowDetail);
+
+  if (!showPriceVisuals && !showValuation && !showFlow) {
+    return null;
+  }
+
+  return (
+    <VisualStack>
+      {showPriceVisuals ? (
+        <PriceVisualGrid>
+          {intradayRange ? (
+            <PriceVisualCard>
+              <PriceVisualTitle>장중 흐름</PriceVisualTitle>
+              <IntradayChart>
+                <IntradayIndicator>
+                  <IntradayRail />
+                  <IntradayFill
+                    style={{
+                      left: `${intradayRange.lowPct}%`,
+                      width: `${Math.max(
+                        intradayRange.highPct - intradayRange.lowPct,
+                        1
+                      )}%`,
+                    }}
+                  />
+                  <IntradayMarker
+                    $tone="open"
+                    style={{ left: `${intradayRange.openPct}%` }}
+                  />
+                  <IntradayMarker
+                    $tone="close"
+                    style={{ left: `${intradayRange.closePct}%` }}
+                  />
+                </IntradayIndicator>
+                <IntradayLabels>
+                  <strong>저 {intradayRange.low.toLocaleString()}</strong>
+                  <span>
+                    {intradayRange.openLabelShort}{" "}
+                    {intradayRange.open.toLocaleString()}
+                  </span>
+                  <strong>고 {intradayRange.high.toLocaleString()}</strong>
+                </IntradayLabels>
+                <IntradayLegend>
+                  <LegendItem>
+                    <LegendDot $tone="open" />
+                    {intradayRange.openLabelLong}
+                  </LegendItem>
+                  <LegendItem>
+                    <LegendDot $tone="close" />
+                    종가
+                  </LegendItem>
+                </IntradayLegend>
+              </IntradayChart>
+            </PriceVisualCard>
+          ) : null}
+          {hasRangePosition ? (
+            <PriceVisualCard>
+              <PriceVisualTitle>52주 위치</PriceVisualTitle>
+              <RangeBar>
+                <RangeTrack>
+                  <RangeFill style={{ width: `${normalizedPosition}%` }} />
+                </RangeTrack>
+                <RangePosition>
+                  현재 위치 <strong>{Math.round(normalizedPosition)}%</strong>
+                </RangePosition>
+                <RangeLabels>
+                  <span>
+                    52주 저{" "}
+                    {formatCurrencyWithUnit(range?.low_52w ?? null, currency)}
+                    {lowDate ? <RangeDate>{lowDate}</RangeDate> : null}
+                  </span>
+                  <span>
+                    52주 고{" "}
+                    {formatCurrencyWithUnit(range?.high_52w ?? null, currency)}
+                    {highDate ? <RangeDate>{highDate}</RangeDate> : null}
+                  </span>
+                </RangeLabels>
+              </RangeBar>
+            </PriceVisualCard>
+          ) : null}
+        </PriceVisualGrid>
+      ) : null}
+
+      {showValuation ? (
+        <ValuationVisualWrapper>
+          <ValuationMetricGrid>
+            {valuationEntries.map((entry) => (
+              <ValuationMetricCard key={entry.key}>
+                <ValuationMetricLabel>
+                  {entry.label}
+                  <small>{getValuationDescriptor(entry.key)}</small>
+                </ValuationMetricLabel>
+                <ValuationMetricValue $tone={entry.tone}>
+                  {entry.display}
+                </ValuationMetricValue>
+              </ValuationMetricCard>
+            ))}
+          </ValuationMetricGrid>
+        </ValuationVisualWrapper>
+      ) : null}
+
+      {showFlow && flowDetail ? (
+        <FlowVisualWrapper>
+          {flowDetail.segments.length > 0 ? (
+            <FlowDistributionBar>
+              {flowDetail.segments.map((segment) => {
+                const directionLabel =
+                  segment.direction === "sell"
+                    ? "매도"
+                    : segment.direction === "buy"
+                    ? "매수"
+                    : "";
+                return (
+                  <FlowDistributionSegment
+                    key={segment.key}
+                    $tone={segment.tone}
+                    $direction={segment.direction}
+                    style={{ flexGrow: Math.max(segment.percent, 6) }}
+                  >
+                    {segment.label}
+                    {directionLabel ? ` ${directionLabel}` : ""}{" "}
+                    {segment.percent}%
+                  </FlowDistributionSegment>
+                );
+              })}
+            </FlowDistributionBar>
+          ) : null}
+          {flowDetail.stats.length > 0 ? (
+            <FlowStats>
+              {flowDetail.stats.map((stat) => (
+                <FlowStatCard key={stat.key} $tone={stat.tone}>
+                  <span>{stat.label}</span>
+                  <strong>{stat.value}</strong>
+                  {stat.description ? <small>{stat.description}</small> : null}
+                </FlowStatCard>
+              ))}
+            </FlowStats>
+          ) : null}
+        </FlowVisualWrapper>
+      ) : null}
+    </VisualStack>
+  );
+};
+
 export const StockVideoSources = ({
   sources,
   stockName,
@@ -1444,6 +1728,9 @@ export const StockVideoSources = ({
 }) => {
   const user = useRecoilValue(userState);
   if (!sources || sources.length === 0) return null;
+  const MAX_DISPLAY_COUNT = 1;
+  const displaySources = sources.slice(0, MAX_DISPLAY_COUNT);
+  const hasMoreSources = sources.length > displaySources.length;
 
   return (
     <VideoSourcesSection>
@@ -1454,7 +1741,7 @@ export const StockVideoSources = ({
         {/* <VideoCountBadge>{sources.length}편</VideoCountBadge> */}
       </VideoSourcesHeader>
       <VideoSourceList>
-        {sources.map((source) => {
+        {displaySources.map((source) => {
           const summaryData = source.summary_data;
           const headlineTitle = removeMarkTags(
             summaryData?.headline_title ??
@@ -1536,6 +1823,11 @@ export const StockVideoSources = ({
           );
         })}
       </VideoSourceList>
+      {hasMoreSources ? (
+        <VideoSourcesHint>
+          나머지 영상은 근거 영상 모아보기에서 확인할 수 있어요.
+        </VideoSourcesHint>
+      ) : null}
     </VideoSourcesSection>
   );
 };
@@ -2358,6 +2650,57 @@ function toFiniteNumber(value?: number | null) {
   if (value == null) return undefined;
   const num = Number(value);
   return Number.isFinite(num) ? num : undefined;
+}
+
+function resolveRangeCurrentPrice(metrics?: InsightStockMetrics | null) {
+  if (!metrics) return null;
+  const priceInfo = metrics.price_info;
+  const priceField = (metrics as {
+    price?: { close?: unknown; current_price?: unknown };
+  })?.price;
+  const candidates = [
+    priceInfo?.current_price,
+    priceField?.current_price,
+    priceField?.close,
+    metrics.price,
+    priceInfo?.prev_close,
+  ];
+  for (const candidate of candidates) {
+    const value = toFiniteNumber(
+      typeof candidate === "number" ? candidate : (candidate as number | null)
+    );
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function derivePriceFromLow(low?: number, fromLowPct?: number | null) {
+  if (low == null || fromLowPct == null) return null;
+  return low * (1 + fromLowPct / 100);
+}
+
+function derivePriceFromHigh(high?: number, fromHighPct?: number | null) {
+  if (high == null || fromHighPct == null) return null;
+  return high * (1 + fromHighPct / 100);
+}
+
+function deriveRangePosition(
+  low?: number | null,
+  high?: number | null,
+  current?: number | null
+) {
+  if (
+    low == null ||
+    high == null ||
+    current == null ||
+    !Number.isFinite(low) ||
+    !Number.isFinite(high) ||
+    !Number.isFinite(current) ||
+    high === low
+  ) {
+    return null;
+  }
+  return ((current - low) / (high - low)) * 100;
 }
 
 function parseNumber(value?: string | null) {
@@ -3322,6 +3665,17 @@ const PriceVisualCard = styled.div`
   gap: 10px;
 `;
 
+const PriceFallbackNote = styled.p`
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+`;
+
+
 const PriceVisualTitle = styled.span`
   font-size: 12px;
   font-weight: 700;
@@ -3930,6 +4284,12 @@ const InsightSectionHighlights = styled.div`
   }
 `;
 
+const VisualStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
 const VideoSourcesSection = styled.div`
   display: flex;
   flex-direction: column;
@@ -3968,6 +4328,12 @@ const VideoSourceList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+`;
+
+const VideoSourcesHint = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
 `;
 
 const VideoSourceCard = styled(Link)`

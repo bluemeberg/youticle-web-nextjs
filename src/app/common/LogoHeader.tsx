@@ -22,9 +22,15 @@ interface LogoHeaderProps {
   title?: string;
   onBack?: () => void; // 뒤로가기 핸들러 추가
   onBackHome?: () => void;
+  showLogo?: boolean;
 }
 
-const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
+const LogoHeader = ({
+  title = "",
+  onBack,
+  onBackHome,
+  showLogo = false,
+}: LogoHeaderProps) => {
   const user = useRecoilValue(userState);
   const setUser = useSetRecoilState(userState);
   const player = useRecoilValue(playerState);
@@ -284,6 +290,8 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
     MENU_ITEMS_ALL[1], // 유티클 브리핑
     ...(isPrivileged ? [MENU_ITEMS_ALL[0], MENU_ITEMS_ALL[2]] : []),
   ];
+  const shouldRenderDefaultLogoSlot = !showLogo && title === "";
+
   return (
     <>
       <Container
@@ -295,12 +303,19 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
           {shouldShowBackIcon && (
             <BackIcon onClick={handleBackClick} />
           )}
-          {title === "" ? (
+          {shouldRenderDefaultLogoSlot ? (
             <span onClick={handleLogoClick} className="logo">
               YouTicle
             </span>
           ) : (
-            <Title>{removeMarkTags(title)}</Title>
+            <TitleGroup>
+              {showLogo ? (
+                <LogoButton type="button" onClick={handleLogoClick}>
+                  YouTicle
+                </LogoButton>
+              ) : null}
+              {title ? <Title>{removeMarkTags(title)}</Title> : null}
+            </TitleGroup>
           )}
         </PageInfo>
         {isDetailPage && !isEvidencePage && title !== "" && (
@@ -313,7 +328,7 @@ const LogoHeader = ({ title = "", onBack, onBackHome }: LogoHeaderProps) => {
             <ShareIcon onClick={copyUrlToClipboard} />
           </IconSection>
         )}
-        {title === "" && (
+        {shouldRenderDefaultLogoSlot && (
           <>
             {!pathname.includes("/detail") &&
               !pathname.startsWith("/editor/") &&
@@ -426,6 +441,12 @@ const PageInfo = styled.div`
   flex-grow: 1;
 `;
 
+const TitleGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
 const Title = styled.span`
   font-size: 18px;
   font-weight: 600;
@@ -436,6 +457,17 @@ const Title = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   margin-right: 12px;
+`;
+
+const LogoButton = styled.button`
+  border: none;
+  background: none;
+  padding: 0;
+  font-weight: 700;
+  font-size: 18px;
+  font-family: "Pretendard Variable", sans-serif;
+  cursor: pointer;
+  color: inherit;
 `;
 
 const ProfileImage = styled.div`

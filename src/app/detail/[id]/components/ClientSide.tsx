@@ -486,7 +486,16 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const hasScrolledToMentionsRef = useRef(false);
   const searchParams = useSearchParams();
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const autoSeekAppliedRef = useRef<string | null>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const highlightTicker = searchParams?.get("stock")?.trim() || null;
+  const highlightStockName = searchParams?.get("stock_name")?.trim() || null;
+  const highlightStartParam = searchParams?.get("start")?.trim() || null;
+  const highlightStartSeconds = useMemo(() => {
+    if (!highlightStartParam) return null;
+    const { seconds } = normaliseSegmentStart(highlightStartParam);
+    return seconds ?? null;
+  }, [highlightStartParam]);
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
     setVideoPlayer(event.target);
     setIsLoading(false);
@@ -655,6 +664,45 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     };
   }, [id, shouldFetchStockMentions]);
 
+  const seekVideoTo = useCallback(
+    (start: number) => {
+      if (!Number.isFinite(start)) return;
+      if (!isPlayerVisible) setIsPlayerVisible(true);
+      if (videoPlayer && typeof videoPlayer.seekTo === "function") {
+        videoPlayer.seekTo(start, true);
+        videoPlayer.playVideo?.();
+      }
+    },
+    [isPlayerVisible, setIsPlayerVisible, videoPlayer]
+  );
+
+  useEffect(() => {
+    if (!highlightStartParam) return;
+    if (autoSeekAppliedRef.current === highlightStartParam) return;
+    if (
+      highlightStartSeconds == null ||
+      !Number.isFinite(highlightStartSeconds)
+    ) {
+      return;
+    }
+    if (!videoPlayer) return;
+    if (typeof window === "undefined") return;
+
+    autoSeekAppliedRef.current = highlightStartParam;
+    const timer = window.setTimeout(() => {
+      seekVideoTo(highlightStartSeconds);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    highlightStartParam,
+    highlightStartSeconds,
+    seekVideoTo,
+    videoPlayer,
+  ]);
+
   const handleTocItemClick = (start: number) => {
     logCtaClick(
       "player_item_click",
@@ -662,22 +710,26 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       user?.email,
       getOrCreateAnonId()
     );
-    if (!isPlayerVisible) setIsPlayerVisible(true);
-
-    if (videoPlayer) {
-      videoPlayer.seekTo(start, true);
-      videoPlayer.playVideo();
-    }
+    seekVideoTo(start);
   };
 
-  const opts: YouTubeProps["opts"] = {
-    height: "202",
-    playerVars: {
-      autoplay: 0,
-      rel: 0,
-      disablekb: 1,
-    },
-  };
+  const playerStartAt = useMemo(() => {
+    if (highlightStartSeconds == null) return undefined;
+    if (!Number.isFinite(highlightStartSeconds)) return undefined;
+    return Math.max(0, Math.floor(highlightStartSeconds));
+  }, [highlightStartSeconds]);
+
+  const opts = useMemo<YouTubeProps["opts"]>(() => {
+    return {
+      height: "202",
+      playerVars: {
+        autoplay: playerStartAt != null ? 1 : 0,
+        rel: 0,
+        disablekb: 1,
+        start: playerStartAt,
+      },
+    };
+  }, [playerStartAt]);
 
   const handleStockAnchorClick = useCallback(() => {
     const target = document.getElementById("stock-mentions");
@@ -1271,6 +1323,8 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           error={stockMentionsError}
           onSegmentClick={handleTocItemClick}
           containerRef={stockMentionsRef}
+          highlightTicker={highlightTicker}
+          highlightStockName={highlightStockName}
         />
       ) : null}
       {/* ─── Hook for Daily Top5 Survey ─── */}
@@ -1662,6 +1716,8 @@ const StockMentionsSection = ({
   error,
   onSegmentClick,
   containerRef,
+  highlightTicker,
+  highlightStockName,
 }: {
   id: string;
   mentions: StockMention[];
@@ -1669,14 +1725,23 @@ const StockMentionsSection = ({
   error?: string | null;
   onSegmentClick: (start: number) => void;
   containerRef?: RefObject<HTMLDivElement>;
+  highlightTicker?: string | null;
+  highlightStockName?: string | null;
 }) => {
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+  const autoExpandedKeyRef = useRef<string | null>(null);
 
   const toggle = useCallback((key: string) => {
     setExpandedMap((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
+  }, []);
+
+  const buildMentionKey = useCallback((mention: StockMention, index: number) => {
+    const stockNameKey = mention.stock_name?.trim().toLowerCase() ?? `stock-${index}`;
+    const tickerKey = mention.ticker?.trim().toLowerCase() ?? `idx-${index}`;
+    return `${stockNameKey}-${tickerKey}`;
   }, []);
 
   const resolveSegmentSeconds = useCallback((segment: StockMentionSegment) => {
@@ -1688,7 +1753,53 @@ const StockMentionsSection = ({
     }
     return normaliseSegmentStart(segment.start_time).seconds;
   }, []);
-const user = useRecoilValue(userState);
+  const user = useRecoilValue(userState);
+
+  const normalizedHighlightTicker = highlightTicker
+    ? highlightTicker.trim().toLowerCase()
+    : null;
+  const normalizedHighlightStockName = highlightStockName
+    ? highlightStockName.trim().toLowerCase()
+    : null;
+
+  useEffect(() => {
+    if (!mentions.length) return;
+    if (!normalizedHighlightTicker && !normalizedHighlightStockName) return;
+
+    let targetKey: string | null = null;
+    for (let idx = 0; idx < mentions.length; idx += 1) {
+      const mention = mentions[idx];
+      if (!mention) continue;
+      const mentionTicker = mention.ticker?.trim().toLowerCase() ?? null;
+      const mentionName = mention.stock_name?.trim().toLowerCase() ?? null;
+      if (
+        (normalizedHighlightTicker &&
+          mentionTicker === normalizedHighlightTicker) ||
+        (normalizedHighlightStockName &&
+          mentionName === normalizedHighlightStockName)
+      ) {
+        targetKey = buildMentionKey(mention, idx);
+        break;
+      }
+    }
+
+    if (!targetKey) return;
+    if (autoExpandedKeyRef.current === targetKey) return;
+    autoExpandedKeyRef.current = targetKey;
+
+    setExpandedMap((prev) => {
+      if (prev[targetKey]) return prev;
+      return {
+        ...prev,
+        [targetKey]: true,
+      };
+    });
+  }, [
+    mentions,
+    normalizedHighlightTicker,
+    normalizedHighlightStockName,
+    buildMentionKey,
+  ]);
 
   const shouldShowEmptyState =
     !loading && !error && (!mentions || mentions.length === 0);
@@ -1716,9 +1827,7 @@ const user = useRecoilValue(userState);
         <StockMentionList>
           {mentions.map((mention, index) => {
             if (!mention) return null;
-            const key = `${mention.stock_name ?? "stock"}-${
-              mention.ticker ?? index
-            }`;
+            const key = buildMentionKey(mention, index);
             const isExpanded = expandedMap[key] ?? false;
             const occurrences =
               mention.mention_count ??

@@ -28,7 +28,7 @@ interface StockMarketSectionProps {
   defaultExpanded?: boolean;
 }
 
-type StockInsightSectionDetail = {
+export type StockInsightSectionDetail = {
   category?: string | null;
   title?: string | null;
   summary?: string | null;
@@ -81,7 +81,7 @@ type InsightFlowShiftItem = {
   deltaAmount?: number | null;
 };
 
-type InsightVisualization =
+export type InsightVisualization =
   | ({
       type: "range";
       low: number;
@@ -142,51 +142,6 @@ const HUNDRED_MILLION_KEYWORDS = [
 ];
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-function buildEvidenceMetricSnapshot(metrics?: InsightStockMetrics | null) {
-  if (!metrics) return null;
-  const normalize = (value: unknown) => {
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string") {
-      const numeric = Number(value.replace(/,/g, ""));
-      return Number.isFinite(numeric) ? numeric : undefined;
-    }
-    return undefined;
-  };
-  const priceInfo = metrics.price_info;
-  const price =
-    normalize(priceInfo?.current_price) ??
-    normalize(metrics.price) ??
-    normalize((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.close) ??
-    normalize((metrics as { price?: { close?: unknown; current_price?: unknown } }).price?.current_price);
-  const changePct =
-    normalize(priceInfo?.change_pct) ??
-    normalize(metrics.chg_pct) ??
-    normalize((metrics as { price?: { change_pct?: unknown } }).price?.change_pct);
-  const changeAmount =
-    normalize(priceInfo?.change_amount) ??
-    normalize(metrics.change_amount) ??
-    normalize((metrics as { price?: { change_amount?: unknown } }).price?.change_amount);
-  const volume = normalize(metrics.volume);
-  const marketCap = normalize(metrics.market_cap);
-  if (
-    price == null &&
-    changePct == null &&
-    changeAmount == null &&
-    volume == null &&
-    marketCap == null
-  ) {
-    return null;
-  }
-  return {
-    currency: metrics.currency,
-    price,
-    change_pct: changePct,
-    change_amount: changeAmount,
-    volume,
-    market_cap: marketCap,
-  };
-}
 
 type StockPriceMetrics = {
   close?: number;
@@ -786,14 +741,18 @@ const StockInsightCard = ({
   const storeEvidencePayload = () => {
     if (typeof window === "undefined") return;
     if (!hasVideoSources) return;
+    const sanitizedStock = (() => {
+      try {
+        return typeof structuredClone === "function"
+          ? structuredClone(stock)
+          : JSON.parse(JSON.stringify(stock));
+      } catch {
+        return stock;
+      }
+    })();
     const payload = {
       section: sectionLabel ?? null,
-      stock: {
-        stock_name: stock.stock_name,
-        ticker: stock.ticker,
-        metrics: buildEvidenceMetricSnapshot(stock.metrics as any),
-        sources: stock.sources,
-      },
+      stock: sanitizedStock,
     };
     try {
       window.sessionStorage.setItem(
@@ -857,12 +816,6 @@ const StockInsightCard = ({
           </StockCommentBulletList>
         </StockPreviewComment>
       ) : null}
-      {hasVideoSources ? (
-        <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
-          근거 영상 모아보기
-        </StockEvidenceButton>
-      ) : null}
-
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -1004,6 +957,11 @@ const StockInsightCard = ({
               stockName={stock.stock_name ?? ""}
               sources={stock.sources}
             />
+            {hasVideoSources ? (
+              <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
+                근거 영상 모아보기
+              </StockEvidenceButton>
+            ) : null}
           </StockDetailCollapse>
         </>
       ) : null}
@@ -1011,7 +969,7 @@ const StockInsightCard = ({
   );
 };
 
-const StockInsightVisualization = ({
+export const StockInsightVisualization = ({
   visualization,
 }: {
   visualization: InsightVisualization;
@@ -1455,7 +1413,7 @@ function buildFlowDetail(card: InsightMarketDeltaCard) {
   };
 }
 
-function buildInsightVisualization(
+export function buildInsightVisualization(
   section: StockInsightSectionDetail,
   stock: InsightStock
 ): InsightVisualization | null {
