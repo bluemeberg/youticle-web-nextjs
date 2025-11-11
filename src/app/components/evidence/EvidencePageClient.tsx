@@ -779,9 +779,7 @@ export default EvidencePageClient;
 
 function buildSummaryLines(source: InsightSource): string[] {
   const raw = removeMarkTags(
-    source.summary_data?.short_summary ??
-      source.summary ??
-      ""
+    source.summary_data?.short_summary ?? source.summary ?? ""
   );
   if (!raw) return ["요약 정보가 아직 준비되지 않았습니다."];
   const segments = raw
@@ -952,6 +950,8 @@ const PageWrapper = styled.section`
   margin: 0 auto;
   padding: calc(var(--gutter-t) + 60px) var(--gutter-r) 48px var(--gutter-l);
   box-sizing: border-box;
+  font-family: "Pretendard Variable", var(--font-Pretendard), -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   & > *:first-child {
     margin-top: 0;
   }
