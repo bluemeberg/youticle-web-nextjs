@@ -60,13 +60,13 @@ interface OutlineVideo {
   channel_subscribers?: number | null;
 }
 
-interface OutlineStockItem extends Partial<InsightStock> {
+type OutlineStockItem = Partial<InsightStock> & {
   stock_name?: string | null;
   ticker?: string | null;
   section?: string | null;
   sources?: InsightSource[] | null;
   comment_bullets?: string[] | null;
-}
+};
 
 interface OutlineResponseItem {
   video_id?: string | null;
