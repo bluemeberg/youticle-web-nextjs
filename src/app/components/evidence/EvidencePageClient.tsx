@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 
 import LogoHeader from "@/common/LogoHeader";
 import { userState } from "@/store/user";
 import type { InsightSource, InsightStock } from "@/types/insight";
+import type { SummaryData } from "@/types/dataProps";
 import {
   StockInsightVisualization,
   buildInsightVisualization,
@@ -37,9 +38,40 @@ interface OutlineSegment {
 
 type OutlineEntry = { segments?: OutlineSegment[] | null } | null;
 
+interface OutlineVideoChannel {
+  channel_id?: string | null;
+  channel_name?: string | null;
+  subscribers?: number | null;
+  thumbnail?: string | null;
+}
+
+interface OutlineVideo {
+  video_id?: string | null;
+  title?: string | null;
+  section?: string | null;
+  upload_date?: string | null;
+  duration?: string | null;
+  thumbnail?: string | null;
+  summary?: string | null;
+  summary_data?: SummaryData | null;
+  channel?: OutlineVideoChannel | null;
+  channel_name?: string | null;
+  channel_thumbnail?: string | null;
+  channel_subscribers?: number | null;
+}
+
+interface OutlineStockItem extends Partial<InsightStock> {
+  stock_name?: string | null;
+  ticker?: string | null;
+  section?: string | null;
+  sources?: InsightSource[] | null;
+  comment_bullets?: string[] | null;
+}
+
 interface OutlineResponseItem {
   video_id?: string | null;
-  video?: { video_id?: string | null } | null;
+  video?: OutlineVideo | null;
+  item?: OutlineStockItem | null;
   outline?:
     | OutlineEntry[]
     | {
@@ -64,6 +96,7 @@ const SECTION_KEYWORD_MAP: Record<string, string> = {
 
 const EvidencePageClient = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useRecoilValue(userState);
   const [payload, setPayload] = useState<StoredEvidencePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,19 +109,82 @@ const EvidencePageClient = () => {
   );
   const [emailValue, setEmailValue] = useState(user.email ?? "");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const queryTicker = searchParams?.get("ticker")?.trim() || null;
+  const querySection = searchParams?.get("section")?.trim() || null;
+  const queryName = searchParams?.get("name")?.trim() || null;
 
-  useEffect(() => {
+  const persistPayload = useCallback((next: StoredEvidencePayload | null) => {
+    setPayload(next);
     if (typeof window === "undefined") return;
     try {
-      const raw = window.sessionStorage.getItem("evidence:payload");
-      setPayload(raw ? (JSON.parse(raw) as StoredEvidencePayload) : null);
+      if (next) {
+        window.sessionStorage.setItem("evidence:payload", JSON.stringify(next));
+      } else {
+        window.sessionStorage.removeItem("evidence:payload");
+      }
     } catch {
-      setPayload(null);
-    } finally {
-      setLoading(false);
+      /* ignore */
     }
   }, []);
 
+  useEffect(() => {
+    let canceled = false;
+
+    const bootstrap = async () => {
+      let stored: StoredEvidencePayload | null = null;
+      if (typeof window !== "undefined") {
+        try {
+          const raw = window.sessionStorage.getItem("evidence:payload");
+          stored = raw ? (JSON.parse(raw) as StoredEvidencePayload) : null;
+        } catch {
+          stored = null;
+        }
+      }
+
+      const storedMatchesQuery =
+        stored &&
+        queryTicker &&
+        stored.stock?.ticker &&
+        stored.stock.ticker === queryTicker;
+
+      if (stored && (!queryTicker || storedMatchesQuery)) {
+        persistPayload(stored);
+        setLoading(false);
+        return;
+      }
+
+      if (!queryTicker) {
+        persistPayload(stored);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const fetched = await fetchEvidencePayloadByTicker({
+          ticker: queryTicker,
+          sectionLabel: querySection,
+          stockNameFallback: queryName,
+        });
+        if (canceled) return;
+        persistPayload(fetched);
+      } catch (error) {
+        if (!canceled) {
+          console.error("Failed to load evidence payload", error);
+          persistPayload(null);
+        }
+      } finally {
+        if (!canceled) setLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      canceled = true;
+    };
+  }, [persistPayload, queryTicker, querySection, queryName]);
+
+  console.log(payload);
   const stock = payload?.stock;
   const sources = stock?.sources?.filter(Boolean) ?? [];
   const sectionLabel = payload?.section ?? "";
@@ -203,7 +299,7 @@ const EvidencePageClient = () => {
 
   if (!stock || sources.length === 0) {
     return (
-      <>
+      <EvidencePageRoot>
         <LogoHeader
           title="근거 영상 모아보기"
           onBack={handleNavigateBack}
@@ -221,7 +317,7 @@ const EvidencePageClient = () => {
             </ActionRow>
           </EmptyState>
         </PageWrapper>
-      </>
+      </EvidencePageRoot>
     );
   }
 
@@ -347,7 +443,7 @@ const EvidencePageClient = () => {
     hasCommentBlock || limitedInsightSections.some((section) => section);
 
   return (
-    <>
+    <EvidencePageRoot>
       <LogoHeader
         title={pageTitle}
         onBack={handleNavigateBack}
@@ -769,7 +865,7 @@ const EvidencePageClient = () => {
           </AlertModal>
         </AlertModalOverlay>
       ) : null}
-    </>
+    </EvidencePageRoot>
   );
 };
 
@@ -815,6 +911,200 @@ function normalizeNumericInput(value?: unknown): number | string | null {
     return trimmed.length ? trimmed : null;
   }
   return null;
+}
+
+async function fetchEvidencePayloadByTicker({
+  ticker,
+  sectionLabel,
+  stockNameFallback,
+}: {
+  ticker: string;
+  sectionLabel: string | null;
+  stockNameFallback: string | null;
+}): Promise<StoredEvidencePayload | null> {
+  const params = new URLSearchParams();
+  params.append("sections", "domestic_stock");
+  params.append("sections", "overseas_stock");
+  params.append("max_videos", "5");
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
+  const endpoint = `${apiBase}/insights/stocks/${ticker}/outlines`;
+  const response = await fetch(`${endpoint}?${params.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Outline payload request failed (${response.status})`);
+  }
+  const payload = (await response.json()) as OutlineResponsePayload;
+  const stock = adaptStockFromOutlinePayload(payload, {
+    fallbackTicker: ticker,
+    fallbackName: stockNameFallback,
+  });
+  if (!stock) return null;
+  const derivedSection =
+    sectionLabel ?? extractSectionLabelFromOutlines(payload) ?? null;
+  return {
+    section: derivedSection,
+    stock,
+  };
+}
+
+function adaptStockFromOutlinePayload(
+  payload: OutlineResponsePayload,
+  options: { fallbackTicker: string; fallbackName?: string | null }
+): InsightStock | null {
+  const outlines = payload?.outlines?.filter(Boolean) ?? [];
+  const firstItem = outlines.find((entry) => entry?.item)?.item ?? null;
+  const ticker =
+    safeTrim(firstItem?.ticker) ?? safeTrim(options.fallbackTicker) ?? null;
+  if (!ticker) return null;
+  const stockName =
+    safeTrim(firstItem?.stock_name) ?? safeTrim(options.fallbackName) ?? ticker;
+  const sources = mergeOutlineSources(outlines, firstItem?.sources);
+  if (sources.length === 0) return null;
+  return {
+    stock_name: stockName,
+    ticker,
+    company_description: firstItem?.company_description ?? undefined,
+    thesis: sanitizeThesisArray(firstItem?.thesis),
+    catalysts: sanitizeCatalystArray(firstItem?.catalysts),
+    risks: sanitizeRiskArray(firstItem?.risks),
+    action_idea: firstItem?.action_idea ?? undefined,
+    comment_bullets: sanitizeStringArray(firstItem?.comment_bullets),
+    sources,
+    quote_raw: firstItem?.quote_raw ?? undefined,
+    metrics: firstItem?.metrics ?? undefined,
+    metric_insight: firstItem?.metric_insight ?? undefined,
+  };
+}
+
+function sanitizeThesisArray(
+  value?: Array<{ point?: string | null } | null> | null
+) {
+  if (!Array.isArray(value)) return undefined;
+  const next = value
+    .map((entry) => {
+      const point = safeTrim(entry?.point);
+      return point ? { point } : null;
+    })
+    .filter((entry): entry is { point: string } => Boolean(entry));
+  return next.length ? next : undefined;
+}
+
+function sanitizeCatalystArray(
+  value?: Array<{ item?: string | null; when?: string | null } | null> | null
+) {
+  if (!Array.isArray(value)) return undefined;
+  const next = value
+    .map((entry) => {
+      const item = safeTrim(entry?.item);
+      if (!item) return null;
+      const when = safeTrim(entry?.when);
+      return when ? { item, when } : { item };
+    })
+    .filter((entry): entry is { item: string; when?: string } =>
+      Boolean(entry)
+    );
+  return next.length ? next : undefined;
+}
+
+function sanitizeRiskArray(
+  value?: Array<{ item?: string | null } | null> | null
+) {
+  if (!Array.isArray(value)) return undefined;
+  const next = value
+    .map((entry) => {
+      const item = safeTrim(entry?.item);
+      return item ? { item } : null;
+    })
+    .filter((entry): entry is { item: string } => Boolean(entry));
+  return next.length ? next : undefined;
+}
+
+function sanitizeStringArray(value?: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const next = value
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter((entry) => entry.length > 0);
+  return next.length ? next : undefined;
+}
+
+function mergeOutlineSources(
+  outlines: OutlineResponseItem[],
+  fallbackSources?: InsightSource[] | null | undefined
+): InsightSource[] {
+  const map = new Map<string, InsightSource>();
+
+  fallbackSources?.forEach((source) => {
+    if (!source || !source.video_id) return;
+    map.set(source.video_id, { ...source });
+  });
+
+  outlines.forEach((entry) => {
+    const videoId = entry?.video_id ?? entry?.video?.video_id;
+    if (!videoId) return;
+    const existing = map.get(videoId) ?? { video_id: videoId };
+    const video = entry?.video;
+    const summaryFromOutline = deriveSummaryFromOutline(entry);
+    map.set(videoId, {
+      ...existing,
+      video_id: videoId,
+      channel_id:
+        video?.channel?.channel_id ?? existing.channel_id ?? undefined,
+      title: video?.title ?? existing.title,
+      thumbnail: video?.thumbnail ?? existing.thumbnail,
+      upload_date: video?.upload_date ?? existing.upload_date,
+      channel_name:
+        video?.channel?.channel_name ??
+        video?.channel_name ??
+        existing.channel_name,
+      channel_thumbnail:
+        video?.channel?.thumbnail ??
+        video?.channel_thumbnail ??
+        existing.channel_thumbnail,
+      channel_subscribers:
+        video?.channel?.subscribers ??
+        video?.channel_subscribers ??
+        existing.channel_subscribers,
+      summary_data: video?.summary_data ?? existing.summary_data,
+      summary: summaryFromOutline ?? video?.summary ?? existing.summary,
+    });
+  });
+
+  return Array.from(map.values());
+}
+
+function deriveSummaryFromOutline(
+  entry?: OutlineResponseItem
+): string | undefined {
+  if (!entry) return undefined;
+  const outlineEntries = extractOutlineEntries(entry);
+  const segments = outlineEntries
+    ?.flatMap((item) => item?.segments ?? [])
+    .filter((segment): segment is OutlineSegment =>
+      Boolean(segment?.key_point)
+    );
+  const keyPoint = segments?.find((segment) => segment.key_point)?.key_point;
+  return keyPoint ? removeMarkTags(keyPoint) : undefined;
+}
+
+function extractSectionLabelFromOutlines(
+  payload?: OutlineResponsePayload
+): string | null {
+  if (!payload?.outlines) return null;
+  for (const entry of payload.outlines) {
+    const section =
+      safeTrim(entry?.item?.section) || safeTrim(entry?.video?.section);
+    if (section) return section;
+  }
+  return null;
+}
+
+function safeTrim(value?: string | null): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
 }
 
 function formatOutlineTime(value?: string | null) {
@@ -937,6 +1227,15 @@ function formatInsightHtml(value?: string | null) {
 }
 
 /* ---------- styles ---------- */
+
+const EvidencePageRoot = styled.div`
+  width: 100%;
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: "Pretendard Variable", var(--font-Pretendard), -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #0f172a;
+`;
 
 const PageWrapper = styled.section`
   --gutter-l: max(16px, env(safe-area-inset-left));
@@ -1225,6 +1524,11 @@ const VideoTitle = styled.h3`
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const VideoSummaryList = styled.ul`
