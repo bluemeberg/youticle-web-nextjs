@@ -1102,26 +1102,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     isCompleteModalOpen ||
     isEmailCompleteModalOpen;
 
-  const moreBtnRef = useRef<HTMLButtonElement>(null);
-
   // sticky 바를 숨겼는지 여부
   const [stickyDismissed, setStickyDismissed] = useState(false);
-
-  useEffect(() => {
-    if (!moreBtnRef.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // 버튼이 보이기 시작하면 한 번만 dismiss 처리
-        if (entry.isIntersecting) {
-          setStickyDismissed(true);
-          observer.disconnect();
-        }
-      },
-      { root: null, threshold: 0 }
-    );
-    observer.observe(moreBtnRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const handleDismissSticky = () => setStickyDismissed(true);
 
   return (
     <Container $isFixed={isFixed}>
@@ -1314,7 +1297,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           )}
         </ContentWrapper>
       </TOC>
-      <MoreButton onClick={handleMoreClick} ref={moreBtnRef}>
+      <MoreButton onClick={handleMoreClick}>
         {isArticleVisible ? "간단히 보기" : `즉시 상세 요약 확인하기 👇`}
       </MoreButton>
       <ArticleWrapper
@@ -1345,6 +1328,17 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           highlightStockName={highlightStockName}
         />
       ) : null}
+      <RecommendWrapper
+        $hasDimmedItem={false}
+        $tocItemHeight={0}
+        $isUnsubscribedSection={false} // 새로운 속성 추가
+      >
+        <Recommend
+          section={detailData.section}
+          videoId={detailData.video_id}
+          isUnsubscribedSection={false}
+        />
+      </RecommendWrapper>
       {/* ─── Hook for Daily Top5 Survey ─── */}
       <HookSection>
         <HookingCopy>
@@ -1459,17 +1453,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           </FooterResiter>
         </ChannelPrioritySection>
       )}
-      <RecommendWrapper
-        $hasDimmedItem={false}
-        $tocItemHeight={0}
-        $isUnsubscribedSection={false} // 새로운 속성 추가
-      >
-        <Recommend
-          section={detailData.section}
-          videoId={detailData.video_id}
-          isUnsubscribedSection={false}
-        />
-      </RecommendWrapper>
+
       {/* <Preview $isFixed={isFixed}>
         <div>
           <span>🔎 미리보기</span>
@@ -1691,6 +1675,13 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       )}
       {!isAnyModalOpen && !stickyDismissed && (
         <StickyBar>
+          <StickyDismissButton
+            type="button"
+            aria-label="알림 배너 닫기"
+            onClick={handleDismissSticky}
+          >
+            ×
+          </StickyDismissButton>
           <BarText>👇 오늘 TOP5 유튜브 영상 요약 편하게 확인하세요!</BarText>
           <BarButtons>
             <BarButton
@@ -2666,7 +2657,7 @@ const RecommendWrapper = styled.div<{
       ? `240px`
       : props.$hasDimmedItem
       ? `${(360 / props.$tocItemHeight) * props.$tocItemHeight}px`
-      : `0px`};
+      : `60px`};
   z-index: ${(props) => (props.$hasDimmedItem ? `500` : "0")};
   padding-left: 16px;
   padding-right: 16px;
@@ -3230,7 +3221,7 @@ const StickyBar = styled.div`
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 20px 16px 16px;
   z-index: 10000;
   flex-direction: column;
 
@@ -3244,10 +3235,28 @@ const StickyBar = styled.div`
   }
 `;
 
+const StickyDismissButton = styled.button`
+  position: absolute;
+  top: 0px;
+  right: 1px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+
+  &:hover {
+    color: #0f172a;
+  }
+`;
+
 const BarText = styled.span`
-  font-size: 14px;
+  font-size: 16px;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-weight: 500;
 `;
 
@@ -3259,8 +3268,8 @@ const BarButtons = styled.div`
 
 const BarButton = styled.button<{ primary?: boolean }>`
   padding: 12px 12px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   width: 100%;
   color: ${({ primary }) => (primary ? "#fff" : "#007bff")};
   background: ${({ primary }) => (primary ? "#007bff" : "transparent")};
