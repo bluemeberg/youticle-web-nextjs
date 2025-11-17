@@ -91,7 +91,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
     `https://youticle.shop/briefing/top_videos/${id}`
   );
 
-  // const response = await fetch(`http://0.0.0.0:8000/briefing/top_videos/${id}`);
+  // const response = await fetch(`http://0.0.0.0:8001/briefing/top_videos/${id}`);
   if (!response.ok) {
     return <NotFoundPage />;
   }

@@ -13,6 +13,7 @@ import type {
   InsightStock,
   InsightStockMetrics,
   InsightStrategy,
+  InsightSource,
 } from "@/types/insight";
 import type { ReactNode } from "react";
 import {
@@ -21,7 +22,7 @@ import {
   removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { logCtaClick } from "@/api/apiClient";
 import MarketInsightSection from "../marketInsight/MarketInsightSection";
 
@@ -32,6 +33,7 @@ const COLOR_TRACK = "#e7ecff";
 const COLOR_CARD_BG = "#f5f7ff";
 const COLOR_TEXT = "#0f172a";
 const OVERSEAS_STOCK_LABEL = "해외 주식";
+const PLACEHOLDER_TEXT_PATTERN = /정보가 없습니다/;
 
 function normalizeCommentBullets(value?: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -43,6 +45,25 @@ function normalizeCommentBullets(value?: unknown): string[] {
 function formatCommentBullet(text: string) {
   return formatCommentText(text);
 }
+
+const isPlaceholderText = (value?: string | null) => {
+  if (!value) return false;
+  const plain = removeMarkTags(value).trim();
+  return !plain || PLACEHOLDER_TEXT_PATTERN.test(plain);
+};
+
+const hasMeaningfulSectionContent = (
+  section?: { summary?: string | null; highlights?: string | null } | null
+): boolean => {
+  if (!section) return false;
+  const summary = section.summary ?? null;
+  const highlights = section.highlights ?? null;
+  const hasSummary = Boolean(summary && !isPlaceholderText(summary));
+  const hasHighlights = Boolean(
+    highlights && !isPlaceholderText(highlights)
+  );
+  return hasSummary || hasHighlights;
+};
 
 export const isDomesticPriceSection = (section?: {
   category?: string | null;
@@ -231,7 +252,7 @@ const DomesticStockInsightSection = ({
 }: Props) => {
   const { data, label, updated_at } = section;
   const overview = data?.overview;
-  const marketInsights = data?.market_insights?.by_market || {};
+  const marketInsights = useMemo(() => data?.market_insights?.by_market || {}, [data?.market_insights?.by_market]);
   const rawStocks = data?.stocks ?? [];
   // 해외 주식은 티커 기반 수치가 비어 있으면 카드 자체를 숨긴다.
   const stocks =
@@ -534,7 +555,8 @@ export function DomesticPriceSectionVisual({
                     {intradayRange.openLabelLong}
                   </LegendItem>
                   <LegendItem>
-                    <LegendDot $tone="close" />종가
+                    <LegendDot $tone="close" />
+                    종가
                   </LegendItem>
                 </IntradayLegend>
               </IntradayChart>
@@ -565,7 +587,9 @@ export function DomesticPriceSectionVisual({
           ) : null}
         </PriceVisualGrid>
       ) : null}
-      {showFallback ? <PriceFallbackNote>{fallbackText}</PriceFallbackNote> : null}
+      {showFallback ? (
+        <PriceFallbackNote>{fallbackText}</PriceFallbackNote>
+      ) : null}
     </>
   );
 }
@@ -985,6 +1009,7 @@ const StockCard = ({
   sectionLabel?: string;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(null);
   const router = useRouter();
   const metrics = stock.metrics;
   const metricInsight = stock.metric_insight;
@@ -995,9 +1020,6 @@ const StockCard = ({
   const hasInsight =
     metricInsight != null && Object.keys(metricInsight).length > 0;
   const user = useRecoilValue(userState);
-  if (!hasValidMetrics || !hasInsight) {
-    return null;
-  }
   const storeEvidencePayload = () => {
     if (typeof window === "undefined") return;
     if (!Array.isArray(stock.sources) || stock.sources.length === 0) return;
@@ -1089,13 +1111,23 @@ const StockCard = ({
   })();
   const marketCapText = marketCapDisplay ?? "—";
   const stance = stock.action_idea?.stance;
-  const comment = stock.metric_insight?.comment_body;
+  const rawComment = stock.metric_insight?.comment_body;
+  const comment =
+    rawComment && !isPlaceholderText(rawComment) ? rawComment : null;
   const commentBullets = normalizeCommentBullets(
     stock.metric_insight?.comment_bullets
   );
+  const meaningfulCommentBullets = commentBullets.filter(
+    (bullet) => !isPlaceholderText(bullet)
+  );
   const commentTitle = stock.metric_insight?.comment_title || "코멘트";
-  const previewBullets = showCommentPreview ? commentBullets.slice(0, 3) : [];
+  const previewBullets = showCommentPreview
+    ? meaningfulCommentBullets.slice(0, 3)
+    : [];
   const insightSections = stock.metric_insight?.insight_sections || [];
+  const meaningfulInsightSections = insightSections.filter((section) =>
+    hasMeaningfulSectionContent(section || undefined)
+  );
   const intradayRange = buildStockIntradayDetail(metrics);
   const hasPriceSection = insightSections.some(
     (section) =>
@@ -1148,7 +1180,7 @@ const StockCard = ({
           (section.title.includes("레벨") ||
             section.title.toLowerCase().includes("level"))))
   );
-  const firstPriceSection = insightSections.find((section) =>
+  const firstPriceSection = meaningfulInsightSections.find((section) =>
     isDomesticPriceSection(section)
   );
   const priceSectionSummaryText =
@@ -1243,7 +1275,7 @@ const StockCard = ({
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
     : "상세 인사이트 펼치기";
-  const hasComment = Boolean(comment || commentBullets.length > 0);
+  const hasComment = Boolean(comment) || meaningfulCommentBullets.length > 0;
   const hasStandalonePriceVisual = !hasPriceSection && Boolean(priceVisualNode);
   const hasStandaloneValuationVisual =
     !hasValuationSection && Boolean(valuationVisualNode);
@@ -1251,9 +1283,29 @@ const StockCard = ({
   const hasStandaloneLiquidityVisual =
     !hasLiquiditySection && Boolean(liquidityDetail?.stats?.length);
   const hasInsightSectionList =
-    !hideInsightSectionList && insightSections.length > 0;
-  const hasVideoSources =
-    Array.isArray(stock.sources) && stock.sources.length > 0;
+    !hideInsightSectionList && meaningfulInsightSections.length > 0;
+  useEffect(() => {
+    let canceled = false;
+    const load = async () => {
+      const ids = await fetchOutlineVideoIds(stock.ticker).catch(
+        () => new Set<string>()
+      );
+      if (!canceled) setOutlineVideoIds(ids);
+    };
+    load();
+    return () => {
+      canceled = true;
+    };
+  }, [stock.ticker]);
+
+  if (!hasValidMetrics || !hasInsight) {
+    return null;
+  }
+
+  const outlineVideoSources: InsightSource[] = outlineVideoIds
+    ? filterSourcesWithOutline(stock.sources, outlineVideoIds)
+    : [];
+  const hasVideoSources = outlineVideoIds !== null && outlineVideoSources.length > 0;
   const showPreview =
     showCommentPreview && !showDetails && previewBullets.length > 0;
   const hasDetailContent =
@@ -1262,8 +1314,18 @@ const StockCard = ({
     hasStandaloneValuationVisual ||
     hasStandaloneFlowVisual ||
     hasStandaloneLiquidityVisual ||
-    hasInsightSectionList ||
-    hasVideoSources;
+    hasInsightSectionList;
+  const videoSourcesContent = hasVideoSources ? (
+    <>
+      <StockVideoSources
+        stockName={stock.stock_name}
+        sources={outlineVideoSources}
+      />
+      <EvidenceButton type="button" onClick={handleEvidenceClick}>
+        오늘 언급된 영상 더보기
+      </EvidenceButton>
+    </>
+  ) : null;
 
   return (
     <StockCardWrapper>
@@ -1349,9 +1411,9 @@ const StockCard = ({
               {hasComment ? (
                 <CommentBox>
                   <CommentTitle>{commentTitle}</CommentTitle>
-                  {commentBullets.length > 0 ? (
+                  {meaningfulCommentBullets.length > 0 ? (
                     <CommentBulletList>
-                      {commentBullets.map((bullet, index) => (
+                      {meaningfulCommentBullets.map((bullet, index) => (
                         <CommentBulletItem
                           key={`${
                             stock.ticker || stock.stock_name
@@ -1378,7 +1440,7 @@ const StockCard = ({
               {/* {!hasLevelsSection ? renderLevelsVisuals() : null} */}
               {hasInsightSectionList ? (
                 <InsightSectionList>
-                  {insightSections.map((section) => {
+                  {meaningfulInsightSections.map((section) => {
                     if (!section) return null;
                     const isPriceSection =
                       (section.category &&
@@ -1454,24 +1516,13 @@ const StockCard = ({
                   })}
                 </InsightSectionList>
               ) : null}
-              {hasVideoSources ? (
-                <>
-                  <StockVideoSources
-                    stockName={stock.stock_name}
-                    sources={stock.sources}
-                  />
-                  <EvidenceButton
-                    type="button"
-                    onClick={handleEvidenceClick}
-                  >
-                    근거 영상 모아보기
-                  </EvidenceButton>
-                </>
-              ) : null}
+              {videoSourcesContent}
             </StockDetailBody>
           </StockDetailCollapse>
         </>
-      ) : null}
+      ) : (
+        videoSourcesContent
+      )}
       {/* {stock.thesis?.length ? (
         <BulletGroup>
           {stock.thesis.slice(0, 3).map((item, index) => (
@@ -1527,7 +1578,7 @@ export const StockVisualSummaryBlocks = ({
 
   const valuationDetail = buildValuationDetail(metrics);
   const valuationEntries: ValuationMetricEntry[] = valuationDetail
-    ? ([
+    ? [
         valuationDetail.per != null
           ? {
               key: "per",
@@ -1568,7 +1619,7 @@ export const StockVisualSummaryBlocks = ({
               tone: "neutral" as TonePositiveNeutralNegative,
             }
           : null,
-      ].filter((entry): entry is ValuationMetricEntry => Boolean(entry)))
+      ].filter((entry): entry is ValuationMetricEntry => Boolean(entry))
     : [];
 
   const flowDetail = buildFlowDetail(metrics);
@@ -1719,6 +1770,101 @@ export const StockVisualSummaryBlocks = ({
   );
 };
 
+export const filterSourcesWithOutline = (
+  sources?: InsightStock["sources"],
+  allowedVideoIds?: Set<string>
+): InsightSource[] => {
+  if (!Array.isArray(sources)) return [];
+  return sources.filter((source) => {
+    if (!source || !source.video_id) return false;
+    if (allowedVideoIds && allowedVideoIds.size > 0) {
+      return allowedVideoIds.has(source.video_id);
+    }
+    return true;
+  });
+};
+
+interface OutlineSegment {
+  start_time?: string | null;
+  key_point?: string | null;
+}
+
+type OutlineEntry = { segments?: OutlineSegment[] | null } | null;
+
+interface OutlineResponseItem {
+  video_id?: string | null;
+  video?: { video_id?: string | null } | null;
+  outline?:
+    | OutlineEntry[]
+    | {
+        outline?: OutlineEntry[] | null;
+      }
+    | null;
+}
+
+interface OutlineResponsePayload {
+  outlines?: OutlineResponseItem[];
+}
+
+const extractOutlineEntries = (item?: OutlineResponseItem): OutlineEntry[] => {
+  if (!item) return [];
+  if (Array.isArray(item.outline)) return item.outline;
+  const nested =
+    item.outline && typeof item.outline === "object"
+      ? (item.outline as { outline?: OutlineEntry[] | null }).outline
+      : null;
+  return Array.isArray(nested) ? nested : [];
+};
+
+const collectOutlineVideoIds = (
+  payload: OutlineResponsePayload | null
+): Set<string> => {
+  const set = new Set<string>();
+  if (!payload?.outlines) return set;
+  payload.outlines.forEach((item) => {
+    if (!item) return;
+    const videoId = item.video_id ?? item.video?.video_id ?? null;
+    if (!videoId) return;
+    const entries = extractOutlineEntries(item);
+    const hasSegments = entries?.some((entry) =>
+      (entry?.segments ?? []).some((segment) => segment && segment.key_point)
+    );
+    if (hasSegments) {
+      set.add(videoId);
+    }
+  });
+  return set;
+};
+
+const buildOutlineFetchUrl = (ticker: string) => {
+  const params = new URLSearchParams();
+  params.append("sections", "domestic_stock");
+  params.append("sections", "overseas_stock");
+  params.append("max_videos", "5");
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
+  const endpoint = `${apiBase}/insights/stocks/${ticker}/outlines`;
+  return `${endpoint}?${params.toString()}`;
+};
+
+export const fetchOutlineVideoIds = async (
+  ticker?: string | null
+): Promise<Set<string>> => {
+  const normalized = ticker?.trim();
+  if (!normalized) return new Set();
+  try {
+    const res = await fetch(buildOutlineFetchUrl(normalized), {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!res.ok) return new Set();
+    const payload = (await res.json()) as OutlineResponsePayload;
+    return collectOutlineVideoIds(payload);
+  } catch {
+    return new Set();
+  }
+};
+
 export const StockVideoSources = ({
   sources,
   stockName,
@@ -1727,10 +1873,11 @@ export const StockVideoSources = ({
   stockName: string;
 }) => {
   const user = useRecoilValue(userState);
-  if (!sources || sources.length === 0) return null;
+  const eligibleSources = filterSourcesWithOutline(sources);
+  if (eligibleSources.length === 0) return null;
   const MAX_DISPLAY_COUNT = 1;
-  const displaySources = sources.slice(0, MAX_DISPLAY_COUNT);
-  const hasMoreSources = sources.length > displaySources.length;
+  const displaySources = eligibleSources.slice(0, MAX_DISPLAY_COUNT);
+  const hasMoreSources = eligibleSources.length > displaySources.length;
 
   return (
     <VideoSourcesSection>
@@ -2655,9 +2802,11 @@ function toFiniteNumber(value?: number | null) {
 function resolveRangeCurrentPrice(metrics?: InsightStockMetrics | null) {
   if (!metrics) return null;
   const priceInfo = metrics.price_info;
-  const priceField = (metrics as {
-    price?: { close?: unknown; current_price?: unknown };
-  })?.price;
+  const priceField = (
+    metrics as {
+      price?: { close?: unknown; current_price?: unknown };
+    }
+  )?.price;
   const candidates = [
     priceInfo?.current_price,
     priceField?.current_price,
@@ -3675,7 +3824,6 @@ const PriceFallbackNote = styled.p`
   line-height: 1.5;
 `;
 
-
 const PriceVisualTitle = styled.span`
   font-size: 12px;
   font-weight: 700;
@@ -4179,16 +4327,18 @@ const CommentPreviewBox = styled(CommentBox)`
 
 const EvidenceButton = styled.button`
   margin: 8px 0 4px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid #2563eb;
   background: #2563eb;
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 16px;
+  font-size: 16px;
+
+  font-weight: 900;
+  padding: 12px 16px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   transition: background 0.2s ease, border-color 0.2s ease;
 

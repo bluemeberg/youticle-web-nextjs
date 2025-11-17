@@ -8,7 +8,6 @@ import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import { useEffect, useRef, useState } from "react";
 import { fetchSubscribedSubjects, logCtaClick } from "../../../api/apiClient";
-import StockOverview from "./overviews/StockOverview";
 import RealEstateOverview from "./overviews/RealEstateOverview";
 import EconomyOverview from "./overviews/EconomyOverview";
 import BeautyOverview from "./overviews/BeautyOverview";
@@ -216,19 +215,6 @@ const Contents = ({
 
       {
         <HilightContainer>
-          {detailData.section === "주식" &&
-            detailData.summary_data.overview && (
-              <StockOverview overview={detailData.summary_data.overview} />
-            )}
-          {detailData.section === "국내 주식" &&
-            detailData.summary_data.overview && (
-              <StockOverview overview={detailData.summary_data.overview} />
-            )}
-          {detailData.section === "해외 주식" &&
-            detailData.summary_data.overview && (
-              <StockOverview overview={detailData.summary_data.overview} />
-            )}
-
           {detailData.section === "경제" &&
             detailData.summary_data.overview && (
               <EconomyOverview overview={detailData.summary_data.overview} />

@@ -20,7 +20,7 @@ const StockOverview: React.FC<StockOverviewProps> = ({ overview }) => (
     </Description>
     <Analysis>{overview.market_analysis}</Analysis>
 
-    <SectionTitle>종목 분석</SectionTitle>
+    {/* <SectionTitle>종목 분석</SectionTitle>
     <Description>영상에 소개된 주요 종목들에 대한 분석입니다.</Description>
     {overview.stocks?.map((stock, index) => (
       <StockCard key={index}>
@@ -32,7 +32,7 @@ const StockOverview: React.FC<StockOverviewProps> = ({ overview }) => (
           </ProductCard>
         ))}
       </StockCard>
-    ))}
+    ))} */}
 
     <SectionTitle>투자 전략</SectionTitle>
     <Description>영상에서 제안된 투자 전략과 조언을 포함합니다.</Description>
@@ -48,8 +48,8 @@ const StockOverview: React.FC<StockOverviewProps> = ({ overview }) => (
 export default StockOverview;
 
 const OverviewContainer = styled.div`
-  padding: 0 16px;
-  margin-top: 80px;
+  /* padding: 0 16px; */
+  /* margin-top: 80px; */
 `;
 
 const OverviewTitle = styled.div`

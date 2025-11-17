@@ -15,6 +15,7 @@ import YouTube, { YouTubeProps } from "react-youtube";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import Contents from "./Contents";
+import StockOverview from "./overviews/StockOverview";
 import VideoCard from "./VideoCard";
 import {
   DataProps,
@@ -100,6 +101,7 @@ const ITEM_SEGMENT_KEYS = [
 ];
 
 const ISO_DURATION_REGEX = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i;
+const LONG_COMMENT_THRESHOLD = 220;
 
 const normaliseKeyValue = (value?: string | number | null) => {
   if (value == null) return null;
@@ -141,6 +143,13 @@ const normaliseSegmentStart = (
   }
 
   return { value: undefined, seconds: null };
+};
+
+const convertMarkToStrong = (html: string) => {
+  if (typeof html !== "string" || html.length === 0) return html ?? "";
+  return html
+    .replace(/<mark\b[^>]*>/gi, "<strong>")
+    .replace(/<\/mark>/gi, "</strong>");
 };
 
 const mergeSegmentsUnique = (
@@ -309,7 +318,7 @@ const buildOutlineSegmentsIndex = (
           segment.key_point ?? segment.summary ?? segment.description;
         const summary =
           typeof summarySource === "string" && summarySource.trim()
-            ? summarySource.trim()
+            ? convertMarkToStrong(summarySource.trim())
             : undefined;
         const confidence =
           typeof segment.confidence === "string" && segment.confidence.trim()
@@ -488,6 +497,16 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const autoSeekAppliedRef = useRef<string | null>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const overviewData = detailData.summary_data?.overview;
+  const primarySectionLabel = Array.isArray(detailData.section)
+    ? detailData.section[0]
+    : detailData.section;
+  const stockOverviewData =
+    overviewData &&
+    ["주식", "국내 주식", "해외 주식"].includes(primarySectionLabel ?? "")
+      ? overviewData
+      : null;
+  const shouldShowStockOverview = Boolean(stockOverviewData);
   const highlightTicker = searchParams?.get("stock")?.trim() || null;
   const highlightStockName = searchParams?.get("stock_name")?.trim() || null;
   const highlightStartParam = searchParams?.get("start")?.trim() || null;
@@ -522,7 +541,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   const rawSections = detailData.section;
   const sections = useMemo(() => {
     if (Array.isArray(rawSections)) {
-      return rawSections.filter((item): item is string => typeof item === "string");
+      return rawSections.filter(
+        (item): item is string => typeof item === "string"
+      );
     }
     return typeof rawSections === "string" && rawSections.trim()
       ? [rawSections.trim()]
@@ -635,9 +656,8 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             );
           }
         }
-
+        console.log(outlinePayload);
         if (canceled) return;
-
         const outlineIndex = buildOutlineSegmentsIndex(outlinePayload);
         const adapted = adaptStockMentionsFromResponse(
           mentionsPayload,
@@ -696,12 +716,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [
-    highlightStartParam,
-    highlightStartSeconds,
-    seekVideoTo,
-    videoPlayer,
-  ]);
+  }, [highlightStartParam, highlightStartSeconds, seekVideoTo, videoPlayer]);
 
   const handleTocItemClick = (start: number) => {
     logCtaClick(
@@ -1206,7 +1221,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                   <CommentList>
                     {comments.map((c, i) => (
                       <CommentItem key={i}>
-                        <CommentText>{c.comment}</CommentText>
+                        <CollapsibleComment text={c.comment} />
                         <CommentMeta>
                           👍 {c.likeCount} · {timeAgo(c.updatedAt)}
                         </CommentMeta>
@@ -1224,9 +1239,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       )}
       <MainBodyTitle>📝 영상 목차</MainBodyTitle>
       <TOC>
-        <ContentWrapper
-          fullPadding={summarySections.length < 8}
-        >
+        <ContentWrapper fullPadding={summarySections.length < 8}>
           {isMultiPart ? (
             <>
               <PartCard>
@@ -1315,6 +1328,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
           handleTocItemClick={handleTocItemClick}
         />
       </ArticleWrapper>
+      {shouldShowStockOverview && stockOverviewData ? (
+        <OverviewHighlightSection>
+          <StockOverview overview={stockOverviewData} />
+        </OverviewHighlightSection>
+      ) : null}
       {hasStockMentions ? (
         <StockMentionsSection
           id="stock-mentions"
@@ -1738,11 +1756,15 @@ const StockMentionsSection = ({
     }));
   }, []);
 
-  const buildMentionKey = useCallback((mention: StockMention, index: number) => {
-    const stockNameKey = mention.stock_name?.trim().toLowerCase() ?? `stock-${index}`;
-    const tickerKey = mention.ticker?.trim().toLowerCase() ?? `idx-${index}`;
-    return `${stockNameKey}-${tickerKey}`;
-  }, []);
+  const buildMentionKey = useCallback(
+    (mention: StockMention, index: number) => {
+      const stockNameKey =
+        mention.stock_name?.trim().toLowerCase() ?? `stock-${index}`;
+      const tickerKey = mention.ticker?.trim().toLowerCase() ?? `idx-${index}`;
+      return `${stockNameKey}-${tickerKey}`;
+    },
+    []
+  );
 
   const resolveSegmentSeconds = useCallback((segment: StockMentionSegment) => {
     if (
@@ -1848,22 +1870,22 @@ const StockMentionsSection = ({
             return (
               <StockMentionItem key={key}>
                 <StockMentionButton
-  type="button"
-  onClick={() => {
-    // 1) CTA 로그 (비동기여도 기다리지 않음)
-    void logCtaClick(
-      "stock_mention",
-      user?.id,
-      mention.stock_name ?? null,
-      getOrCreateAnonId()
-    ).catch(() => {}); // 에러 무시(선택)
+                  type="button"
+                  onClick={() => {
+                    // 1) CTA 로그 (비동기여도 기다리지 않음)
+                    void logCtaClick(
+                      "stock_mention",
+                      user?.id,
+                      mention.stock_name ?? null,
+                      getOrCreateAnonId()
+                    ).catch(() => {}); // 에러 무시(선택)
 
-    // 2) 상태 토글
-    toggle(key);
-  }}
->
+                    // 2) 상태 토글
+                    toggle(key);
+                  }}
+                >
                   <StockMentionTitleGroup>
-                    <span>{mention.stock_name}</span>
+                    <StockMentionTitle>{mention.stock_name}</StockMentionTitle>
                     {mention.ticker ? (
                       <TickerBadge>{mention.ticker}</TickerBadge>
                     ) : null}
@@ -1889,10 +1911,10 @@ const StockMentionsSection = ({
                           segment.label ??
                           segment.summary ??
                           `구간 ${segIndex + 1}`;
-                        const sanitizedLabel = removeMarkTags(rawLabel);
+                        const labelHtml = convertMarkToStrong(rawLabel);
                         const summarySource =
                           segment.summary && segment.summary !== rawLabel
-                            ? removeMarkTags(segment.summary)
+                            ? convertMarkToStrong(segment.summary)
                             : undefined;
                         const confidenceLabel = segment.confidence
                           ? segment.confidence.toUpperCase()
@@ -1913,20 +1935,24 @@ const StockMentionsSection = ({
                               {timeLabel}
                             </StockMentionSegmentTime>
                             <StockMentionSegmentBody>
-                              <StockMentionSegmentLabel>
-                                {sanitizedLabel}
-                              </StockMentionSegmentLabel>
-                              {confidenceLabel ? (
+                              <StockMentionSegmentLabel
+                                dangerouslySetInnerHTML={{
+                                  __html: labelHtml,
+                                }}
+                              />
+                              {/* {confidenceLabel ? (
                                 <StockMentionSegmentConfidence
                                   $level={segment.confidence}
                                 >
                                   {confidenceLabel}
                                 </StockMentionSegmentConfidence>
-                              ) : null}
+                              ) : null} */}
                               {summarySource ? (
-                                <StockMentionSegmentSummary>
-                                  {summarySource}
-                                </StockMentionSegmentSummary>
+                                <StockMentionSegmentSummary
+                                  dangerouslySetInnerHTML={{
+                                    __html: summarySource,
+                                  }}
+                                />
                               ) : null}
                             </StockMentionSegmentBody>
                           </StockMentionSegmentButton>
@@ -1963,6 +1989,33 @@ const StockMentionsSection = ({
         </StockMentionList>
       ) : null}
     </StockMentionsContainer>
+  );
+};
+
+const CollapsibleComment = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const safeText = text ?? "";
+  const trimmed = safeText.trim();
+  const shouldClamp = trimmed.length > LONG_COMMENT_THRESHOLD;
+
+  if (!trimmed) {
+    return <CommentText>{safeText}</CommentText>;
+  }
+
+  return (
+    <CommentTextContainer>
+      <CommentText $expanded={expanded} $clamp={shouldClamp}>
+        {safeText}
+      </CommentText>
+      {shouldClamp ? (
+        <CommentToggleButton
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+        >
+          {expanded ? "접기" : "더보기"}
+        </CommentToggleButton>
+      ) : null}
+    </CommentTextContainer>
   );
 };
 
@@ -2158,7 +2211,7 @@ const StockMentionsContainer = styled.section`
   margin-top: 40px;
   padding: 24px 20px;
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  /* border: 1px solid rgba(148, 163, 184, 0.25); */
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -2233,6 +2286,11 @@ const StockMentionTitleGroup = styled.span`
   color: #1f2937;
 `;
 
+const StockMentionTitle = styled.span`
+  font-size: 16px;
+  color: black;
+`;
+
 const TickerBadge = styled.span`
   font-size: 11px;
   font-weight: 600;
@@ -2294,7 +2352,7 @@ const StockMentionSegmentButton = styled.button`
 
 const StockMentionSegmentTime = styled.span`
   min-width: 48px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #0b63f6;
 `;
@@ -2307,9 +2365,12 @@ const StockMentionSegmentBody = styled.span`
 `;
 
 const StockMentionSegmentLabel = styled.span`
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 1.4;
+  strong {
+    font-weight: 900;
+  }
 `;
 
 const confidenceColorMap = ($level?: string) => {
@@ -2345,6 +2406,9 @@ const StockMentionSegmentSummary = styled.span`
   font-size: 12px;
   color: #64748b;
   line-height: 1.4;
+  strong {
+    font-weight: 700;
+  }
 `;
 
 const StockMentionEmpty = styled.div`
@@ -2360,14 +2424,14 @@ const StockMentionAction = styled.div`
   padding: 12px;
   border-radius: 10px;
   background: rgba(59, 130, 246, 0.08);
-  font-size: 12px;
+  font-size: 14px;
   color: #1f2937;
   line-height: 1.5;
 
   strong {
     display: block;
     margin-bottom: 4px;
-    font-size: 11px;
+    font-size: 14px;
     color: #0b63f6;
     text-transform: uppercase;
   }
@@ -2567,7 +2631,7 @@ const MoreButton = styled.button`
   background-color: #007bff;
   color: #fff;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 900;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -2582,6 +2646,14 @@ const ArticleWrapper = styled.div<{ expanded: boolean; maxHeight: number }>`
   max-height: ${(p) => (p.expanded ? `${p.maxHeight}px` : "0px")};
   opacity: ${(p) => (p.expanded ? 1 : 0)};
   margin-top: 32px;
+`;
+
+const OverviewHighlightSection = styled.section`
+  width: 100%;
+  max-width: 960px;
+  margin: 32px auto 0;
+  padding: 0 16px;
+  box-sizing: border-box;
 `;
 
 const RecommendWrapper = styled.div<{
@@ -2691,9 +2763,36 @@ const CommentItem = styled.div`
   border-radius: 4px;
 `;
 
-const CommentText = styled.div`
+const CommentTextContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const CommentText = styled.div<{ $expanded?: boolean; $clamp?: boolean }>`
   font-size: 14px;
   line-height: 140%;
+  white-space: pre-wrap;
+  ${({ $clamp, $expanded }) =>
+    $clamp && !$expanded
+      ? `
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  `
+      : ``}
+`;
+
+const CommentToggleButton = styled.button`
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 `;
 
 const CommentMeta = styled.div`

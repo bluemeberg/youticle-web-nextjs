@@ -11,8 +11,8 @@ import { userState } from "@/store/user";
 import type { InsightSource, InsightStock } from "@/types/insight";
 import type { SummaryData } from "@/types/dataProps";
 import {
-  StockInsightVisualization,
   buildInsightVisualization,
+  StockInsightVisualization,
   type StockInsightSectionDetail,
 } from "@/components/insight/StockMarketSection";
 import {
@@ -541,14 +541,16 @@ const EvidencePageClient = () => {
               <InsightSectionList>
                 {limitedInsightSections.map((section, index) => {
                   const summaryHtml = formatInsightHtml(section.summary);
-                  const highlightsHtml = formatInsightHtml(section.highlights);
+                  const isValuationSection = isDomesticValuationSection(
+                    section._raw
+                  );
+                  const highlightsHtml = !isValuationSection
+                    ? formatInsightHtml(section.highlights)
+                    : null;
                   const hasHeader = section.category || section.title;
                   const hasBody = summaryHtml || highlightsHtml;
                   const hasVisualization = Boolean(section.visualization);
                   const isPriceSection = isDomesticPriceSection(section._raw);
-                  const isValuationSection = isDomesticValuationSection(
-                    section._raw
-                  );
                   const isFlowSection = isDomesticFlowSection(section._raw);
                   const hasPrevDayData = containsPreviousDayData(
                     section.summary,
@@ -598,9 +600,11 @@ const EvidencePageClient = () => {
                         <DomesticFlowSectionVisual stock={stock} />
                       ) : null}
                       {section.visualization ? (
-                        <StockInsightVisualization
-                          visualization={section.visualization}
-                        />
+                        <InsightVisualizationContainer>
+                          <StockInsightVisualization
+                            visualization={section.visualization}
+                          />
+                        </InsightVisualizationContainer>
                       ) : null}
                       {highlightsHtml ? (
                         <InsightHighlights
@@ -658,6 +662,10 @@ const EvidencePageClient = () => {
               ).catch(() => {});
 
             const outlineItems = outlineSegments[source.video_id] ?? [];
+            if (outlineItems.length === 0) {
+              return null;
+            }
+            const visibleOutlineItems = outlineItems.slice(0, 3);
             const handleOutlineTimeClick = (startTime?: string | null) => {
               const videoId = source.video_id;
               if (!videoId) return;
@@ -746,31 +754,39 @@ const EvidencePageClient = () => {
                     </div>
                   </ChannelInfo>
                 </VideoMeta>
-                {outlineItems.length ? (
+                {visibleOutlineItems.length ? (
                   <OutlineWrapper>
                     <OutlineTitle>
                       {`"${stock.stock_name}" 관련 핵심 요약`}
                     </OutlineTitle>
                     <OutlineSegmentList>
-                      {outlineItems.map((segment, index) => (
-                        <li
-                          key={`${source.video_id}-outline-${index}`}
-                          title={segment.key_point ?? undefined}
-                        >
-                          <OutlineTime
-                            type="button"
-                            onClick={() =>
-                              handleOutlineTimeClick(segment.start_time)
-                            }
-                            disabled={!segment.start_time}
+                      {visibleOutlineItems.map((segment, index) => {
+                        const outlineHtml =
+                          convertMarkToStrong(
+                            segment.key_point ?? "관련 하이라이트"
+                          ) || "관련 하이라이트";
+                        return (
+                          <li
+                            key={`${source.video_id}-outline-${index}`}
+                            title={segment.key_point ?? undefined}
                           >
-                            {formatOutlineTime(segment.start_time)}
-                          </OutlineTime>
-                          <OutlineText>
-                            {segment.key_point ?? "관련 하이라이트"}
-                          </OutlineText>
-                        </li>
-                      ))}
+                            <OutlineTime
+                              type="button"
+                              onClick={() =>
+                                handleOutlineTimeClick(segment.start_time)
+                              }
+                              disabled={!segment.start_time}
+                            >
+                              {formatOutlineTime(segment.start_time)}
+                            </OutlineTime>
+                            <OutlineText
+                              dangerouslySetInnerHTML={{
+                                __html: outlineHtml,
+                              }}
+                            />
+                          </li>
+                        );
+                      })}
                     </OutlineSegmentList>
                   </OutlineWrapper>
                 ) : null}
@@ -780,7 +796,7 @@ const EvidencePageClient = () => {
                     onClick={handleFocusClick}
                     prefetch={false}
                   >
-                    종목 구간만 보기
+                    종목 구간 더 보기
                   </PrimaryLink>
                   <SecondaryLink
                     href={fullHref}
@@ -1119,6 +1135,13 @@ function formatOutlineTime(value?: string | null) {
   return `${minutes}:${seconds}`;
 }
 
+function convertMarkToStrong(html?: string | null) {
+  if (typeof html !== "string" || html.length === 0) return html ?? "";
+  return html
+    .replace(/<mark\b[^>]*>/gi, "<strong>")
+    .replace(/<\/mark>/gi, "</strong>");
+}
+
 function extractOutlineEntries(item: OutlineResponseItem): OutlineEntry[] {
   if (Array.isArray(item.outline)) {
     return item.outline;
@@ -1232,8 +1255,7 @@ const EvidencePageRoot = styled.div`
   width: 100%;
   min-height: 100vh;
   background: #f8fafc;
-  font-family: "Pretendard Variable", var(--font-Pretendard), -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Pretendard Variable";
   color: #0f172a;
 `;
 
@@ -1294,6 +1316,7 @@ const StockName = styled.h2`
   font-weight: 800;
   color: #0f172a;
   max-width: 180px;
+  font-family: "Pretendard Variable";
 `;
 
 const HeroPriceRow = styled.div`
@@ -1414,20 +1437,20 @@ const MetricCommentBody = styled.p`
 `;
 
 const MetricLabel = styled.span`
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
 `;
 
 const MetricValue = styled.span`
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 800;
   color: #0f172a;
 `;
 
 const ChangeBadge = styled.span<{ $positive?: boolean }>`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: ${({ $positive }) =>
     $positive ? HERO_POSITIVE_COLOR : HERO_NEGATIVE_COLOR};
@@ -1520,7 +1543,7 @@ const VideoBody = styled.div`
 
 const VideoTitle = styled.h3`
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
@@ -1573,9 +1596,11 @@ const OutlineSegmentList = styled.ul`
 const OutlineTime = styled.button`
   display: inline-flex;
   min-width: 48px;
-  padding: 2px 6px;
-  border-radius: 999px;
+  padding: 4px 6px;
+  border-radius: 4px;
   background: #e0e7ff;
+  justify-content: center;
+  align-items: center;
   color: #3730a3;
   font-size: 12px;
   font-weight: 700;
@@ -1597,9 +1622,15 @@ const OutlineTime = styled.button`
 `;
 
 const OutlineText = styled.span`
-  font-size: 13px;
+  font-size: 14px;
   color: #0f172a;
   line-height: 1.4;
+  strong {
+    background: none;
+    color: inherit;
+    font-weight: 700;
+    padding: 0;
+  }
 `;
 
 const OutlineWrapper = styled.div`
@@ -1611,10 +1642,10 @@ const OutlineWrapper = styled.div`
 `;
 
 const OutlineTitle = styled.div`
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #1d4ed8;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 `;
 
 const AlertModalOverlay = styled.div`
@@ -1846,6 +1877,12 @@ const InsightSectionCard = styled.article`
   gap: 16px;
 `;
 
+const InsightVisualizationContainer = styled.div`
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+`;
+
 const InsightSectionHeader = styled.header`
   display: flex;
   flex-wrap: wrap;
@@ -1938,25 +1975,33 @@ const EvidenceActions = styled.div`
 `;
 
 const PrimaryLink = styled(Link)`
-  padding: 8px 14px;
-  border-radius: 999px;
+  padding: 12px 14px;
+  border-radius: 8px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
+  width: 100%;
   text-decoration: none;
   color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: #2563eb;
   border: 1px solid #2563eb;
 `;
 
 const SecondaryLink = styled(Link)`
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 700;
-  font-size: 14px;
+  width: 100%;
+  font-size: 16px;
   text-decoration: none;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
   background: #eff6ff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;
 
 /* 빈 상태 */

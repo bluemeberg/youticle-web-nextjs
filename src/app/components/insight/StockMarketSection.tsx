@@ -143,6 +143,121 @@ const HUNDRED_MILLION_KEYWORDS = [
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
+function buildEvidenceMetricSnapshot(metrics?: InsightStockMetrics | null) {
+  if (!metrics) return null;
+  const normalize = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const numeric = Number(value.replace(/,/g, ""));
+      return Number.isFinite(numeric) ? numeric : undefined;
+    }
+    return undefined;
+  };
+  const priceInfo = metrics.price_info;
+  const price =
+    normalize(priceInfo?.current_price) ??
+    normalize(metrics.price) ??
+    normalize(
+      (metrics as { price?: { close?: unknown; current_price?: unknown } })
+        .price?.close
+    ) ??
+    normalize(
+      (metrics as { price?: { close?: unknown; current_price?: unknown } })
+        .price?.current_price
+    );
+  const changePct =
+    normalize(priceInfo?.change_pct) ??
+    normalize(metrics.chg_pct) ??
+    normalize(
+      (metrics as { price?: { change_pct?: unknown } }).price?.change_pct
+    );
+  const changeAmount =
+    normalize(priceInfo?.change_amount) ??
+    normalize(metrics.change_amount) ??
+    normalize(
+      (metrics as { price?: { change_amount?: unknown } }).price?.change_amount
+    );
+  const volume = normalize(metrics.volume);
+  const marketCap = normalize(metrics.market_cap);
+  const priceInfoSnapshot = priceInfo
+    ? {
+        current_price: normalize(priceInfo.current_price),
+        prev_close: normalize(priceInfo.prev_close),
+        open: normalize(priceInfo.open),
+        high: normalize(priceInfo.high),
+        low: normalize(priceInfo.low),
+      }
+    : null;
+  const hasPriceInfo = Boolean(
+    priceInfoSnapshot &&
+      Object.values(priceInfoSnapshot).some((value) => value != null)
+  );
+  if (
+    price == null &&
+    changePct == null &&
+    changeAmount == null &&
+    volume == null &&
+    marketCap == null &&
+    !hasPriceInfo
+  ) {
+    return null;
+  }
+  return {
+    currency: metrics.currency,
+    price,
+    change_pct: changePct,
+    change_amount: changeAmount,
+    volume,
+    market_cap: marketCap,
+    price_info: hasPriceInfo ? priceInfoSnapshot : undefined,
+  };
+}
+
+function buildEvidenceInsightSnapshot(stock: InsightStock) {
+  const insight = stock.metric_insight;
+  const commentTitle =
+    insight?.comment_title || stock.action_idea?.stance || null;
+  const commentBody =
+    insight?.comment_body || stock.action_idea?.reason || null;
+  const commentBullets = normalizeCommentBullets(
+    insight?.comment_bullets && insight.comment_bullets.length > 0
+      ? insight.comment_bullets
+      : stock.comment_bullets
+  );
+  const insightSections = (insight?.insight_sections ?? [])
+    .map((section) => ({
+      category: section?.category ?? null,
+      title: section?.title ?? null,
+      summary: section?.summary ?? null,
+      highlights: section?.highlights ?? null,
+    }))
+    .filter((section) => {
+      return Boolean(
+        section.category ||
+          section.title ||
+          section.summary ||
+          section.highlights
+      );
+    })
+    .slice(0, 4);
+
+  if (
+    !commentTitle &&
+    !commentBody &&
+    commentBullets.length === 0 &&
+    insightSections.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    comment_title: commentTitle,
+    comment_body: commentBody,
+    comment_bullets: commentBullets,
+    sections: insightSections,
+  };
+}
+
 type StockPriceMetrics = {
   close?: number;
   prev_close?: number;
@@ -741,18 +856,16 @@ const StockInsightCard = ({
   const storeEvidencePayload = () => {
     if (typeof window === "undefined") return;
     if (!hasVideoSources) return;
-    const sanitizedStock = (() => {
-      try {
-        return typeof structuredClone === "function"
-          ? structuredClone(stock)
-          : JSON.parse(JSON.stringify(stock));
-      } catch {
-        return stock;
-      }
-    })();
+    const insightSnapshot = buildEvidenceInsightSnapshot(stock);
     const payload = {
       section: sectionLabel ?? null,
-      stock: sanitizedStock,
+      stock: {
+        stock_name: stock.stock_name,
+        ticker: stock.ticker,
+        metrics: buildEvidenceMetricSnapshot(stock.metrics as any),
+        insight: insightSnapshot,
+        sources: stock.sources,
+      },
     };
     try {
       window.sessionStorage.setItem(
@@ -816,6 +929,12 @@ const StockInsightCard = ({
           </StockCommentBulletList>
         </StockPreviewComment>
       ) : null}
+      {hasVideoSources ? (
+        <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
+          오늘 언급된 영상 더보기
+        </StockEvidenceButton>
+      ) : null}
+
       {hasDetailContent ? (
         <>
           <StockDetailToggleRow>
@@ -957,11 +1076,6 @@ const StockInsightCard = ({
               stockName={stock.stock_name ?? ""}
               sources={stock.sources}
             />
-            {hasVideoSources ? (
-              <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
-                근거 영상 모아보기
-              </StockEvidenceButton>
-            ) : null}
           </StockDetailCollapse>
         </>
       ) : null}
@@ -3322,12 +3436,14 @@ const StockEvidenceButton = styled.button`
   border: 1px solid #2563eb;
   background: #2563eb;
   color: #fff;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   padding: 8px 16px;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
-
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   &:hover,
   &:focus {
     background: #1d4ed8;
