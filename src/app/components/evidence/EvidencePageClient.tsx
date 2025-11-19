@@ -94,6 +94,20 @@ const SECTION_KEYWORD_MAP: Record<string, string> = {
   "해외 주식": "overseas_stock",
 };
 
+const FINANCIAL_SECTION_KEYWORDS = [
+  "profitability",
+  "earnings_growth",
+  "earnings",
+  "growth",
+  "수익성",
+  "성장",
+  "실적",
+  "재무",
+  "부채",
+];
+
+const EXCLUDED_SECTION_KEYWORDS = ["stability_liquidity", "안정성", "유동성"];
+
 const EvidencePageClient = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -414,7 +428,7 @@ const EvidencePageClient = () => {
   const heroCommentText =
     (commentBullets[0] ? removeMarkTags(commentBullets[0]) : null) ||
     (commentBody ? removeMarkTags(commentBody) : null);
-  const insightSections = (insightData?.insight_sections ?? [])
+  const mappedInsightSections = (insightData?.insight_sections ?? [])
     .map((section) => ({
       category: section?.category ?? null,
       title: section?.title ?? null,
@@ -430,7 +444,22 @@ const EvidencePageClient = () => {
           section.highlights
       )
     );
-  const limitedInsightSections = insightSections.slice(0, 3).map((section) => ({
+  const insightSections = mappedInsightSections.filter(
+    (section) => !shouldExcludeFinancialSection(section)
+  );
+  const prioritizedInsightSections = insightSections.filter((section) =>
+    isFinancialMetricSection(section)
+  );
+  const mergedInsightSections = (() => {
+    const merged: typeof insightSections = insightSections.slice(0, 3);
+    prioritizedInsightSections.forEach((section) => {
+      if (!merged.includes(section)) {
+        merged.push(section);
+      }
+    });
+    return merged;
+  })();
+  const limitedInsightSections = mergedInsightSections.map((section) => ({
     ...section,
     visualization:
       metrics && section._raw
@@ -606,7 +635,7 @@ const EvidencePageClient = () => {
                           />
                         </InsightVisualizationContainer>
                       ) : null}
-                      {highlightsHtml ? (
+                      {!isFlowSection && highlightsHtml ? (
                         <InsightHighlights
                           dangerouslySetInnerHTML={{
                             __html: highlightsHtml,
@@ -929,6 +958,46 @@ function normalizeNumericInput(value?: unknown): number | string | null {
   return null;
 }
 
+function isFinancialMetricSection(section: {
+  category?: string | null;
+  title?: string | null;
+  _raw?: StockInsightSectionDetail | null;
+}): boolean {
+  return sectionMatchesKeyword(section, FINANCIAL_SECTION_KEYWORDS);
+}
+
+function shouldExcludeFinancialSection(section: {
+  category?: string | null;
+  title?: string | null;
+  _raw?: StockInsightSectionDetail | null;
+}): boolean {
+  return sectionMatchesKeyword(section, EXCLUDED_SECTION_KEYWORDS);
+}
+
+function sectionMatchesKeyword(
+  section: {
+    category?: string | null;
+    title?: string | null;
+    _raw?: StockInsightSectionDetail | null;
+  },
+  keywords: string[]
+): boolean {
+  if (!keywords.length) return false;
+  const texts = [
+    section.category,
+    section.title,
+    section._raw?.category,
+    section._raw?.title,
+  ]
+    .map((value) => (typeof value === "string" ? value.toLowerCase() : ""))
+    .filter((value) => value.length > 0);
+  if (!texts.length) return false;
+  return keywords.some((keyword) => {
+    const normalizedKeyword = keyword.toLowerCase();
+    return texts.some((text) => text.includes(normalizedKeyword));
+  });
+}
+
 async function fetchEvidencePayloadByTicker({
   ticker,
   sectionLabel,
@@ -1234,12 +1303,14 @@ function renderChange(metric: {
 
 const HIGHLIGHT_NUMBER_REGEX =
   /([0-9]+(?:[.,][0-9]+)*(?:\s?(?:억|만|조|천|원|p|%|배|건|회))?)/g;
+const LARGE_CURRENCY_VALUE_REGEX = /(\d{1,3}(?:,\d{3})+)(?=\s?원)/g;
 
 function formatInsightHtml(value?: string | null) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  const withLineBreaks = trimmed.replace(/\n+/g, "<br/>");
+  const normalizedCurrency = insertLargeCurrencyUnits(trimmed);
+  const withLineBreaks = normalizedCurrency.replace(/\n+/g, "<br/>");
   const highlighted = withLineBreaks.replace(
     HIGHLIGHT_NUMBER_REGEX,
     "<strong>$1</strong>"
@@ -1247,6 +1318,39 @@ function formatInsightHtml(value?: string | null) {
   return highlighted
     .replace(/<mark\b[^>]*>/gi, "<strong>")
     .replace(/<\/mark>/gi, "</strong>");
+}
+
+function insertLargeCurrencyUnits(text: string) {
+  return text.replace(LARGE_CURRENCY_VALUE_REGEX, (match) => {
+    const numeric = Number(match.replace(/,/g, ""));
+    if (!Number.isFinite(numeric)) return match;
+    return formatLargeCurrencyValue(numeric);
+  });
+}
+
+function formatLargeCurrencyValue(value: number): string {
+  if (!Number.isFinite(value)) return "";
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const format = (num: number) => {
+    if (num >= 100) return Math.round(num).toString();
+    if (num >= 10) return num.toFixed(1).replace(/\.0$/, "");
+    return num.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  };
+
+  if (abs >= 1_000_000_000_000) {
+    return `${sign}${format(abs / 1_000_000_000_000)}조`;
+  }
+  if (abs >= 100_000_000) {
+    return `${sign}${format(abs / 100_000_000)}억`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}${format(abs / 1_000_000)}백만`;
+  }
+  if (abs >= 10_000) {
+    return `${sign}${format(abs / 10_000)}만`;
+  }
+  return `${sign}${abs.toLocaleString()}`;
 }
 
 /* ---------- styles ---------- */
@@ -1359,6 +1463,7 @@ const HeroActions = styled.div`
 const HeroButtonPrimary = styled.button`
   padding: 10px 18px;
   border-radius: 12px;
+  font-size: 16px;
   border: none;
   background: #2563eb;
   color: #fff;

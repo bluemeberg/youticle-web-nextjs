@@ -152,12 +152,41 @@ const convertMarkToStrong = (html: string) => {
     .replace(/<\/mark>/gi, "</strong>");
 };
 
+function isMeaningfulMentionSegment(segment?: {
+  start_time?: string | number | null;
+  key_point?: string | null;
+  summary?: string | null;
+}): boolean {
+  if (!segment) return false;
+  const rawStart = segment.start_time;
+  const start = (
+    typeof rawStart === "number" ? rawStart.toString() : rawStart?.toString()
+  )
+    ?.trim()
+    .toLowerCase();
+  const body = (segment.key_point ?? segment.summary ?? "")
+    .trim()
+    .toLowerCase();
+  if (start && (start.includes("정보 없음") || start.includes("정보없"))) {
+    return false;
+  }
+  if (!body) return true;
+  const invalidPhrases = [
+    "언급이 없습니다",
+    "언급이 없",
+    "요약이 불가능",
+    "정보를 찾을 수",
+  ];
+  return !invalidPhrases.some((phrase) => body.includes(phrase));
+}
+
 const mergeSegmentsUnique = (
   primary: StockMentionSegment[],
   secondary: StockMentionSegment[]
 ): StockMentionSegment[] => {
   const result: StockMentionSegment[] = [];
   const dedupe = new Set<string>();
+  const seenStartKeys = new Set<string>();
 
   const addSegment = (segment?: StockMentionSegment) => {
     if (!segment) return;
@@ -172,6 +201,17 @@ const mergeSegmentsUnique = (
     const normalizedLabel = segment.label?.trim();
     const normalizedSummary = segment.summary?.trim();
     const normalizedConfidence = segment.confidence?.trim();
+
+    const timeKey =
+      normalizedSeconds != null
+        ? `t:${normalizedSeconds}`
+        : normalizedStart
+        ? `v:${normalizedStart}`
+        : null;
+    if (timeKey) {
+      if (seenStartKeys.has(timeKey)) return;
+      seenStartKeys.add(timeKey);
+    }
 
     const dedupeKey = [
       normalizedSeconds != null ? `s:${normalizedSeconds}` : undefined,
@@ -381,6 +421,33 @@ const adaptStockMentionsFromResponse = (
 ): StockMention[] => {
   const outlineRecordsUsed = new Set<OutlineSegmentsRecord>();
   const result: StockMention[] = [];
+  const mergedByKey = new Map<string, StockMention>();
+
+  const addOrMergeMention = (entry: StockMention) => {
+    if (!entry.segments || entry.segments.length === 0) return;
+    const mergeKey = entry.stock_name.toLowerCase();
+    const existing = mergedByKey.get(mergeKey);
+    if (existing) {
+      existing.segments = mergeSegmentsUnique(
+        existing.segments,
+        entry.segments
+      );
+      existing.mention_count = existing.segments.length;
+      if (!existing.actionIdea && entry.actionIdea) {
+        existing.actionIdea = entry.actionIdea;
+      }
+      if (!existing.companyDescription && entry.companyDescription) {
+        existing.companyDescription = entry.companyDescription;
+      }
+      if (!existing.commentBody && entry.commentBody) {
+        existing.commentBody = entry.commentBody;
+      }
+    } else {
+      entry.mention_count = entry.segments.length;
+      mergedByKey.set(mergeKey, entry);
+      result.push(entry);
+    }
+  };
 
   const mentions = payload?.mentions?.filter(
     (mention) =>
@@ -419,10 +486,15 @@ const adaptStockMentionsFromResponse = (
       }
 
       const outlineSegments = outlineRecord
-        ? outlineRecord.segments.map((segment) => ({ ...segment }))
+        ? outlineRecord.segments
+            .map((segment) => ({ ...segment }))
+            .filter((segment) => isMeaningfulMentionSegment(segment))
         : [];
-      const fallbackSegments = extractSegmentsFromMention(mention);
+      const fallbackSegments = extractSegmentsFromMention(mention).filter(
+        (segment) => isMeaningfulMentionSegment(segment)
+      );
       const segments = mergeSegmentsUnique(outlineSegments, fallbackSegments);
+      if (segments.length === 0) return;
 
       if (outlineRecord) {
         outlineRecordsUsed.add(outlineRecord);
@@ -443,7 +515,7 @@ const adaptStockMentionsFromResponse = (
         mention.metric_insight?.comment_body ??
         mention.item?.metric_insight?.comment_body;
 
-      result.push({
+      addOrMergeMention({
         stock_name: stockName,
         ticker,
         mention_count: mentionCount,
@@ -463,11 +535,18 @@ const adaptStockMentionsFromResponse = (
       const stockName = record.stockName?.trim() || record.ticker?.trim();
       if (!stockName) return;
 
-      result.push({
+      const filteredSegments = record.segments
+        .map((segment) => ({ ...segment }))
+        .filter((segment) => isMeaningfulMentionSegment(segment));
+      if (filteredSegments.length === 0) return;
+      addOrMergeMention({
         stock_name: stockName,
         ticker: record.ticker,
-        mention_count: record.segments.length,
-        segments: record.segments.map((segment) => ({ ...segment })),
+        mention_count: filteredSegments.length,
+        segments: filteredSegments,
+        actionIdea: undefined,
+        companyDescription: undefined,
+        commentBody: undefined,
       });
     });
   }
@@ -559,12 +638,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     return sections.some((section) => eligibleSections.has(section));
   }, [sections]);
   const hasStockMentions =
-    stockMentionsLoading ||
-    stockMentions.length > 0 ||
-    Boolean(stockMentionsError);
+    !stockMentionsError && (stockMentionsLoading || stockMentions.length > 0);
   const hasStockMentionsReady =
-    !stockMentionsLoading &&
-    (stockMentions.length > 0 || Boolean(stockMentionsError));
+    !stockMentionsLoading && stockMentions.length > 0;
 
   useEffect(() => {
     if (hasScrolledToMentionsRef.current) return;
@@ -1739,7 +1815,7 @@ const StockMentionsSection = ({
 }) => {
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
   const autoExpandedKeyRef = useRef<string | null>(null);
-
+  console.log(mentions);
   const toggle = useCallback((key: string) => {
     setExpandedMap((prev) => ({
       ...prev,

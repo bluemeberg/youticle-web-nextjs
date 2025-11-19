@@ -59,9 +59,7 @@ const hasMeaningfulSectionContent = (
   const summary = section.summary ?? null;
   const highlights = section.highlights ?? null;
   const hasSummary = Boolean(summary && !isPlaceholderText(summary));
-  const hasHighlights = Boolean(
-    highlights && !isPlaceholderText(highlights)
-  );
+  const hasHighlights = Boolean(highlights && !isPlaceholderText(highlights));
   return hasSummary || hasHighlights;
 };
 
@@ -252,7 +250,10 @@ const DomesticStockInsightSection = ({
 }: Props) => {
   const { data, label, updated_at } = section;
   const overview = data?.overview;
-  const marketInsights = useMemo(() => data?.market_insights?.by_market || {}, [data?.market_insights?.by_market]);
+  const marketInsights = useMemo(
+    () => data?.market_insights?.by_market || {},
+    [data?.market_insights?.by_market]
+  );
   const rawStocks = data?.stocks ?? [];
   // 해외 주식은 티커 기반 수치가 비어 있으면 카드 자체를 숨긴다.
   const stocks =
@@ -587,9 +588,9 @@ export function DomesticPriceSectionVisual({
           ) : null}
         </PriceVisualGrid>
       ) : null}
-      {showFallback ? (
+      {/* {showFallback ? (
         <PriceFallbackNote>{fallbackText}</PriceFallbackNote>
-      ) : null}
+      ) : null} */}
     </>
   );
 }
@@ -1009,7 +1010,9 @@ const StockCard = ({
   sectionLabel?: string;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(null);
+  const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(
+    null
+  );
   const router = useRouter();
   const metrics = stock.metrics;
   const metricInsight = stock.metric_insight;
@@ -1305,7 +1308,8 @@ const StockCard = ({
   const outlineVideoSources: InsightSource[] = outlineVideoIds
     ? filterSourcesWithOutline(stock.sources, outlineVideoIds)
     : [];
-  const hasVideoSources = outlineVideoIds !== null && outlineVideoSources.length > 0;
+  const hasVideoSources =
+    outlineVideoIds !== null && outlineVideoSources.length > 0;
   const showPreview =
     showCommentPreview && !showDetails && previewBullets.length > 0;
   const hasDetailContent =

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
+import { useState, useEffect, useRef, useCallback } from "react";
+import styled, { keyframes, css } from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { useRouter, usePathname } from "next/navigation";
 import { auth, signOut } from "@/firebase";
@@ -39,6 +39,7 @@ const LogoHeader = ({
   const [logoutBtnVisible, setLogoutBtnVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isClientDesktop, setIsClientDesktop] = useState(false);
+  const [showPlayerOnboarding, setShowPlayerOnboarding] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -50,6 +51,36 @@ const LogoHeader = ({
     pathname.startsWith("/studio/");
 
   const isEvidencePage = pathname.startsWith("/evidence");
+
+  const shouldShowPlayerOnboarding =
+    isDetailPage && !isEvidencePage && Boolean(title);
+
+  const trackPlayerOnboardingEvent = useCallback(
+    (event: string) => {
+      void logCtaClick(event, user?.id, user?.email, getOrCreateAnonId()).catch(
+        () => {}
+      );
+    },
+    [user?.id, user?.email]
+  );
+
+  const persistPlayerOnboardingState = useCallback((dismissed: boolean) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        "player-toggle-onboarding",
+        dismissed ? "true" : "false"
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const completePlayerOnboarding = useCallback(() => {
+    setShowPlayerOnboarding(false);
+    persistPlayerOnboardingState(true);
+    trackPlayerOnboardingEvent("player_onboarding_complete");
+  }, [persistPlayerOnboardingState, trackPlayerOnboardingEvent]);
 
   const isUnsubscribeOrModifyPage =
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
@@ -72,6 +103,24 @@ const LogoHeader = ({
       previousPage.current = "/unsubscribe";
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (!shouldShowPlayerOnboarding) return;
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem("player-toggle-onboarding");
+      if (stored !== "true") {
+        setShowPlayerOnboarding(true);
+      }
+    } catch {
+      setShowPlayerOnboarding(true);
+    }
+  }, [shouldShowPlayerOnboarding]);
+
+  useEffect(() => {
+    if (!showPlayerOnboarding) return;
+    trackPlayerOnboardingEvent("player_onboarding_view");
+  }, [showPlayerOnboarding, trackPlayerOnboardingEvent]);
 
   const handleBackClick = () => {
     // 📌 직접 진입된 스튜디오 채널 상세 페이지
@@ -144,7 +193,23 @@ const LogoHeader = ({
     }
   };
 
-  const togglePlayerVisible = () => setPlayer(!player);
+  const togglePlayerVisible = () => {
+    setPlayer(!player);
+    if (showPlayerOnboarding) {
+      completePlayerOnboarding();
+    }
+  };
+
+  const handlePlayerOnboardingGotIt = () => {
+    trackPlayerOnboardingEvent("player_onboarding_got_it");
+    completePlayerOnboarding();
+  };
+
+  const handlePlayerOnboardingLater = () => {
+    setShowPlayerOnboarding(false);
+    persistPlayerOnboardingState(false);
+    trackPlayerOnboardingEvent("player_onboarding_later");
+  };
 
   const goToPage = (url: string) => router.push(url);
 
@@ -300,9 +365,7 @@ const LogoHeader = ({
         $isUnsubscribeOrModifyPage={isUnsubscribeOrModifyPage} // unsubscribe 페이지 스타일 적용
       >
         <PageInfo>
-          {shouldShowBackIcon && (
-            <BackIcon onClick={handleBackClick} />
-          )}
+          {shouldShowBackIcon && <BackIcon onClick={handleBackClick} />}
           {shouldRenderDefaultLogoSlot ? (
             <span onClick={handleLogoClick} className="logo">
               YouTicle
@@ -320,11 +383,35 @@ const LogoHeader = ({
         </PageInfo>
         {isDetailPage && !isEvidencePage && title !== "" && (
           <IconSection>
-            {player ? (
-              <YoutubeOnIcon onClick={togglePlayerVisible} />
-            ) : (
-              <YoutubeOffIcon onClick={togglePlayerVisible} />
-            )}
+            <PlayerToggleButton type="button" onClick={togglePlayerVisible}>
+              <PlayerToggleHighlight $visible={showPlayerOnboarding} />
+              {player ? <YoutubeOnIcon /> : <YoutubeOffIcon />}
+              {showPlayerOnboarding ? (
+                <PlayerOnboarding>
+                  <PlayerOnboardingTitle>
+                    영상 플레이어 숨기기/켜기
+                  </PlayerOnboardingTitle>
+                  <PlayerOnboardingBody>
+                    헤더의 버튼으로 유튜브 플레이어를 언제든 열고 닫을 수
+                    있어요.
+                  </PlayerOnboardingBody>
+                  <PlayerOnboardingActions>
+                    <PlayerOnboardingPrimary
+                      type="button"
+                      onClick={handlePlayerOnboardingGotIt}
+                    >
+                      알겠어요
+                    </PlayerOnboardingPrimary>
+                    <PlayerOnboardingSecondary
+                      type="button"
+                      onClick={handlePlayerOnboardingLater}
+                    >
+                      나중에 보기
+                    </PlayerOnboardingSecondary>
+                  </PlayerOnboardingActions>
+                </PlayerOnboarding>
+              ) : null}
+            </PlayerToggleButton>
             <ShareIcon onClick={copyUrlToClipboard} />
           </IconSection>
         )}
@@ -420,6 +507,7 @@ const Container = styled.header<{
   justify-content: space-between;
   align-items: center;
   z-index: 1000;
+  overflow: visible;
 
   .logo {
     color: ${({ $isUnsubscribeOrModifyPage, $isDetailPage }) =>
@@ -488,6 +576,119 @@ const IconSection = styled.div`
   display: flex;
   gap: 12px !important;
   align-items: center;
+`;
+
+const togglePulse = keyframes`
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+`;
+
+const PlayerToggleButton = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+`;
+
+const PlayerToggleHighlight = styled.span<{ $visible: boolean }>`
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid #2563eb;
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  animation: ${({ $visible }) =>
+    $visible
+      ? css`
+          ${togglePulse} 1.6s ease-in-out infinite;
+        `
+      : "none"};
+`;
+
+const PlayerOnboarding = styled.div`
+  position: absolute;
+  top: calc(100% + 12px);
+  right: -12px;
+  width: 240px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  z-index: 12000;
+  text-align: left;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    right: 24px;
+    border-width: 0 8px 10px 8px;
+    border-style: solid;
+    border-color: transparent transparent #ffffff transparent;
+  }
+
+  @media (max-width: 600px) {
+    right: auto;
+    left: -260%;
+    transform: translateX(-50%);
+    width: min(90vw, 280px);
+  }
+`;
+
+const PlayerOnboardingTitle = styled.strong`
+  display: block;
+  font-size: 14px;
+  color: #0f172a;
+  margin-bottom: 6px;
+`;
+
+const PlayerOnboardingBody = styled.p`
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+`;
+
+const PlayerOnboardingActions = styled.div`
+  display: flex;
+  gap: 6px;
+`;
+
+const PlayerOnboardingPrimary = styled.button`
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+`;
+
+const PlayerOnboardingSecondary = styled.button`
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
 `;
 
 const LogoutBtn = styled.div`
