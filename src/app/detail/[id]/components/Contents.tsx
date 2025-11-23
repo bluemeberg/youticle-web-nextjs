@@ -30,7 +30,7 @@ function convertTimeStringToSeconds(timeString: string): number {
 interface ContentsProps {
   detailData: DataProps;
   thumbnails: string[];
-  handleTocItemClick: (starTime: number) => void;
+  handleTocItemClick: (starTime: number, timelineLabel?: string) => void;
 }
 
 interface RealEstateOverviewProps {
@@ -151,6 +151,17 @@ const Contents = ({
               index
             ) => {
               const thumbnail = thumbnails?.[index]; // thumbnails와 index를 안전하게 확인
+              const rawStartSeconds =
+                typeof start_time === "string" && start_time.includes(":")
+                  ? convertTimeStringToSeconds(start_time)
+                  : Math.floor(Number(start_time));
+              const safeStartSeconds = Number.isFinite(rawStartSeconds)
+                ? Math.max(0, rawStartSeconds)
+                : 0;
+              const summaryStartValue = Number.isFinite(rawStartSeconds)
+                ? Math.max(0, Math.floor(rawStartSeconds))
+                : index;
+              const summaryAnchor = `summary-${summaryStartValue}-${index}`;
               const commonProps = {
                 key: index,
                 ref:
@@ -163,10 +174,7 @@ const Contents = ({
                 section: detailData.section,
                 videoId: detailData.video_id,
                 title,
-                start:
-                  typeof start_time === "string" && start_time.includes(":")
-                    ? convertTimeStringToSeconds(start_time)
-                    : Math.floor(Number(start_time)),
+                start: safeStartSeconds,
                 summary: detail_contents,
                 partialDimmed:
                   index === 2 &&
@@ -182,13 +190,10 @@ const Contents = ({
                     isNoSubscribedSubjects),
                 tocItemHeight,
                 toc: detailData.summary_data.section,
+                summaryAnchor,
+                summaryStart: summaryStartValue,
                 onClick: () => {
-                  // start_time이 문자열인 경우 mm:ss 형식을 초로 변환
-                  const seconds =
-                    typeof start_time === "string" && start_time.includes(":")
-                      ? convertTimeStringToSeconds(start_time)
-                      : Math.floor(Number(start_time));
-                  handleTocItemClick(seconds);
+                  handleTocItemClick(safeStartSeconds);
                 },
                 isLoggedOut: user.name === "",
                 isUnsubscribedSection,

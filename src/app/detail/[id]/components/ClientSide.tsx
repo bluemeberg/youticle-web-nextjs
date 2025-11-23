@@ -794,7 +794,8 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
     };
   }, [highlightStartParam, highlightStartSeconds, seekVideoTo, videoPlayer]);
 
-  const handleTocItemClick = (start: number) => {
+  const handleTocItemClick = (start: number, timelineLabel?: string) => {
+    if (!Number.isFinite(start)) return;
     logCtaClick(
       "player_item_click",
       user?.id,
@@ -802,6 +803,37 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
       getOrCreateAnonId()
     );
     seekVideoTo(start);
+    const scrollSummary = () => {
+      const normalizedStart = Math.max(0, Math.floor(start));
+      const container = articleRef.current;
+      const findTimelineTarget = () => {
+        if (typeof document === "undefined") return null;
+        if (!timelineLabel) return null;
+        const element = document.querySelector<HTMLElement>(
+          `[data-timeline-label="${timelineLabel}"]`
+        );
+        if (!element) return null;
+        return (
+          element.closest<HTMLElement>(`[data-summary-start]`) ?? element
+        );
+      };
+      let target = container?.querySelector<HTMLElement>(
+        `[data-summary-start="${normalizedStart}"]`
+      );
+      if (!target) {
+        target = findTimelineTarget();
+      }
+      const finalTarget = target ?? container;
+      if (!finalTarget) return;
+      finalTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy({ top: -76, behavior: "smooth" });
+    };
+    if (!isArticleVisible) {
+      setIsArticleVisible(true);
+      setTimeout(scrollSummary, 0);
+    } else {
+      scrollSummary();
+    }
   };
 
   const playerStartAt = useMemo(() => {
@@ -1087,6 +1119,7 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         phone, // your phone state
         schedule, // your schedule state (e.g. "08")
         channel_name: channelInput, // your channel name state
+        section_key: primarySectionLabel,
       });
       console.log("saved notification request:", nr);
       setSubmitted(true);
@@ -1099,17 +1132,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   };
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
-  const [schedule, setSchedule] = useState<
-    "08" | "08_18" | "08_18_22" | "08_13_18_22"
-  >("08");
+  const schedule = "07_50";
 
-  // 시간 선택 옵션
-  const TIME_OPTIONS = [
-    { value: "08", label: "매일 08:00 1회" },
-    { value: "08_18", label: "매일 08:00, 18:00 2회" },
-    { value: "08_18_22", label: "매일 08:00, 18:00, 22:00 3회" },
-    { value: "08_13_18_22", label: "매일 08:00, 13:00, 18:00, 22:00 4회" },
-  ];
+  // 시간 안내
 
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isEmailCompleteModalOpen, setIsEmailCompleteModalOpen] =
@@ -1303,72 +1328,88 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
             <>
               <PartCard>
                 {/* <PartHeader>1부</PartHeader> */}
-                {sortedSections.slice(0, midIndex).map((sec, i) => (
-                  <PartCardBox key={i}>
-                    <Timeline
-                      onClick={() =>
-                        handleTocItemClick(
-                          parseTimeStringToSeconds(sec.start_time)
-                        )
-                      }
-                    >
-                      {/* <PlayIcon width={16} height={16} /> */}
-                      <span>
-                        {formatSecondsToMmSs(
-                          parseTimeStringToSeconds(sec.start_time)
-                        )}
-                      </span>
-                    </Timeline>
-                    <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
-                  </PartCardBox>
-                ))}
+                {sortedSections.slice(0, midIndex).map((sec, i) => {
+                  const startSeconds = parseTimeStringToSeconds(
+                    sec.start_time
+                  );
+                  const normalizedStart = Math.max(
+                    0,
+                    Math.floor(startSeconds)
+                  );
+                  const timelineLabel = formatSecondsToMmSs(normalizedStart);
+                  return (
+                    <PartCardBox key={i}>
+                      <Timeline
+                        onClick={() =>
+                          handleTocItemClick(startSeconds, timelineLabel)
+                        }
+                      >
+                        {/* <PlayIcon width={16} height={16} /> */}
+                        <span>{timelineLabel}</span>
+                      </Timeline>
+                      <Item key={`part1-${i}`}>
+                        {removeMarkTags(sec.title)}
+                      </Item>
+                    </PartCardBox>
+                  );
+                })}
               </PartCard>
               <Divider />
               <PartCard>
                 {/* <PartHeader>2부</PartHeader> */}
-                {sortedSections.slice(midIndex).map((sec, i) => (
-                  <PartCardBox key={i}>
-                    <Timeline
-                      onClick={() =>
-                        handleTocItemClick(
-                          parseTimeStringToSeconds(sec.start_time)
-                        )
-                      }
-                    >
-                      {/* <PlayIcon width={16} height={16} /> */}
-                      <span>
-                        {formatSecondsToMmSs(
-                          parseTimeStringToSeconds(sec.start_time)
-                        )}
-                      </span>
-                    </Timeline>
-                    <Item key={`part2-${i}`}>{removeMarkTags(sec.title)}</Item>
-                  </PartCardBox>
-                ))}
+                {sortedSections.slice(midIndex).map((sec, i) => {
+                  const startSeconds = parseTimeStringToSeconds(
+                    sec.start_time
+                  );
+                  const normalizedStart = Math.max(
+                    0,
+                    Math.floor(startSeconds)
+                  );
+                  const timelineLabel = formatSecondsToMmSs(normalizedStart);
+                  return (
+                    <PartCardBox key={i}>
+                      <Timeline
+                        onClick={() =>
+                          handleTocItemClick(startSeconds, timelineLabel)
+                        }
+                      >
+                        {/* <PlayIcon width={16} height={16} /> */}
+                        <span>{timelineLabel}</span>
+                      </Timeline>
+                      <Item key={`part2-${i}`}>
+                        {removeMarkTags(sec.title)}
+                      </Item>
+                    </PartCardBox>
+                  );
+                })}
               </PartCard>
             </>
           ) : (
             <PartCard>
               {/* <PartHeader>1부</PartHeader> */}
-              {sortedSections.slice(0, 6).map((sec, i) => (
-                <PartCardBox key={i}>
-                  <Timeline
-                    onClick={() =>
-                      handleTocItemClick(
-                        parseTimeStringToSeconds(sec.start_time)
-                      )
-                    }
-                  >
-                    {/* <PlayIcon width={16} height={16} /> */}
-                    <span>
-                      {formatSecondsToMmSs(
-                        parseTimeStringToSeconds(sec.start_time)
-                      )}
-                    </span>
-                  </Timeline>
-                  <Item key={`part1-${i}`}>{removeMarkTags(sec.title)}</Item>
-                </PartCardBox>
-              ))}
+              {sortedSections.slice(0, 6).map((sec, i) => {
+                const startSeconds = parseTimeStringToSeconds(sec.start_time);
+                const normalizedStart = Math.max(
+                  0,
+                  Math.floor(startSeconds)
+                );
+                const timelineLabel = formatSecondsToMmSs(normalizedStart);
+                return (
+                  <PartCardBox key={i}>
+                    <Timeline
+                      onClick={() =>
+                        handleTocItemClick(startSeconds, timelineLabel)
+                      }
+                    >
+                      {/* <PlayIcon width={16} height={16} /> */}
+                      <span>{timelineLabel}</span>
+                    </Timeline>
+                    <Item key={`part1-${i}`}>
+                      {removeMarkTags(sec.title)}
+                    </Item>
+                  </PartCardBox>
+                );
+              })}
             </PartCard>
           )}
         </ContentWrapper>
@@ -1561,42 +1602,9 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
                 안전하게 관리됩니다.
               </PrivacyNote>
               <Label>알림 받을 시간</Label>
-              <RadioGroup>
-                {TIME_OPTIONS.map((o) => (
-                  <RadioLabel key={o.value}>
-                    <input
-                      type="radio"
-                      name="schedule"
-                      value={o.value}
-                      checked={schedule === o.value}
-                      onChange={() => setSchedule(o.value as any)}
-                    />
-                    {o.label}
-                  </RadioLabel>
-                ))}
-                {/* <RadioLabel>
-                  <input
-                    type="radio"
-                    name="schedule"
-                    value="custom"
-                    checked={schedule === "custom"}
-                    onChange={() => setSchedule("custom")}
-                  />
-                  다른 시간 직접 입력
-                </RadioLabel> */}
-              </RadioGroup>
-
-              {/* {schedule === "custom" && (
-                <>
-                  <Label htmlFor="customTime">원하는 시간 (HH:MM)</Label>
-                  <Input
-                    id="customTime"
-                    placeholder="예) 14:30"
-                    value={customTime}
-                    onChange={(e) => setCustomTime(e.target.value)}
-                  />
-                </>
-              )} */}
+              <ScheduleNotice>
+                🙋 매일 오전 7시 50분에 주식 유튜브 TOP5 영상 요약을 보내드려요.
+              </ScheduleNotice>
             </Form>
 
             <FooterKaKaoEmail>
@@ -1808,7 +1816,7 @@ const StockMentionsSection = ({
   mentions: StockMention[];
   loading: boolean;
   error?: string | null;
-  onSegmentClick: (start: number) => void;
+  onSegmentClick: (start: number, timelineLabel?: string) => void;
   containerRef?: RefObject<HTMLDivElement>;
   highlightTicker?: string | null;
   highlightStockName?: string | null;
@@ -3185,6 +3193,16 @@ const FooterResiter = styled.div`
   gap: 12px;
 `;
 
+const ScheduleNotice = styled.p`
+  margin: 0px 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 140%;
+  color: #475569;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 12px;
+`;
 const FooterKaKaoEmail = styled.div`
   display: flex;
   flex-direction: column;

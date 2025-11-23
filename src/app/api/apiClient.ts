@@ -266,6 +266,7 @@ export interface NotificationRequestPayload {
   phone?: string;
   schedule?: string;
   channel_name?: string;
+  section_key?: string;
 }
 
 export interface NotificationRequest {
@@ -276,6 +277,7 @@ export interface NotificationRequest {
   schedule?: string;
   channel_name?: string;
   requested_at: string;
+  section_key?: string;
 }
 
 export async function upsertNotificationRequest(

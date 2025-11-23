@@ -2,7 +2,11 @@
 
 import styled from "styled-components";
 import PlayIcon from "@/assets/play.svg";
-import { formatTimeRange, formatSummary } from "@/utils/formatter";
+import {
+  formatTimeRange,
+  formatSummary,
+  formatSecondsToMmSs,
+} from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
 import { Section } from "@/types/dataProps";
@@ -28,6 +32,8 @@ interface TocItemProps {
   isNoSubscribedSubjects: boolean;
   subscribedSubjects: string[];
   overview: Overview | undefined;
+  summaryAnchor?: string;
+  summaryStart?: number;
 }
 const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
@@ -50,14 +56,26 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
       isNoSubscribedSubjects,
       subscribedSubjects,
       overview,
+      summaryAnchor,
+      summaryStart,
     },
     ref
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
+    const summaryAttr = Number.isFinite(summaryStart)
+      ? Math.max(0, summaryStart as number)
+      : Math.max(0, Math.floor(start));
+    const normalizedStart = Math.max(0, Math.floor(start));
+    const timelineLabel = formatSecondsToMmSs(normalizedStart);
     console.log("썸네일", thumbnails);
     return (
-      <Container ref={ref}>
+      <Container
+        ref={ref}
+        data-summary-start={summaryAttr.toString()}
+        data-timeline-label={timelineLabel}
+        id={summaryAnchor}
+      >
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <Title>{title}</Title>
           {thumbnails && (
@@ -74,7 +92,12 @@ const TocItem = forwardRef<HTMLDivElement, TocItemProps>(
               <PlayIcon className="play-icon" />
             </Thumbnail>
           )}
-          <Timeline>
+          <Timeline
+            type="button"
+            onClick={onClick}
+            data-summary-start={summaryAttr.toString()}
+            data-timeline-label={timelineLabel}
+          >
             <PlayIcon width={16} height={16} />
             <span>{formatTimeRange(start)}</span>
           </Timeline>
@@ -175,17 +198,30 @@ const Thumbnail = styled.div`
   }
 `;
 
-const Timeline = styled.div`
-  display: flex;
+const Timeline = styled.button`
+  display: inline-flex;
   align-items: center;
-  height: 18px;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 8px 14px;
+  background: #ececec;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 
   span {
     font-size: 14px;
-    font-weight: 500;
-    line-height: 16.71px;
+    line-height: 1.2;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    outline: none;
   }
 `;
 

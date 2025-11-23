@@ -29,7 +29,12 @@ import {
   timeAgo,
   parseSubscribersCount,
 } from "@/utils/formatter";
-import { logCtaClick } from "@/api/apiClient";
+import {
+  getUserByEmail,
+  logCtaClick,
+  upsertNotificationRequest,
+} from "@/api/apiClient";
+import GoogleLogin from "@/common/RegisterEmailByGoogle";
 
 interface OutlineSegment {
   start_time?: string | null;
@@ -123,9 +128,22 @@ const EvidencePageClient = () => {
   );
   const [emailValue, setEmailValue] = useState(user.email ?? "");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneValue, setPhoneValue] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailLinked, setEmailLinked] = useState(Boolean(user.email));
+  const [alertSuccessMessage, setAlertSuccessMessage] = useState<string | null>(
+    null
+  );
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
   const queryTicker = searchParams?.get("ticker")?.trim() || null;
   const querySection = searchParams?.get("section")?.trim() || null;
   const queryName = searchParams?.get("name")?.trim() || null;
+  const scheduleKey = "07_50";
+
+  useEffect(() => {
+    setEmailValue(user.email ?? "");
+    setEmailLinked(Boolean(user.email));
+  }, [user.email]);
 
   const persistPayload = useCallback((next: StoredEvidencePayload | null) => {
     setPayload(next);
@@ -198,8 +216,8 @@ const EvidencePageClient = () => {
     };
   }, [persistPayload, queryTicker, querySection, queryName]);
 
-  console.log(payload);
   const stock = payload?.stock;
+  const stockNameDisplay = stock?.stock_name ?? "관심 종목";
   const sources = stock?.sources?.filter(Boolean) ?? [];
   const sectionLabel = payload?.section ?? "";
   const sectionDescription = sectionLabel
@@ -213,10 +231,18 @@ const EvidencePageClient = () => {
 
   const handleNavigateBack = () => router.push(backTargetHref);
 
-  const openAlertModal = () => {
-    setSelectedChannel("kakao");
-    setEmailValue(user.email ?? "");
-    setEmailError(null);
+  const openAlertModal = (channel: "kakao" | "email" = "kakao") => {
+    setSelectedChannel(channel);
+    if (channel === "email" && !emailLinked && user.email) {
+      setEmailValue(user.email);
+    }
+    if (channel === "email") {
+      setEmailError(null);
+    } else {
+      setPhoneValue("");
+      setPhoneError(null);
+    }
+    setAlertSuccessMessage(null);
     setAlertModalOpen(true);
   };
 
@@ -224,33 +250,107 @@ const EvidencePageClient = () => {
 
   const handleChannelSelect = (channel: "kakao" | "email") => {
     setSelectedChannel(channel);
-    if (channel === "kakao") {
+    if (channel === "email") {
+      if (!emailLinked && user.email) {
+        setEmailValue(user.email);
+      }
       setEmailError(null);
+    } else {
+      setEmailError(null);
+      setPhoneError(null);
+    }
+  };
+
+  const handleConversionClick = (channel: "kakao" | "email") => {
+    openAlertModal(channel);
+    void logCtaClick(
+      channel === "kakao"
+        ? "evidence_conversion_kakao"
+        : "evidence_conversion_email",
+      user?.id,
+      stock?.stock_name,
+      getOrCreateAnonId()
+    ).catch(() => {});
+  };
+
+  const handleEmailLoginSuccess = async (loginUser: {
+    email?: string | null;
+    displayName?: string | null;
+  }) => {
+    const email = loginUser?.email?.trim();
+    if (!email) {
+      setEmailError("구글 계정 이메일을 확인하지 못했습니다.");
+      return;
+    }
+    setEmailValue(email);
+    setEmailLinked(true);
+    setEmailError(null);
+    logCtaClick(
+      "evidence_email_login_success",
+      user?.id,
+      email,
+      getOrCreateAnonId()
+    ).catch(() => {});
+    try {
+      await getUserByEmail(email, loginUser?.displayName ?? "");
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const handleAlertConfirm = () => {
-    if (selectedChannel === "email") {
-      const trimmed = emailValue.trim();
-      if (!trimmed) {
-        setEmailError("이메일을 입력해 주세요.");
+    if (alertSubmitting) return;
+    const digits = phoneValue.replace(/\D/g, "");
+    if (selectedChannel === "kakao") {
+      if (!(digits.length === 10 || digits.length === 11)) {
+        setPhoneError("전화번호는 숫자 10자리 또는 11자리여야 합니다.");
         return;
       }
-      const emailRegex =
-        /^(?:[a-zA-Z0-9_'^&+\-])+(?:\.(?:[a-zA-Z0-9_'^&+\-])+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(trimmed)) {
-        setEmailError("유효한 이메일 주소가 아닙니다.");
+      setPhoneError(null);
+    }
+    if (selectedChannel === "email") {
+      const trimmed = emailValue.trim();
+      if (!trimmed || !emailLinked) {
+        setEmailError("구글 계정 연동을 완료해 주세요.");
         return;
       }
       setEmailError(null);
     }
-    logCtaClick(
+    const normalizedSectionLabel = sectionLabel?.trim() ?? "";
+    const sectionKey = SECTION_KEYWORD_MAP[normalizedSectionLabel];
+    setAlertSubmitting(true);
+    void logCtaClick(
       "alert_modal_confirm",
       user?.id,
       `${stock?.ticker ?? "unknown"}:${selectedChannel}`,
       getOrCreateAnonId()
     ).catch(() => {});
-    setAlertModalOpen(false);
+    const payload = {
+      anon_id: getOrCreateAnonId(),
+      user_id: user?.id,
+      phone: selectedChannel === "kakao" ? digits : undefined,
+      schedule: scheduleKey,
+      channel_name: selectedChannel,
+      section_key: sectionKey,
+    };
+    void upsertNotificationRequest(payload)
+      .then(() => {
+        setAlertModalOpen(false);
+        setAlertSubmitting(false);
+        setAlertSuccessMessage(
+          selectedChannel === "kakao"
+            ? "카카오톡 알림 신청이 완료되었습니다. 입력하신 번호로 요약을 보내드릴게요."
+            : `${emailValue}로 알림을 보내드릴게요.`
+        );
+        if (selectedChannel === "kakao") {
+          setPhoneValue("");
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        setAlertSubmitting(false);
+        alert("알림 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      });
   };
 
   const stockTicker = stock?.ticker ?? null;
@@ -485,26 +585,19 @@ const EvidencePageClient = () => {
           <HeroMain>
             <StockChip>{stock.ticker || stock.stock_name}</StockChip>
             <StockName>{stock.stock_name}</StockName>
-            {/* <HeroPriceRow>
-              <HeroPriceValue>
-                {formatCurrency(currentPriceValue, metrics?.currency)}
-              </HeroPriceValue>
-              {heroChangeText ? (
-                <HeroChangeBadge $positive={heroChangePositive}>
-                  {heroChangeText}
-                </HeroChangeBadge>
-              ) : null}
-            </HeroPriceRow> */}
           </HeroMain>
           <HeroActions>
-            <HeroButtonPrimary type="button" onClick={openAlertModal}>
+            <HeroButtonPrimary
+              type="button"
+              onClick={() => openAlertModal("kakao")}
+            >
               알림받기
             </HeroButtonPrimary>
             {/* <HeroButtonGhost type="button">워치리스트 추가</HeroButtonGhost> */}
           </HeroActions>
         </StockHero>
 
-        {/* ② 메트릭 스냅샷 (종목 헤더 바로 아래) */}
+        {/* ② 메트릭 스냅샷 */}
         {metrics ? (
           <MetricSummary>
             <MetricPrimary>
@@ -522,50 +615,11 @@ const EvidencePageClient = () => {
                 <MetricCommentBody>{heroCommentText}</MetricCommentBody>
               </MetricComment>
             ) : null}
-            {/* <MetricGrid>
-              <MetricItem>
-                <span>거래량</span>
-                <strong>{formatCompactNumber(metrics.volume)}</strong>
-              </MetricItem>
-              <MetricItem>
-                <span>시가총액</span>
-                <strong>
-                  {formatCompactCurrency(metrics.market_cap, metrics.currency)}
-                </strong>
-              </MetricItem>
-            </MetricGrid> */}
           </MetricSummary>
         ) : null}
+
         {shouldRenderInsightPanel ? (
           <InsightWrapper>
-            {/* {hasCommentBlock ? (
-              <InsightCommentCard>
-                <InsightCommentTitle>
-                  {commentTitle || "오늘 TOP5 유튜브 영상 속 코멘트"}
-                </InsightCommentTitle>
-                {commentBullets.length ? (
-                  <InsightCommentBulletList>
-                    {commentBullets.slice(0, 1).map((bullet, index) => {
-                      const bulletHtml =
-                        formatInsightHtml(bullet) ?? removeMarkTags(bullet);
-                      return (
-                        <li
-                          key={`comment-bullet-${index}`}
-                          dangerouslySetInnerHTML={{ __html: bulletHtml }}
-                        />
-                      );
-                    })}
-                  </InsightCommentBulletList>
-                ) : commentBody ? (
-                  <InsightCommentBody
-                    dangerouslySetInnerHTML={{
-                      __html: formatInsightHtml(commentBody) ?? "",
-                    }}
-                  />
-                ) : null}
-              </InsightCommentCard>
-            ) : null} */}
-
             {limitedInsightSections.length ? (
               <InsightSectionList>
                 {limitedInsightSections.map((section, index) => {
@@ -609,11 +663,6 @@ const EvidencePageClient = () => {
                           ) : null}
                         </InsightSectionHeader>
                       ) : null}
-                      {/* {summaryHtml ? (
-                        <InsightSectionSummary
-                          dangerouslySetInnerHTML={{ __html: summaryHtml }}
-                        />
-                      ) : null} */}
                       {isPriceSection ? (
                         <DomesticPriceSectionVisual
                           stock={stock}
@@ -650,7 +699,7 @@ const EvidencePageClient = () => {
           </InsightWrapper>
         ) : null}
 
-        {/* ③ 섹션 타이틀: 근거 영상 모아보기 */}
+        {/* ③ 섹션 타이틀 */}
         <SectionHeader>
           <SectionTitle>근거 영상 모아보기</SectionTitle>
           <SectionSub>{sectionLabel || "인사이트"}</SectionSub>
@@ -839,7 +888,42 @@ const EvidencePageClient = () => {
             );
           })}
         </EvidenceList>
+
+        {/* ⑤ 카카오톡/이메일 전환 섹션 */}
+        <ConversionSection>
+          <ConversionBadge>카카오톡 · 이메일 알림</ConversionBadge>
+          <ConversionTitle>
+            💡 {stockNameDisplay} 언급 영상, 놓치지 않고 받아보세요!
+          </ConversionTitle>
+          {alertSuccessMessage ? (
+            <ConversionSuccess role="status">
+              {alertSuccessMessage}
+            </ConversionSuccess>
+          ) : null}
+          <ConversionList>
+            <li>오늘 시청자 반응이 제일 핫한 주식 TOP5 영상에서</li>
+            <li>{stockNameDisplay} 종목이 언급된 날마다</li>
+            <li>핵심 내용과 투자 지표를 정리해 바로 알림드립니다.</li>
+            <li>카카오톡 또는 이메일 중 편한 채널을 선택하세요.</li>
+          </ConversionList>
+          <ConversionActions>
+            <ConversionPrimaryButton
+              type="button"
+              onClick={() => handleConversionClick("kakao")}
+            >
+              카카오톡으로 무료 요약 받기
+            </ConversionPrimaryButton>
+            <ConversionSecondaryButton
+              type="button"
+              onClick={() => handleConversionClick("email")}
+            >
+              이메일로 받아보기
+            </ConversionSecondaryButton>
+          </ConversionActions>
+        </ConversionSection>
       </PageWrapper>
+
+      {/* 알림 채널 선택 모달 */}
       {alertModalOpen ? (
         <AlertModalOverlay>
           <AlertModal>
@@ -871,6 +955,20 @@ const EvidencePageClient = () => {
                   TOP5 영상에 {stock.stock_name}이 등장하면 즉시 카톡으로 요약을
                   보내드려요.
                 </p>
+                {selectedChannel === "kakao" ? (
+                  <PhoneField>
+                    <label htmlFor="alert-phone">카카오 알림 받을 번호</label>
+                    <input
+                      id="alert-phone"
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="예) 010-1234-5678"
+                      value={phoneValue}
+                      onChange={(event) => setPhoneValue(event.target.value)}
+                    />
+                    {phoneError ? <ErrorText>{phoneError}</ErrorText> : null}
+                  </PhoneField>
+                ) : null}
               </ChannelOption>
               <ChannelOption
                 type="button"
@@ -881,14 +979,19 @@ const EvidencePageClient = () => {
                 <p>업무 PC에서 편하게 확인하고 싶을 때 선택하세요.</p>
                 {selectedChannel === "email" ? (
                   <EmailField>
-                    <label htmlFor="alert-email">이메일 주소</label>
-                    <input
-                      id="alert-email"
-                      type="email"
-                      value={emailValue}
-                      onChange={(event) => setEmailValue(event.target.value)}
-                      placeholder="example@youticle.com"
-                    />
+                    <label>구글 계정 연동</label>
+                    {emailLinked ? (
+                      <EmailLinkedNotice>
+                        ✅ {emailValue} 계정으로 알림을 보내드릴게요.
+                      </EmailLinkedNotice>
+                    ) : (
+                      <>
+                        <GoogleLogin onLoginSuccess={handleEmailLoginSuccess} />
+                        <EmailHint>
+                          구글 계정을 연동하면 해당 이메일로 요약을 보내드려요.
+                        </EmailHint>
+                      </>
+                    )}
                     {emailError ? <ErrorText>{emailError}</ErrorText> : null}
                   </EmailField>
                 ) : null}
@@ -900,7 +1003,11 @@ const EvidencePageClient = () => {
               <li>언제든 마이페이지에서 알림 해지 가능</li>
             </BenefitList>
             <AlertFooter>
-              <AlertConfirmButton type="button" onClick={handleAlertConfirm}>
+              <AlertConfirmButton
+                type="button"
+                onClick={handleAlertConfirm}
+                disabled={alertSubmitting}
+              >
                 알림 설정 완료
               </AlertConfirmButton>
               <AlertCancelButton type="button" onClick={closeAlertModal}>
@@ -1387,6 +1494,31 @@ const PageWrapper = styled.section`
   }
 `;
 
+/* 공용 CTA 버튼 토큰 */
+const BaseCtaButton = styled.button`
+  flex: 1;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const PrimaryBlueButton = styled(BaseCtaButton)`
+  background: #2563eb;
+  color: #ffffff;
+`;
+
+const SecondaryOutlineButton = styled(BaseCtaButton)`
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+`;
+
 /* 상단 종목 헤더 */
 const StockHero = styled.div`
   display: flex;
@@ -1423,32 +1555,8 @@ const StockName = styled.h2`
   font-family: "Pretendard Variable";
 `;
 
-const HeroPriceRow = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 8px;
-`;
-
-const HeroPriceValue = styled.span`
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
-`;
-
 const HERO_POSITIVE_COLOR = "#ff6b6b";
 const HERO_NEGATIVE_COLOR = "#0b63f6";
-
-const HeroChangeBadge = styled.span<{ $positive?: boolean }>`
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  color: ${({ $positive }) =>
-    $positive ? HERO_POSITIVE_COLOR : HERO_NEGATIVE_COLOR};
-  background: ${({ $positive }) =>
-    $positive ? "rgba(255, 107, 107, 0.12)" : "rgba(11, 99, 246, 0.12)"};
-`;
 
 const HeroActions = styled.div`
   display: flex;
@@ -1460,15 +1568,8 @@ const HeroActions = styled.div`
   }
 `;
 
-const HeroButtonPrimary = styled.button`
-  padding: 10px 18px;
-  border-radius: 12px;
-  font-size: 16px;
-  border: none;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
+const HeroButtonPrimary = styled(PrimaryBlueButton)`
+  padding-inline: 18px;
 `;
 
 const HeroButtonGhost = styled.button`
@@ -1518,7 +1619,6 @@ const MetricPrimary = styled.div`
 `;
 
 const MetricComment = styled.div`
-  /* margin-top: 12px; */
   padding: 10px 12px;
   border-radius: 12px;
   background: #edf2ff;
@@ -1820,10 +1920,9 @@ const ChannelGrid = styled.div`
 
 const ChannelOption = styled.button<{ $selected: boolean }>`
   border-radius: 16px;
-  border: 2px solid
-    ${({ $selected }) => ($selected ? "#2563eb" : "transparent")};
+  border: 2px solid ${({ $selected }) => ($selected ? "#2563eb" : "#e2e8f0")};
   background: ${({ $selected }) =>
-    $selected ? "rgba(37, 99, 235, 0.08)" : "#f8fafc"};
+    $selected ? "rgba(37, 99, 235, 0.04)" : "#f8fafc"};
   padding: 16px;
   text-align: left;
   cursor: pointer;
@@ -1844,9 +1943,14 @@ const ChannelOption = styled.button<{ $selected: boolean }>`
   }
 
   .badge {
-    font-size: 12px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #e0edff;
     color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 700;
   }
 `;
 
@@ -1867,6 +1971,27 @@ const EmailField = styled.div`
     border-radius: 10px;
     padding: 10px 12px;
     font-size: 14px;
+  }
+`;
+
+const EmailHint = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+`;
+
+const EmailLinkedNotice = styled.div`
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfccb;
+`;
+
+const PhoneField = styled(EmailField)`
+  input {
+    letter-spacing: 0.5px;
   }
 `;
 
@@ -1893,77 +2018,24 @@ const AlertFooter = styled.div`
   }
 `;
 
-const AlertConfirmButton = styled.button`
+const AlertConfirmButton = styled(PrimaryBlueButton)`
   flex: 1;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: none;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
-const AlertCancelButton = styled.button`
+const AlertCancelButton = styled(SecondaryOutlineButton)`
   flex: 1;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #475569;
-  font-weight: 700;
-  cursor: pointer;
 `;
+
+/* 인사이트 섹션 */
 
 const InsightWrapper = styled.section`
   display: flex;
   flex-direction: column;
   gap: 16px;
-`;
-
-const InsightCommentCard = styled.article`
-  border: 1px solid #dbeafe;
-  border-radius: 16px;
-  padding: 16px;
-  background: #eff6ff;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const InsightCommentTitle = styled.h3`
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1d4ed8;
-`;
-
-const InsightCommentBulletList = styled.ul`
-  margin: 0;
-  padding-left: 18px;
-  color: #0f172a;
-  list-style: disc;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
-
-  li strong {
-    color: #1d4ed8;
-    font-weight: 700;
-  }
-`;
-
-const InsightCommentBody = styled.p`
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #0f172a;
-
-  strong {
-    color: #1d4ed8;
-    font-weight: 700;
-  }
 `;
 
 const InsightSectionList = styled.div`
@@ -2146,4 +2218,96 @@ const ActionLink = styled(Link)`
   color: #2563eb;
   font-weight: 700;
   text-decoration: none;
+`;
+
+/* 카카오/이메일 전환 섹션 */
+
+const ConversionSection = styled.section`
+  margin-top: 24px;
+  padding: 20px 16px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const ConversionBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e0edff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  width: fit-content;
+`;
+
+const ConversionTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+  line-height: 1.4;
+  font-weight: 800;
+`;
+
+const ConversionList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    color: #475569;
+
+    &::before {
+      content: "•";
+      color: #2563eb;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+  }
+`;
+
+const ConversionActions = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @media (min-width: 480px) {
+    flex-direction: row;
+  }
+`;
+
+const ConversionSuccess = styled.p`
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #065f46;
+  font-size: 13px;
+  font-weight: 600;
+`;
+
+const ConversionPrimaryButton = styled(BaseCtaButton)`
+  flex: 1;
+  background: linear-gradient(120deg, #facc15, #f97316);
+  color: #1f2937;
+`;
+
+const ConversionSecondaryButton = styled(BaseCtaButton)`
+  flex: 1;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  border: 1px solid rgba(29, 78, 216, 0.3);
 `;

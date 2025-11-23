@@ -6,6 +6,7 @@ import {
   formatTimeRange,
   formatSummary,
   removeMarkTags,
+  formatSecondsToMmSs,
 } from "@/utils/formatter";
 import DimmedArea from "./DimmedArea";
 import { forwardRef } from "react";
@@ -32,6 +33,8 @@ interface TocItemProps {
   isNoSubscribedSubjects: boolean;
   subscribedSubjects: string[];
   overview: Overview | undefined;
+  summaryAnchor?: string;
+  summaryStart?: number;
 }
 const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
   (
@@ -54,17 +57,33 @@ const NewTocItem = forwardRef<HTMLDivElement, TocItemProps>(
       isNoSubscribedSubjects,
       subscribedSubjects,
       overview,
+      summaryAnchor,
+      summaryStart,
     },
     ref
   ) => {
     const pathname = usePathname();
     const isEditorPath = pathname.includes("/editor");
+    const summaryAttr = Number.isFinite(summaryStart)
+      ? Math.max(0, summaryStart as number)
+      : Math.max(0, Math.floor(start));
+    const normalizedStart = Math.max(0, Math.floor(start));
+    const timelineLabel = formatSecondsToMmSs(normalizedStart);
     return (
-      <Container ref={ref}>
+      <Container
+        ref={ref}
+        data-summary-start={summaryAttr.toString()}
+        data-timeline-label={timelineLabel}
+        id={summaryAnchor}
+      >
         <ContentWrapper $dimmed={dimmed} $partialDimmed={partialDimmed}>
           <SectionCard ref={ref}>
             <Header>
-              <Timeline onClick={onClick}>
+              <Timeline
+                onClick={onClick}
+                data-summary-start={summaryAttr.toString()}
+                data-timeline-label={timelineLabel}
+              >
                 {/* <PlayIcon width={16} height={16} /> */}
                 <span>{formatTimeRange(start)}</span>
               </Timeline>
