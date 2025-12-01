@@ -298,6 +298,7 @@ export default function LandingPageClient({
   integratedSections,
   initialTopic,
 }: LandingPageClientProps) {
+  console.log(apiData);
   const setApiData = useSetRecoilState(dataState);
   const user = useRecoilValue(userState);
   const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);

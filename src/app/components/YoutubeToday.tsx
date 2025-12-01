@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import styled, { keyframes, css } from "styled-components";
@@ -443,6 +443,20 @@ const YoutubeToday = ({
     selectedTopic,
     sortCriteria,
   ]);
+
+  const newVideos = useMemo(() => {
+    return filteredAndSortedData.filter((item) => item.is_new);
+  }, [filteredAndSortedData]);
+
+  const newVideoIds = useMemo(() => {
+    return new Set(newVideos.map((video) => video.video_id));
+  }, [newVideos]);
+
+  const topVideos = useMemo(() => {
+    return filteredAndSortedData
+      .filter((item) => !newVideoIds.has(item.video_id))
+      .slice(0, 5);
+  }, [filteredAndSortedData, newVideoIds]);
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -501,8 +515,43 @@ const YoutubeToday = ({
       });
     });
 
-    return ranks;
-  }, [filteredAndSortedData]);
+  return ranks;
+}, [filteredAndSortedData]);
+
+  const renderTopicCard = useCallback(
+    (item: DataProps, keyPrefix = "") => {
+      const topicInfo = YOUTUBE_TOPICS.find(
+        (topic) => topic.topic === item.section
+      );
+      const auxKeys = METRIC_KEYS;
+      let bestKey: MetricKey = auxKeys[0];
+      let bestRank = metricRanks[bestKey].get(item.video_id) ?? Infinity;
+
+      auxKeys.forEach((key) => {
+        const rank = metricRanks[key].get(item.video_id) ?? Infinity;
+        if (rank < bestRank) {
+          bestKey = key;
+          bestRank = rank;
+        }
+      });
+
+      const metricValue = item.summary_data[bestKey];
+      const { icon: metricIcon, name: metricLabel } = metricMeta[bestKey];
+      return (
+        <TopicCard
+          key={`${keyPrefix}${item.video_id}`}
+          icon={topicInfo?.icon}
+          subjects={subjects}
+          metricIcon={metricIcon}
+          metricLabel={metricLabel}
+          metricValue={metricValue}
+          rank={bestRank}
+          {...item}
+        />
+      );
+    },
+    [metricRanks, subjects]
+  );
 
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -595,47 +644,23 @@ const YoutubeToday = ({
       /> */}
       {/* 🛠 애니메이션 추가 */}
       <TopicCardWrapper $isRendered={isRendered}>
-        <EditorContainer>
-          {filteredAndSortedData.map((item, index) => {
-            const topicInfo = YOUTUBE_TOPICS.find(
-              (topic) => topic.topic === item.section
-            );
-            const isSubscribed =
-              expandedSubsSet.has(item.section) ||
-              // 상위 토픽(주식/가상자산)을 직접 구독한 경우도 안전망으로 케어
-              expandedSubsSet.has(toNavTopic(item.section));
-            // ② 이 아이템에 대해 가장 좋은(=작은) 랭킹을 가진 key 찾기
-            let bestKey: MetricKey = METRIC_KEYS[0];
-            let bestRank = metricRanks[bestKey].get(item.video_id)!;
+        {newVideos.length > 0 ? (
+          <>
+            <SubSectionTitle>✨ 이번 갱신에서 새롭게 진입한 영상</SubSectionTitle>
+            <EditorContainer>
+              {newVideos.map((item) => renderTopicCard(item, "new-"))}
+            </EditorContainer>
+          </>
+        ) : null}
 
-            METRIC_KEYS.forEach((key) => {
-              const rank = metricRanks[key].get(item.video_id)!;
-              if (rank < bestRank) {
-                bestKey = key;
-                bestRank = rank;
-              }
-            });
-
-            // const metricLabel = METRIC_LABELS[bestKey];
-            const metricValue = item.summary_data[bestKey];
-            // metricMeta에서 icon, name 가져오기
-            const { icon: metricIcon, name: metricLabel } = metricMeta[bestKey];
-            const navTopic = toNavTopic(item.section);
-
-            return (
-              <TopicCard
-                key={item.video_id}
-                icon={topicInfo?.icon}
-                subjects={subjects}
-                metricIcon={metricIcon}
-                metricLabel={metricLabel}
-                metricValue={metricValue}
-                rank={bestRank}
-                {...item}
-              />
-            );
-          })}
-        </EditorContainer>
+        {topVideos.length > 0 ? (
+          <>
+            <SubSectionTitle>🔥 오늘의 TOP5 영상</SubSectionTitle>
+            <EditorContainer>
+              {topVideos.map((item) => renderTopicCard(item, "top-"))}
+            </EditorContainer>
+          </>
+        ) : null}
       </TopicCardWrapper>
 
       {/* {subjects.length > 0 && (
@@ -678,6 +703,12 @@ const TopicCardWrapper = styled.div<{ $isRendered: boolean }>`
     css`
       ${fadeIn} 0.6s ease-in-out forwards
     `};
+`;
+
+const SubSectionTitle = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 24px 0 12px;
 `;
 
 const Container = styled.div`

@@ -233,8 +233,13 @@ export function getOrCreateAnonId(): string {
 }
 
 export function timeAgoUTC(dateStr: string): string {
-  // 1) dateStr 끝에 Z 또는 오프셋(+09:00 등)이 없으면 Z를 붙여 UTC로 파싱
-  const iso = /Z$|[+\-]\d\d:\d\d$/.test(dateStr) ? dateStr : dateStr + "Z";
+  let normalized = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(normalized)) {
+    normalized = normalized.replace(" ", "T");
+  }
+  const iso = /Z$|[+\-]\d\d:\d\d$/.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
   const dateObj = new Date(iso);
 
   // 2) now도 로컬(KST) Date 객체—두 시점이 동일한 기준(UTC)으로 비교됨

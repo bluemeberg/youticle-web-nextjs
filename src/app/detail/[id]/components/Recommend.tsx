@@ -1,7 +1,7 @@
 "use client"; // Ensure this is a client component
 
 import styled from "styled-components";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { DataProps } from "@/types/dataProps";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { dataState } from "@/store/data";
@@ -123,6 +123,27 @@ const Recommend = ({
     });
     return sortedData;
   }, [videos, sortCriteria]);
+
+  const newVideos = useMemo(() => {
+    return filteredAndSortedData.filter((item) => item.is_new);
+  }, [filteredAndSortedData]);
+
+  const newVideoIds = useMemo(() => {
+    return new Set(newVideos.map((video) => video.video_id));
+  }, [newVideos]);
+
+  const topVideos = useMemo(() => {
+    return filteredAndSortedData
+      .filter((item) => !newVideoIds.has(item.video_id))
+      .slice(0, 5);
+  }, [filteredAndSortedData, newVideoIds]);
+
+  const getDisplayHotScore = useCallback((raw?: number) => {
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return raw;
+    }
+    return undefined;
+  }, []);
 
   const filteredAndSortedEditorData = useMemo(() => {
     const source = Array.isArray(editorVideos) ? editorVideos : [];
@@ -348,10 +369,107 @@ const Recommend = ({
             </TimerWrapper>
           </Header>
 
+          {newVideos.length > 0 ? (
+            <SubSectionTitle>✨ 이번 갱신에서 새롭게 진입한 영상</SubSectionTitle>
+          ) : null}
+          {newVideos.length > 0 ? (
+            <VideoList>
+              {newVideos.map((item) => {
+                const rawHotScore =
+                  typeof item.score === "number"
+                    ? item.score
+                    : (item.summary_data?.score as number | undefined);
+                const displayHotScore =
+                  getDisplayHotScore(rawHotScore) ?? item.summary_data.score;
+                const auxKeys = METRIC_KEYS.filter(
+                  (k) => k !== "score"
+                ) as AuxKey[];
+                const bestKey = auxKeys.reduce(
+                  (b, k) =>
+                    metricRankings[k].indexOf(item.video_id) <
+                    metricRankings[b].indexOf(item.video_id)
+                      ? k
+                      : b,
+                  auxKeys[0]
+                );
+                const auxRank =
+                  metricRankings[bestKey].indexOf(item.video_id) + 1;
+                const { icon, name } = metricMeta[bestKey];
+
+                return (
+                  <Card
+                    key={`new-${item.video_id}`}
+                    onClick={() => handleCardClick(item.video_id)}
+                  >
+                    <MetricsContainer>
+                      <MetricBadge bg="#FFF4E5" color="#C92A2A">
+                        ✨ NEW
+                      </MetricBadge>
+                      {displayHotScore != null ? (
+                        <MetricBadge bg="#EAF4FF" color="#007BFF">
+                          🔥 Hot Score {displayHotScore}↑
+                        </MetricBadge>
+                      ) : null}
+                      <MetricBadge bg="#EAF4FF" color="#007BFF">
+                        {icon} {name} {auxRank}위
+                      </MetricBadge>
+                    </MetricsContainer>
+                    <VideoItem onClick={() => handleCardClick(item.video_id)}>
+                      <ThumbWrapper>
+                        <Thumbnail src={item.thumbnail} />
+                      </ThumbWrapper>
+                      <Info>
+                        <VideoTitle>
+                          {removeMarkTags(item.summary_data.headline_title)}
+                        </VideoTitle>
+                        <Meta>
+                          {removeMarkTags(item.summary_data.short_summary)}
+                        </Meta>
+                      </Info>
+                    </VideoItem>
+                    <ChannelFooter>
+                      <ChannelThumb
+                        src={item.channel_details.channel_thumbnail}
+                      />
+                      <ChannelInfo>
+                        <ChannelName>
+                          {item.channel_details.channel_name}
+                        </ChannelName>
+                        <ChannelMeta>
+                          {parseSubscribersCount(
+                            item.channel_details.channel_subscribers
+                          )}{" "}
+                          · {timeAgoUTC(item.upload_date)}
+                        </ChannelMeta>
+                      </ChannelInfo>
+                    </ChannelFooter>
+                    {item.summary_data.comment_social_proof?.comment?.trim() ? (
+                      <CommentSection>
+                        <Comment>
+                          <CommentIcon>💬</CommentIcon>
+                          <CommentText>
+                            {item.summary_data.comment_social_proof.comment}
+                          </CommentText>
+                        </Comment>
+                      </CommentSection>
+                    ) : null}
+                  </Card>
+                );
+              })}
+            </VideoList>
+          ) : null}
+
+          <SubSectionTitle>🔥 오늘의 TOP5 영상</SubSectionTitle>
           <VideoList>
-            {filteredAndSortedData.slice(0, 5).map((item, idx) => {
+            {topVideos.map((item, idx) => {
               // Hot Score 순위
               const hotRank = scoreRanking.indexOf(item.video_id) + 1;
+              const rawHotScore =
+                typeof item.score === "number"
+                  ? item.score
+                  : (item.summary_data?.score as number | undefined);
+              const displayHotScore =
+                getDisplayHotScore(rawHotScore) ?? item.summary_data.score;
 
               // 보조지표 bestKey + 순위
               const auxKeys = METRIC_KEYS.filter(
@@ -375,9 +493,11 @@ const Recommend = ({
                 >
                   {/* 카드 상단: 메트릭 배지 */}
                   <MetricsContainer>
-                    <MetricBadge bg="#EAF4FF" color="#007BFF">
-                      🔥 Hot Score {item.summary_data.score}↑
-                    </MetricBadge>
+                    {displayHotScore != null ? (
+                      <MetricBadge bg="#EAF4FF" color="#007BFF">
+                        🔥 Hot Score {displayHotScore}↑
+                      </MetricBadge>
+                    ) : null}
                     <MetricBadge bg="#EAF4FF" color="#007BFF">
                       {icon} {name} {auxRank}위
                     </MetricBadge>
@@ -879,6 +999,12 @@ const MetricsContainer = styled.div`
   border-radius: 8px;
   min-width: 80px;
   margin-top: 12px; */
+`;
+
+const SubSectionTitle = styled.h4`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 24px 0 8px;
 `;
 
 const MetricBadge = styled.span<{ bg?: string; color?: string }>`

@@ -86,6 +86,18 @@ const TopicCard = (props: TopicCardProps) => {
     }, 800); // 로딩 인터랙션을 위한 지연 (UI에서 확인 가능)
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
+  const displayScore = useMemo(() => {
+    if (typeof props.score === "number" && Number.isFinite(props.score)) {
+      return props.score;
+    }
+    if (
+      typeof summary_data?.score === "number" &&
+      Number.isFinite(summary_data.score)
+    ) {
+      return summary_data.score;
+    }
+    return null;
+  }, [props.score, summary_data?.score]);
   const specialSections = ["주식"]; // 특정 주제 섹션 목록
   // 해당 섹션이 특정 주제인지 확인
   const isSpecialSection = specialSections.includes(section);
@@ -126,9 +138,17 @@ const TopicCard = (props: TopicCardProps) => {
           {/* <Section isSubscribed={isSubscribed}>
             {topicInfo?.icon} {topicInfo?.topic || section}
           </Section> */}{" "}
-          <MetricBadge bg="#EAF4FF" color="#007BFF">
-            🔥 Hot Score {props.score}↑
-          </MetricBadge>
+          {props.is_new ? (
+            <MetricBadge bg="#FFF4E5" color="#C92A2A">
+              ✨ NEW
+            </MetricBadge>
+          ) : null}
+          {displayScore !== null ? (
+            <MetricBadge bg="#EAF4FF" color="#007BFF">
+              🔥 Hot Score {displayScore}
+              ↑
+            </MetricBadge>
+          ) : null}
           <MetricBadge bg="#EAF4FF" color="#007BFF">
             {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
           </MetricBadge>
