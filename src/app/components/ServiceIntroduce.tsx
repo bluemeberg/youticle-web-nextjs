@@ -109,6 +109,8 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
           <Description>
             주요 키워드별 시청자 반응 좋은 <Highlight>TOP5 영상</Highlight>을
             <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
+            <br />하루 <Highlight>4회</Highlight> 큐레이션을 자동으로 갱신해 지금
+            반응 좋은 영상만 다시 뽑아드려요.
           </Description>
         </Announcement>{" "}
         {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출

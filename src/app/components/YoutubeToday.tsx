@@ -453,10 +453,14 @@ const YoutubeToday = ({
   }, [newVideos]);
 
   const topVideos = useMemo(() => {
-    return filteredAndSortedData
-      .filter((item) => !newVideoIds.has(item.video_id))
-      .slice(0, 5);
-  }, [filteredAndSortedData, newVideoIds]);
+    const nonNew = filteredAndSortedData.filter(
+      (item) => !newVideoIds.has(item.video_id)
+    );
+    if (selectedTopic === "전체") {
+      return nonNew;
+    }
+    return nonNew.slice(0, 5);
+  }, [filteredAndSortedData, newVideoIds, selectedTopic]);
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -546,11 +550,12 @@ const YoutubeToday = ({
           metricLabel={metricLabel}
           metricValue={metricValue}
           rank={bestRank}
+          showTopicLabel={selectedTopic === "전체"}
           {...item}
         />
       );
     },
-    [metricRanks, subjects]
+    [metricRanks, selectedTopic, subjects]
   );
 
   const feedRef = useRef<HTMLDivElement>(null);
@@ -589,7 +594,7 @@ const YoutubeToday = ({
   return (
     <Container ref={feedRef}>
       <Header>
-        {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
+        {/* {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
           <ToggleContainer>
             <ToggleLabel>📌 구독중인 키워드 브리핑만 보기</ToggleLabel>
             <ToggleButtonContainer>
@@ -613,7 +618,7 @@ const YoutubeToday = ({
               </ToggleButton>
             </ToggleButtonContainer>
           </ToggleContainer>
-        )}
+        )} */}
       </Header>
       <SubContainer>
         <TopicNavContainer ref={scrollRef}>
@@ -646,7 +651,10 @@ const YoutubeToday = ({
       <TopicCardWrapper $isRendered={isRendered}>
         {newVideos.length > 0 ? (
           <>
-            <SubSectionTitle>✨ 이번 갱신에서 새롭게 진입한 영상</SubSectionTitle>
+            <SubSectionTitle>
+              <span>✨ 오늘 새로 진입한 영상</span>
+              <SubSectionNote>이번 갱신에서 처음 TOP5에 들어온 카드</SubSectionNote>
+            </SubSectionTitle>
             <EditorContainer>
               {newVideos.map((item) => renderTopicCard(item, "new-"))}
             </EditorContainer>
@@ -655,7 +663,10 @@ const YoutubeToday = ({
 
         {topVideos.length > 0 ? (
           <>
-            <SubSectionTitle>🔥 오늘의 TOP5 영상</SubSectionTitle>
+            <SubSectionTitle>
+              <span>🔥 계속 상위권 유지 중인 영상</span>
+              <SubSectionNote>어제/오늘 내내 TOP5를 지키는 카드</SubSectionNote>
+            </SubSectionTitle>
             <EditorContainer>
               {topVideos.map((item) => renderTopicCard(item, "top-"))}
             </EditorContainer>
@@ -708,7 +719,19 @@ const TopicCardWrapper = styled.div<{ $isRendered: boolean }>`
 const SubSectionTitle = styled.h4`
   font-size: 16px;
   font-weight: 700;
-  margin: 24px 0 12px;
+  /* margin: 24px 16px 12px; */
+  padding: 24px 16px 0px;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const SubSectionNote = styled.small`
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
 `;
 
 const Container = styled.div`

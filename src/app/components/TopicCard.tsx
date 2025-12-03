@@ -23,6 +23,7 @@ interface TopicCardProps extends DataProps {
   metricValue: number;
   metricIcon: string;
   rank: number;
+  showTopicLabel?: boolean;
 }
 
 const YOUTUBE_TOPICS = [
@@ -68,6 +69,7 @@ const TopicCard = (props: TopicCardProps) => {
     video_id,
     views,
     likes,
+    showTopicLabel,
   } = props;
   const handleNavigate = () => {
     if (isLoading) return; // 중복 클릭 방지
@@ -86,6 +88,7 @@ const TopicCard = (props: TopicCardProps) => {
     }, 800); // 로딩 인터랙션을 위한 지연 (UI에서 확인 가능)
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
+  const uploadAgo = timeAgoUTC(upload_date);
   const displayScore = useMemo(() => {
     if (typeof props.score === "number" && Number.isFinite(props.score)) {
       return props.score;
@@ -135,23 +138,37 @@ const TopicCard = (props: TopicCardProps) => {
         )} */}
         {/* 카드 상단: 메트릭 배지 */}
         <MetricsContainer>
-          {/* <Section isSubscribed={isSubscribed}>
-            {topicInfo?.icon} {topicInfo?.topic || section}
-          </Section> */}{" "}
-          {props.is_new ? (
-            <MetricBadge bg="#FFF4E5" color="#C92A2A">
-              ✨ NEW
-            </MetricBadge>
-          ) : null}
-          {displayScore !== null ? (
+          {(showTopicLabel || props.is_new) && (
+            <PrimaryBadgeRow>
+              {showTopicLabel ? (
+                <Section isSubscribed={isSubscribed}>
+                  {topicInfo?.icon}
+                  <span>{topicInfo?.topic || section}</span>
+                </Section>
+              ) : null}
+              {props.is_new ? (
+                <MetricBadge bg="#FFF4E5" color="#C92A2A">
+                  ✨ NEW
+                </MetricBadge>
+              ) : null}
+            </PrimaryBadgeRow>
+          )}
+          <BadgeRow>
+            {displayScore !== null ? (
+              <MetricBadge bg="#EAF4FF" color="#007BFF">
+                🔥 Hot Score {displayScore}
+                ↑
+              </MetricBadge>
+            ) : null}
             <MetricBadge bg="#EAF4FF" color="#007BFF">
-              🔥 Hot Score {displayScore}
-              ↑
+              {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
             </MetricBadge>
-          ) : null}
-          <MetricBadge bg="#EAF4FF" color="#007BFF">
-            {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
-          </MetricBadge>
+          </BadgeRow>
+          <TimeBadge>
+            {props.is_new
+              ? `⏱ 진입: ${uploadAgo}`
+              : `🔥 상위 유지: ${uploadAgo}`}
+          </TimeBadge>
         </MetricsContainer>
       </CardHeader>
       <BodyContainer>
@@ -321,24 +338,23 @@ const SubsUpload = styled.div`
 `;
 
 const Section = styled.div<{ isSubscribed: boolean }>`
-  display: inline-flex; /* 텍스트 크기에 맞게 가로폭을 설정 */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   background-color: #f9fafc;
-  padding: 6px 8px; /* 내부 여백 */
-  border-radius: 4px; /* 둥근 테두리 */
-  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-  overflow: hidden; /* 내용이 넘칠 경우 숨김 */
-  text-overflow: ellipsis; /* 넘치는 텍스트 말줄임표 처리 */
-  box-sizing: border-box; /* 패딩 포함한 크기 계산 */
-  color: ${({ isSubscribed }) =>
-    isSubscribed ? "#007BFF" : "#80858a"}; /* 구독 여부에 따른 색상 */
-  height: 32px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#80858a")};
   border: 1px solid
-    ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")}; /* 구독 여부에 따른 테두리 */
+    ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")};
+  gap: 4px;
+  span {
+    white-space: normal;
+    line-height: 1.2;
+  }
 `;
-
 const Body = styled.div`
   display: flex;
   max-width: 56%; /* Body 영역을 60%로 설정 */
@@ -436,7 +452,6 @@ const ChannelInfo = styled.div`
 
 const ProfileImage = styled.img`
   width: 32px;
-  height: 32px;
   border-radius: 50%;
   background: rgba(217, 217, 217, 1);
 `;
@@ -520,10 +535,20 @@ const LikeCount = styled.span`
 
 const MetricsContainer = styled.div`
   display: flex;
-  /* padding: 8px;
-  border-radius: 8px;
-  min-width: 80px;
-  margin-top: 12px; */
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+`;
+
+const BadgeRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+`;
+
+const PrimaryBadgeRow = styled(BadgeRow)`
+  align-items: center;
 `;
 
 const MetricBadge = styled.span<{ bg?: string; color?: string }>`
@@ -538,4 +563,15 @@ const MetricBadge = styled.span<{ bg?: string; color?: string }>`
   /* margin-left: 8px; */
   margin-right: 4px;
   /* margin-bottom: 8px; */
+`;
+
+const TimeBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4c1d95;
+  background-color: #f5f3ff;
+  border-radius: 4px;
 `;

@@ -5,6 +5,13 @@ import styled from "styled-components";
 
 import TodayPageClient from "../components/TodayPageClient"; // 클라이언트 컴포넌트
 import type { InsightSectionsResponse } from "@/types/insight";
+import {
+  buildRefreshMeta,
+  formatDateKST,
+  getBriefingSlot,
+  resolveStockSlot,
+  toKst,
+} from "@/utils/briefingSlot";
 
 export default function LandingPage() {
   const [apiData, setApiData] = useState<any[]>([]);
@@ -12,6 +19,7 @@ export default function LandingPage() {
   const [integratedSections, setIntegratedSections] =
     useState<InsightSectionsResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshMeta] = useState(() => buildRefreshMeta(new Date()));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,51 +27,10 @@ export default function LandingPage() {
       const STOCK_API_V2_URL = "https://youticle.shop/briefing_v2/top_videos/v2/";
       const EXCEPT_STOCK_API_URL = "https://youticle.shop/briefing/top_videos";
       const INSIGHTS_SECTION_URL = "https://youticle.shop/insights/sections";
-      const getKstDate = (date: Date) =>
-        new Date(date.getTime() + 9 * 60 * 60 * 1000);
-      const formatDateKST = (date: Date) => {
-        const kstDate = getKstDate(date);
-        const y = kstDate.getUTCFullYear();
-        const m = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
-        const d = String(kstDate.getUTCDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
-      };
       const now = new Date();
-      const buildSlot = (date: Date) => {
-        const kstDate = getKstDate(date);
-        const hours = kstDate.getUTCHours();
-        const minutes = kstDate.getUTCMinutes();
-        if (hours < 7 || (hours === 7 && minutes < 30)) return "slot4";
-        if (
-          (hours === 7 && minutes >= 30) ||
-          (hours === 8 && minutes < 30)
-        ) {
-          return "baseline";
-        }
-        if (hours < 12 || (hours === 12 && minutes < 10)) return "slot1";
-        if (hours < 15 || (hours === 15 && minutes < 10)) return "slot2";
-        if (hours < 21 || (hours === 21 && minutes < 30)) return "slot3";
-        return "slot4";
-      };
-      const resolveStockSlot = (date: Date): number | null => {
-        const kstDate = getKstDate(date);
-        const hours = kstDate.getUTCHours();
-        const minutes = kstDate.getUTCMinutes();
-        if (hours < 7 || (hours === 7 && minutes < 30)) return 4;
-        if (
-          (hours === 7 && minutes >= 30) ||
-          (hours === 8 && minutes < 30)
-        ) {
-          return null;
-        }
-        if (hours < 12 || (hours === 12 && minutes < 10)) return 1;
-        if (hours < 15 || (hours === 15 && minutes < 10)) return 2;
-        if (hours < 21 || (hours === 21 && minutes < 30)) return 3;
-        return 4;
-      };
       const dateParam = formatDateKST(now);
-      const slotParam = buildSlot(now);
-      const kstNow = getKstDate(now);
+      const slotParam = getBriefingSlot(now);
+      const kstNow = toKst(now);
       const isMorningBaseline = slotParam === "baseline";
       const isPreBaselineSlot4 =
         slotParam === "slot4" &&
@@ -157,6 +124,7 @@ export default function LandingPage() {
         <TodayPageClient
           apiData={apiData}
           integratedSections={integratedSections?.sections ?? []}
+          refreshMeta={refreshMeta}
         />
       )}
     </>
