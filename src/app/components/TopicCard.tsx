@@ -24,6 +24,7 @@ interface TopicCardProps extends DataProps {
   metricIcon: string;
   rank: number;
   showTopicLabel?: boolean;
+  compactBadges?: boolean;
 }
 
 const YOUTUBE_TOPICS = [
@@ -54,6 +55,49 @@ const YOUTUBE_TOPICS = [
   { topic: "역사", icon: "📜" },
 ];
 
+
+const DETECTED_SLOT_MAP: Record<string, { label: string; minutes: number }> = {
+  slot_0730: { label: '07:30 선정', minutes: 7 * 60 + 30 },
+  slot_0830: { label: '08:30 갱신', minutes: 8 * 60 + 30 },
+  slot_1130: { label: '11:30 재랭킹', minutes: 11 * 60 + 30 },
+  slot_1240: { label: '12:40 갱신', minutes: 12 * 60 + 40 },
+  slot_1510: { label: '15:10 갱신', minutes: 15 * 60 + 10 },
+  slot_1530: { label: '15:30 재랭킹', minutes: 15 * 60 + 30 },
+  slot_1600: { label: '16:00 재랭킹', minutes: 16 * 60 },
+  slot_1810: { label: '18:10 재랭킹', minutes: 18 * 60 + 10 },
+  slot_2030: { label: '20:30 재랭킹', minutes: 20 * 60 + 30 },
+  slot_2100: { label: '21:00 재랭킹', minutes: 21 * 60 },
+  slot_2140: { label: '21:40 갱신', minutes: 21 * 60 + 40 },
+};
+
+const MINUTES_PER_DAY = 24 * 60;
+
+const getKstMinutes = (date: Date) => {
+  const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes();
+  return (utcMinutes + 9 * 60) % MINUTES_PER_DAY;
+};
+
+const formatMinutesAgo = (diffMinutes: number) => {
+  if (diffMinutes <= 0) return '방금 전';
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  const hours = Math.max(1, Math.round(diffMinutes / 60));
+  return `${hours}시간 전`;
+};
+
+const getLatestDetectedSlot = (
+  detected?: Record<string, boolean> | null
+): { label: string } | null => {
+  if (!detected) return null;
+  const entries = Object.entries(detected)
+    .filter(([key, value]) => value && DETECTED_SLOT_MAP[key])
+    .sort(
+      (a, b) =>
+        DETECTED_SLOT_MAP[b[0]].minutes - DETECTED_SLOT_MAP[a[0]].minutes
+    );
+  if (entries.length === 0) return null;
+  return DETECTED_SLOT_MAP[entries[0][0]];
+};
+
 const TopicCard = (props: TopicCardProps) => {
   const router = useRouter();
   const pathname = usePathname(); // 현재 경로 가져오기
@@ -70,6 +114,7 @@ const TopicCard = (props: TopicCardProps) => {
     views,
     likes,
     showTopicLabel,
+    compactBadges,
   } = props;
   const handleNavigate = () => {
     if (isLoading) return; // 중복 클릭 방지
@@ -89,6 +134,17 @@ const TopicCard = (props: TopicCardProps) => {
   };
   const short_summary = removeMarkTags(summary_data?.short_summary || "");
   const uploadAgo = timeAgoUTC(upload_date);
+  const detectedSlotInfo = useMemo(
+    () => getLatestDetectedSlot(props.detected_slots),
+    [props.detected_slots]
+  );
+  const slotRelativeText = useMemo(() => {
+    if (!detectedSlotInfo) return null;
+    const nowMinutes = getKstMinutes(new Date());
+    const diff =
+      (nowMinutes - detectedSlotInfo.minutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    return formatMinutesAgo(diff);
+  }, [detectedSlotInfo]);
   const displayScore = useMemo(() => {
     if (typeof props.score === "number" && Number.isFinite(props.score)) {
       return props.score;
@@ -137,39 +193,49 @@ const TopicCard = (props: TopicCardProps) => {
           )
         )} */}
         {/* 카드 상단: 메트릭 배지 */}
-        <MetricsContainer>
-          {(showTopicLabel || props.is_new) && (
-            <PrimaryBadgeRow>
-              {showTopicLabel ? (
-                <Section isSubscribed={isSubscribed}>
-                  {topicInfo?.icon}
-                  <span>{topicInfo?.topic || section}</span>
-                </Section>
-              ) : null}
-              {props.is_new ? (
-                <MetricBadge bg="#FFF4E5" color="#C92A2A">
-                  ✨ NEW
-                </MetricBadge>
-              ) : null}
-            </PrimaryBadgeRow>
-          )}
-          <BadgeRow>
-            {displayScore !== null ? (
-              <MetricBadge bg="#EAF4FF" color="#007BFF">
-                🔥 Hot Score {displayScore}
-                ↑
-              </MetricBadge>
-            ) : null}
-            <MetricBadge bg="#EAF4FF" color="#007BFF">
-              {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
-            </MetricBadge>
-          </BadgeRow>
-          <TimeBadge>
-            {props.is_new
-              ? `⏱ 진입: ${uploadAgo}`
-              : `🔥 상위 유지: ${uploadAgo}`}
-          </TimeBadge>
-        </MetricsContainer>
+
+<MetricsContainer>
+  {props.is_new && (
+    <PrimaryBadgeRow>
+      {showTopicLabel ? (
+        <Section isSubscribed={isSubscribed}>
+          {topicInfo?.icon}
+          <span>{topicInfo?.topic || section}</span>
+        </Section>
+      ) : null}
+      <MetricBadge bg="#FFF4E5" color="#C92A2A">
+        {slotRelativeText
+          ? `✨ NEW · ${slotRelativeText}`
+          : `✨ NEW · ${uploadAgo}`}
+      </MetricBadge>
+    </PrimaryBadgeRow>
+  )}
+  <BadgeRow $compact={compactBadges}>
+    {!props.is_new && showTopicLabel ? (
+      <Section isSubscribed={isSubscribed}>
+        {topicInfo?.icon}
+        <span>{topicInfo?.topic || section}</span>
+      </Section>
+    ) : null}
+    {displayScore !== null ? (
+      <MetricBadge bg="#EAF4FF" color="#007BFF">
+        🔥 Hot Score {displayScore}
+        ↑
+      </MetricBadge>
+    ) : null}
+    {/* {!props.is_new && (
+      <MetricBadge bg="#F5F3FF" color="#4C1D95">
+        {slotRelativeText
+          ? `🔥 ${slotRelativeText} 유지`
+          : `🔥 ${uploadAgo}`}
+      </MetricBadge>
+    )} */}
+    <MetricBadge bg="#EAF4FF" color="#007BFF">
+      {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
+    </MetricBadge>
+  </BadgeRow>
+</MetricsContainer>
+
       </CardHeader>
       <BodyContainer>
         <ChannelInfoContainer>
@@ -350,10 +416,6 @@ const Section = styled.div<{ isSubscribed: boolean }>`
   border: 1px solid
     ${({ isSubscribed }) => (isSubscribed ? "#007BFF" : "#c4c4c4")};
   gap: 4px;
-  span {
-    white-space: normal;
-    line-height: 1.2;
-  }
 `;
 const Body = styled.div`
   display: flex;
@@ -540,11 +602,12 @@ const MetricsContainer = styled.div`
   width: 100%;
 `;
 
-const BadgeRow = styled.div`
+const BadgeRow = styled.div<{ $compact?: boolean }>`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: ${({ $compact }) => ($compact ? "nowrap" : "wrap")};
   gap: 6px;
   width: 100%;
+  align-items: center;
 `;
 
 const PrimaryBadgeRow = styled(BadgeRow)`
@@ -563,15 +626,4 @@ const MetricBadge = styled.span<{ bg?: string; color?: string }>`
   /* margin-left: 8px; */
   margin-right: 4px;
   /* margin-bottom: 8px; */
-`;
-
-const TimeBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #4c1d95;
-  background-color: #f5f3ff;
-  border-radius: 4px;
 `;

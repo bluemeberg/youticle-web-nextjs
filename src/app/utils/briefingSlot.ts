@@ -149,7 +149,7 @@ export const resolveStockSlot = (date: Date): number | null => {
   if (slot === "slot1") return 1;
   if (slot === "slot2") return 2;
   if (slot === "slot3") return 3;
-  if (slot === "ranking") return 4;
+  if (slot === "ranking") return 3; // ranking data uses the slot3 payload
   return null;
 };
 

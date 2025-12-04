@@ -30,8 +30,9 @@ export default function LandingPage() {
       const now = new Date();
       const dateParam = formatDateKST(now);
       const slotParam = getBriefingSlot(now);
+      const networkSlotParam = slotParam === "ranking" ? "slot3" : slotParam;
       const kstNow = toKst(now);
-      const isMorningBaseline = slotParam === "baseline";
+      const isMorningBaseline = networkSlotParam === "baseline";
       const isPreBaselineSlot4 =
         slotParam === "slot4" &&
         (kstNow.getUTCHours() < 7 ||
@@ -67,7 +68,7 @@ export default function LandingPage() {
               const encodedSectionKey = encodeURIComponent(key);
               const url = isMorningBaseline
                 ? `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}`
-                : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${slotParam}`;
+                : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${networkSlotParam}`;
               const res = await fetch(url, {
                 method: "GET",
                 cache: "no-store",

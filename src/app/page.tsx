@@ -44,6 +44,7 @@ export default async function LandingPage(props: LandingPageProps) {
   const now = new Date();
   const dateParam = formatDateKST(now);
   const slotParam = getBriefingSlot(now);
+  const networkSlotParam = slotParam === "ranking" ? "slot3" : slotParam;
   const refreshMeta = buildRefreshMeta(now);
   const stockSlot = resolveStockSlot(now);
   const stockApiUrl =
@@ -51,7 +52,7 @@ export default async function LandingPage(props: LandingPageProps) {
       ? STOCK_API_URL
       : `${STOCK_API_V2_URL}?time_slot=${stockSlot}`;
   const kstNow = toKst(now);
-  const isMorningBaseline = slotParam === "baseline";
+  const isMorningBaseline = networkSlotParam === "baseline";
   const isPreBaselineSlot4 =
     slotParam === "slot4" &&
     (kstNow.getUTCHours() < 7 ||
@@ -82,7 +83,7 @@ export default async function LandingPage(props: LandingPageProps) {
           const encodedSectionKey = encodeURIComponent(key);
           const url = isMorningBaseline
             ? `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}`
-            : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${slotParam}`;
+            : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${networkSlotParam}`;
           const res = await fetch(url, {
             method: "GET",
             cache: "no-store",

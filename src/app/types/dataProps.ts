@@ -11,6 +11,7 @@ export interface DataProps {
   subscribers: number;
   score: number;
   is_new?: boolean | null;
+  detected_slots?: Record<string, boolean> | null;
   summary_data: SummaryData;
   id?: string;
   channel_details: ChannelDetails;

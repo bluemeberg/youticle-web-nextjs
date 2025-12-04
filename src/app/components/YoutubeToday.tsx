@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 
 import styled, { keyframes, css } from "styled-components";
@@ -108,6 +108,61 @@ const INTEGRATED_SECTION_MAP: Record<string, string> = {
   "해외 주식": "overseas_stock",
   "국내 가상자산": "domestic_crypto",
   "해외 가상자산": "overseas_crypto",
+};
+
+const SLOT_DISPLAY_CONFIGS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  minutes: number;
+}> = [
+  { id: "slot_0730", label: "07:30 선정", description: "주식·가상자산 첫 선정", minutes: 7 * 60 + 30 },
+  { id: "slot_0830", label: "08:30 갱신", description: "주식·가상자산 새 영상 선정", minutes: 8 * 60 + 30 },
+  { id: "slot_1130", label: "11:30 재랭킹", description: "오전 랭킹 갱신", minutes: 11 * 60 + 30 },
+  { id: "slot_1240", label: "12:40 갱신", description: "주식·가상자산 두 번째 선정", minutes: 12 * 60 + 40 },
+  { id: "slot_1510", label: "15:10 갱신", description: "주식·가상자산 세 번째 선정", minutes: 15 * 60 + 10 },
+  { id: "slot_1530", label: "15:30 재랭킹", description: "주식·가상자산 오후 랭킹 점검", minutes: 15 * 60 + 30 },
+  { id: "slot_1600", label: "16:00 재랭킹", description: "일반 키워드 오후 랭킹 갱신", minutes: 16 * 60 },
+  { id: "slot_1810", label: "18:10 재랭킹", description: "주식·가상자산 저녁 랭킹 갱신", minutes: 18 * 60 + 10 },
+  { id: "slot_2030", label: "20:30 재랭킹", description: "일반 키워드 저녁 랭킹 갱신", minutes: 20 * 60 + 30 },
+  { id: "slot_2100", label: "21:00 재랭킹", description: "일반 키워드 밤 랭킹 갱신", minutes: 21 * 60 },
+  { id: "slot_2140", label: "21:40 갱신", description: "주식·가상자산 마지막 선정", minutes: 21 * 60 + 40 },
+];
+
+const SLOT_DISPLAY_PRIORITY = SLOT_DISPLAY_CONFIGS.reduce<Record<string, number>>(
+  (acc, config, index) => {
+    acc[config.id] = index;
+    return acc;
+  },
+  {}
+);
+
+const getSlotDisplayPriority = (slotId: string) => {
+  if (slotId === "slot_1530") {
+    const target = SLOT_DISPLAY_PRIORITY["slot_1130"];
+    if (typeof target === "number") {
+      return target - 0.5; // 15:30 재랭킹을 11:30보다 상단에 노출
+    }
+  }
+  return SLOT_DISPLAY_PRIORITY[slotId] ?? Number.MAX_SAFE_INTEGER;
+};
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+const getKstMinutes = (date: Date) => {
+  const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes();
+  return (utcMinutes + 9 * 60) % (24 * 60);
+};
+
+const formatMinutesAgo = (diffMinutes: number) => {
+  if (diffMinutes <= 0) {
+    return "방금 전";
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}분 전`;
+  }
+  const hours = Math.max(1, Math.round(diffMinutes / 60));
+  return `${hours}시간 전`;
 };
 
 const normalizeTopicKey = (value: string) =>
@@ -444,23 +499,54 @@ const YoutubeToday = ({
     sortCriteria,
   ]);
 
-  const newVideos = useMemo(() => {
-    return filteredAndSortedData.filter((item) => item.is_new);
-  }, [filteredAndSortedData]);
-
   const newVideoIds = useMemo(() => {
-    return new Set(newVideos.map((video) => video.video_id));
-  }, [newVideos]);
+    return new Set(
+      filteredAndSortedData
+        .filter((item) => item.is_new)
+        .map((video) => video.video_id)
+    );
+  }, [filteredAndSortedData]);
 
   const topVideos = useMemo(() => {
     const nonNew = filteredAndSortedData.filter(
       (item) => !newVideoIds.has(item.video_id)
     );
-    if (selectedTopic === "전체") {
-      return nonNew;
-    }
-    return nonNew.slice(0, 5);
-  }, [filteredAndSortedData, newVideoIds, selectedTopic]);
+  if (selectedTopic === "전체") {
+    return nonNew;
+  }
+  return nonNew.slice(0, 5);
+}, [filteredAndSortedData, newVideoIds, selectedTopic]);
+
+  const slotSections = useMemo(() => {
+    const nowMinutes = getKstMinutes(new Date());
+    const totalMinutes = 24 * 60;
+    return SLOT_DISPLAY_CONFIGS.map((config) => {
+      const items = filteredAndSortedData.filter(
+        (item) => item.is_new && item.detected_slots?.[config.id]
+      );
+      if (items.length === 0) return null;
+      const diff = (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
+      const relativeLabel = formatMinutesAgo(diff);
+      return {
+        slotId: config.id,
+        label: config.label,
+        description: config.description,
+        relativeLabel,
+        items,
+      };
+    })
+      .filter((section): section is {
+        slotId: string;
+        label: string;
+        description: string;
+        relativeLabel: string;
+        items: DataProps[];
+      } => Boolean(section))
+      .sort(
+        (a, b) =>
+          getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
+      );
+  }, [filteredAndSortedData]);
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -523,7 +609,11 @@ const YoutubeToday = ({
 }, [filteredAndSortedData]);
 
   const renderTopicCard = useCallback(
-    (item: DataProps, keyPrefix = "") => {
+    (
+      item: DataProps,
+      keyPrefix = "",
+      options?: { compactBadges?: boolean }
+    ) => {
       const topicInfo = YOUTUBE_TOPICS.find(
         (topic) => topic.topic === item.section
       );
@@ -551,6 +641,7 @@ const YoutubeToday = ({
           metricValue={metricValue}
           rank={bestRank}
           showTopicLabel={selectedTopic === "전체"}
+          compactBadges={options?.compactBadges}
           {...item}
         />
       );
@@ -593,6 +684,31 @@ const YoutubeToday = ({
 
   return (
     <Container ref={feedRef}>
+      <ScheduleSummary>
+  <ScheduleHeading>키워드별 갱신 리듬</ScheduleHeading>
+
+  <ScheduleRow>
+    <strong>주식·가상자산</strong>
+    <span>
+      하루 <b>6번 모니터링</b>해서 <b>지금 반응 좋은 영상만</b> 다시 골라드려요.
+      <br />
+      <small style={{ fontSize: "12px", color: "#6b7280" }}>
+        ⏱ 07:30 · 08:30 · 12:40 · 15:10 · 18:10(재랭킹) · 21:40
+      </small>
+    </span>
+  </ScheduleRow>
+
+  <ScheduleRow>
+    <strong>다른 키워드</strong>
+    <span>
+      하루 <b>4번 랭킹 갱신</b>으로 핵심 영상만 남겨둡니다.
+      <br />
+      <small style={{ fontSize: "12px", color: "#6b7280" }}>
+        ⏱ 07:30 선정 → 11:30 · 16:00 · 21:00 재랭킹
+      </small>
+    </span>
+  </ScheduleRow>
+</ScheduleSummary>
       <Header>
         {/* {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
           <ToggleContainer>
@@ -649,17 +765,22 @@ const YoutubeToday = ({
       /> */}
       {/* 🛠 애니메이션 추가 */}
       <TopicCardWrapper $isRendered={isRendered}>
-        {newVideos.length > 0 ? (
-          <>
+        {slotSections.map((section) => (
+          <Fragment key={section.slotId}>
             <SubSectionTitle>
-              <span>✨ 오늘 새로 진입한 영상</span>
-              <SubSectionNote>이번 갱신에서 처음 TOP5에 들어온 카드</SubSectionNote>
+              <span>
+                🔥 {section.relativeLabel} 신규 진입
+                {/* {section.relativeLabel} · {section.label} */}
+              </span>
+              {/* <SubSectionNote>{section.description}</SubSectionNote> */}
             </SubSectionTitle>
             <EditorContainer>
-              {newVideos.map((item) => renderTopicCard(item, "new-"))}
+              {section.items.map((item) =>
+                renderTopicCard(item, `${section.slotId}-`)
+              )}
             </EditorContainer>
-          </>
-        ) : null}
+          </Fragment>
+        ))}
 
         {topVideos.length > 0 ? (
           <>
@@ -668,7 +789,11 @@ const YoutubeToday = ({
               <SubSectionNote>어제/오늘 내내 TOP5를 지키는 카드</SubSectionNote>
             </SubSectionTitle>
             <EditorContainer>
-              {topVideos.map((item) => renderTopicCard(item, "top-"))}
+              {topVideos.map((item) =>
+                renderTopicCard(item, "top-", {
+                  compactBadges: selectedTopic === "전체",
+                })
+              )}
             </EditorContainer>
           </>
         ) : null}
@@ -741,6 +866,42 @@ const Container = styled.div`
   flex-direction: column;
   margin-top: 4px;
   font-family: "Pretendard Variable";
+`;
+
+const ScheduleSummary = styled.div`
+  width: calc(100% - 32px);
+  margin: 16px 16px 8px;
+  padding: 12px 16px;
+  background-color: #f5f7fb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #1f2937;
+`;
+
+const ScheduleHint = styled.span`
+  font-size: 12px;
+  color: #6b7280;
+`;
+
+const ScheduleHeading = styled.p`
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const ScheduleRow = styled.div`
+  display: flex;
+  gap: 8px;
+  /* flex-wrap: wrap; */
+  line-height: 1.4;
+
+  strong {
+    font-weight: 700;
+    color: #111827;
+  }
 `;
 
 // SubContainer modified to use React.forwardRef
