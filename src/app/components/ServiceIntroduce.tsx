@@ -127,7 +127,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
                   goToPage("briefing"); // 페이지 이동
                 }}
               >
-                키워드 무료 구독하기
+                관심 키워드 무료 구독하기
               </ServiceButton>
             </ButtonContainer>
             {/* 🔽 추가: 로그인 유도 행 */}

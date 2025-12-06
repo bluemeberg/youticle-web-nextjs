@@ -165,6 +165,13 @@ const TopicCard = (props: TopicCardProps) => {
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+  const newBadge = (
+    <MetricBadge bg="#FFF4E5" color="#C92A2A">
+      {slotRelativeText
+        ? `✨ NEW · ${slotRelativeText}`
+        : `✨ NEW · ${uploadAgo}`}
+    </MetricBadge>
+  );
 
   return (
     <Container onClick={handleNavigate}>
@@ -195,22 +202,17 @@ const TopicCard = (props: TopicCardProps) => {
         {/* 카드 상단: 메트릭 배지 */}
 
 <MetricsContainer>
-  {props.is_new && (
+  {props.is_new && showTopicLabel ? (
     <PrimaryBadgeRow>
-      {showTopicLabel ? (
-        <Section isSubscribed={isSubscribed}>
-          {topicInfo?.icon}
-          <span>{topicInfo?.topic || section}</span>
-        </Section>
-      ) : null}
-      <MetricBadge bg="#FFF4E5" color="#C92A2A">
-        {slotRelativeText
-          ? `✨ NEW · ${slotRelativeText}`
-          : `✨ NEW · ${uploadAgo}`}
-      </MetricBadge>
+      <Section isSubscribed={isSubscribed}>
+        {topicInfo?.icon}
+        <span>{topicInfo?.topic || section}</span>
+      </Section>
+      {newBadge}
     </PrimaryBadgeRow>
-  )}
+  ) : null}
   <BadgeRow $compact={compactBadges}>
+    {props.is_new && !showTopicLabel ? newBadge : null}
     {!props.is_new && showTopicLabel ? (
       <Section isSubscribed={isSubscribed}>
         {topicInfo?.icon}
@@ -604,7 +606,7 @@ const MetricsContainer = styled.div`
 
 const BadgeRow = styled.div<{ $compact?: boolean }>`
   display: flex;
-  flex-wrap: ${({ $compact }) => ($compact ? "nowrap" : "wrap")};
+  flex-wrap: ${({ $compact }) => ($compact ? "wrap" : "wrap")};
   gap: 6px;
   width: 100%;
   align-items: center;

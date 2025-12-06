@@ -7,7 +7,7 @@ import styled, { keyframes, css } from "styled-components";
 import TopicCard from "./TopicCard";
 import DomesticStockInsightSection from "./insight/DomesticStockInsightSection";
 import CryptoInsightSection from "./insight/CryptoInsightSection";
-import { DataProps } from "@/types/dataProps";
+import { DataProps, StockFeedSlotPhase } from "@/types/dataProps";
 import type { StockSlotSection } from "@/utils/stockFeed";
 import TodayIcon from "@/assets/today.svg";
 // import { YOUTUBE_TOPICS } from "@/constants/topic";
@@ -61,6 +61,19 @@ const YOUTUBE_TOPICS = [
   { topic: "과학", icon: "🔬" },
   { topic: "역사", icon: "📜" },
 ];
+
+const OVERSEAS_STOCK_SECTIONS = new Set(["해외 주식"]);
+const DOMESTIC_STOCK_SECTIONS = new Set(["국내 주식", "주식"]);
+const CRYPTO_SECTIONS = new Set(["국내 가상자산", "해외 가상자산", "가상자산"]);
+
+type SlotLabelDefinition = {
+  title: string;
+  description: string;
+};
+
+type SlotLabelMap = Record<StockFeedSlotPhase, SlotLabelDefinition>;
+
+type MoneyCategory = "domestic_stock" | "overseas_stock" | "crypto" | "other";
 
 const GROUPED_TOPICS: Record<string, string[]> = {
   주식: ["주식", "국내 주식", "해외 주식"],
@@ -157,6 +170,161 @@ const getSlotDisplayPriority = (slotId: string) => {
     }
   }
   return SLOT_DISPLAY_PRIORITY[slotId] ?? Number.MAX_SAFE_INTEGER;
+};
+
+type SlotLabelDefinition = {
+  title: string;
+  description: string;
+};
+
+type SlotLabelMap = Record<StockFeedSlotPhase, SlotLabelDefinition>;
+
+const STOCK_SLOT_LABELS: SlotLabelMap = {
+  baseline: {
+    title: "프리 마켓 1차 브리핑",
+    description: "07:30 장 시작 전 베이스라인",
+  },
+  slot1: {
+    title: "프리 마켓 2차 브리핑",
+    description: "08:30 장 시작 직전 업데이트",
+  },
+  slot2: {
+    title: "점심장 중간 브리핑",
+    description: "12:30 점심장 흐름 점검",
+  },
+  slot3: {
+    title: "장 마감 전 브리핑",
+    description: "15:10 장 마감 직전 체크",
+  },
+  slot4: {
+    title: "저녁 리뷰 브리핑",
+    description: "21:00 장 마감 리뷰",
+  },
+};
+
+const CRYPTO_SLOT_LABELS: SlotLabelMap = {
+  baseline: {
+    title: "새벽·아침 코인 브리핑 1차",
+    description: "07:30 새벽/아침 사이 코인 흐름",
+  },
+  slot1: {
+    title: "아침 코인 브리핑 2차",
+    description: "08:30 출근 직전 급등락 반영",
+  },
+  slot2: {
+    title: "점심 코인 브리핑",
+    description: "점심 시간대 코인 반응",
+  },
+  slot3: {
+    title: "오후 코인 브리핑",
+    description: "오후~퇴근 시간대 리듬",
+  },
+  slot4: {
+    title: "심야 코인 브리핑",
+    description: "밤 시간대 미국장 반응",
+  },
+};
+
+const OVERSEAS_STOCK_SLOT_LABELS: SlotLabelMap = {
+  baseline: {
+    title: "간밤 미국장 1차 요약",
+    description: "07:30 미국장 핵심 요약",
+  },
+  slot1: {
+    title: "간밤 미국장 2차 요약",
+    description: "08:30 새 소식 업데이트",
+  },
+  slot2: {
+    title: "오늘 밤 미국장 프리뷰 1차",
+    description: "12:30 오늘 밤 주목 포인트",
+  },
+  slot3: {
+    title: "오늘 밤 미국장 프리뷰 2차",
+    description: "15:10 마감 전 리마인드",
+  },
+  slot4: {
+    title: "미국 프리마켓 체크",
+    description: "21:00 프리마켓 동향",
+  },
+};
+
+const CATEGORY_DISPLAY_NAMES: Record<Exclude<MoneyCategory, "other">, string> = {
+  domestic_stock: "국내 주식",
+  overseas_stock: "해외 주식",
+  crypto: "가상자산",
+};
+
+type MoneySlotSection = {
+  slot: StockFeedSlotPhase;
+  priority: number;
+  title: string;
+  description: string;
+  items: DataProps[];
+};
+
+const resolveMoneyCategory = (section: string): MoneyCategory => {
+  if (CRYPTO_SECTIONS.has(section)) return "crypto";
+  if (OVERSEAS_STOCK_SECTIONS.has(section)) return "overseas_stock";
+  if (DOMESTIC_STOCK_SECTIONS.has(section)) return "domestic_stock";
+  return "other";
+};
+
+const resolveSlotLabelMapForCategory = (category: MoneyCategory): SlotLabelMap => {
+  if (category === "crypto") return CRYPTO_SLOT_LABELS;
+  if (category === "overseas_stock") return OVERSEAS_STOCK_SLOT_LABELS;
+  return STOCK_SLOT_LABELS;
+};
+
+const resolveSlotLabelMapForSection = (section: string): SlotLabelMap => {
+  return resolveSlotLabelMapForCategory(resolveMoneyCategory(section));
+};
+
+const buildCategorySlotSections = (
+  items: DataProps[],
+  slot: StockFeedSlotPhase,
+  priority: number,
+  includeCategoryLabel: boolean
+): MoneySlotSection[] => {
+  if (items.length === 0) return [];
+  const groups = new Map<MoneyCategory, DataProps[]>();
+  items.forEach((item) => {
+    const category = resolveMoneyCategory(item.section);
+    if (category === "other") return;
+    if (!groups.has(category)) {
+      groups.set(category, []);
+    }
+    groups.get(category)!.push(item);
+  });
+
+  if (groups.size === 0) {
+    const fallbackMap = resolveSlotLabelMapForSection(items[0]?.section ?? "");
+    const fallbackMeta = fallbackMap[slot];
+    return [
+      {
+        slot,
+        priority,
+        title: fallbackMeta.title,
+        description: fallbackMeta.description,
+        items,
+      },
+    ];
+  }
+
+  return Array.from(groups.entries()).map(([category, groupedItems]) => {
+    const labelMap = resolveSlotLabelMapForCategory(category);
+    const meta = labelMap[slot];
+    const categoryLabel = CATEGORY_DISPLAY_NAMES[
+      category as Exclude<MoneyCategory, "other">
+    ];
+    const title = includeCategoryLabel ? `${meta.title} · ${categoryLabel}` : meta.title;
+    return {
+      slot,
+      priority,
+      title,
+      description: meta.description,
+      items: groupedItems,
+    };
+  });
 };
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -512,37 +680,92 @@ const YoutubeToday = ({
     sortCriteria,
   ]);
 
-  const newVideoIds = useMemo(() => {
-    return new Set(
-      filteredAndSortedData
-        .filter((item) => item.is_new)
-        .map((video) => video.video_id)
+  const preMarketSections = useMemo<MoneySlotSection[]>(() => {
+    const baselineSection = stockSlotSections.find(
+      (section) => section.slot === "baseline"
     );
-  }, [filteredAndSortedData]);
+    if (!baselineSection) return [];
+    const seen = new Set<string>();
+    const filteredItems = baselineSection.items
+      .filter((item) => item.stock_slot_phase === "baseline")
+      .filter((item) => matchesTopicFilter(item))
+      .filter((item) => {
+        if (seen.has(item.video_id)) return false;
+        seen.add(item.video_id);
+        return true;
+      });
+    if (filteredItems.length === 0) return [];
 
-  const topVideos = useMemo(() => {
-    const nonNew = filteredAndSortedData.filter(
-      (item) => !newVideoIds.has(item.video_id)
+    if (selectedTopic === "전체") {
+      return buildCategorySlotSections(
+        filteredItems,
+        "baseline",
+        baselineSection.priority,
+        true
+      );
+    }
+
+    const labelMap = resolveSlotLabelMapForSection(
+      filteredItems[0]?.section ?? selectedTopic
     );
-  if (selectedTopic === "전체") {
-    return nonNew;
-  }
-  return nonNew.slice(0, 5);
-}, [filteredAndSortedData, newVideoIds, selectedTopic]);
+    const meta = labelMap.baseline;
+    return [
+      {
+        slot: "baseline",
+        priority: baselineSection.priority,
+        title: meta.title,
+        description: meta.description,
+        items: filteredItems,
+      },
+    ];
+  }, [stockSlotSections, matchesTopicFilter, selectedTopic]);
 
-  const stockSlotSectionsForView = useMemo(() => {
+  const stockSlotSectionsForView = useMemo<MoneySlotSection[]>(() => {
     if (stockSlotSections.length === 0) return [];
-    return stockSlotSections
-      .map((section) => {
-        const filteredItems = section.items.filter(matchesTopicFilter);
-        if (filteredItems.length === 0) return null;
-        return {
-          ...section,
-          items: filteredItems,
-        };
-      })
-      .filter((section): section is StockSlotSection => Boolean(section));
-  }, [stockSlotSections, matchesTopicFilter]);
+    const sections: MoneySlotSection[] = [];
+
+    stockSlotSections.forEach((section) => {
+      if (section.slot === "baseline") return;
+      const filteredItems = section.items.filter(matchesTopicFilter);
+      if (filteredItems.length === 0) return;
+
+      if (selectedTopic === "전체") {
+        sections.push(
+          ...buildCategorySlotSections(
+            filteredItems,
+            section.slot,
+            section.priority,
+            true
+          )
+        );
+        return;
+      }
+
+      const labelMap = resolveSlotLabelMapForSection(
+        filteredItems[0]?.section ?? selectedTopic
+      );
+      const meta = labelMap[section.slot];
+      sections.push({
+        slot: section.slot,
+        priority: section.priority,
+        title: meta.title,
+        description: meta.description,
+        items: filteredItems,
+      });
+    });
+
+    return sections.sort((a, b) => a.priority - b.priority);
+  }, [stockSlotSections, matchesTopicFilter, selectedTopic]);
+
+  const persistingVideos = useMemo(() => {
+    const nonNew = filteredAndSortedData.filter(
+      (item) => !item.is_new && item.stock_slot_phase !== "baseline"
+    );
+    if (selectedTopic === "전체") {
+      return nonNew;
+    }
+    return nonNew.slice(0, 5);
+  }, [filteredAndSortedData, selectedTopic]);
 
   const slotSections = useMemo(() => {
     const nowMinutes = getKstMinutes(new Date());
@@ -577,6 +800,7 @@ const YoutubeToday = ({
           getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
       );
   }, [filteredAndSortedData]);
+  console.log(slotSections)
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -715,7 +939,7 @@ const YoutubeToday = ({
   return (
     <Container ref={feedRef}>
       <ScheduleSummary>
-  <ScheduleHeading>키워드별 갱신 리듬</ScheduleHeading>
+  <ScheduleHeading>📣 키워드별 갱신 리듬</ScheduleHeading>
 
   <ScheduleRow>
     <strong>주식·가상자산</strong>
@@ -798,9 +1022,9 @@ const YoutubeToday = ({
         {stockSlotSectionsForView.length > 0 && (
           <>
             {stockSlotSectionsForView.map((section) => (
-              <Fragment key={`stock-slot-${section.slot}`}>
+              <Fragment key={`stock-slot-${section.slot}-${section.title}`}>
                 <SubSectionTitle>
-                  <span>⏱ {section.label}</span>
+                  <span>{`⏱ ${section.title}`}</span>
                   <SubSectionNote>{section.description}</SubSectionNote>
                 </SubSectionTitle>
                 <EditorContainer>
@@ -832,14 +1056,34 @@ const YoutubeToday = ({
           </Fragment>
         ))}
 
-        {topVideos.length > 0 ? (
+        {preMarketSections.length > 0 ? (
+          <>
+            {preMarketSections.map((section, index) => (
+              <Fragment key={`premarket-${section.title}-${index}`}>
+                <SubSectionTitle>
+                  <span>{`⏰ ${section.title}`}</span>
+                  <SubSectionNote>{section.description}</SubSectionNote>
+                </SubSectionTitle>
+                <EditorContainer>
+                  {section.items.map((item) =>
+                    renderTopicCard(item, `premarket-${index}-`, {
+                      compactBadges: selectedTopic === "전체",
+                    })
+                  )}
+                </EditorContainer>
+              </Fragment>
+            ))}
+          </>
+        ) : null}
+
+        {persistingVideos.length > 0 ? (
           <>
             <SubSectionTitle>
               <span>🔥 계속 상위권 유지 중인 영상</span>
               <SubSectionNote>어제/오늘 내내 TOP5를 지키는 카드</SubSectionNote>
             </SubSectionTitle>
             <EditorContainer>
-              {topVideos.map((item) =>
+              {persistingVideos.map((item) =>
                 renderTopicCard(item, "top-", {
                   compactBadges: selectedTopic === "전체",
                 })

@@ -2187,7 +2187,6 @@ function renderFlowShift(detail: ReturnType<typeof buildFlowShiftDetail>) {
     const prevWidth = Math.min(50, (Math.abs(item.prevAmount) / safeMax) * 50);
     const todayLeft = item.todayAmount >= 0 ? 50 : 50 - todayWidth;
     const prevLeft = item.prevAmount >= 0 ? 50 : 50 - prevWidth;
-    console.log(item);
     return (
       <FlowShiftItem key={item.key}>
         <FlowShiftLabel>{item.label}</FlowShiftLabel>
