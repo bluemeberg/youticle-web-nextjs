@@ -69,7 +69,7 @@ function buildCryptoMarketInsights(
 
   const card: InsightMarketCard = {
     market: `${section.label} 시장 개요`,
-    comment_title: "오늘 TOP5 유튜브 영상 속 마켓 코멘트",
+    comment_title: section.label ? `${section.label} 코멘트` : "마켓 코멘트",
     comment_body: commentBody,
     comment_bullets: commentBullets,
     quick_lines: quickLines,

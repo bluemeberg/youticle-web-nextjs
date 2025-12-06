@@ -21,7 +21,7 @@ import type {
   InsightStockMetricInsight,
 } from "@/types/insight";
 import type { StockSlotSection } from "@/utils/stockFeed";
-import type { SlotLabel } from "@/utils/briefingSlot";
+import type { SlotLabel, RefreshMeta } from "@/utils/briefingSlot";
 
 function toFiniteNumber(value?: number | null): number | undefined {
   if (value == null) return undefined;
@@ -294,6 +294,7 @@ interface LandingPageClientProps {
   integratedSections: InsightSection[];
   initialTopic?: string | null;
   stockSlotSections?: StockSlotSection[];
+  refreshMeta?: RefreshMeta;
   insightSlotLabel?: SlotLabel;
 }
 
@@ -302,6 +303,7 @@ export default function LandingPageClient({
   integratedSections,
   initialTopic,
   stockSlotSections = [],
+  refreshMeta,
   insightSlotLabel,
 }: LandingPageClientProps) {
   console.log(apiData);

@@ -97,7 +97,7 @@ const formatMinutesAgo = (diffMinutes: number) => {
 
 const getLatestDetectedSlot = (
   detected?: Record<string, boolean> | null
-): { label: string } | null => {
+): ({ label: string; minutes: number }) | null => {
   if (!detected) return null;
   const entries = Object.entries(detected)
     .filter(([key, value]) => value && DETECTED_SLOT_MAP[key])

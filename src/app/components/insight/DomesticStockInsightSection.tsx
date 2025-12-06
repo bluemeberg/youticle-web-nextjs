@@ -35,6 +35,8 @@ const COLOR_TRACK = "#e7ecff";
 const COLOR_CARD_BG = "#f5f7ff";
 const COLOR_TEXT = "#0f172a";
 const OVERSEAS_STOCK_LABEL = "해외 주식";
+const SOURCE_TAG_TEXT = "오늘 TOP5 유튜브 영상 기반";
+const DEFAULT_VISIBLE_STOCKS = 5;
 const PLACEHOLDER_TEXT_PATTERN = /정보가 없습니다/;
 
 function normalizeCommentBullets(value?: unknown): string[] {
@@ -297,6 +299,14 @@ const DomesticStockInsightSection = ({
     (label === "국내 주식" || label === "해외 주식") && !showMarketDetails;
   const shouldShowStockPreview =
     forceStockPreview || (typeof label === "string" && label.includes("주식"));
+  const [showAllStocks, setShowAllStocks] = useState(false);
+  const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
+  const displayedStocks = showAllStocks || !hasMoreStocks
+    ? stocks
+    : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const remainingStockCount = hasMoreStocks
+    ? stocks.length - DEFAULT_VISIBLE_STOCKS
+    : 0;
   const representativeMarketComment = useMemo(() => {
     const summaryTargets: Record<string, string[]> = {
       "국내 주식": ["KOSPI", "KOSDAQ"],
@@ -323,7 +333,7 @@ const DomesticStockInsightSection = ({
       const cardBullets = normalizeCommentBullets(card.comment_bullets);
       if (!cardBullets.length) return;
       if (!title) {
-        title = "오늘 TOP5 유튜브 영상 속 마켓 코멘트";
+        title = card.comment_title || "마켓 코멘트";
       }
       cardBullets.forEach((bullet) => {
         if (!bullets.includes(bullet)) {
@@ -348,13 +358,11 @@ const DomesticStockInsightSection = ({
             <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
           ) : null}
         </Title>
-        {/* {updated_at && (
-          <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
-        )} */}
       </SectionHeader>
       {appliedSlotLabel?.description ? (
         <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
       ) : null}
+      <SourceTag>오늘 TOP5 유튜브 영상 기반</SourceTag>
       <SectionIntro>{introText}</SectionIntro>
 
       {hasMarketDetailToggle && marketCardsAvailable ? (
@@ -466,21 +474,34 @@ const DomesticStockInsightSection = ({
             )} */}
           </SubSectionHeader>
           <SubSectionIntro>
-            {appliedSlotLabel?.description
-              ? `${appliedSlotLabel.description} · ${stockIntroText}`
-              : stockIntroText}
+            {SOURCE_TAG_TEXT} · {appliedSlotLabel?.description ?? stockIntroText}
           </SubSectionIntro>
           <StockList>
-            {stocks.map((stock) => (
+            {displayedStocks.map((stock, index) => (
               <StockCard
                 key={`${stock.ticker}-${stock.stock_name}`}
                 stock={stock}
                 hideInsightSectionList={hideInsightSectionList}
-                showCommentPreview={shouldShowStockPreview}
+                showCommentPreview={shouldShowStockPreview && index < 2}
                 sectionLabel={label}
               />
             ))}
           </StockList>
+          {hasMoreStocks ? (
+            <StockListToggleRow>
+              <StockDetailToggleButton
+                type="button"
+                onClick={() => setShowAllStocks((prev) => !prev)}
+              >
+                {showAllStocks
+                  ? "종목 목록 접기"
+                  : `${remainingStockCount}개 종목 더 보기`}
+                <ToggleChevron aria-hidden={true} $expanded={showAllStocks}>
+                  <span />
+                </ToggleChevron>
+              </StockDetailToggleButton>
+            </StockListToggleRow>
+          ) : null}
         </>
       )}
 
@@ -1145,7 +1166,10 @@ const StockCard = ({
   const meaningfulCommentBullets = commentBullets.filter(
     (bullet) => !isPlaceholderText(bullet)
   );
-  const commentTitle = stock.metric_insight?.comment_title || "코멘트";
+  const rawCommentTitle = stock.metric_insight?.comment_title || "";
+  const commentTitle = /오늘\s*TOP5/.test(rawCommentTitle)
+    ? "코멘트"
+    : rawCommentTitle || "코멘트";
   const previewBullets = showCommentPreview
     ? meaningfulCommentBullets.slice(0, 3)
     : [];
@@ -1299,7 +1323,7 @@ const StockCard = ({
 
   const detailToggleLabel = showDetails
     ? "상세 인사이트 접기"
-    : "상세 인사이트 펼치기";
+    : "상세 인사이트 보기";
   const hasComment = Boolean(comment) || meaningfulCommentBullets.length > 0;
   const hasStandalonePriceVisual = !hasPriceSection && Boolean(priceVisualNode);
   const hasStandaloneValuationVisual =
@@ -1398,10 +1422,7 @@ const StockCard = ({
       {showPreview ? (
         <CommentPreviewBox>
           {commentTitle ? (
-            <CommentPreviewTitle>
-              {" "}
-              오늘 TOP5 유튜브 영상 속 코멘트
-            </CommentPreviewTitle>
+            <CommentPreviewTitle>{commentTitle}</CommentPreviewTitle>
           ) : null}
           <CommentBulletList>
             {previewBullets.map((bullet, index) => (
@@ -3194,6 +3215,18 @@ const Timestamp = styled.span`
   font-weight: 700;
 `;
 
+const SourceTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #e0ebff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin: 4px 0;
+`;
+
 const SectionIntro = styled.p`
   /* margin: 8px; */
   font-size: 16px;
@@ -3696,6 +3729,11 @@ const StockDetailToggleRow = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
+`;
+
+const StockListToggleRow = styled(StockDetailToggleRow)`
+  justify-content: center;
+  margin-top: 12px;
 `;
 
 const StockDetailToggleButton = styled.button`

@@ -354,6 +354,7 @@ const StockMarketSection = ({
       {appliedSlotLabel?.description ? (
         <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
       ) : null}
+      <SourceTag>오늘 TOP5 유튜브 영상 기반</SourceTag>
       <SectionIntro>{introText}</SectionIntro>
 
       {/* {delta.quick?.length ? (
@@ -2842,6 +2843,18 @@ const SlotBadge = styled.span`
   background: #e0ebff;
   border-radius: 999px;
   padding: 2px 8px;
+`;
+
+const SourceTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #e0ebff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin: 4px 0;
 `;
 
 const SlotDescription = styled.p`

@@ -68,12 +68,12 @@ const OVERSEAS_STOCK_SECTIONS = new Set(["해외 주식"]);
 const DOMESTIC_STOCK_SECTIONS = new Set(["국내 주식", "주식"]);
 const CRYPTO_SECTIONS = new Set(["국내 가상자산", "해외 가상자산", "가상자산"]);
 
-type SlotLabelDefinition = {
+type MoneySlotLabelDefinition = {
   title: string;
   description: string;
 };
 
-type SlotLabelMap = Record<StockFeedSlotPhase, SlotLabelDefinition>;
+type MoneySlotLabelMap = Record<StockFeedSlotPhase, MoneySlotLabelDefinition>;
 
 type MoneyCategory = "domestic_stock" | "overseas_stock" | "crypto" | "other";
 
@@ -181,7 +181,7 @@ type SlotLabelDefinition = {
 
 type SlotLabelMap = Record<StockFeedSlotPhase, SlotLabelDefinition>;
 
-const STOCK_SLOT_LABELS: SlotLabelMap = {
+const STOCK_SLOT_LABELS: MoneySlotLabelMap = {
   baseline: {
     title: "프리 마켓 1차 브리핑",
     description: "07:30 장 시작 전 베이스라인",
@@ -204,7 +204,7 @@ const STOCK_SLOT_LABELS: SlotLabelMap = {
   },
 };
 
-const CRYPTO_SLOT_LABELS: SlotLabelMap = {
+const CRYPTO_SLOT_LABELS: MoneySlotLabelMap = {
   baseline: {
     title: "새벽·아침 코인 브리핑 1차",
     description: "07:30 새벽/아침 사이 코인 흐름",
@@ -227,7 +227,7 @@ const CRYPTO_SLOT_LABELS: SlotLabelMap = {
   },
 };
 
-const OVERSEAS_STOCK_SLOT_LABELS: SlotLabelMap = {
+const OVERSEAS_STOCK_SLOT_LABELS: MoneySlotLabelMap = {
   baseline: {
     title: "간밤 미국장 1차 요약",
     description: "07:30 미국장 핵심 요약",
@@ -1097,10 +1097,8 @@ const YoutubeToday = ({
             {slotSections.map((section) => (
               <Fragment key={section.slotId}>
                 <SubSectionTitle>
-                  <span>
-                    🔥 {section.label} · {section.relativeLabel}
-                  </span>
-                  <SubSectionNote>{section.description}</SubSectionNote>
+                  <span>🔥 {section.relativeLabel} 신규 진입</span>
+                  <SubSectionNote>{section.label}</SubSectionNote>
                 </SubSectionTitle>
                 <EditorContainer>
                   {section.items.map((item) =>
