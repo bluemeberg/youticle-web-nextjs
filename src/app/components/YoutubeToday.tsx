@@ -8,6 +8,7 @@ import TopicCard from "./TopicCard";
 import DomesticStockInsightSection from "./insight/DomesticStockInsightSection";
 import CryptoInsightSection from "./insight/CryptoInsightSection";
 import { DataProps } from "@/types/dataProps";
+import type { StockSlotSection } from "@/utils/stockFeed";
 import TodayIcon from "@/assets/today.svg";
 // import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
@@ -31,6 +32,7 @@ interface YoutubeTodayProps {
   marketInsightCards?: MarketInsightCardData[];
   integratedSections?: InsightSection[];
   initialTopic?: string | null;
+  stockSlotSections?: StockSlotSection[];
 }
 
 const YOUTUBE_TOPICS = [
@@ -115,6 +117,7 @@ const SLOT_DISPLAY_CONFIGS: Array<{
   label: string;
   description: string;
   minutes: number;
+  requireNew?: boolean;
 }> = [
   { id: "slot_0730", label: "07:30 선정", description: "주식·가상자산 첫 선정", minutes: 7 * 60 + 30 },
   { id: "slot_0830", label: "08:30 갱신", description: "주식·가상자산 새 영상 선정", minutes: 8 * 60 + 30 },
@@ -124,7 +127,13 @@ const SLOT_DISPLAY_CONFIGS: Array<{
   { id: "slot_1530", label: "15:30 재랭킹", description: "주식·가상자산 오후 랭킹 점검", minutes: 15 * 60 + 30 },
   { id: "slot_1600", label: "16:00 재랭킹", description: "일반 키워드 오후 랭킹 갱신", minutes: 16 * 60 },
   { id: "slot_1810", label: "18:10 재랭킹", description: "주식·가상자산 저녁 랭킹 갱신", minutes: 18 * 60 + 10 },
-  { id: "slot_2030", label: "20:30 재랭킹", description: "일반 키워드 저녁 랭킹 갱신", minutes: 20 * 60 + 30 },
+  {
+    id: "slot_2030",
+    label: "20:30 재랭킹",
+    description: "일반 키워드 저녁 랭킹 갱신",
+    minutes: 20 * 60 + 30,
+    requireNew: false,
+  },
   { id: "slot_2100", label: "21:00 재랭킹", description: "일반 키워드 밤 랭킹 갱신", minutes: 21 * 60 },
   { id: "slot_2140", label: "21:40 갱신", description: "주식·가상자산 마지막 선정", minutes: 21 * 60 + 40 },
 ];
@@ -138,6 +147,9 @@ const SLOT_DISPLAY_PRIORITY = SLOT_DISPLAY_CONFIGS.reduce<Record<string, number>
 );
 
 const getSlotDisplayPriority = (slotId: string) => {
+  if (slotId === "slot_2030") {
+    return -1; // evening 재랭킹을 피드 최상단에 고정
+  }
   if (slotId === "slot_1530") {
     const target = SLOT_DISPLAY_PRIORITY["slot_1130"];
     if (typeof target === "number") {
@@ -219,6 +231,7 @@ const YoutubeToday = ({
   marketInsightCards = [],
   integratedSections = [],
   initialTopic,
+  stockSlotSections = [],
 }: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
   const setSelectedTopic = useSetRecoilState(topicState);
@@ -437,49 +450,51 @@ const YoutubeToday = ({
     router.push("/today/unsubscribe");
   };
   const [showSubscribedOnly, setShowSubscribedOnly] = useState(false); // 토글 상태
+  const matchesTopicFilter = useCallback(
+    (item: DataProps) => {
+      if (showSubscribedOnly && expandedSubsSet.size > 0) {
+        if (selectedTopic === "전체") {
+          return expandedSubsSet.has(item.section);
+        }
+
+        const group = GROUPED_TOPICS[selectedTopic];
+        if (group) {
+          const hasSubscribedChild = group.some((g) => expandedSubsSet.has(g));
+          return (
+            (group.includes(item.section) && hasSubscribedChild) ||
+            expandedSubsSet.has(selectedTopic)
+          );
+        }
+
+        return (
+          expandedSubsSet.has(item.section) && item.section === selectedTopic
+        );
+      }
+
+      if (selectedTopic === "전체") {
+        return true;
+      }
+
+      const group = GROUPED_TOPICS[selectedTopic];
+      if (group) {
+        return group.includes(item.section);
+      }
+
+      return item.section === selectedTopic;
+    },
+    [
+      showSubscribedOnly,
+      expandedSubsSet,
+      selectedTopic,
+    ]
+  );
+
   const filteredAndSortedData = useMemo(() => {
     const seen = new Set<string>();
 
     return (
       clientData
-        .filter((item) => {
-          // 1) “구독중만 보기”일 때는 확장된 구독 집합으로 필터
-          if (showSubscribedOnly && expandedSubsSet.size > 0) {
-            if (selectedTopic === "전체") {
-              return expandedSubsSet.has(item.section);
-            }
-
-            // 선택한 토픽이 상위 그룹인 경우(예: 주식) → 그 하위까지 허용
-            const group = GROUPED_TOPICS[selectedTopic];
-            if (group) {
-              return (
-                (group.includes(item.section) &&
-                  group.some((g) => expandedSubsSet.has(g))) ||
-                expandedSubsSet.has(selectedTopic)
-              ); // 상위 자체 구독도 인정
-            }
-
-            // 일반 토픽
-            return (
-              expandedSubsSet.has(item.section) &&
-              item.section === selectedTopic
-            );
-          }
-
-          // 2) 전체 보기일 때는 기존 로직
-          if (selectedTopic === "전체") {
-            return true;
-          }
-
-          // 3) 상위 그룹(주식/가상자산) 클릭 시 하위 토픽 포함
-          const group = GROUPED_TOPICS[selectedTopic];
-          if (group) {
-            return group.includes(item.section);
-          }
-
-          // 4) 일반 토픽
-          return item.section === selectedTopic;
-        })
+        .filter(matchesTopicFilter)
         // 중복 video_id 제거
         .filter((item) => {
           if (seen.has(item.video_id)) return false;
@@ -493,9 +508,7 @@ const YoutubeToday = ({
     );
   }, [
     clientData,
-    showSubscribedOnly,
-    expandedSubsSet,
-    selectedTopic,
+    matchesTopicFilter,
     sortCriteria,
   ]);
 
@@ -517,13 +530,30 @@ const YoutubeToday = ({
   return nonNew.slice(0, 5);
 }, [filteredAndSortedData, newVideoIds, selectedTopic]);
 
+  const stockSlotSectionsForView = useMemo(() => {
+    if (stockSlotSections.length === 0) return [];
+    return stockSlotSections
+      .map((section) => {
+        const filteredItems = section.items.filter(matchesTopicFilter);
+        if (filteredItems.length === 0) return null;
+        return {
+          ...section,
+          items: filteredItems,
+        };
+      })
+      .filter((section): section is StockSlotSection => Boolean(section));
+  }, [stockSlotSections, matchesTopicFilter]);
+
   const slotSections = useMemo(() => {
     const nowMinutes = getKstMinutes(new Date());
     const totalMinutes = 24 * 60;
     return SLOT_DISPLAY_CONFIGS.map((config) => {
-      const items = filteredAndSortedData.filter(
-        (item) => item.is_new && item.detected_slots?.[config.id]
-      );
+      const requireNew = config.requireNew !== false;
+      const items = filteredAndSortedData.filter((item) => {
+        if (!item.detected_slots?.[config.id]) return false;
+        if (requireNew && !item.is_new) return false;
+        return true;
+      });
       if (items.length === 0) return null;
       const diff = (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
       const relativeLabel = formatMinutesAgo(diff);
@@ -765,6 +795,26 @@ const YoutubeToday = ({
       /> */}
       {/* 🛠 애니메이션 추가 */}
       <TopicCardWrapper $isRendered={isRendered}>
+        {stockSlotSectionsForView.length > 0 && (
+          <>
+            {stockSlotSectionsForView.map((section) => (
+              <Fragment key={`stock-slot-${section.slot}`}>
+                <SubSectionTitle>
+                  <span>⏱ {section.label}</span>
+                  <SubSectionNote>{section.description}</SubSectionNote>
+                </SubSectionTitle>
+                <EditorContainer>
+                  {section.items.map((item) =>
+                    renderTopicCard(item, `stock-${section.slot}-`, {
+                      compactBadges: selectedTopic === "전체",
+                    })
+                  )}
+                </EditorContainer>
+              </Fragment>
+            ))}
+          </>
+        )}
+
         {slotSections.map((section) => (
           <Fragment key={section.slotId}>
             <SubSectionTitle>

@@ -12,12 +12,20 @@ import {
   resolveStockSlot,
   toKst,
 } from "@/utils/briefingSlot";
+import {
+  buildStockSlotRequests,
+  mergeStockSlotPayloads,
+  buildStockSlotSections,
+} from "@/utils/stockFeed";
+import type { DataProps } from "@/types/dataProps";
+import type { StockSlotSection } from "@/utils/stockFeed";
 
 export default function LandingPage() {
   const [apiData, setApiData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [integratedSections, setIntegratedSections] =
     useState<InsightSectionsResponse | null>(null);
+  const [stockSlotSections, setStockSlotSections] = useState<StockSlotSection[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [refreshMeta] = useState(() => buildRefreshMeta(new Date()));
 
@@ -30,9 +38,8 @@ export default function LandingPage() {
       const now = new Date();
       const dateParam = formatDateKST(now);
       const slotParam = getBriefingSlot(now);
-      const networkSlotParam = slotParam === "ranking" ? "slot3" : slotParam;
       const kstNow = toKst(now);
-      const isMorningBaseline = networkSlotParam === "baseline";
+      const isMorningBaseline = slotParam === "baseline";
       const isPreBaselineSlot4 =
         slotParam === "slot4" &&
         (kstNow.getUTCHours() < 7 ||
@@ -41,10 +48,11 @@ export default function LandingPage() {
         ? formatDateKST(new Date(now.getTime() - 24 * 60 * 60 * 1000))
         : dateParam;
       const stockSlot = resolveStockSlot(now);
-      const stockApiUrl =
-        stockSlot == null
-          ? STOCK_API_URL
-          : `${STOCK_API_V2_URL}?time_slot=${stockSlot}`;
+      const stockSlotRequests = buildStockSlotRequests({
+        currentSlot: stockSlot,
+        baselineUrl: STOCK_API_URL,
+        v2BaseUrl: STOCK_API_V2_URL,
+      });
       //   const STOCK_API_URL_LOCAL = "http://0.0.0.0:8000/briefing/top_videos/stock";
       // const EXCEPT_STOCK_API_URL_LOCAL =
       //   "http://0.0.0.0:8000/briefing/top_videos";
@@ -57,18 +65,32 @@ export default function LandingPage() {
           "overseas_crypto",
         ] as const;
 
-        const [response1, response2, sectionPayloads] = await Promise.all([
+        const [response1, stockPayloads, sectionPayloads] = await Promise.all([
           fetch(EXCEPT_STOCK_API_URL, {
             method: "GET",
             cache: "no-store",
           }),
-          fetch(stockApiUrl, { method: "GET", cache: "no-store" }),
+          Promise.all(
+            stockSlotRequests.map(async (request) => {
+              const res = await fetch(request.url, {
+                method: "GET",
+                cache: "no-store",
+              });
+              if (!res.ok) {
+                throw new Error(
+                  `Stock API request failed (${request.slot})`
+                );
+              }
+              const data = (await res.json()) as DataProps[];
+              return { ...request, data };
+            })
+          ),
           Promise.all(
             sectionKeys.map(async (key) => {
               const encodedSectionKey = encodeURIComponent(key);
               const url = isMorningBaseline
                 ? `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}`
-                : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${networkSlotParam}`;
+                : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${slotParam}`;
               const res = await fetch(url, {
                 method: "GET",
                 cache: "no-store",
@@ -83,14 +105,16 @@ export default function LandingPage() {
           ),
         ]);
 
-        if (!response1.ok || !response2.ok) {
+        if (!response1.ok) {
           throw new Error("API request failed");
         }
 
         const data1 = await response1.json();
-        const data2 = await response2.json();
-        const combinedData = [...data1, ...data2];
+        const stockData = mergeStockSlotPayloads(stockPayloads);
+        const combinedData = [...data1, ...stockData];
+        const slotSectionsPayload = buildStockSlotSections(stockPayloads);
         setApiData(combinedData);
+        setStockSlotSections(slotSectionsPayload);
 
         const sectionsJson: InsightSectionsResponse = {
           sections: sectionPayloads
@@ -126,6 +150,7 @@ export default function LandingPage() {
           apiData={apiData}
           integratedSections={integratedSections?.sections ?? []}
           refreshMeta={refreshMeta}
+          stockSlotSections={stockSlotSections}
         />
       )}
     </>

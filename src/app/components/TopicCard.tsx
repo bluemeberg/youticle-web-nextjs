@@ -231,7 +231,7 @@ const TopicCard = (props: TopicCardProps) => {
       </MetricBadge>
     )} */}
     <MetricBadge bg="#EAF4FF" color="#007BFF">
-      {props.metricIcon} 섹션 내 {props.metricLabel} {props.rank}위
+      {props.metricIcon} 키워드 내 {props.metricLabel} {props.rank}위
     </MetricBadge>
   </BadgeRow>
 </MetricsContainer>

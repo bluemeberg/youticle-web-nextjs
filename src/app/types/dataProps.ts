@@ -1,3 +1,5 @@
+export type StockFeedSlotPhase = "baseline" | "slot1" | "slot2" | "slot3" | "slot4";
+
 export interface DataProps {
   video_id: string;
   title: string;
@@ -16,6 +18,8 @@ export interface DataProps {
   id?: string;
   channel_details: ChannelDetails;
   stock_mentions?: StockMention[];
+  stock_slot_phase?: StockFeedSlotPhase;
+  stock_slot_priority?: number;
 }
 
 export interface MarketInsightSentences {

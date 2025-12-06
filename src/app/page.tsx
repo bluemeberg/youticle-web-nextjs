@@ -1,5 +1,6 @@
 import TodayPageClient from "./components/TodayPageClient"; // 클라이언트 컴포넌트
 import type { InsightSection, InsightSectionsResponse } from "@/types/insight";
+import type { DataProps } from "@/types/dataProps";
 import {
   buildRefreshMeta,
   formatDateKST,
@@ -7,6 +8,11 @@ import {
   resolveStockSlot,
   toKst,
 } from "@/utils/briefingSlot";
+import {
+  buildStockSlotRequests,
+  mergeStockSlotPayloads,
+  buildStockSlotSections,
+} from "@/utils/stockFeed";
 
 type LandingPageProps = {
   searchParams?: {
@@ -44,15 +50,15 @@ export default async function LandingPage(props: LandingPageProps) {
   const now = new Date();
   const dateParam = formatDateKST(now);
   const slotParam = getBriefingSlot(now);
-  const networkSlotParam = slotParam === "ranking" ? "slot3" : slotParam;
   const refreshMeta = buildRefreshMeta(now);
   const stockSlot = resolveStockSlot(now);
-  const stockApiUrl =
-    stockSlot == null
-      ? STOCK_API_URL
-      : `${STOCK_API_V2_URL}?time_slot=${stockSlot}`;
+  const stockSlotRequests = buildStockSlotRequests({
+    currentSlot: stockSlot,
+    baselineUrl: STOCK_API_URL,
+    v2BaseUrl: STOCK_API_V2_URL,
+  });
   const kstNow = toKst(now);
-  const isMorningBaseline = networkSlotParam === "baseline";
+  const isMorningBaseline = slotParam === "baseline";
   const isPreBaselineSlot4 =
     slotParam === "slot4" &&
     (kstNow.getUTCHours() < 7 ||
@@ -75,15 +81,29 @@ export default async function LandingPage(props: LandingPageProps) {
       "overseas_crypto",
     ] as const;
 
-    const [response1, response2, sectionResponses] = await Promise.all([
+    const [response1, stockPayloads, sectionResponses] = await Promise.all([
       fetch(EXCEPT_STOCK_API_URL, { method: "GET", cache: "no-store" }),
-      fetch(stockApiUrl, { method: "GET", cache: "no-store" }),
+      Promise.all(
+        stockSlotRequests.map(async (request) => {
+          const res = await fetch(request.url, {
+            method: "GET",
+            cache: "no-store",
+          });
+          if (!res.ok) {
+            throw new Error(
+              `Stock API request failed (${request.slot})`
+            );
+          }
+          const data = (await res.json()) as DataProps[];
+          return { ...request, data };
+        })
+      ),
       Promise.all(
         sectionKeys.map(async (key) => {
           const encodedSectionKey = encodeURIComponent(key);
           const url = isMorningBaseline
             ? `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}`
-            : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${networkSlotParam}`;
+            : `${INSIGHTS_SECTION_URL}?sections=${encodedSectionKey}&date=${effectiveDateParam}&slot=${slotParam}`;
           const res = await fetch(url, {
             method: "GET",
             cache: "no-store",
@@ -98,13 +118,14 @@ export default async function LandingPage(props: LandingPageProps) {
       ),
     ]);
 
-    if (!response1.ok || !response2.ok) {
+    if (!response1.ok) {
       throw new Error("API request failed");
     }
 
     const data1 = await response1.json();
-    const data2 = await response2.json();
-    const combinedData = [...data1, ...data2];
+    const stockData = mergeStockSlotPayloads(stockPayloads);
+    const stockSlotSections = buildStockSlotSections(stockPayloads);
+    const combinedData = [...data1, ...stockData];
 
     const sections: InsightSection[] = sectionResponses
       .flatMap((payload) => payload.sections ?? [])
@@ -118,6 +139,7 @@ export default async function LandingPage(props: LandingPageProps) {
           integratedSections={integratedSections?.sections ?? []}
           initialTopic={initialTopic}
           refreshMeta={refreshMeta}
+          stockSlotSections={stockSlotSections}
         />
       </>
     );
