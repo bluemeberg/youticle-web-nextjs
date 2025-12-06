@@ -21,6 +21,7 @@ import type {
   InsightStockMetricInsight,
 } from "@/types/insight";
 import type { StockSlotSection } from "@/utils/stockFeed";
+import type { SlotLabel } from "@/utils/briefingSlot";
 
 function toFiniteNumber(value?: number | null): number | undefined {
   if (value == null) return undefined;
@@ -293,6 +294,7 @@ interface LandingPageClientProps {
   integratedSections: InsightSection[];
   initialTopic?: string | null;
   stockSlotSections?: StockSlotSection[];
+  insightSlotLabel?: SlotLabel;
 }
 
 export default function LandingPageClient({
@@ -300,6 +302,7 @@ export default function LandingPageClient({
   integratedSections,
   initialTopic,
   stockSlotSections = [],
+  insightSlotLabel,
 }: LandingPageClientProps) {
   console.log(apiData);
   const setApiData = useSetRecoilState(dataState);
@@ -367,6 +370,7 @@ export default function LandingPageClient({
           integratedSections={normalizedSections}
           initialTopic={initialTopic}
           stockSlotSections={stockSlotSections}
+          insightSlotLabel={insightSlotLabel}
         />
       </>
       <Footer />

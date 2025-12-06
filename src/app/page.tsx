@@ -5,6 +5,7 @@ import {
   buildRefreshMeta,
   formatDateKST,
   getBriefingSlot,
+  getSlotLabelInfo,
   resolveStockSlot,
   toKst,
 } from "@/utils/briefingSlot";
@@ -51,6 +52,7 @@ export default async function LandingPage(props: LandingPageProps) {
   const dateParam = formatDateKST(now);
   const slotParam = getBriefingSlot(now);
   const refreshMeta = buildRefreshMeta(now);
+  const slotLabel = getSlotLabelInfo(slotParam);
   const stockSlot = resolveStockSlot(now);
   const stockSlotRequests = buildStockSlotRequests({
     currentSlot: stockSlot,
@@ -140,6 +142,7 @@ export default async function LandingPage(props: LandingPageProps) {
           initialTopic={initialTopic}
           refreshMeta={refreshMeta}
           stockSlotSections={stockSlotSections}
+          insightSlotLabel={slotLabel}
         />
       </>
     );

@@ -17,9 +17,11 @@ import type {
   InsightMarketInsights,
   InsightMarketCard,
 } from "@/types/insight";
+import type { SlotLabel } from "@/utils/briefingSlot";
 
 interface CryptoInsightSectionProps {
   section: InsightSection;
+  slotLabel?: SlotLabel;
 }
 
 function buildCryptoMarketInsights(
@@ -158,7 +160,7 @@ function sanitizeStock(stock: InsightStock): InsightStock {
   };
 }
 
-const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
+const CryptoInsightSection = ({ section, slotLabel }: CryptoInsightSectionProps) => {
   const normalizedSection = useMemo<InsightSection>(() => {
     const stocks = (section.data?.stocks ?? []).map((stock) =>
       stock ? sanitizeStock(stock) : stock
@@ -237,6 +239,7 @@ const CryptoInsightSection = ({ section }: CryptoInsightSectionProps) => {
       hideMarketCards
       renderMarketIntro={marketIntro}
       forceStockPreview
+      slotLabel={slotLabel}
     />
   );
 };

@@ -98,6 +98,39 @@ export interface RefreshMeta {
   lastUpdatedAt: string;
 }
 
+export interface SlotLabel {
+  phase: BriefingSlot;
+  title: string;
+  description: string;
+}
+
+const SLOT_LABEL_MAP: Record<BriefingSlot, Omit<SlotLabel, "phase">> = {
+  baseline: {
+    title: "프리 마켓 1차 브리핑",
+    description: "07:30 장 시작 전 핵심 이슈",
+  },
+  slot1: {
+    title: "프리 마켓 2차 브리핑",
+    description: "08:30 장 시작 직전 업데이트",
+  },
+  slot2: {
+    title: "점심장 중간 브리핑",
+    description: "점심장 변동성과 수급 점검",
+  },
+  slot3: {
+    title: "장 마감 전 브리핑",
+    description: "15:10 장 마감 직전 체크",
+  },
+  ranking: {
+    title: "장 마감 리뷰 브리핑",
+    description: "18:10 장 마감 핵심 복습",
+  },
+  slot4: {
+    title: "저녁 리뷰 브리핑",
+    description: "21:40 저녁 재랭킹 요약",
+  },
+};
+
 const findActiveSlot = (date: Date) => {
   const kstDate = toKstDate(date);
   const minutes = minutesFromMidnight(kstDate);
@@ -191,3 +224,8 @@ export const formatLastUpdatedLabel = (
 };
 
 export const toKst = toKstDate;
+
+export const getSlotLabelInfo = (slot: BriefingSlot): SlotLabel => {
+  const base = SLOT_LABEL_MAP[slot] ?? SLOT_LABEL_MAP.baseline;
+  return { phase: slot, ...base };
+};

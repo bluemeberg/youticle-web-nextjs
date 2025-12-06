@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
-import { DataProps } from "@/types/dataProps";
+import { DataProps, StockFeedSlotPhase } from "@/types/dataProps";
 import {
   parseSubscribersCount,
   timeAgo,
@@ -14,7 +14,7 @@ import {
 } from "@/utils/formatter";
 import LikeIcon from "@/assets/like_icon.svg";
 import ViewIcon from "@/assets/view_icon.svg";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, MouseEvent } from "react";
 
 interface TopicCardProps extends DataProps {
   icon: React.ReactNode;
@@ -25,6 +25,9 @@ interface TopicCardProps extends DataProps {
   rank: number;
   showTopicLabel?: boolean;
   compactBadges?: boolean;
+  slotTitle?: string;
+  slotDescription?: string;
+  onJumpToVideos?: () => void;
 }
 
 const YOUTUBE_TOPICS = [
@@ -71,6 +74,14 @@ const DETECTED_SLOT_MAP: Record<string, { label: string; minutes: number }> = {
 };
 
 const MINUTES_PER_DAY = 24 * 60;
+
+const STOCK_SLOT_PHASE_LABELS: Record<StockFeedSlotPhase, string> = {
+  baseline: "프리 마켓 1차",
+  slot1: "프리 마켓 2차",
+  slot2: "점심 브리핑",
+  slot3: "오후 브리핑",
+  slot4: "저녁 브리핑",
+};
 
 const getKstMinutes = (date: Date) => {
   const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes();
@@ -165,6 +176,7 @@ const TopicCard = (props: TopicCardProps) => {
   const topicInfo = YOUTUBE_TOPICS.find((topic) => topic.topic === section);
   const isSubscribed = props.subjects.includes(section);
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+  const [isExpanded, setIsExpanded] = useState(false);
   const newBadge = (
     <MetricBadge bg="#FFF4E5" color="#C92A2A">
       {slotRelativeText
@@ -172,6 +184,24 @@ const TopicCard = (props: TopicCardProps) => {
         : `✨ NEW · ${uploadAgo}`}
     </MetricBadge>
   );
+  const slotPhaseLabel =
+    props.slotTitle ??
+    (props.stock_slot_phase
+      ? STOCK_SLOT_PHASE_LABELS[props.stock_slot_phase as StockFeedSlotPhase]
+      : detectedSlotInfo?.label);
+  const slotMetaDescription = props.slotDescription ?? null;
+  const summaryPreview =
+    short_summary.length > 140 ? `${short_summary.slice(0, 140)}…` : short_summary;
+  const displaySummary = isExpanded ? short_summary : summaryPreview;
+  const canToggleSummary = short_summary.length > summaryPreview.length;
+  const handleToggleSummary = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setIsExpanded((prev) => !prev);
+  };
+  const handleRelatedVideos = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    props.onJumpToVideos?.();
+  };
 
   return (
     <Container onClick={handleNavigate}>
@@ -200,43 +230,42 @@ const TopicCard = (props: TopicCardProps) => {
           )
         )} */}
         {/* 카드 상단: 메트릭 배지 */}
+        <MetricsContainer>
+          {props.is_new && showTopicLabel ? (
+            <PrimaryBadgeRow>
+              <Section isSubscribed={isSubscribed}>
+                {topicInfo?.icon}
+                <span>{topicInfo?.topic || section}</span>
+              </Section>
+              {newBadge}
+            </PrimaryBadgeRow>
+          ) : null}
+          <BadgeRow $compact={compactBadges}>
+            {props.is_new && !showTopicLabel ? newBadge : null}
+            {!props.is_new && showTopicLabel ? (
+              <Section isSubscribed={isSubscribed}>
+                {topicInfo?.icon}
+                <span>{topicInfo?.topic || section}</span>
+              </Section>
+            ) : null}
+            {displayScore !== null ? (
+              <MetricBadge bg="#EAF4FF" color="#007BFF">
+                🔥 Hot Score {displayScore}
+                ↑
+              </MetricBadge>
+            ) : null}
+            <MetricBadge bg="#EAF4FF" color="#007BFF">
+              {props.metricIcon} 키워드 내 {props.metricLabel} {props.rank}위
+            </MetricBadge>
+          </BadgeRow>
+        </MetricsContainer>
 
-<MetricsContainer>
-  {props.is_new && showTopicLabel ? (
-    <PrimaryBadgeRow>
-      <Section isSubscribed={isSubscribed}>
-        {topicInfo?.icon}
-        <span>{topicInfo?.topic || section}</span>
-      </Section>
-      {newBadge}
-    </PrimaryBadgeRow>
-  ) : null}
-  <BadgeRow $compact={compactBadges}>
-    {props.is_new && !showTopicLabel ? newBadge : null}
-    {!props.is_new && showTopicLabel ? (
-      <Section isSubscribed={isSubscribed}>
-        {topicInfo?.icon}
-        <span>{topicInfo?.topic || section}</span>
-      </Section>
-    ) : null}
-    {displayScore !== null ? (
-      <MetricBadge bg="#EAF4FF" color="#007BFF">
-        🔥 Hot Score {displayScore}
-        ↑
-      </MetricBadge>
-    ) : null}
-    {/* {!props.is_new && (
-      <MetricBadge bg="#F5F3FF" color="#4C1D95">
-        {slotRelativeText
-          ? `🔥 ${slotRelativeText} 유지`
-          : `🔥 ${uploadAgo}`}
-      </MetricBadge>
-    )} */}
-    <MetricBadge bg="#EAF4FF" color="#007BFF">
-      {props.metricIcon} 키워드 내 {props.metricLabel} {props.rank}위
-    </MetricBadge>
-  </BadgeRow>
-</MetricsContainer>
+        {/* {slotPhaseLabel ? (
+          <SlotMeta>
+            <strong>{slotPhaseLabel}</strong>
+            {slotMetaDescription ? <small>{slotMetaDescription}</small> : null}
+          </SlotMeta>
+        ) : null} */}
 
       </CardHeader>
       <BodyContainer>
@@ -252,33 +281,31 @@ const TopicCard = (props: TopicCardProps) => {
           {isSpecialSection ? (
             <Summary>
               {summary_data?.headline_sub_title === "" ? (
-                <ShortSummary>{short_summary}</ShortSummary> // headline_sub_title이 없을 경우 short_summary를 표시
+                <SummaryText $expanded={isExpanded}>{displaySummary}</SummaryText>
               ) : (
-                <BodyTitle>
-                  {summary_data?.headline_title}...
-                  {summary_data?.headline_sub_title}
-                </BodyTitle>
-                // <ShortSummary>{short_summary}</ShortSummary> // headline_sub_title이 없을 경우 short_summary를 표시
+                <>
+                  <BodyTitle>
+                    {summary_data?.headline_title}...
+                    {summary_data?.headline_sub_title}
+                  </BodyTitle>
+                  <SummaryText $expanded={isExpanded}>{displaySummary}</SummaryText>
+                </>
               )}
+              {/* {canToggleSummary ? (
+                <SummaryToggle type="button" onClick={handleToggleSummary}>
+                  {isExpanded ? "간단히" : "더 보기"}
+                </SummaryToggle>
+              ) : null} */}
             </Summary>
           ) : (
             <Summary>
               <Title>{removeMarkTags(summary_data?.headline_title)}</Title>
-              <ShortSummary>{short_summary}</ShortSummary>
-              {/* <ChannelInfo>
-                <ProfileImage src={channel_details.channel_thumbnail} />
-                <ProfileInfo>
-                  <Name>{channel_details.channel_name}</Name>
-                  <SubsUpload>
-                    <Subscriber>
-                      {parseSubscribersCount(
-                        channel_details.channel_subscribers
-                      )}
-                    </Subscriber>
-                    <UploadTime>{timeAgo(upload_date)}</UploadTime>
-                  </SubsUpload>
-                </ProfileInfo>
-              </ChannelInfo> */}
+              <SummaryText $expanded={isExpanded}>{displaySummary}</SummaryText>
+              {/* {canToggleSummary ? (
+                <SummaryToggle type="button" onClick={handleToggleSummary}>
+                  {isExpanded ? "간단히" : "더 보기"}
+                </SummaryToggle>
+              ) : null} */}
             </Summary>
           )}
         </Body>
@@ -309,6 +336,13 @@ const TopicCard = (props: TopicCardProps) => {
           </Comment>
         </CommentSection>
       ) : null}
+      {/* {props.onJumpToVideos ? (
+        <ActionRow>
+          <RelatedVideosButton type="button" onClick={handleRelatedVideos}>
+            관련 영상 보기
+          </RelatedVideosButton>
+        </ActionRow>
+      ) : null} */}
     </Container>
   );
 };
@@ -383,17 +417,50 @@ const CardHeader = styled.div`
   width: 100%; /* 부모의 가로폭을 채움 */
 `;
 
-const ShortSummary = styled.div`
+const SummaryText = styled.div<{ $expanded: boolean }>`
   font-size: 14px;
-  line-height: 132%;
-  display: -webkit-box;
-  -webkit-line-clamp: 2; /* 최대 5줄 */
+  line-height: 150%;
+  display: ${({ $expanded }) => ($expanded ? "block" : "-webkit-box")};
+  -webkit-line-clamp: ${({ $expanded }) => ($expanded ? "unset" : 2)};
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: rgb(60, 60, 61);
-  text-overflow: ellipsis;
+  text-overflow: ${({ $expanded }) => ($expanded ? "initial" : "ellipsis")};
   margin-top: 4px;
-  /* font-weight: 700; */
+`;
+
+const SummaryToggle = styled.button`
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+`;
+
+const SlotMeta = styled.div`
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+`;
+
+const RelatedVideosButton = styled.button`
+  background-color: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
 `;
 
 const BodyContainer = styled.div`

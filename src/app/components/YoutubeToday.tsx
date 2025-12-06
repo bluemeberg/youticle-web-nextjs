@@ -9,6 +9,7 @@ import DomesticStockInsightSection from "./insight/DomesticStockInsightSection";
 import CryptoInsightSection from "./insight/CryptoInsightSection";
 import { DataProps, StockFeedSlotPhase } from "@/types/dataProps";
 import type { StockSlotSection } from "@/utils/stockFeed";
+import type { SlotLabel } from "@/utils/briefingSlot";
 import TodayIcon from "@/assets/today.svg";
 // import { YOUTUBE_TOPICS } from "@/constants/topic";
 import GoToTopBtn from "@/common/GoToTopBtn";
@@ -33,6 +34,7 @@ interface YoutubeTodayProps {
   integratedSections?: InsightSection[];
   initialTopic?: string | null;
   stockSlotSections?: StockSlotSection[];
+  insightSlotLabel?: SlotLabel;
 }
 
 const YOUTUBE_TOPICS = [
@@ -400,6 +402,7 @@ const YoutubeToday = ({
   integratedSections = [],
   initialTopic,
   stockSlotSections = [],
+  insightSlotLabel,
 }: YoutubeTodayProps) => {
   const selectedTopic = useRecoilValue(topicState);
   const setSelectedTopic = useSetRecoilState(topicState);
@@ -693,7 +696,8 @@ const YoutubeToday = ({
         if (seen.has(item.video_id)) return false;
         seen.add(item.video_id);
         return true;
-      });
+      })
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     if (filteredItems.length === 0) return [];
 
     if (selectedTopic === "전체") {
@@ -724,9 +728,15 @@ const YoutubeToday = ({
     if (stockSlotSections.length === 0) return [];
     const sections: MoneySlotSection[] = [];
 
-    stockSlotSections.forEach((section) => {
+    const sorted = [...stockSlotSections].sort(
+      (a, b) => a.priority - b.priority
+    );
+
+    sorted.forEach((section) => {
       if (section.slot === "baseline") return;
-      const filteredItems = section.items.filter(matchesTopicFilter);
+      const filteredItems = section.items
+        .filter(matchesTopicFilter)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
       if (filteredItems.length === 0) return;
 
       if (selectedTopic === "전체") {
@@ -757,6 +767,21 @@ const YoutubeToday = ({
     return sections.sort((a, b) => a.priority - b.priority);
   }, [stockSlotSections, matchesTopicFilter, selectedTopic]);
 
+  const slotSectionGroups = useMemo(() => {
+    const slot4 = stockSlotSectionsForView.filter(
+      (section) => section.slot === "slot4"
+    );
+    const others = stockSlotSectionsForView.filter(
+      (section) => section.slot !== "slot4"
+    );
+    return { slot4, others };
+  }, [stockSlotSectionsForView]);
+
+  const isMoneyTopic =
+    DOMESTIC_STOCK_SECTIONS.has(selectedTopic) ||
+    OVERSEAS_STOCK_SECTIONS.has(selectedTopic) ||
+    CRYPTO_SECTIONS.has(selectedTopic);
+
   const persistingVideos = useMemo(() => {
     const nonNew = filteredAndSortedData.filter(
       (item) => !item.is_new && item.stock_slot_phase !== "baseline"
@@ -772,11 +797,13 @@ const YoutubeToday = ({
     const totalMinutes = 24 * 60;
     return SLOT_DISPLAY_CONFIGS.map((config) => {
       const requireNew = config.requireNew !== false;
-      const items = filteredAndSortedData.filter((item) => {
-        if (!item.detected_slots?.[config.id]) return false;
-        if (requireNew && !item.is_new) return false;
-        return true;
-      });
+      const items = filteredAndSortedData
+        .filter((item) => {
+          if (!item.detected_slots?.[config.id]) return false;
+          if (requireNew && !item.is_new) return false;
+          return true;
+        })
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
       if (items.length === 0) return null;
       const diff = (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
       const relativeLabel = formatMinutesAgo(diff);
@@ -800,7 +827,7 @@ const YoutubeToday = ({
           getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
       );
   }, [filteredAndSortedData]);
-  console.log(slotSections)
+
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
@@ -862,12 +889,15 @@ const YoutubeToday = ({
   return ranks;
 }, [filteredAndSortedData]);
 
+  type RenderOptions = {
+    compactBadges?: boolean;
+    slotTitle?: string;
+    slotDescription?: string;
+    onJumpToVideos?: () => void;
+  };
+
   const renderTopicCard = useCallback(
-    (
-      item: DataProps,
-      keyPrefix = "",
-      options?: { compactBadges?: boolean }
-    ) => {
+    (item: DataProps, keyPrefix = "", options?: RenderOptions) => {
       const topicInfo = YOUTUBE_TOPICS.find(
         (topic) => topic.topic === item.section
       );
@@ -896,6 +926,9 @@ const YoutubeToday = ({
           rank={bestRank}
           showTopicLabel={selectedTopic === "전체"}
           compactBadges={options?.compactBadges}
+          slotTitle={options?.slotTitle}
+          slotDescription={options?.slotDescription}
+          onJumpToVideos={options?.onJumpToVideos}
           {...item}
         />
       );
@@ -904,6 +937,10 @@ const YoutubeToday = ({
   );
 
   const feedRef = useRef<HTMLDivElement>(null);
+  const topVideosRef = useRef<HTMLDivElement>(null);
+  const handleJumpToVideos = useCallback(() => {
+    topVideosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const renderIntegratedSection = () => {
     if (!selectedIntegratedSection) return null;
@@ -924,16 +961,29 @@ const YoutubeToday = ({
       label.includes("주식") || /_stock/.test(key) || /stock/.test(key);
 
     if (isCryptoSection) {
-      return <CryptoInsightSection section={selectedIntegratedSection} />;
+      return (
+        <CryptoInsightSection
+          section={selectedIntegratedSection}
+          slotLabel={insightSlotLabel}
+        />
+      );
     }
 
     if (isStockSection && hasDeltaData) {
       return (
-        <StockMarketSection section={selectedIntegratedSection}/>
+        <StockMarketSection
+          section={selectedIntegratedSection}
+          slotLabel={insightSlotLabel}
+        />
       );
     }
 
-    return <DomesticStockInsightSection section={selectedIntegratedSection} />;
+    return (
+      <DomesticStockInsightSection
+        section={selectedIntegratedSection}
+        slotLabel={insightSlotLabel}
+      />
+    );
   };
 
   return (
@@ -1019,9 +1069,9 @@ const YoutubeToday = ({
       /> */}
       {/* 🛠 애니메이션 추가 */}
       <TopicCardWrapper $isRendered={isRendered}>
-        {stockSlotSectionsForView.length > 0 && (
+        {slotSectionGroups.slot4.length > 0 && (
           <>
-            {stockSlotSectionsForView.map((section) => (
+            {[...slotSectionGroups.slot4].reverse().map((section) => (
               <Fragment key={`stock-slot-${section.slot}-${section.title}`}>
                 <SubSectionTitle>
                   <span>{`⏱ ${section.title}`}</span>
@@ -1031,6 +1081,9 @@ const YoutubeToday = ({
                   {section.items.map((item) =>
                     renderTopicCard(item, `stock-${section.slot}-`, {
                       compactBadges: selectedTopic === "전체",
+                      slotTitle: section.title,
+                      slotDescription: section.description,
+                      onJumpToVideos: handleJumpToVideos,
                     })
                   )}
                 </EditorContainer>
@@ -1039,26 +1092,52 @@ const YoutubeToday = ({
           </>
         )}
 
-        {slotSections.map((section) => (
-          <Fragment key={section.slotId}>
-            <SubSectionTitle>
-              <span>
-                🔥 {section.relativeLabel} 신규 진입
-                {/* {section.relativeLabel} · {section.label} */}
-              </span>
-              {/* <SubSectionNote>{section.description}</SubSectionNote> */}
-            </SubSectionTitle>
-            <EditorContainer>
-              {section.items.map((item) =>
-                renderTopicCard(item, `${section.slotId}-`)
-              )}
-            </EditorContainer>
-          </Fragment>
-        ))}
+        {slotSections.length > 0 && (
+          <>
+            {slotSections.map((section) => (
+              <Fragment key={section.slotId}>
+                <SubSectionTitle>
+                  <span>
+                    🔥 {section.label} · {section.relativeLabel}
+                  </span>
+                  <SubSectionNote>{section.description}</SubSectionNote>
+                </SubSectionTitle>
+                <EditorContainer>
+                  {section.items.map((item) =>
+                    renderTopicCard(item, `${section.slotId}-`)
+                  )}
+                </EditorContainer>
+              </Fragment>
+            ))}
+          </>
+        )}
+
+        {slotSectionGroups.others.length > 0 && (
+          <>
+            {[...slotSectionGroups.others].reverse().map((section) => (
+              <Fragment key={`stock-slot-${section.slot}-${section.title}`}>
+                <SubSectionTitle>
+                  <span>{`⏱ ${section.title}`}</span>
+                  <SubSectionNote>{section.description}</SubSectionNote>
+                </SubSectionTitle>
+                <EditorContainer>
+                  {section.items.map((item) =>
+                    renderTopicCard(item, `stock-${section.slot}-`, {
+                      compactBadges: selectedTopic === "전체",
+                      slotTitle: section.title,
+                      slotDescription: section.description,
+                      onJumpToVideos: handleJumpToVideos,
+                    })
+                  )}
+                </EditorContainer>
+              </Fragment>
+            ))}
+          </>
+        )}
 
         {preMarketSections.length > 0 ? (
           <>
-            {preMarketSections.map((section, index) => (
+            {[...preMarketSections].reverse().map((section, index) => (
               <Fragment key={`premarket-${section.title}-${index}`}>
                 <SubSectionTitle>
                   <span>{`⏰ ${section.title}`}</span>
@@ -1068,6 +1147,9 @@ const YoutubeToday = ({
                   {section.items.map((item) =>
                     renderTopicCard(item, `premarket-${index}-`, {
                       compactBadges: selectedTopic === "전체",
+                      slotTitle: section.title,
+                      slotDescription: section.description,
+                      onJumpToVideos: handleJumpToVideos,
                     })
                   )}
                 </EditorContainer>
@@ -1076,8 +1158,8 @@ const YoutubeToday = ({
           </>
         ) : null}
 
-        {persistingVideos.length > 0 ? (
-          <>
+        {!isMoneyTopic && persistingVideos.length > 0 ? (
+          <div id="top-videos" ref={topVideosRef}>
             <SubSectionTitle>
               <span>🔥 계속 상위권 유지 중인 영상</span>
               <SubSectionNote>어제/오늘 내내 TOP5를 지키는 카드</SubSectionNote>
@@ -1089,7 +1171,7 @@ const YoutubeToday = ({
                 })
               )}
             </EditorContainer>
-          </>
+          </div>
         ) : null}
       </TopicCardWrapper>
 

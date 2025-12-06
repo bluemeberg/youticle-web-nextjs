@@ -9,6 +9,7 @@ import {
   buildRefreshMeta,
   formatDateKST,
   getBriefingSlot,
+  getSlotLabelInfo,
   resolveStockSlot,
   toKst,
 } from "@/utils/briefingSlot";
@@ -28,6 +29,9 @@ export default function LandingPage() {
   const [stockSlotSections, setStockSlotSections] = useState<StockSlotSection[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [refreshMeta] = useState(() => buildRefreshMeta(new Date()));
+  const [insightSlotLabel, setInsightSlotLabel] = useState(() =>
+    getSlotLabelInfo(getBriefingSlot(new Date()))
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +42,7 @@ export default function LandingPage() {
       const now = new Date();
       const dateParam = formatDateKST(now);
       const slotParam = getBriefingSlot(now);
+      setInsightSlotLabel(getSlotLabelInfo(slotParam));
       const kstNow = toKst(now);
       const isMorningBaseline = slotParam === "baseline";
       const isPreBaselineSlot4 =
@@ -151,6 +156,7 @@ export default function LandingPage() {
           integratedSections={integratedSections?.sections ?? []}
           refreshMeta={refreshMeta}
           stockSlotSections={stockSlotSections}
+          insightSlotLabel={insightSlotLabel}
         />
       )}
     </>

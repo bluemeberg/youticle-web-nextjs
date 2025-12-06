@@ -15,6 +15,8 @@ import type {
   InsightStrategy,
   InsightSource,
 } from "@/types/insight";
+import type { SlotLabel } from "@/utils/briefingSlot";
+import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
 import type { ReactNode } from "react";
 import {
   getOrCreateAnonId,
@@ -138,6 +140,7 @@ interface Props {
   hideMarketCards?: boolean;
   renderMarketIntro?: ReactNode;
   forceStockPreview?: boolean;
+  slotLabel?: SlotLabel;
 }
 
 interface ValuationDetail {
@@ -247,8 +250,10 @@ const DomesticStockInsightSection = ({
   hideMarketCards = false,
   renderMarketIntro,
   forceStockPreview = false,
+  slotLabel,
 }: Props) => {
   const { data, label, updated_at } = section;
+  const appliedSlotLabel = resolveInsightSlotCopy(label ?? "", slotLabel);
   const overview = data?.overview;
   const marketInsights = useMemo(
     () => data?.market_insights?.by_market || {},
@@ -337,11 +342,19 @@ const DomesticStockInsightSection = ({
   return (
     <Wrapper>
       <SectionHeader>
-        <Title>{label} 마켓 인사이트</Title>
-        {updated_at && (
+        <Title>
+          {label} 마켓 인사이트
+          {appliedSlotLabel?.title ? (
+            <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
+          ) : null}
+        </Title>
+        {/* {updated_at && (
           <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
-        )}
+        )} */}
       </SectionHeader>
+      {appliedSlotLabel?.description ? (
+        <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
+      ) : null}
       <SectionIntro>{introText}</SectionIntro>
 
       {hasMarketDetailToggle && marketCardsAvailable ? (
@@ -442,12 +455,21 @@ const DomesticStockInsightSection = ({
       {stocks.length > 0 && (
         <>
           <SubSectionHeader>
-            <SubSectionTitle>📊 종목 인사이트</SubSectionTitle>
-            {updated_at && (
+            <SubSectionTitle>
+              📊 종목 인사이트
+              {appliedSlotLabel?.title ? (
+                <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
+              ) : null}
+            </SubSectionTitle>
+            {/* {updated_at && (
               <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
-            )}
+            )} */}
           </SubSectionHeader>
-          <SubSectionIntro>{stockIntroText}</SubSectionIntro>
+          <SubSectionIntro>
+            {appliedSlotLabel?.description
+              ? `${appliedSlotLabel.description} · ${stockIntroText}`
+              : stockIntroText}
+          </SubSectionIntro>
           <StockList>
             {stocks.map((stock) => (
               <StockCard
@@ -3146,6 +3168,24 @@ const Title = styled.h3`
   font-size: 20px;
   font-weight: 800;
   color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SlotBadge = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #e0ebff;
+  border-radius: 999px;
+  padding: 2px 8px;
+`;
+
+const SlotDescription = styled.p`
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #64748b;
 `;
 
 const Timestamp = styled.span`
@@ -3155,7 +3195,7 @@ const Timestamp = styled.span`
 `;
 
 const SectionIntro = styled.p`
-  margin: 8px;
+  /* margin: 8px; */
   font-size: 16px;
   color: #000;
   line-height: 1.4;
@@ -3331,6 +3371,9 @@ const SubSectionTitle = styled.h3`
   font-size: 20px;
   font-weight: 800;
   color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const SubSectionIntro = styled.p`

@@ -11,6 +11,8 @@ import type {
   InsightStock,
   InsightStockMetrics,
 } from "@/types/insight";
+import type { SlotLabel } from "@/utils/briefingSlot";
+import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
 import {
   buildIntradayDetailFromCard,
   buildLiquidityDetailFromSentence,
@@ -26,6 +28,7 @@ interface StockMarketSectionProps {
   section: InsightSection;
   showHeader?: boolean;
   defaultExpanded?: boolean;
+  slotLabel?: SlotLabel;
 }
 
 export type StockInsightSectionDetail = {
@@ -218,6 +221,7 @@ const StockMarketSection = ({
   section,
   showHeader = true,
   defaultExpanded,
+  slotLabel,
 }: StockMarketSectionProps) => {
   const delta = section.data?.market_delta_insights;
   const rawStocks = (section.data?.stocks ?? []) as InsightStock[];
@@ -234,6 +238,11 @@ const StockMarketSection = ({
       (entry): entry is [string, InsightMarketDeltaCard] => Boolean(entry[1])
     );
   }, [delta?.by_market]);
+
+  const appliedSlotLabel = useMemo(
+    () => resolveInsightSlotCopy(section.label ?? "", slotLabel),
+    [section.label, slotLabel]
+  );
 
   const representativeMarketComment = useMemo(() => {
     if (section.label !== "국내 주식") return null;
@@ -325,7 +334,12 @@ const StockMarketSection = ({
     <Wrapper>
       {showHeader ? (
         <SectionHeader>
-          <Title>{section.label || "주식"} 마켓 인사이트</Title>
+          <Title>
+            {section.label || "주식"} 마켓 인사이트
+            {appliedSlotLabel?.title ? (
+              <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
+            ) : null}
+          </Title>
 
           {sharedTimestampText ? (
             <Timestamp>
@@ -336,6 +350,9 @@ const StockMarketSection = ({
             </Timestamp>
           ) : null}
         </SectionHeader>
+      ) : null}
+      {appliedSlotLabel?.description ? (
+        <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
       ) : null}
       <SectionIntro>{introText}</SectionIntro>
 
@@ -2813,6 +2830,24 @@ const Title = styled.h3`
   font-size: 20px;
   font-weight: 800;
   color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SlotBadge = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #e0ebff;
+  border-radius: 999px;
+  padding: 2px 8px;
+`;
+
+const SlotDescription = styled.p`
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: #64748b;
 `;
 
 const SectionIntro = styled.p`
