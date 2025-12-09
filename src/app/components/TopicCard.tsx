@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { useSetRecoilState } from "recoil";
 import { detailDataState } from "@/store/detailData";
-import { DataProps, StockFeedSlotPhase } from "@/types/dataProps";
+import { DataProps, StockFeedSlotPhase, StockMention } from "@/types/dataProps";
 import {
   parseSubscribersCount,
   timeAgo,
@@ -15,9 +15,10 @@ import {
 import LikeIcon from "@/assets/like_icon.svg";
 import ViewIcon from "@/assets/view_icon.svg";
 import { useEffect, useMemo, useState, MouseEvent } from "react";
+import type { ReactNode } from "react";
 
 interface TopicCardProps extends DataProps {
-  icon: React.ReactNode;
+  icon: ReactNode;
   subjects: string[]; // 구독 키워드 전달
   metricLabel: string;
   metricValue: number;
@@ -67,6 +68,7 @@ const DETECTED_SLOT_MAP: Record<string, { label: string; minutes: number }> = {
   slot_1510: { label: '15:10 갱신', minutes: 15 * 60 + 10 },
   slot_1530: { label: '15:30 재랭킹', minutes: 15 * 60 + 30 },
   slot_1600: { label: '16:00 재랭킹', minutes: 16 * 60 },
+  slot_1730: { label: '17:30 재랭킹', minutes: 17 * 60 + 30 },
   slot_1810: { label: '18:10 재랭킹', minutes: 18 * 60 + 10 },
   slot_2030: { label: '20:30 재랭킹', minutes: 20 * 60 + 30 },
   slot_2100: { label: '21:00 재랭킹', minutes: 21 * 60 },
@@ -203,6 +205,39 @@ const TopicCard = (props: TopicCardProps) => {
     props.onJumpToVideos?.();
   };
 
+  const relatedMentions: StockMention[] = useMemo(() => {
+    const fromProps = Array.isArray(props.stock_mentions)
+      ? props.stock_mentions
+      : [];
+    const fromSummary = Array.isArray(summary_data?.stock_mentions)
+      ? summary_data.stock_mentions
+      : [];
+    return [...fromProps, ...fromSummary];
+  }, [props.stock_mentions, summary_data?.stock_mentions]);
+
+  const relatedStocks = useMemo(() => {
+    return relatedMentions
+      .map((mention) => mention.stock_name || mention.ticker)
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 2);
+  }, [relatedMentions]);
+
+  const primaryTicker = relatedMentions.find((mention) => mention.ticker)?.ticker;
+
+  const handleStockAlert = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const params = new URLSearchParams();
+    if (primaryTicker) params.set("ticker", primaryTicker);
+    router.push(`/subject?${params.toString()}`);
+  };
+
+  const likeRate = summary_data?.like_rate_pct;
+  const likeRateText =
+    typeof likeRate === "number" && Number.isFinite(likeRate)
+      ? `${likeRate.toFixed(1)}%`
+      : "―";
+  const metricLine = `${parseVideoCountcribersCount(views)} 조회 · 👍 ${likeRateText} · ${uploadAgo}`;
+
   return (
     <Container onClick={handleNavigate}>
       {isLoading && (
@@ -268,9 +303,9 @@ const TopicCard = (props: TopicCardProps) => {
         ) : null} */}
 
       </CardHeader>
-      <BodyContainer>
-        <ChannelInfoContainer>
-          <Thumbnail src={thumbnail} />
+        <BodyContainer>
+          <ChannelInfoContainer>
+            <Thumbnail src={thumbnail} />
 
           {/* <VideoInfo>
             <ViewIcon /> <span>{parseVideoCountcribersCount(views)}</span>
@@ -311,6 +346,14 @@ const TopicCard = (props: TopicCardProps) => {
         </Body>
       </BodyContainer>
 
+      {/* <MetaRow>
+        <MetaBadge>{`🔥 ${props.metricLabel} ${props.rank}위`}</MetaBadge>
+        {relatedStocks.length > 0 ? (
+          <MetaBadge>{`⊚ 관련 종목: ${relatedStocks.join(", ")}`}</MetaBadge>
+        ) : null}
+      </MetaRow>
+      <MetricLineText>{metricLine}</MetricLineText> */}
+
       <ChannelInfo>
         <ProfileImage src={channel_details.channel_thumbnail} />
         <ProfileInfo>
@@ -336,13 +379,18 @@ const TopicCard = (props: TopicCardProps) => {
           </Comment>
         </CommentSection>
       ) : null}
-      {/* {props.onJumpToVideos ? (
-        <ActionRow>
-          <RelatedVideosButton type="button" onClick={handleRelatedVideos}>
-            관련 영상 보기
-          </RelatedVideosButton>
-        </ActionRow>
-      ) : null} */}
+      {/* <ActionRow>
+        <PrimaryActionButton type="button" onClick={handleToggleSummary}>
+          핵심 요약 보기
+        </PrimaryActionButton>
+        <SecondaryActionButton
+          type="button"
+          disabled={!primaryTicker}
+          onClick={handleStockAlert}
+        >
+          ⭐ 종목 알림
+        </SecondaryActionButton>
+      </ActionRow> */}
     </Container>
   );
 };
@@ -361,8 +409,8 @@ const Container = styled.div`
   margin-bottom: 20px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  margin-left: 8px;
-  margin-right: 8px;
+  /* margin-left: 8px;
+  margin-right: 8px; */
   &:hover {
     transform: translateY(-4px); /* 호버 시 위로 살짝 이동 */
     box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 강조 */
@@ -451,16 +499,32 @@ const ActionRow = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+  gap: 8px;
 `;
 
-const RelatedVideosButton = styled.button`
+const PrimaryActionButton = styled.button`
   background-color: #111827;
   color: #fff;
   border: none;
   border-radius: 999px;
   font-size: 13px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   cursor: pointer;
+`;
+
+const SecondaryActionButton = styled.button`
+  background-color: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 `;
 
 const BodyContainer = styled.div`
@@ -510,6 +574,27 @@ const BodyTitle = styled.span`
 const SummaryContainer = styled.div`
   display: flex;
   margin-bottom: 12px;
+`;
+
+const MetaRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const MetaBadge = styled.span`
+  font-size: 12px;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 999px;
+`;
+
+const MetricLineText = styled.p`
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #4b5563;
 `;
 
 const Divider = styled.div<{ height: string }>`

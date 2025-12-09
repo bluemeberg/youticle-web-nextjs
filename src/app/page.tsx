@@ -92,9 +92,7 @@ export default async function LandingPage(props: LandingPageProps) {
             cache: "no-store",
           });
           if (!res.ok) {
-            throw new Error(
-              `Stock API request failed (${request.slot})`
-            );
+            throw new Error(`Stock API request failed (${request.slot})`);
           }
           const data = (await res.json()) as DataProps[];
           return { ...request, data };

@@ -125,6 +125,8 @@ const COLOR_NEUTRAL = "#9db3ff";
 const COLOR_TRACK = "#e7ecff";
 const COLOR_CARD_BG = "#f5f7ff";
 const COLOR_TEXT = "#0f172a";
+const SOURCE_TAG_TEXT = "오늘 TOP5 유튜브 영상 기반";
+const DEFAULT_VISIBLE_STOCKS = 5;
 
 const FLOW_COLORS: Record<string, string> = {
   foreign: "#0b63f6",
@@ -231,6 +233,15 @@ const StockMarketSection = ({
   );
   const stockIntroText = getStockIntroText(section.label);
   const hasStocks = stocks.length > 0;
+  const [showAllStocks, setShowAllStocks] = useState(false);
+  const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
+  const displayedStocks =
+    showAllStocks || !hasMoreStocks
+      ? stocks
+      : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const remainingStockCount = hasMoreStocks
+    ? stocks.length - DEFAULT_VISIBLE_STOCKS
+    : 0;
 
   const marketEntries = useMemo(() => {
     if (!delta?.by_market) return [] as Array<[string, InsightMarketDeltaCard]>;
@@ -277,7 +288,7 @@ const StockMarketSection = ({
 
     if (!bullets.length) return null;
     return {
-      title: "오늘 TOP5 유튜브 영상 속 마켓 코멘트",
+      title: "마켓 코멘트",
       bullets: bullets.slice(0, 3),
     };
   }, [marketEntries, section.label]);
@@ -314,6 +325,8 @@ const StockMarketSection = ({
   const sharedRelativeText = stockTimestampText ? stockRelativeText : null;
 
   const { data, label, updated_at } = section;
+  const shouldShowStockPreview =
+    typeof label === "string" && label.includes("주식");
   const introText = (() => {
     switch (label) {
       case "해외 주식":
@@ -340,21 +353,11 @@ const StockMarketSection = ({
               <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
             ) : null}
           </Title>
-
-          {sharedTimestampText ? (
-            <Timestamp>
-              업데이트 : {sharedTimestampText}
-              {/* {sharedRelativeText ? (
-                <RelativeTimestamp>{sharedRelativeText}</RelativeTimestamp>
-              ) : null} */}
-            </Timestamp>
-          ) : null}
         </SectionHeader>
       ) : null}
-      {appliedSlotLabel?.description ? (
-        <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
-      ) : null}
-      <SourceTag>오늘 TOP5 유튜브 영상 기반</SourceTag>
+      {/* {appliedSlotLabel?.description ? (
+        <MarketSectionMeta>{appliedSlotLabel.description}</MarketSectionMeta>
+      ) : null} */}
       <SectionIntro>{introText}</SectionIntro>
 
       {/* {delta.quick?.length ? (
@@ -668,26 +671,43 @@ const StockMarketSection = ({
       {hasStocks ? (
         <>
           <StockSubSectionHeader>
-            <StockSubSectionTitle>📊 종목 인사이트</StockSubSectionTitle>
-            {stockTimestampText ? (
-              <Timestamp>
-                업데이트 : {stockTimestampText}
-                {/* {stockRelativeText ? (
-                  <RelativeTimestamp>{stockRelativeText}</RelativeTimestamp>
-                ) : null} */}
-              </Timestamp>
-            ) : null}
+            <StockSubSectionTitle>
+              📊 종목 인사이트
+              {appliedSlotLabel?.title ? (
+                <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
+              ) : null}
+            </StockSubSectionTitle>
           </StockSubSectionHeader>
-          <StockSubSectionIntro>{stockIntroText}</StockSubSectionIntro>
+          <StockSubSectionIntro>
+            {SOURCE_TAG_TEXT} ·{" "}
+            {appliedSlotLabel?.description ?? stockIntroText}
+          </StockSubSectionIntro>
           <StockList>
-            {stocks.map((stock, index) => (
+            {displayedStocks.map((stock, index) => (
               <StockInsightCard
                 key={stock.ticker || stock.stock_name || `stock-${index}`}
                 stock={stock}
                 sectionLabel={section.label}
+                showCommentPreview={shouldShowStockPreview && index < 2}
               />
             ))}
           </StockList>
+          {hasMoreStocks ? (
+            <StockListToggleRow>
+              <StockDetailToggleButton
+                type="button"
+                onClick={() => setShowAllStocks((prev) => !prev)}
+                aria-expanded={showAllStocks}
+              >
+                {showAllStocks
+                  ? "종목 목록 접기"
+                  : `${remainingStockCount}개 종목 더 보기`}
+                <ToggleChevron aria-hidden={true} $expanded={showAllStocks}>
+                  <span />
+                </ToggleChevron>
+              </StockDetailToggleButton>
+            </StockListToggleRow>
+          ) : null}
         </>
       ) : null}
     </Wrapper>
@@ -699,9 +719,11 @@ export default StockMarketSection;
 const StockInsightCard = ({
   stock,
   sectionLabel,
+  showCommentPreview = false,
 }: {
   stock: InsightStock;
   sectionLabel?: string | null;
+  showCommentPreview?: boolean;
 }) => {
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
@@ -738,7 +760,7 @@ const StockInsightCard = ({
   const commentBullets = normalizeCommentBullets(
     insight?.comment_bullets || stock.comment_bullets
   );
-  const previewBullets = commentBullets.slice(0, 3);
+  const previewBullets = showCommentPreview ? commentBullets.slice(0, 3) : [];
   const hasVideoSources =
     Array.isArray(stock.sources) && stock.sources.length > 0;
 
@@ -750,10 +772,9 @@ const StockInsightCard = ({
       additionalSections.length
   );
   const [showDetails, setShowDetails] = useState(false);
-  const showPreview = !showDetails && previewBullets.length > 0;
-  const detailToggleLabel = showDetails
-    ? "상세 인사이트 접기"
-    : "상세 인사이트 펼치기";
+  const showPreview =
+    showCommentPreview && !showDetails && previewBullets.length > 0;
+  const detailToggleLabel = showDetails ? "세부 지표 접기" : "세부 지표 펼치기";
   const router = useRouter();
   const user = useRecoilValue(userState);
   const storeEvidencePayload = () => {
@@ -796,17 +817,18 @@ const StockInsightCard = ({
     ).catch(() => {});
     router.push(`/evidence?${params.toString()}`);
   };
+  const handleAlertClick = () => {
+    const params = new URLSearchParams();
+    if (stock.stock_name) params.set("focus", stock.stock_name);
+    if (stock.ticker) params.set("ticker", stock.ticker);
+    router.push(`/subject?${params.toString()}`);
+  };
 
   const videoSourcesContent = hasVideoSources ? (
-    <>
-      <StockVideoSources
-        stockName={stock.stock_name ?? ""}
-        sources={stock.sources}
-      />
-      <StockEvidenceButton type="button" onClick={handleEvidenceClick}>
-        오늘 언급된 영상 더보기
-      </StockEvidenceButton>
-    </>
+    <StockVideoSources
+      stockName={stock.stock_name ?? ""}
+      sources={stock.sources}
+    />
   ) : null;
 
   return (
@@ -824,13 +846,28 @@ const StockInsightCard = ({
           </StockDeltaBlock>
         ) : null}
       </StockHeader>
+      {/* <StockActionDock>
+        <StockEvidenceButton
+          type="button"
+          onClick={handleEvidenceClick}
+          disabled={!hasVideoSources}
+        >
+          📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
+        </StockEvidenceButton>
+        {!hasVideoSources ? (
+          <StockActionHint>
+            오늘 TOP5 영상에서 아직 언급되지 않았어요.
+          </StockActionHint>
+        ) : null}
+        <StockAlertButton type="button" onClick={handleAlertClick}>
+          🔔 종목 알림 켜기
+        </StockAlertButton>
+      </StockActionDock> */}
 
       {showPreview ? (
         <StockPreviewComment>
           {commentTitle ? (
-            <StockPreviewCommentTitle>
-              오늘 TOP5 유튜브 영상 속 코멘트
-            </StockPreviewCommentTitle>
+            <StockPreviewCommentTitle>종목 코멘트</StockPreviewCommentTitle>
           ) : null}
           <StockCommentBulletList>
             {previewBullets.map((bullet, index) => (
@@ -2813,7 +2850,7 @@ function formatSignedNumberCompact(value: number) {
 }
 
 const Wrapper = styled.section`
-  margin: 20px 16px 12px;
+  /* margin: 20px 16px 12px; */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2845,29 +2882,17 @@ const SlotBadge = styled.span`
   padding: 2px 8px;
 `;
 
-const SourceTag = styled.span`
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #2563eb;
-  background: #e0ebff;
-  border-radius: 999px;
-  padding: 2px 8px;
-  margin: 4px 0;
-`;
-
-const SlotDescription = styled.p`
-  margin: 4px 0 8px;
-  font-size: 13px;
-  color: #64748b;
+const MarketSectionMeta = styled.p`
+  margin: 8px 0 12px;
+  font-size: 14px;
+  color: #4b5563;
 `;
 
 const SectionIntro = styled.p`
-  margin: 8px;
-  font-size: 16px;
-  color: #000;
+  font-size: 14px;
+  color: #6b7280;
   line-height: 1.4;
+  margin-top: -8px;
 `;
 
 const Timestamp = styled.span`
@@ -2928,6 +2953,7 @@ const MarketCardHeader = styled.div`
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
+  font-size: 16px;
 `;
 
 const MarketTitle = styled.div`
@@ -2963,13 +2989,15 @@ const StockSubSectionTitle = styled.h3`
   font-size: 20px;
   font-weight: 800;
   color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const StockSubSectionIntro = styled.p`
-  margin: 4px 4px 12px;
-  font-size: 16px;
-  color: #000;
-  line-height: 1.5;
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: -12px;
 `;
 
 const StockList = styled.div`
@@ -2992,6 +3020,11 @@ const StockDetailToggleRow = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+`;
+
+const StockListToggleRow = styled(StockDetailToggleRow)`
+  justify-content: center;
+  margin-top: 12px;
 `;
 
 const StockDetailToggleButton = styled.button`
@@ -3042,6 +3075,9 @@ const StockDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2937;
 `;
 
 const StockTitle = styled.div`
@@ -3089,15 +3125,15 @@ const StockDeltaBlock = styled.div<{ $tone: PriceTone }>`
 `;
 
 const StockSummary = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   color: #1f2937;
-  line-height: 1.6;
+  line-height: 1.5;
 `;
 
 const StockHighlights = styled.div`
-  font-size: 13px;
+  font-size: 15px;
   color: #475569;
-  line-height: 1.6;
+  line-height: 1.5;
   background: ${COLOR_CARD_BG};
   border-radius: 10px;
   padding: 10px 12px;
@@ -3114,7 +3150,7 @@ const StockInsightItem = styled.div`
   border-radius: 10px;
   padding: 12px;
   background: ${COLOR_CARD_BG};
-  font-size: 13px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
@@ -3318,14 +3354,6 @@ const StockInsightHighlights = styled.div`
   }
 `;
 
-const StockPreviewComment = styled.div``;
-const StockPreviewCommentTitle = styled.div`
-  margin-bottom: 4px;
-  margin-top: 4px;
-  font-weight: 700;
-  font-size: 14px;
-  color: ${COLOR_NEGATIVE};
-`;
 const StockComment = styled.div`
   border-radius: 10px;
   border: 1px solid ${COLOR_TRACK};
@@ -3336,6 +3364,17 @@ const StockComment = styled.div`
   gap: 6px;
 `;
 
+const StockPreviewComment = styled(StockComment)`
+  margin-top: 12px;
+`;
+
+const StockPreviewCommentTitle = styled.div`
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  color: ${COLOR_NEGATIVE};
+`;
+
 const StockCommentTitle = styled.span`
   font-weight: 700;
   font-size: 14px;
@@ -3344,7 +3383,7 @@ const StockCommentTitle = styled.span`
 
 const StockCommentBody = styled.div`
   font-size: 14px;
-  color: #1f2937;
+  color: ${COLOR_TEXT};
   line-height: 1.6;
   strong {
     font-weight: 700;
@@ -3360,8 +3399,8 @@ const StockCommentBulletList = styled.ul`
 `;
 
 const StockCommentBulletItem = styled.li`
-  font-size: 14px;
-  color: #1f2937;
+  font-size: 16px;
+  color: ${COLOR_TEXT};
   line-height: 1.6;
   list-style: disc;
   strong {
@@ -3377,7 +3416,7 @@ const StockEvidenceButton = styled.button`
   color: #fff;
   font-size: 16px;
   font-weight: 900;
-  width: 100%;
+  flex: 1;
   padding: 12px 16px;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
@@ -3390,6 +3429,39 @@ const StockEvidenceButton = styled.button`
     border-color: #1d4ed8;
     outline: none;
   }
+  &:disabled,
+  &[disabled] {
+    background: #e5e7eb;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
+const StockActionDock = styled.div`
+  margin: 12px 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const StockAlertButton = styled.button`
+  flex: 1;
+  min-width: 140px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 16px;
+  cursor: pointer;
+`;
+
+const StockActionHint = styled.small`
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #6b7280;
 `;
 
 const MarketToggleButton = styled.button`
@@ -3453,6 +3525,9 @@ const MarketDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2937;
 `;
 
 const MarketComment = styled.div<{ $withBorder?: boolean }>`
@@ -3461,8 +3536,8 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   border-radius: 10px;
   border: ${({ $withBorder }) =>
     $withBorder ? `1px solid ${COLOR_TRACK}` : "none"};
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.5;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
@@ -3474,13 +3549,14 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
 
 const MarketCommentTitle = styled.div`
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: #0b63f6;
+  font-size: 16px;
 `;
 
 const MarketCommentBody = styled.div`
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.5;
 
   /* mark 기본 스타일 제거 + 폰트 강조만 */
   mark,
@@ -3505,9 +3581,9 @@ const CommentBulletList = styled.ul`
 `;
 
 const CommentBulletItem = styled.li`
-  font-size: 14px;
-  color: #1f2937;
-  line-height: 1.6;
+  font-size: 16px;
+  color: ${COLOR_TEXT};
+  line-height: 1.5;
   list-style: disc;
 `;
 

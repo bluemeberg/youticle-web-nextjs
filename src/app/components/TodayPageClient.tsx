@@ -306,7 +306,7 @@ export default function LandingPageClient({
   refreshMeta,
   insightSlotLabel,
 }: LandingPageClientProps) {
-  console.log(apiData);
+  // console.log(apiData);
   const setApiData = useSetRecoilState(dataState);
   const user = useRecoilValue(userState);
   const [subscribedSubjects, setSubscribedSubjects] = useState<string[]>([]);

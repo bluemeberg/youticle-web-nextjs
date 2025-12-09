@@ -20,12 +20,12 @@ const OVERSEAS_LABELS: Record<BriefingSlot, SlotLabel> = {
 };
 
 const CRYPTO_LABELS: Record<BriefingSlot, SlotLabel> = {
-  baseline: { phase: "baseline", title: "새벽·아침 코인 브리핑 1차", description: "07:30 새벽/아침 코인 흐름" },
-  slot1: { phase: "slot1", title: "아침 코인 브리핑 2차", description: "08:30 출근 직전 급등락 체크" },
-  slot2: { phase: "slot2", title: "점심 코인 브리핑", description: "점심 시간대 코인 반응" },
-  slot3: { phase: "slot3", title: "오후 코인 브리핑", description: "오후~퇴근 시간대 리듬" },
-  slot4: { phase: "slot4", title: "심야 코인 브리핑", description: "밤 시간대 미국장 반응" },
-  ranking: { phase: "ranking", title: "퇴근 후 코인 브리핑", description: "18:10 퇴근 타임 요약" },
+  baseline: { phase: "baseline", title: "새벽·아침 코인 브리핑 1차", description: "07:30 새벽/아침 흐름" },
+  slot1: { phase: "slot1", title: "아침 브리핑 2차", description: "08:30 출근 직전 급등락 체크" },
+  slot2: { phase: "slot2", title: "점심 브리핑", description: "점심 시간대 코인 반응" },
+  slot3: { phase: "slot3", title: "오후 브리핑", description: "오후~퇴근 시간대 리듬" },
+  slot4: { phase: "slot4", title: "심야 브리핑", description: "밤 시간대 미국장 반응" },
+  ranking: { phase: "ranking", title: "퇴근 후 브리핑", description: "18:10 퇴근 타임 요약" },
 };
 
 const resolveCategory = (label?: string) => {

@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  Fragment,
+} from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import styled, { keyframes, css } from "styled-components";
@@ -134,14 +142,60 @@ const SLOT_DISPLAY_CONFIGS: Array<{
   minutes: number;
   requireNew?: boolean;
 }> = [
-  { id: "slot_0730", label: "07:30 선정", description: "주식·가상자산 첫 선정", minutes: 7 * 60 + 30 },
-  { id: "slot_0830", label: "08:30 갱신", description: "주식·가상자산 새 영상 선정", minutes: 8 * 60 + 30 },
-  { id: "slot_1130", label: "11:30 재랭킹", description: "오전 랭킹 갱신", minutes: 11 * 60 + 30 },
-  { id: "slot_1240", label: "12:40 갱신", description: "주식·가상자산 두 번째 선정", minutes: 12 * 60 + 40 },
-  { id: "slot_1510", label: "15:10 갱신", description: "주식·가상자산 세 번째 선정", minutes: 15 * 60 + 10 },
-  { id: "slot_1530", label: "15:30 재랭킹", description: "주식·가상자산 오후 랭킹 점검", minutes: 15 * 60 + 30 },
-  { id: "slot_1600", label: "16:00 재랭킹", description: "일반 키워드 오후 랭킹 갱신", minutes: 16 * 60 },
-  { id: "slot_1810", label: "18:10 재랭킹", description: "주식·가상자산 저녁 랭킹 갱신", minutes: 18 * 60 + 10 },
+  {
+    id: "slot_0730",
+    label: "07:30 선정",
+    description: "주식·가상자산 첫 선정",
+    minutes: 7 * 60 + 30,
+  },
+  {
+    id: "slot_0830",
+    label: "08:30 갱신",
+    description: "주식·가상자산 새 영상 선정",
+    minutes: 8 * 60 + 30,
+  },
+  {
+    id: "slot_1130",
+    label: "11:30 재랭킹",
+    description: "오전 랭킹 갱신",
+    minutes: 11 * 60 + 30,
+  },
+  {
+    id: "slot_1240",
+    label: "12:40 갱신",
+    description: "주식·가상자산 두 번째 선정",
+    minutes: 12 * 60 + 40,
+  },
+  {
+    id: "slot_1510",
+    label: "15:10 갱신",
+    description: "주식·가상자산 세 번째 선정",
+    minutes: 15 * 60 + 10,
+  },
+  {
+    id: "slot_1530",
+    label: "15:30 재랭킹",
+    description: "주식·가상자산 오후 랭킹 점검",
+    minutes: 15 * 60 + 30,
+  },
+  {
+    id: "slot_1600",
+    label: "16:00 재랭킹",
+    description: "일반 키워드 오후 랭킹 갱신",
+    minutes: 16 * 60,
+  },
+  {
+    id: "slot_1730",
+    label: "17:30 재랭킹",
+    description: "주식·가상자산 장 마감 직후 랭킹 갱신",
+    minutes: 17 * 60 + 30,
+  },
+  {
+    id: "slot_1810",
+    label: "18:10 재랭킹",
+    description: "주식·가상자산 저녁 랭킹 갱신",
+    minutes: 18 * 60 + 10,
+  },
   {
     id: "slot_2030",
     label: "20:30 재랭킹",
@@ -149,17 +203,33 @@ const SLOT_DISPLAY_CONFIGS: Array<{
     minutes: 20 * 60 + 30,
     requireNew: false,
   },
-  { id: "slot_2100", label: "21:00 재랭킹", description: "일반 키워드 밤 랭킹 갱신", minutes: 21 * 60 },
-  { id: "slot_2140", label: "21:40 갱신", description: "주식·가상자산 마지막 선정", minutes: 21 * 60 + 40 },
+  {
+    id: "slot_2100",
+    label: "21:00 재랭킹",
+    description: "일반 키워드 밤 랭킹 갱신",
+    minutes: 21 * 60,
+  },
+  {
+    id: "slot_2140",
+    label: "21:40 갱신",
+    description: "주식·가상자산 마지막 선정",
+    minutes: 21 * 60 + 40,
+  },
 ];
 
-const SLOT_DISPLAY_PRIORITY = SLOT_DISPLAY_CONFIGS.reduce<Record<string, number>>(
-  (acc, config, index) => {
-    acc[config.id] = index;
-    return acc;
-  },
-  {}
-);
+const SLOT_DISPLAY_PRIORITY = SLOT_DISPLAY_CONFIGS.reduce<
+  Record<string, number>
+>((acc, config, index) => {
+  acc[config.id] = index;
+  return acc;
+}, {});
+
+const SLOT_DISPLAY_CONFIG_MAP = SLOT_DISPLAY_CONFIGS.reduce<
+  Record<string, (typeof SLOT_DISPLAY_CONFIGS)[number]>
+>((acc, config) => {
+  acc[config.id] = config;
+  return acc;
+}, {});
 
 const getSlotDisplayPriority = (slotId: string) => {
   if (slotId === "slot_2030") {
@@ -250,7 +320,10 @@ const OVERSEAS_STOCK_SLOT_LABELS: MoneySlotLabelMap = {
   },
 };
 
-const CATEGORY_DISPLAY_NAMES: Record<Exclude<MoneyCategory, "other">, string> = {
+const CATEGORY_DISPLAY_NAMES: Record<
+  Exclude<MoneyCategory, "other">,
+  string
+> = {
   domestic_stock: "국내 주식",
   overseas_stock: "해외 주식",
   crypto: "가상자산",
@@ -271,7 +344,9 @@ const resolveMoneyCategory = (section: string): MoneyCategory => {
   return "other";
 };
 
-const resolveSlotLabelMapForCategory = (category: MoneyCategory): SlotLabelMap => {
+const resolveSlotLabelMapForCategory = (
+  category: MoneyCategory
+): SlotLabelMap => {
   if (category === "crypto") return CRYPTO_SLOT_LABELS;
   if (category === "overseas_stock") return OVERSEAS_STOCK_SLOT_LABELS;
   return STOCK_SLOT_LABELS;
@@ -315,10 +390,11 @@ const buildCategorySlotSections = (
   return Array.from(groups.entries()).map(([category, groupedItems]) => {
     const labelMap = resolveSlotLabelMapForCategory(category);
     const meta = labelMap[slot];
-    const categoryLabel = CATEGORY_DISPLAY_NAMES[
-      category as Exclude<MoneyCategory, "other">
-    ];
-    const title = includeCategoryLabel ? `${meta.title} · ${categoryLabel}` : meta.title;
+    const categoryLabel =
+      CATEGORY_DISPLAY_NAMES[category as Exclude<MoneyCategory, "other">];
+    const title = includeCategoryLabel
+      ? `${meta.title} · ${categoryLabel}`
+      : meta.title;
     return {
       slot,
       priority,
@@ -367,7 +443,8 @@ const resolveTopicFromQuery = (raw?: string | null): string | undefined => {
   if (!trimmed) return undefined;
   const normalizedKey = normalizeTopicKey(trimmed);
   return (
-    TOPIC_LOOKUP_BY_NORMALIZED.get(normalizedKey) ?? TOPIC_ALIASES[normalizedKey]
+    TOPIC_LOOKUP_BY_NORMALIZED.get(normalizedKey) ??
+    TOPIC_ALIASES[normalizedKey]
   );
 };
 
@@ -416,6 +493,7 @@ const YoutubeToday = ({
   const resetUnsubscribedData = useResetRecoilState(unsubscribedDataState);
   const user = useRecoilValue(userState);
   const [isRendered, setIsRendered] = useState(false); // 애니메이션을 위한 상태
+  const [showSchedule, setShowSchedule] = useState(false);
   const selectedTopicRef = useRef(selectedTopic);
   const appliedInitialTopicRef = useRef<string | null>(null);
 
@@ -444,7 +522,11 @@ const YoutubeToday = ({
       return [...MARKET_INSIGHT_TOPIC_GROUPS[selectedTopic]];
     }
 
-    if (MARKET_INSIGHT_TARGET_TOPICS.includes(selectedTopic as (typeof MARKET_INSIGHT_TARGET_TOPICS)[number])) {
+    if (
+      MARKET_INSIGHT_TARGET_TOPICS.includes(
+        selectedTopic as (typeof MARKET_INSIGHT_TARGET_TOPICS)[number]
+      )
+    ) {
       return [selectedTopic];
     }
 
@@ -529,7 +611,9 @@ const YoutubeToday = ({
     const map = new Map<string, InsightSource>();
     clientData.forEach((item) => {
       if (!item?.video_id) return;
-      const summaryText = removeMarkTags(item.summary_data?.short_summary || "").trim();
+      const summaryText = removeMarkTags(
+        item.summary_data?.short_summary || ""
+      ).trim();
       map.set(item.video_id, {
         video_id: item.video_id,
         channel_subscribers: item.channel_details?.channel_subscribers,
@@ -553,7 +637,8 @@ const YoutubeToday = ({
 
     return integratedSections.map((section) => {
       const stocks = section.data?.stocks?.map((stock) => {
-        if (!stock || !stock.sources || stock.sources.length === 0) return stock;
+        if (!stock || !stock.sources || stock.sources.length === 0)
+          return stock;
 
         const sources = stock.sources.map((source) => {
           if (!source) return source;
@@ -563,13 +648,15 @@ const YoutubeToday = ({
 
           return {
             ...source,
-            channel_subscribers: source.channel_subscribers ?? meta.channel_subscribers,
+            channel_subscribers:
+              source.channel_subscribers ?? meta.channel_subscribers,
             channel_id: source.channel_id ?? meta.channel_id,
             title: meta.title ?? source.title,
             thumbnail: meta.thumbnail ?? source.thumbnail,
             upload_date: meta.upload_date ?? source.upload_date,
             channel_name: source.channel_name ?? meta.channel_name,
-            channel_thumbnail: source.channel_thumbnail ?? meta.channel_thumbnail,
+            channel_thumbnail:
+              source.channel_thumbnail ?? meta.channel_thumbnail,
             summary: summary && summary.length > 0 ? summary : source.summary,
             summary_data: source.summary_data ?? meta.summary_data,
           };
@@ -653,11 +740,7 @@ const YoutubeToday = ({
 
       return item.section === selectedTopic;
     },
-    [
-      showSubscribedOnly,
-      expandedSubsSet,
-      selectedTopic,
-    ]
+    [showSubscribedOnly, expandedSubsSet, selectedTopic]
   );
 
   const filteredAndSortedData = useMemo(() => {
@@ -677,11 +760,7 @@ const YoutubeToday = ({
           return b.views + b.likes * 10 - (a.views + a.likes * 10);
         })
     );
-  }, [
-    clientData,
-    matchesTopicFilter,
-    sortCriteria,
-  ]);
+  }, [clientData, matchesTopicFilter, sortCriteria]);
 
   const preMarketSections = useMemo<MoneySlotSection[]>(() => {
     const baselineSection = stockSlotSections.find(
@@ -727,6 +806,8 @@ const YoutubeToday = ({
   const stockSlotSectionsForView = useMemo<MoneySlotSection[]>(() => {
     if (stockSlotSections.length === 0) return [];
     const sections: MoneySlotSection[] = [];
+    const totalMinutes = 24 * 60;
+    const nowMinutes = getKstMinutes(new Date());
 
     const sorted = [...stockSlotSections].sort(
       (a, b) => a.priority - b.priority
@@ -739,10 +820,43 @@ const YoutubeToday = ({
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
       if (filteredItems.length === 0) return;
 
+      let slotItems = filteredItems;
+
+      if (section.slot === "slot3") {
+        const highlighted = filteredItems.filter(
+          (item) => item.is_new && item.detected_slots?.slot_1730
+        );
+        if (highlighted.length > 0) {
+          const highlightedIds = new Set(
+            highlighted.map((item) => item.video_id)
+          );
+          slotItems = filteredItems.filter(
+            (item) => !highlightedIds.has(item.video_id)
+          );
+          const config = SLOT_DISPLAY_CONFIG_MAP["slot_1730"];
+          const highlightMinutes = config?.minutes ?? null;
+          const relativeLabel =
+            highlightMinutes != null
+              ? formatMinutesAgo(
+                  (nowMinutes - highlightMinutes + totalMinutes) % totalMinutes
+                )
+              : "방금 전";
+          sections.push({
+            slot: section.slot,
+            priority: section.priority + 0.01,
+            title: `${relativeLabel} 신규 진입`,
+            description: config?.label ?? "17:30 재랭킹",
+            items: highlighted,
+          });
+        }
+      }
+
+      if (slotItems.length === 0) return;
+
       if (selectedTopic === "전체") {
         sections.push(
           ...buildCategorySlotSections(
-            filteredItems,
+            slotItems,
             section.slot,
             section.priority,
             true
@@ -752,7 +866,7 @@ const YoutubeToday = ({
       }
 
       const labelMap = resolveSlotLabelMapForSection(
-        filteredItems[0]?.section ?? selectedTopic
+        slotItems[0]?.section ?? selectedTopic
       );
       const meta = labelMap[section.slot];
       sections.push({
@@ -760,7 +874,7 @@ const YoutubeToday = ({
         priority: section.priority,
         title: meta.title,
         description: meta.description,
-        items: filteredItems,
+        items: slotItems,
       });
     });
 
@@ -796,6 +910,7 @@ const YoutubeToday = ({
     const nowMinutes = getKstMinutes(new Date());
     const totalMinutes = 24 * 60;
     return SLOT_DISPLAY_CONFIGS.map((config) => {
+      if (config.id === "slot_1730") return null; // 머니 섹션 전용으로 중복 노출 방지
       const requireNew = config.requireNew !== false;
       const items = filteredAndSortedData
         .filter((item) => {
@@ -815,13 +930,17 @@ const YoutubeToday = ({
         items,
       };
     })
-      .filter((section): section is {
-        slotId: string;
-        label: string;
-        description: string;
-        relativeLabel: string;
-        items: DataProps[];
-      } => Boolean(section))
+      .filter(
+        (
+          section
+        ): section is {
+          slotId: string;
+          label: string;
+          description: string;
+          relativeLabel: string;
+          items: DataProps[];
+        } => Boolean(section)
+      )
       .sort(
         (a, b) =>
           getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
@@ -886,8 +1005,8 @@ const YoutubeToday = ({
       });
     });
 
-  return ranks;
-}, [filteredAndSortedData]);
+    return ranks;
+  }, [filteredAndSortedData]);
 
   type RenderOptions = {
     compactBadges?: boolean;
@@ -939,7 +1058,10 @@ const YoutubeToday = ({
   const feedRef = useRef<HTMLDivElement>(null);
   const topVideosRef = useRef<HTMLDivElement>(null);
   const handleJumpToVideos = useCallback(() => {
-    topVideosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    topVideosRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }, []);
 
   const renderIntegratedSection = () => {
@@ -960,59 +1082,103 @@ const YoutubeToday = ({
     const isStockSection =
       label.includes("주식") || /_stock/.test(key) || /stock/.test(key);
 
+    let insightContent: ReactNode = null;
+
     if (isCryptoSection) {
-      return (
+      insightContent = (
         <CryptoInsightSection
           section={selectedIntegratedSection}
           slotLabel={insightSlotLabel}
         />
       );
-    }
-
-    if (isStockSection && hasDeltaData) {
-      return (
+    } else if (isStockSection && hasDeltaData) {
+      insightContent = (
         <StockMarketSection
+          section={selectedIntegratedSection}
+          slotLabel={insightSlotLabel}
+        />
+      );
+    } else {
+      insightContent = (
+        <DomesticStockInsightSection
           section={selectedIntegratedSection}
           slotLabel={insightSlotLabel}
         />
       );
     }
 
+    const sectionTitle =
+      selectedTopic === "전체"
+        ? "오늘 시장 핵심"
+        : `오늘 ${selectedTopic} 핵심`;
+
     return (
-      <DomesticStockInsightSection
-        section={selectedIntegratedSection}
-        slotLabel={insightSlotLabel}
-      />
+      <InsightHeroCard>
+        <InsightHeroHeader>
+          <InsightHeroEyebrow>💡 {sectionTitle}</InsightHeroEyebrow>
+          {insightSlotLabel ? (
+            <InsightHeroMeta>
+              {insightSlotLabel.title}
+              {insightSlotLabel.description
+                ? ` · ${insightSlotLabel.description}`
+                : ""}
+            </InsightHeroMeta>
+          ) : null}
+        </InsightHeroHeader>
+        <InsightHeroBody>{insightContent}</InsightHeroBody>
+        {/* <InsightHeroActions>
+          <PrimaryInsightButton type="button" onClick={handleJumpToVideos}>
+            📌 오늘 핵심 영상 보기
+          </PrimaryInsightButton>
+        </InsightHeroActions> */}
+      </InsightHeroCard>
     );
   };
 
   return (
     <Container ref={feedRef}>
       <ScheduleSummary>
-  <ScheduleHeading>📣 키워드별 갱신 리듬</ScheduleHeading>
-
-  <ScheduleRow>
-    <strong>주식·가상자산</strong>
-    <span>
-      하루 <b>6번 모니터링</b>해서 <b>지금 반응 좋은 영상만</b> 다시 골라드려요.
-      <br />
-      <small style={{ fontSize: "12px", color: "#6b7280" }}>
-        ⏱ 07:30 · 08:30 · 12:40 · 15:10 · 18:10(재랭킹) · 21:40
-      </small>
-    </span>
-  </ScheduleRow>
-
-  <ScheduleRow>
-    <strong>다른 키워드</strong>
-    <span>
-      하루 <b>4번 랭킹 갱신</b>으로 핵심 영상만 남겨둡니다.
-      <br />
-      <small style={{ fontSize: "12px", color: "#6b7280" }}>
-        ⏱ 07:30 선정 → 11:30 · 16:00 · 21:00 재랭킹
-      </small>
-    </span>
-  </ScheduleRow>
-</ScheduleSummary>
+        <ScheduleHeader>
+          <ScheduleHeading>📣 키워드별 갱신 리듬</ScheduleHeading>
+          <ScheduleToggle
+            type="button"
+            onClick={() => setShowSchedule((prev) => !prev)}
+            aria-expanded={showSchedule}
+          >
+            {showSchedule ? "접기" : "자세히 보기"}
+            <ScheduleToggleIcon $expanded={showSchedule} />
+          </ScheduleToggle>
+        </ScheduleHeader>
+        <ScheduleSummaryText>
+          주식·가상자산 <strong>6회</strong>, 일반 키워드 <strong>4회</strong>로
+          하루 내내 랭킹을 점검해요.
+        </ScheduleSummaryText>
+        <ScheduleCollapse $expanded={showSchedule} aria-hidden={!showSchedule}>
+          <ScheduleList>
+            <ScheduleItem>
+              <ScheduleLabel>주식·가상자산</ScheduleLabel>
+              <ScheduleDesc>
+                하루 <ScheduleHighlight>6번 모니터링</ScheduleHighlight>해서
+                <ScheduleHighlight>지금 반응 좋은 영상</ScheduleHighlight>만
+                다시 골라드려요.
+              </ScheduleDesc>
+              <ScheduleTiming>
+                ⏱ 07:30 · 08:30 · 12:40 · 15:10 · 18:10(재랭킹) · 21:40
+              </ScheduleTiming>
+            </ScheduleItem>
+            <ScheduleItem>
+              <ScheduleLabel>다른 키워드</ScheduleLabel>
+              <ScheduleDesc>
+                하루 <ScheduleHighlight>4번 랭킹 갱신</ScheduleHighlight>으로
+                핵심 영상만 남겨둡니다.
+              </ScheduleDesc>
+              <ScheduleTiming>
+                ⏱ 07:30 선정 → 11:30 · 16:00 · 21:00 재랭킹
+              </ScheduleTiming>
+            </ScheduleItem>
+          </ScheduleList>
+        </ScheduleCollapse>
+      </ScheduleSummary>
       <Header>
         {/* {subjects.length > 0 && ( // 구독한 주제가 있을 때만 렌더링
           <ToggleContainer>
@@ -1072,11 +1238,13 @@ const YoutubeToday = ({
         {slotSectionGroups.slot4.length > 0 && (
           <>
             {[...slotSectionGroups.slot4].reverse().map((section) => (
-              <Fragment key={`stock-slot-${section.slot}-${section.title}`}>
-                <SubSectionTitle>
-                  <span>{`⏱ ${section.title}`}</span>
-                  <SubSectionNote>{section.description}</SubSectionNote>
-                </SubSectionTitle>
+              <MoneySectionBlock
+                key={`stock-slot-${section.slot}-${section.title}`}
+              >
+                <MoneySectionHeader>
+                  <MoneySectionTitle>{`🟥 ${section.title}`}</MoneySectionTitle>
+                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
+                </MoneySectionHeader>
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `stock-${section.slot}-`, {
@@ -1087,7 +1255,7 @@ const YoutubeToday = ({
                     })
                   )}
                 </EditorContainer>
-              </Fragment>
+              </MoneySectionBlock>
             ))}
           </>
         )}
@@ -1095,17 +1263,19 @@ const YoutubeToday = ({
         {slotSections.length > 0 && (
           <>
             {slotSections.map((section) => (
-              <Fragment key={section.slotId}>
-                <SubSectionTitle>
-                  <span>🔥 {section.relativeLabel} 신규 진입</span>
-                  <SubSectionNote>{section.label}</SubSectionNote>
-                </SubSectionTitle>
+              <MoneySectionBlock key={section.slotId}>
+                <MoneySectionHeader>
+                  <MoneySectionTitle>
+                    🔥 {section.relativeLabel} 신규 진입
+                  </MoneySectionTitle>
+                  <MoneySectionMeta>{section.label}</MoneySectionMeta>
+                </MoneySectionHeader>
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `${section.slotId}-`)
                   )}
                 </EditorContainer>
-              </Fragment>
+              </MoneySectionBlock>
             ))}
           </>
         )}
@@ -1113,11 +1283,13 @@ const YoutubeToday = ({
         {slotSectionGroups.others.length > 0 && (
           <>
             {[...slotSectionGroups.others].reverse().map((section) => (
-              <Fragment key={`stock-slot-${section.slot}-${section.title}`}>
-                <SubSectionTitle>
-                  <span>{`⏱ ${section.title}`}</span>
-                  <SubSectionNote>{section.description}</SubSectionNote>
-                </SubSectionTitle>
+              <MoneySectionBlock
+                key={`stock-slot-${section.slot}-${section.title}`}
+              >
+                <MoneySectionHeader>
+                  <MoneySectionTitle>{`🎯 ${section.title}`}</MoneySectionTitle>
+                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
+                </MoneySectionHeader>
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `stock-${section.slot}-`, {
@@ -1128,7 +1300,7 @@ const YoutubeToday = ({
                     })
                   )}
                 </EditorContainer>
-              </Fragment>
+              </MoneySectionBlock>
             ))}
           </>
         )}
@@ -1136,11 +1308,11 @@ const YoutubeToday = ({
         {preMarketSections.length > 0 ? (
           <>
             {[...preMarketSections].reverse().map((section, index) => (
-              <Fragment key={`premarket-${section.title}-${index}`}>
-                <SubSectionTitle>
-                  <span>{`⏰ ${section.title}`}</span>
-                  <SubSectionNote>{section.description}</SubSectionNote>
-                </SubSectionTitle>
+              <MoneySectionBlock key={`premarket-${section.title}-${index}`}>
+                <MoneySectionHeader>
+                  <MoneySectionTitle>{`⏰ ${section.title}`}</MoneySectionTitle>
+                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
+                </MoneySectionHeader>
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `premarket-${index}-`, {
@@ -1151,17 +1323,31 @@ const YoutubeToday = ({
                     })
                   )}
                 </EditorContainer>
-              </Fragment>
+              </MoneySectionBlock>
             ))}
           </>
         ) : null}
 
+        {/* <StickyCTA>
+          <StickyCTAText>
+            <strong>관심 종목 급등/급락 영상 놓치지 마세요</strong>
+            <span>TOP5에 등장하면 바로 알림으로 보내드릴게요.</span>
+          </StickyCTAText>
+          <StickyCTAButton type="button" onClick={() => router.push("/subject")}>
+            🔔 알림 켜기
+          </StickyCTAButton>
+        </StickyCTA> */}
+
         {!isMoneyTopic && persistingVideos.length > 0 ? (
-          <div id="top-videos" ref={topVideosRef}>
-            <SubSectionTitle>
-              <span>🔥 계속 상위권 유지 중인 영상</span>
-              <SubSectionNote>어제/오늘 내내 TOP5를 지키는 카드</SubSectionNote>
-            </SubSectionTitle>
+          <MoneySectionBlock id="top-videos" ref={topVideosRef}>
+            <MoneySectionHeader>
+              <MoneySectionTitle>
+                🔥 계속 상위권 유지 중인 영상
+              </MoneySectionTitle>
+              <MoneySectionMeta>
+                어제/오늘 내내 TOP5를 지키는 카드
+              </MoneySectionMeta>
+            </MoneySectionHeader>
             <EditorContainer>
               {persistingVideos.map((item) =>
                 renderTopicCard(item, "top-", {
@@ -1169,7 +1355,7 @@ const YoutubeToday = ({
                 })
               )}
             </EditorContainer>
-          </div>
+          </MoneySectionBlock>
         ) : null}
       </TopicCardWrapper>
 
@@ -1215,24 +1401,6 @@ const TopicCardWrapper = styled.div<{ $isRendered: boolean }>`
     `};
 `;
 
-const SubSectionTitle = styled.h4`
-  font-size: 16px;
-  font-weight: 700;
-  /* margin: 24px 16px 12px; */
-  padding: 24px 16px 0px;
-  border-radius: 12px;
-  background-color: #f8f9fa;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const SubSectionNote = styled.small`
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-`;
-
 const Container = styled.div`
   width: 100%;
   background-color: #ffff;
@@ -1245,19 +1413,21 @@ const Container = styled.div`
 const ScheduleSummary = styled.div`
   width: calc(100% - 32px);
   margin: 16px 16px 8px;
-  padding: 12px 16px;
+  padding: 16px;
+  padding-bottom: 0px;
   background-color: #f5f7fb;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
+  gap: 12px;
   color: #1f2937;
 `;
 
-const ScheduleHint = styled.span`
-  font-size: 12px;
-  color: #6b7280;
+const ScheduleHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 `;
 
 const ScheduleHeading = styled.p`
@@ -1266,16 +1436,221 @@ const ScheduleHeading = styled.p`
   color: #0f172a;
 `;
 
-const ScheduleRow = styled.div`
-  display: flex;
-  gap: 8px;
-  /* flex-wrap: wrap; */
-  line-height: 1.4;
+const ScheduleToggle = styled.button`
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px;
+
+  &:hover,
+  &:focus {
+    color: #1d4ed8;
+  }
+
+  &:focus {
+    outline: 2px solid rgba(37, 99, 235, 0.4);
+    outline-offset: 2px;
+  }
+`;
+
+const ScheduleToggleIcon = styled.span<{ $expanded: boolean }>`
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: ${({ $expanded }) =>
+    $expanded ? "rotate(-135deg)" : "rotate(45deg)"};
+  transition: transform 0.2s ease;
+  margin-left: 2px;
+`;
+
+const ScheduleSummaryText = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
 
   strong {
-    font-weight: 700;
-    color: #111827;
+    color: #0b63f6;
   }
+`;
+
+const ScheduleList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ScheduleCollapse = styled.div<{ $expanded: boolean }>`
+  overflow: hidden;
+  max-height: ${({ $expanded }) => ($expanded ? "500px" : "0")};
+  opacity: ${({ $expanded }) => ($expanded ? 1 : 0)};
+  transition: max-height 0.45s ease, opacity 0.3s ease;
+  will-change: max-height, opacity;
+  margin-top: 4px;
+`;
+
+const ScheduleItem = styled.li`
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+`;
+
+const ScheduleLabel = styled.span`
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const ScheduleDesc = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.5;
+`;
+
+const ScheduleTiming = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+`;
+
+const ScheduleHighlight = styled.span`
+  color: #0b63f6;
+  font-weight: 700;
+`;
+
+const InsightHeroCard = styled.section`
+  margin: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const InsightHeroHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const InsightHeroEyebrow = styled.span`
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+`;
+
+const InsightHeroMeta = styled.small`
+  color: #6b7280;
+  font-size: 14px;
+`;
+
+const InsightHeroBody = styled.div`
+  border-top: 1px solid #f3f4f6;
+  padding-top: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+`;
+
+const InsightHeroActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+`;
+
+const PrimaryInsightButton = styled.button`
+  background-color: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+`;
+
+const StickyCTA = styled.div`
+  margin: 32px 16px 0;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: #eef2ff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #dbe4ff;
+`;
+
+const StickyCTAText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #1f2937;
+
+  strong {
+    font-size: 18px;
+  }
+
+  span {
+    font-size: 14px;
+    color: #4b5563;
+  }
+`;
+
+const StickyCTAButton = styled.button`
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+`;
+
+const MoneySectionBlock = styled.section`
+  /* margin: 24px 16px 0; */
+  padding: 20px;
+  border-radius: 16px;
+  /* border: 1px solid #e5e7eb; */
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+`;
+
+const MoneySectionHeader = styled.header`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+`;
+
+const MoneySectionTitle = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const MoneySectionMeta = styled.small`
+  font-size: 14px;
+  color: #6b7280;
 `;
 
 // SubContainer modified to use React.forwardRef
@@ -1410,9 +1785,9 @@ const ToggleButton = styled.button<{ isActive: boolean }>`
 `;
 
 const EditorContainer = styled.div`
-  padding-top: 12px;
-  border-radius: 8px;
-  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 const Subtitle = styled.div`
   width: 100%;

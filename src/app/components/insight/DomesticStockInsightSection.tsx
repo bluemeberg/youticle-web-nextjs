@@ -301,9 +301,10 @@ const DomesticStockInsightSection = ({
     forceStockPreview || (typeof label === "string" && label.includes("주식"));
   const [showAllStocks, setShowAllStocks] = useState(false);
   const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
-  const displayedStocks = showAllStocks || !hasMoreStocks
-    ? stocks
-    : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const displayedStocks =
+    showAllStocks || !hasMoreStocks
+      ? stocks
+      : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
   const remainingStockCount = hasMoreStocks
     ? stocks.length - DEFAULT_VISIBLE_STOCKS
     : 0;
@@ -359,10 +360,9 @@ const DomesticStockInsightSection = ({
           ) : null}
         </Title>
       </SectionHeader>
-      {appliedSlotLabel?.description ? (
-        <SlotDescription>{appliedSlotLabel.description}</SlotDescription>
-      ) : null}
-      <SourceTag>오늘 TOP5 유튜브 영상 기반</SourceTag>
+      {/* {appliedSlotLabel?.description ? (
+        <SectionMeta>{appliedSlotLabel.description}</SectionMeta>
+      ) : null} */}
       <SectionIntro>{introText}</SectionIntro>
 
       {hasMarketDetailToggle && marketCardsAvailable ? (
@@ -474,7 +474,8 @@ const DomesticStockInsightSection = ({
             )} */}
           </SubSectionHeader>
           <SubSectionIntro>
-            {SOURCE_TAG_TEXT} · {appliedSlotLabel?.description ?? stockIntroText}
+            {SOURCE_TAG_TEXT} ·{" "}
+            {appliedSlotLabel?.description ?? stockIntroText}
           </SubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
@@ -1106,6 +1107,12 @@ const StockCard = ({
     ).catch(() => {});
     router.push(`/evidence?${params.toString()}`);
   };
+  const handleAlertClick = () => {
+    const params = new URLSearchParams();
+    if (stock.stock_name) params.set("focus", stock.stock_name);
+    if (stock.ticker) params.set("ticker", stock.ticker);
+    router.push(`/subject?${params.toString()}`);
+  };
   const priceInfo = metrics?.price_info;
   const changePct = priceInfo?.change_pct ?? metrics?.chg_pct;
   const changeAmount = priceInfo?.change_amount ?? metrics?.change_amount;
@@ -1167,9 +1174,10 @@ const StockCard = ({
     (bullet) => !isPlaceholderText(bullet)
   );
   const rawCommentTitle = stock.metric_insight?.comment_title || "";
-  const commentTitle = /오늘\s*TOP5/.test(rawCommentTitle)
-    ? "코멘트"
-    : rawCommentTitle || "코멘트";
+  // const commentTitle = /오늘\s*TOP5/.test(rawCommentTitle)
+  //   ? "종목 코멘트"
+  //   : rawCommentTitle || "종목 코멘트";
+  const commentTitle = "종목 코멘트";
   const previewBullets = showCommentPreview
     ? meaningfulCommentBullets.slice(0, 3)
     : [];
@@ -1321,9 +1329,7 @@ const StockCard = ({
     });
   };
 
-  const detailToggleLabel = showDetails
-    ? "상세 인사이트 접기"
-    : "상세 인사이트 보기";
+  const detailToggleLabel = showDetails ? "세부 지표 접기" : "세부 지표 펼치기";
   const hasComment = Boolean(comment) || meaningfulCommentBullets.length > 0;
   const hasStandalonePriceVisual = !hasPriceSection && Boolean(priceVisualNode);
   const hasStandaloneValuationVisual =
@@ -1366,15 +1372,10 @@ const StockCard = ({
     hasStandaloneLiquidityVisual ||
     hasInsightSectionList;
   const videoSourcesContent = hasVideoSources ? (
-    <>
-      <StockVideoSources
-        stockName={stock.stock_name}
-        sources={outlineVideoSources}
-      />
-      <EvidenceButton type="button" onClick={handleEvidenceClick}>
-        오늘 언급된 영상 더보기
-      </EvidenceButton>
-    </>
+    <StockVideoSources
+      stockName={stock.stock_name}
+      sources={outlineVideoSources}
+    />
   ) : null;
 
   return (
@@ -1389,6 +1390,21 @@ const StockCard = ({
           <strong>{deltaText}</strong>
         </StockDeltaBlock>
       </StockHeader>
+      {/* <StockCTAGroup>
+        <EvidenceButton
+          type="button"
+          onClick={handleEvidenceClick}
+          disabled={!hasVideoSources}
+        >
+          📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
+        </EvidenceButton>
+        {!hasVideoSources ? (
+          <CTAHelperText>오늘 TOP5 영상에서 아직 언급되지 않았어요.</CTAHelperText>
+        ) : null}
+        <AlertButton type="button" onClick={handleAlertClick}>
+          🔔 종목 알림 켜기
+        </AlertButton>
+      </StockCTAGroup> */}
       {/* {stock.company_description && (
         <StockDescription>{stock.company_description}</StockDescription>
       )} */}
@@ -3171,7 +3187,7 @@ function formatHighlightText(text: string) {
 }
 
 const Wrapper = styled.section`
-  margin: 20px 16px 12px;
+  /* margin: 20px 16px 12px; */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3203,10 +3219,10 @@ const SlotBadge = styled.span`
   padding: 2px 8px;
 `;
 
-const SlotDescription = styled.p`
-  margin: 0 0 4px;
-  font-size: 13px;
-  color: #64748b;
+const SectionMeta = styled.p`
+  margin: 8px 0 12px;
+  font-size: 14px;
+  color: #4b5563;
 `;
 
 const Timestamp = styled.span`
@@ -3215,23 +3231,12 @@ const Timestamp = styled.span`
   font-weight: 700;
 `;
 
-const SourceTag = styled.span`
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #2563eb;
-  background: #e0ebff;
-  padding: 2px 8px;
-  border-radius: 999px;
-  margin: 4px 0;
-`;
-
 const SectionIntro = styled.p`
   /* margin: 8px; */
-  font-size: 16px;
-  color: #000;
+  font-size: 14px;
+  color: #6b7280;
   line-height: 1.4;
+  margin-top: -8px;
 `;
 
 const OverviewCard = styled.div`
@@ -3356,6 +3361,7 @@ const MarketChange = styled.div<{ $positive: boolean }>`
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 16px;
 `;
 
 const MarketLabelRow = styled.div`
@@ -3410,14 +3416,14 @@ const SubSectionTitle = styled.h3`
 `;
 
 const SubSectionIntro = styled.p`
-  margin: 4px 4px 12px;
-  font-size: 16px;
-  color: #000;
-  line-height: 1.5;
+  /* margin: 4px 4px 12px; */
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: -12px;
 `;
 
 const MarketStatLabel = styled.span`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: ${COLOR_NEGATIVE};
   text-transform: uppercase;
@@ -3479,7 +3485,7 @@ const IntradayLabels = styled.div`
 `;
 
 const IntradaySummary = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   color: ${COLOR_TEXT};
   line-height: 1.5;
 `;
@@ -3529,8 +3535,8 @@ const StackedFill = styled.div<{ $tone: "up" | "flat" | "down" }>`
 `;
 
 const StatDescriptor = styled.div`
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
   color: ${COLOR_TEXT};
 `;
 
@@ -3641,8 +3647,7 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   background: ${COLOR_CARD_BG};
   padding: 12px;
   border-radius: 10px;
-  border: ${({ $withBorder }) =>
-    $withBorder ? `1px solid ${COLOR_TRACK}` : "none"};
+  border: 1px solid #e7ecff;
   font-size: 14px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
@@ -3660,12 +3665,14 @@ const MarketSummaryComment = styled(MarketComment)`
 
 const MarketCommentTitle = styled.div`
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: #0b63f6;
+  font-size: 16px;
 `;
 
 const MarketCommentBody = styled.div`
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.5;
 `;
 
 const MarketCommentBulletList = styled.ul`
@@ -3677,9 +3684,9 @@ const MarketCommentBulletList = styled.ul`
 `;
 
 const MarketCommentBulletItem = styled.li`
-  font-size: 14px;
+  font-size: 16px;
   color: ${COLOR_TEXT};
-  line-height: 1.6;
+  line-height: 1.5;
   list-style: disc;
 `;
 
@@ -3797,6 +3804,9 @@ const StockDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2937;
 `;
 
 const StockHeader = styled.div`
@@ -3848,8 +3858,9 @@ const StanceBadge = styled.span`
 
 const StockDescription = styled.p`
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #334155;
+  font-size: 16px;
 `;
 
 const StatRow = styled.div`
@@ -4394,8 +4405,8 @@ const CommentBox = styled.div`
   border-radius: 10px;
   padding: 12px;
   background: ${COLOR_CARD_BG};
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.5;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
@@ -4426,6 +4437,7 @@ const EvidenceButton = styled.button`
   justify-content: center;
   gap: 6px;
   transition: background 0.2s ease, border-color 0.2s ease;
+  flex: 1;
 
   &:hover,
   &:focus {
@@ -4433,13 +4445,45 @@ const EvidenceButton = styled.button`
     border-color: #1d4ed8;
     outline: none;
   }
+  &:disabled,
+  &[disabled] {
+    background: #e5e7eb;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
+const StockCTAGroup = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 16px;
+`;
+
+const AlertButton = styled.button`
+  flex: 1;
+  min-width: 140px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-weight: 600;
+  padding: 12px 16px;
+  cursor: pointer;
+`;
+
+const CTAHelperText = styled.small`
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #6b7280;
 `;
 
 const CommentPreviewTitle = styled.div`
   margin-bottom: 8px;
   font-weight: 700;
   color: #0b63f6;
-  font-size: 14px;
+  font-size: 16px;
 `;
 
 const CommentTitle = styled.div`
@@ -4462,7 +4506,7 @@ const CommentBulletList = styled.ul`
 `;
 
 const CommentBulletItem = styled.li`
-  font-size: 14px;
+  font-size: 16px;
   color: ${COLOR_TEXT};
   line-height: 1.6;
   list-style: disc;

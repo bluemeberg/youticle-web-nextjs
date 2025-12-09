@@ -103,15 +103,16 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
           <ServiceTitle>{SERVICE_TITLE} </ServiceTitle>
         </TitleContainer>
         <Announcement>
-          {/* <Title>
-            오늘 업로드된 주요 영상들을 자동 요약된 아티클로 읽어보세요!
-          </Title> */}
-          <Description>
-            주요 키워드별 시청자 반응 좋은 <Highlight>TOP5 영상</Highlight>을
-            <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
-            <br />하루 <Highlight>4회</Highlight> 큐레이션을 자동으로 갱신해 지금
-            반응 좋은 영상만 다시 뽑아드려요.
-          </Description>
+          <DescriptionList>
+            <DescriptionItem>
+              주요 키워드별 시청자 반응 좋은 <Highlight>TOP5 영상</Highlight>을
+              <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
+            </DescriptionItem>
+            <DescriptionItem>
+              하루 <Highlight>4회</Highlight> 자동 큐레이션으로 지금
+              반응 좋은 영상만 다시 뽑아드려요.
+            </DescriptionItem>
+          </DescriptionList>
         </Announcement>{" "}
         {subjects.length === 0 ? ( // 구독 주제가 없을 때만 노출
           <>
@@ -308,17 +309,28 @@ const Title = styled.h2`
   font-family: "Pretendard Variable";
 `;
 
-const Description = styled.p`
+const DescriptionList = styled.ul`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+const DescriptionItem = styled.li`
   font-size: 16px;
-  line-height: 132%;
-  font-weight: 400;
-  color: #000;
+  line-height: 1.5;
+  color: #0f172a;
   font-family: "Pretendard Variable";
 `;
 
 const Highlight = styled.span`
-  color: #000;
+  color: #0b63f6;
   font-weight: 700;
+  background: rgba(11, 99, 246, 0.08);
+  padding: 0 6px;
+  border-radius: 6px;
 `;
 
 const CallToAction = styled.p`

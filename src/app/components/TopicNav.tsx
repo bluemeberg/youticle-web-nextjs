@@ -213,7 +213,7 @@ const Topic = styled.div<{ selected: boolean; isSubscribed: boolean }>`
 `;
 const Subtitle = styled.div`
   /* 네비게이션 컨테이너와 같은 padding */
-  padding: 20px 16px 8px 16px;
+  padding: 40px 16px 24px 16px;
   /* 텍스트 스타일 */
   font-size: 20px;
   font-weight: 700;
