@@ -1,14 +1,18 @@
 "use client"; // Ensure this is a client component
 
-import styled from "styled-components";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { DataProps } from "@/types/dataProps";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { dataState } from "@/store/data";
+import styled, { keyframes } from "styled-components";
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
+import type { DataProps, StockFeedSlotPhase } from "@/types/dataProps";
+import { useRecoilValue } from "recoil";
 import { YOUTUBE_TOPICS } from "@/constants/topic";
 import RecommendCard from "./RecommendCard";
 import CountdownTimer from "@/common/CountdownTimer";
-import SortOptions from "@/common/SortOptions";
 
 import {
   fetchEditorArticle,
@@ -25,6 +29,18 @@ import {
   timeAgoUTC,
 } from "@/utils/formatter";
 import { userState } from "@/store/user";
+import {
+  buildStockSlotRequests,
+  buildStockSlotSections,
+  type StockSlotPayload,
+  type StockSlotSection,
+} from "@/utils/stockFeed";
+import {
+  resolveStockSlot,
+  getSlotLabelInfo,
+  type BriefingSlot,
+} from "@/utils/briefingSlot";
+import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
 
 interface RecommendProps {
   isUnsubscribedSection: boolean;
@@ -50,6 +66,10 @@ const METRIC_KEYS = [
 ] as const;
 type MetricKey = (typeof METRIC_KEYS)[number];
 type AuxKey = Exclude<MetricKey, "score">;
+type VideoPayload = {
+  videos: DataProps[];
+  slotSections?: StockSlotSection[];
+};
 
 // 1) metric key → 아이콘·이름 매핑
 const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
@@ -59,6 +79,94 @@ const metricMeta: Record<MetricKey, { icon: string; name: string }> = {
   relative_sub_norm_pct: { icon: "👥", name: "구독자당 조회속도" },
   like_rate_pct: { icon: "👍", name: "좋아요율" },
   comment_rate_pct: { icon: "💬", name: "댓글율" },
+};
+
+type MetricRankings = Record<MetricKey, string[]>;
+
+const MONEY_SECTIONS = new Set([
+  "국내 주식",
+  "해외 주식",
+  "국내 가상자산",
+  "해외 가상자산",
+]);
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
+const STOCK_BASELINE_URL = `${API_BASE_URL}/briefing/top_videos/stock`;
+const STOCK_V2_URL = `${API_BASE_URL}/briefing_v2/top_videos/v2/`;
+
+const SLOT_PHASE_META: Record<
+  StockFeedSlotPhase,
+  { label: string; short: string }
+> = {
+  baseline: { label: "07:30 베이스라인", short: "베이스라인" },
+  slot1: { label: "08:30 1차 갱신", short: "1차 갱신" },
+  slot2: { label: "12:40 2차 갱신", short: "2차 갱신" },
+  slot3: { label: "15:10 3차 갱신", short: "3차 갱신" },
+  slot4: { label: "21:40 마감", short: "저녁 재랭킹" },
+};
+
+const SLOT_PHASE_COLORS: Record<
+  StockFeedSlotPhase,
+  { bg: string; color: string }
+> = {
+  baseline: { bg: "#fef3c7", color: "#92400e" },
+  slot1: { bg: "#dbeafe", color: "#1d4ed8" },
+  slot2: { bg: "#dcfce7", color: "#047857" },
+  slot3: { bg: "#f3e8ff", color: "#7e22ce" },
+  slot4: { bg: "#e0e7ff", color: "#4338ca" },
+};
+
+const SLOT_EMOJI: Record<StockFeedSlotPhase, string> = {
+  baseline: "⏰",
+  slot1: "🎯",
+  slot2: "🎯",
+  slot3: "🎯",
+  slot4: "🟥",
+};
+
+const DETECTED_SLOT_MAP: Record<string, { label: string; minutes: number }> = {
+  slot_0730: { label: "07:30 선정", minutes: 7 * 60 + 30 },
+  slot_0830: { label: "08:30 갱신", minutes: 8 * 60 + 30 },
+  slot_1130: { label: "11:30 재랭킹", minutes: 11 * 60 + 30 },
+  slot_1240: { label: "12:40 갱신", minutes: 12 * 60 + 40 },
+  slot_1510: { label: "15:10 갱신", minutes: 15 * 60 + 10 },
+  slot_1530: { label: "15:30 재랭킹", minutes: 15 * 60 + 30 },
+  slot_1600: { label: "16:00 재랭킹", minutes: 16 * 60 },
+  slot_1730: { label: "17:30 재랭킹", minutes: 17 * 60 + 30 },
+  slot_1810: { label: "18:10 재랭킹", minutes: 18 * 60 + 10 },
+  slot_2030: { label: "20:30 재랭킹", minutes: 20 * 60 + 30 },
+  slot_2100: { label: "21:00 재랭킹", minutes: 21 * 60 },
+  slot_2140: { label: "21:40 갱신", minutes: 21 * 60 + 40 },
+};
+
+const MINUTES_PER_DAY = 24 * 60;
+
+const getKstMinutes = (date: Date) => {
+  const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes();
+  return (utcMinutes + 9 * 60) % MINUTES_PER_DAY;
+};
+
+const formatMinutesAgo = (diffMinutes: number) => {
+  if (diffMinutes <= 0) return "방금 전";
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  const hours = Math.max(1, Math.round(diffMinutes / 60));
+  return `${hours}시간 전`;
+};
+
+const getLatestDetectedSlot = (
+  detected?: Record<string, boolean> | null
+): { key: string; label: string; minutes: number } | null => {
+  if (!detected) return null;
+  const entries = Object.entries(detected)
+    .filter(([key, value]) => value && DETECTED_SLOT_MAP[key])
+    .sort(
+      (a, b) =>
+        DETECTED_SLOT_MAP[b[0]].minutes - DETECTED_SLOT_MAP[a[0]].minutes
+    );
+  if (entries.length === 0) return null;
+  const [key] = entries[0];
+  return { key, ...DETECTED_SLOT_MAP[key] };
 };
 
 const Recommend = ({
@@ -72,34 +180,101 @@ const Recommend = ({
   const [editorVideos, setEditorVideos] = useState<DataProps[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [slotSections, setSlotSections] = useState<StockSlotSection[]>([]);
   const router = useRouter();
   const pathname = usePathname();
+  const isMoneySection = MONEY_SECTIONS.has(section?.trim() ?? "");
 
   // console.log("recommend", detailData.section);
   useEffect(() => {
-    async function loadVideos() {
-      setLoading(true);
-      try {
-        if (section == "국내 주식" || section == "국내 가상자산") {
-          const data = await fetchStockVideo();
-          setVideos(Array.isArray(data) ? data : []);
-          const editorData = await fetchEditorArticle();
-          setEditorVideos(Array.isArray(editorData) ? editorData : []);
-        } else {
-          const data = await fetchTopVideosBySection(section);
-          setVideos(Array.isArray(data) ? data : []);
-          const editorData = await fetchEditorArticle();
-          setEditorVideos(Array.isArray(editorData) ? editorData : []);
-        }
-      } catch (error) {
-        setError("Error fetching videos");
-      } finally {
-        setLoading(false);
+    let canceled = false;
+
+    const fetchMoneyVideos = async (): Promise<VideoPayload> => {
+      const slotCount = resolveStockSlot(new Date());
+      const requests = buildStockSlotRequests({
+        currentSlot: slotCount,
+        baselineUrl: STOCK_BASELINE_URL,
+        v2BaseUrl: STOCK_V2_URL,
+      });
+      const payloads = await Promise.all(
+        requests.map(async (request) => {
+          const response = await fetch(request.url, {
+            method: "GET",
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch slot ${request.slot}`);
+          }
+          const data = (await response.json()) as DataProps[];
+          return {
+            ...request,
+            data: data.filter((item) => item.section === section),
+          } satisfies StockSlotPayload;
+        })
+      );
+      const filteredPayloads = payloads.filter(
+        (payload) => payload.data.length > 0
+      );
+      const slotSectionPayloads = buildStockSlotSections(filteredPayloads);
+      const mergedVideos = slotSectionPayloads.flatMap(
+        (slotSection) => slotSection.items
+      );
+      return {
+        videos: mergedVideos,
+        slotSections: slotSectionPayloads,
+      };
+    };
+
+    const fetchDefaultVideos = async (): Promise<VideoPayload> => {
+      if (section === "국내 주식" || section === "국내 가상자산") {
+        const data = await fetchStockVideo();
+        return {
+          videos: Array.isArray(data)
+            ? data.filter((item) => item.section === section)
+            : [],
+        };
       }
-    }
+      const data = await fetchTopVideosBySection(section);
+      return { videos: Array.isArray(data) ? data : [] };
+    };
+
+    const loadVideos = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const videoPayloadPromise: Promise<VideoPayload> = isMoneySection
+          ? fetchMoneyVideos()
+          : fetchDefaultVideos();
+        const [videoPayload, editorPayload] = await Promise.all([
+          videoPayloadPromise,
+          fetchEditorArticle(),
+        ]);
+        if (canceled) return;
+        setEditorVideos(Array.isArray(editorPayload) ? editorPayload : []);
+        if (isMoneySection) {
+          setSlotSections(videoPayload.slotSections ?? []);
+        } else {
+          setSlotSections([]);
+        }
+        setVideos(videoPayload.videos);
+      } catch (error) {
+        console.error("Error fetching videos", error);
+        if (!canceled) {
+          setError("Error fetching videos");
+          setVideos([]);
+          setSlotSections([]);
+        }
+      } finally {
+        if (!canceled) setLoading(false);
+      }
+    };
 
     loadVideos();
-  }, [section]);
+
+    return () => {
+      canceled = true;
+    };
+  }, [section, isMoneySection]);
 
   const handleSortClick = (criteria: string) => {
     setSortCriteria(criteria);
@@ -115,11 +290,26 @@ const Recommend = ({
       (item) => item.section === section && item.video_id !== videoId
     );
     const sortedData = filteredData.sort((a, b) => {
+      const aScore =
+        typeof a.score === "number"
+          ? a.score
+          : (a.summary_data?.score as number | undefined) ?? 0;
+      const bScore =
+        typeof b.score === "number"
+          ? b.score
+          : (b.summary_data?.score as number | undefined) ?? 0;
       if (sortCriteria === "engagement") {
-        return b.score - a.score;
-      } else {
-        return b.views + b.likes * 10 - a.views + a.likes * 10;
+        return bScore - aScore;
       }
+      const aComposite =
+        ((typeof a.summary_data?.score === "number" && a.summary_data.score) ||
+          aScore) ??
+        0;
+      const bComposite =
+        ((typeof b.summary_data?.score === "number" && b.summary_data.score) ||
+          bScore) ??
+        0;
+      return bComposite - aComposite;
     });
     return sortedData;
   }, [videos, sortCriteria]);
@@ -135,6 +325,17 @@ const Recommend = ({
   const topVideos = useMemo(() => {
     return filteredAndSortedData
       .filter((item) => !newVideoIds.has(item.video_id))
+      .sort((a, b) => {
+        const aScore =
+          typeof a.score === "number"
+            ? a.score
+            : (a.summary_data?.score as number | undefined) ?? 0;
+        const bScore =
+          typeof b.score === "number"
+            ? b.score
+            : (b.summary_data?.score as number | undefined) ?? 0;
+        return bScore - aScore;
+      })
       .slice(0, 5);
   }, [filteredAndSortedData, newVideoIds]);
 
@@ -223,7 +424,7 @@ const Recommend = ({
       ? `<span class='highlight'>${matchedEditor.name}</span>&nbsp;에디터가 업로드한 <span class='highlight'>${section}</span> 아티클도 확인해보세요!`
       : "다른 에디터의 아티클을 확인해보세요.";
   }
-  console.log(filteredAndSortedData);
+  // console.log(filteredAndSortedData);
 
   // DataProps.summary_data 에서 뽑아올 키들 + top-level 키
   const METRIC_KEYS = [
@@ -237,8 +438,8 @@ const Recommend = ({
   type MetricKey = (typeof METRIC_KEYS)[number];
 
   // 1) useMemo에서 metricRankings 생성 시
-  const metricRankings = useMemo(() => {
-    const rankings: Record<MetricKey, string[]> = {} as any;
+  const metricRankings = useMemo<MetricRankings>(() => {
+    const rankings = {} as MetricRankings;
 
     // 'score' 제외
     const auxKeys = METRIC_KEYS.filter((k) => k !== "score");
@@ -255,6 +456,21 @@ const Recommend = ({
       rankings[key] = sorted;
     });
 
+    rankings.score = filteredAndSortedData
+      .slice()
+      .sort((a, b) => {
+        const aScore =
+          typeof a.score === "number"
+            ? a.score
+            : (a.summary_data?.score as number | undefined) ?? 0;
+        const bScore =
+          typeof b.score === "number"
+            ? b.score
+            : (b.summary_data?.score as number | undefined) ?? 0;
+        return bScore - aScore;
+      })
+      .map((v) => v.video_id);
+
     return rankings;
   }, [filteredAndSortedData]);
 
@@ -265,17 +481,388 @@ const Recommend = ({
   );
 
   const user = useRecoilValue(userState);
-  const handleCardClick = (videoId: string) => {
-    // 1) 클릭 로그 전송
-    logCtaClick(
-      "recommend_card_click",
-      user?.id,
-      user?.email,
-      getOrCreateAnonId()
+  const handleCardClick = useCallback(
+    (videoId: string) => {
+      logCtaClick(
+        "recommend_card_click",
+        user?.id,
+        user?.email,
+        getOrCreateAnonId()
+      );
+      router.push(`/detail/${videoId}`);
+    },
+    [router, user?.email, user?.id]
+  );
+
+  const renderSlotPhaseBadge = useCallback(
+    (phase?: StockFeedSlotPhase | null) => {
+      if (!isMoneySection || !phase) return null;
+      const meta = SLOT_PHASE_META[phase];
+      const palette = SLOT_PHASE_COLORS[phase];
+      if (!meta || !palette) return null;
+      return (
+        <SlotPhaseBadge $bg={palette.bg} $color={palette.color}>
+          {meta.short}
+          <BadgeLabel>{meta.label}</BadgeLabel>
+        </SlotPhaseBadge>
+      );
+    },
+    [isMoneySection]
+  );
+
+  const buildSlotMetricRankings = useCallback(
+    (items: DataProps[]): MetricRankings => {
+      const rankings = {} as MetricRankings;
+      const auxKeys = METRIC_KEYS.filter((k) => k !== "score");
+      auxKeys.forEach((key) => {
+        rankings[key] = items
+          .slice()
+          .sort((a, b) => {
+            const aVal =
+              (a.summary_data as any)?.[key] ?? (a as any)?.[key] ?? -Infinity;
+            const bVal =
+              (b.summary_data as any)?.[key] ?? (b as any)?.[key] ?? -Infinity;
+            return Number(bVal) - Number(aVal);
+          })
+          .map((video) => video.video_id);
+      });
+      rankings.score = items
+        .slice()
+        .sort((a, b) => {
+          const aScore =
+            typeof a.score === "number"
+              ? a.score
+              : (a.summary_data?.score as number | undefined) ?? 0;
+          const bScore =
+            typeof b.score === "number"
+              ? b.score
+              : (b.summary_data?.score as number | undefined) ?? 0;
+          return bScore - aScore;
+        })
+        .map((video) => video.video_id);
+      return rankings;
+    },
+    []
+  );
+
+  const renderVideoCard = useCallback(
+    (item: DataProps, slotMetricRanks?: MetricRankings) => {
+      const ranks = slotMetricRanks ?? metricRankings;
+      const rawHotScore =
+        typeof item.score === "number"
+          ? item.score
+          : (item.summary_data?.score as number | undefined);
+      const displayHotScore =
+        getDisplayHotScore(rawHotScore) ?? item.summary_data.score;
+      const auxKeys = METRIC_KEYS.filter((k) => k !== "score") as AuxKey[];
+      const bestKey = auxKeys.reduce(
+        (best, key) =>
+          (ranks[key]?.indexOf(item.video_id) ?? Infinity) <
+          (ranks[best]?.indexOf(item.video_id) ?? Infinity)
+            ? key
+            : best,
+        auxKeys[0]
+      );
+      const auxRankIndex = ranks[bestKey]?.indexOf(item.video_id) ?? -1;
+      const auxRankLabel =
+        auxRankIndex >= 0 ? `${auxRankIndex + 1}위` : "순위 확인 중";
+      const hotRankIndex = ranks.score?.indexOf(item.video_id) ?? -1;
+      const hotRankLabel = hotRankIndex >= 0 ? ` · ${hotRankIndex + 1}위` : "";
+      const { icon: metricIcon, name: metricName } = metricMeta[bestKey];
+      const badgeItems = [
+        displayHotScore != null ? (
+          <MetricBadge key="hot" bg="#EAF4FF" color="#007BFF">
+            🔥 Hot Score {displayHotScore}
+            {hotRankLabel}
+          </MetricBadge>
+        ) : null,
+        <MetricBadge key="aux" bg="#EAF4FF" color="#007BFF">
+          {metricIcon} {metricName} {auxRankLabel}
+        </MetricBadge>,
+      ].filter(Boolean);
+
+      return (
+        <Card
+          key={item.video_id}
+          onClick={() => handleCardClick(item.video_id)}
+        >
+          <MetricsContainer>{badgeItems}</MetricsContainer>
+          <VideoItem onClick={() => handleCardClick(item.video_id)}>
+            <ThumbWrapper>
+              <Thumbnail src={item.thumbnail} />
+            </ThumbWrapper>
+            <Info>
+              <VideoTitle>
+                {removeMarkTags(item.summary_data.headline_title)}
+              </VideoTitle>
+              <Meta>{removeMarkTags(item.summary_data.short_summary)}</Meta>
+            </Info>
+          </VideoItem>
+          <ChannelFooter>
+            <ChannelThumb src={item.channel_details.channel_thumbnail} />
+            <ChannelInfo>
+              <ChannelName>{item.channel_details.channel_name}</ChannelName>
+              <ChannelMeta>
+                {parseSubscribersCount(
+                  item.channel_details.channel_subscribers
+                )}{" "}
+                · {timeAgoUTC(item.upload_date)}
+              </ChannelMeta>
+            </ChannelInfo>
+          </ChannelFooter>
+          {item.summary_data.comment_social_proof?.comment?.trim() ? (
+            <CommentSection>
+              <Comment>
+                <CommentIcon>💬</CommentIcon>
+                <CommentText>
+                  {item.summary_data.comment_social_proof.comment}
+                </CommentText>
+              </Comment>
+            </CommentSection>
+          ) : null}
+        </Card>
+      );
+    },
+    [handleCardClick, renderSlotPhaseBadge, getDisplayHotScore, metricRankings]
+  );
+
+  const topVideosList = useMemo(() => {
+    return (
+      <VideoList>{topVideos.map((item) => renderVideoCard(item))}</VideoList>
     );
-    // 2) 상세 페이지로 이동
-    router.push(`/detail/${videoId}`);
-  };
+  }, [topVideos, renderVideoCard]);
+
+  const hasSlotTimeline = isMoneySection && slotSections.length > 0;
+
+  const moneySlotBlocks = useMemo(() => {
+    if (!hasSlotTimeline) return null;
+    const nowMinutes = getKstMinutes(new Date());
+
+    const sortByScore = (items: DataProps[]) =>
+      items.slice().sort((a, b) => {
+        const aScore =
+          typeof a.score === "number"
+            ? a.score
+            : (a.summary_data?.score as number | undefined) ?? 0;
+        const bScore =
+          typeof b.score === "number"
+            ? b.score
+            : (b.summary_data?.score as number | undefined) ?? 0;
+        return bScore - aScore;
+      });
+
+    const groups = slotSections
+      .map((section) => {
+        const primarySectionLabel =
+          section.items[0]?.section ?? section.label;
+        const emoji = SLOT_EMOJI[section.slot] ?? "🎯";
+        const slotInfo = getSlotLabelInfo(section.slot as BriefingSlot);
+        const slotLabelMeta = resolveInsightSlotCopy(
+          primarySectionLabel ?? section.label,
+          slotInfo
+        );
+        const sortedItems = sortByScore(section.items);
+        const highlightItems =
+          section.slot === "slot3"
+            ? sortedItems.filter(
+                (item) => item.is_new && item.detected_slots?.slot_1730
+              )
+            : [];
+        const mainItems =
+          highlightItems.length > 0
+            ? sortedItems.filter((item) => !highlightItems.includes(item))
+            : sortedItems;
+        const metricRanks = buildSlotMetricRankings(mainItems);
+        const highlight = (() => {
+          if (highlightItems.length === 0) return null;
+          const info = DETECTED_SLOT_MAP["slot_1730"];
+          const diff =
+            (nowMinutes - info.minutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+          return {
+            title: `${formatMinutesAgo(diff)} 진입`,
+            subtitle: `${info.label} · 신규 진입`,
+            items: highlightItems,
+            metricRanks: buildSlotMetricRankings(highlightItems),
+          };
+        })();
+        return {
+          section,
+          sortedItems: mainItems,
+          metricRanks,
+          highlight,
+          emoji,
+          badgeTitle: slotLabelMeta?.title ?? slotInfo.title,
+          badgeSubtitle: slotLabelMeta?.description ?? slotInfo.description,
+          category: primarySectionLabel,
+        };
+      })
+      .filter(
+        (entry) => entry.sortedItems.length > 0 || entry.highlight !== null
+      )
+      .sort((a, b) => b.section.priority - a.section.priority);
+
+    if (groups.length === 0) return null;
+
+    return groups.flatMap((entry) => {
+      const nodes: ReactNode[] = [];
+      if (entry.highlight) {
+        nodes.push(
+          <MoneySectionBlock
+            key={`slot-${entry.section.slot}-${entry.section.label}-highlight`}
+          >
+            <SectionBadgeBlock
+              emoji="✳️"
+              title={entry.highlight.title}
+              subtitle={entry.highlight.subtitle}
+              category={entry.category}
+            />
+            <EditorContainer>
+              {entry.highlight.items.slice(0, 5).map((item) =>
+                renderVideoCard(item, entry.highlight!.metricRanks)
+              )}
+            </EditorContainer>
+          </MoneySectionBlock>
+        );
+      }
+      if (entry.sortedItems.length > 0) {
+        nodes.push(
+          <MoneySectionBlock
+            key={`slot-${entry.section.slot}-${entry.section.label}`}
+          >
+            <SectionBadgeBlock
+              emoji={entry.emoji}
+              title={entry.badgeTitle}
+              subtitle={entry.badgeSubtitle}
+              category={entry.category}
+            />
+            <EditorContainer>
+              {entry.sortedItems.slice(0, 5).map((item) =>
+                renderVideoCard(item, entry.metricRanks)
+              )}
+            </EditorContainer>
+          </MoneySectionBlock>
+        );
+      }
+      return nodes;
+    });
+  }, [
+    hasSlotTimeline,
+    slotSections,
+    renderVideoCard,
+    buildSlotMetricRankings,
+  ]);
+  const generalDetectedBlocks = useMemo(() => {
+    if (isMoneySection) return null;
+    const nowMinutes = getKstMinutes(new Date());
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        minutes: number;
+        relativeLabel: string;
+        items: DataProps[];
+      }
+    >();
+
+    filteredAndSortedData.forEach((item) => {
+      const hasDetectedSlot =
+        item.detected_slots && Object.values(item.detected_slots).some(Boolean);
+      if (!item.is_new && !hasDetectedSlot) return;
+      const info = getLatestDetectedSlot(item.detected_slots);
+      if (!info) return;
+      const diff =
+        (nowMinutes - info.minutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+      const relativeLabel = formatMinutesAgo(diff);
+      const group = groups.get(info.key) ?? {
+        key: info.key,
+        label: info.label,
+        minutes: info.minutes,
+        relativeLabel,
+        items: [],
+      };
+      group.items.push(item);
+      groups.set(info.key, group);
+    });
+
+    if (groups.size === 0) return null;
+
+    const entries = Array.from(groups.values()).sort(
+      (a, b) => b.minutes - a.minutes
+    );
+
+    return entries.map((entry) => (
+      <MoneySectionBlock key={`detected-${entry.key}`}>
+        <SectionBadgeBlock
+          emoji="⏱"
+          title={`${entry.relativeLabel} 진입`}
+          subtitle={`${entry.label} · 신규 진입`}
+          category={section}
+        />
+        <EditorContainer>
+          {entry.items
+            .sort((a, b) => {
+              const aScore =
+                typeof a.score === "number"
+                  ? a.score
+                  : (a.summary_data?.score as number | undefined) ?? 0;
+              const bScore =
+                typeof b.score === "number"
+                  ? b.score
+                  : (b.summary_data?.score as number | undefined) ?? 0;
+              return bScore - aScore;
+            })
+            .slice(0, 5)
+            .map((item) => renderVideoCard(item))}
+        </EditorContainer>
+      </MoneySectionBlock>
+    ));
+  }, [filteredAndSortedData, isMoneySection, renderVideoCard, section]);
+
+  const generalPersistingBlock = useMemo(() => {
+    if (isMoneySection) return null;
+    const items = filteredAndSortedData.filter((item) => {
+      const hasDetectedSlot =
+        item.detected_slots && Object.values(item.detected_slots).some(Boolean);
+      return !item.is_new && !hasDetectedSlot;
+    });
+    if (items.length === 0) return null;
+    return (
+      <MoneySectionBlock key="persisting-general">
+        <SectionBadgeBlock
+          emoji="🔥"
+          title="계속 상위권 유지 중인 영상"
+          subtitle="어제·오늘 TOP5를 꾸준히 지키는 카드"
+          category={section}
+        />
+        <EditorContainer>
+          {items.slice(0, 5).map((item) => renderVideoCard(item))}
+        </EditorContainer>
+      </MoneySectionBlock>
+    );
+  }, [filteredAndSortedData, isMoneySection, renderVideoCard, section]);
+
+  const slotBlocks =
+    (() => {
+      if (moneySlotBlocks) return moneySlotBlocks;
+      const generalBlocks: ReactNode[] = [];
+      if (generalDetectedBlocks) generalBlocks.push(...generalDetectedBlocks);
+      if (generalPersistingBlock) generalBlocks.push(generalPersistingBlock);
+      if (generalBlocks.length > 0) return generalBlocks;
+      return null;
+    })() ?? topVideosList;
+
+  if (loading) {
+    return (
+      <Container $isUnsubscribed={isUnsubscribedSection}>
+        <LoadingState>
+          <LoadingSpinner />
+          <span>추천 영상을 불러오는 중입니다…</span>
+        </LoadingState>
+      </Container>
+    );
+  }
+
   return (
     <Container $isUnsubscribed={isUnsubscribedSection}>
       {pathname.includes("/studio") ? (
@@ -289,74 +876,7 @@ const Recommend = ({
             </TimerWrapper>
           </Header>
 
-          <VideoList>
-            {filteredAndSortedData.slice(0, 5).map((item, idx) => {
-              // const metricText = metrics[idx] ?? metrics[metrics.length - 1];
-              // social proof 데이터가 있으면 사용
-              return (
-                <Card
-                  key={item.video_id}
-                  onClick={() => router.push(`/detail/${item.video_id}`)}
-                >
-                  {/* 카드 상단: 메트릭 배지 */}
-                  <MetricsContainer>
-                    <MetricBadge bg="#EAF4FF" color="#007BFF">
-                      {/* {metricText} */}
-                    </MetricBadge>
-                  </MetricsContainer>
-                  <VideoItem
-                    key={item.video_id}
-                    onClick={() => router.push(`/detail/${item.video_id}`)}
-                  >
-                    <ThumbWrapper>
-                      <Thumbnail src={item.thumbnail} />
-                    </ThumbWrapper>
-                    <Info>
-                      <VideoTitle>
-                        {removeMarkTags(item.summary_data.headline_title)}
-                      </VideoTitle>
-
-                      <Meta>
-                        {removeMarkTags(item.summary_data.short_summary)}
-                      </Meta>
-                    </Info>
-                  </VideoItem>
-                  {/* 카드 하단: 채널 정보 */}
-                  <ChannelFooter>
-                    <ChannelThumb
-                      src={item.channel_details.channel_thumbnail}
-                    />
-                    <ChannelInfo>
-                      <ChannelName>
-                        {item.channel_details.channel_name}
-                      </ChannelName>
-                      <ChannelMeta>
-                        {parseSubscribersCount(
-                          item.channel_details.channel_subscribers
-                        )}{" "}
-                        · {timeAgoUTC(item.upload_date)}
-                      </ChannelMeta>
-                    </ChannelInfo>
-                  </ChannelFooter>
-                  {/* 4. 댓글 섹션 */}
-                  {/* 4. 댓글 섹션 */}
-                  {item.summary_data.comment_social_proof?.comment?.trim() ? (
-                    <CommentSection>
-                      <Comment>
-                        <CommentIcon>💬</CommentIcon>
-                        <CommentText>
-                          {item.summary_data.comment_social_proof.comment}
-                        </CommentText>
-                        {/* <LikeCount>
-              👍🏻 {summary_data.comment_social_proof.likeCount || 0}
-            </LikeCount> */}
-                      </Comment>
-                    </CommentSection>
-                  ) : null}
-                </Card>
-              );
-            })}
-          </VideoList>
+          {slotBlocks}
         </>
       ) : pathname.includes("/detail") ? (
         <>
@@ -369,192 +889,14 @@ const Recommend = ({
             </TimerWrapper>
           </Header>
 
-          {newVideos.length > 0 ? (
-            <SubSectionTitle>✨ 이번 갱신에서 새롭게 진입한 영상</SubSectionTitle>
-          ) : null}
-          {newVideos.length > 0 ? (
-            <VideoList>
-              {newVideos.map((item) => {
-                const rawHotScore =
-                  typeof item.score === "number"
-                    ? item.score
-                    : (item.summary_data?.score as number | undefined);
-                const displayHotScore =
-                  getDisplayHotScore(rawHotScore) ?? item.summary_data.score;
-                const auxKeys = METRIC_KEYS.filter(
-                  (k) => k !== "score"
-                ) as AuxKey[];
-                const bestKey = auxKeys.reduce(
-                  (b, k) =>
-                    metricRankings[k].indexOf(item.video_id) <
-                    metricRankings[b].indexOf(item.video_id)
-                      ? k
-                      : b,
-                  auxKeys[0]
-                );
-                const auxRank =
-                  metricRankings[bestKey].indexOf(item.video_id) + 1;
-                const { icon, name } = metricMeta[bestKey];
+          {/* {!hasSlotTimeline && newVideos.length > 0 ? (
+            <SubSectionTitle>
+              ✨ 이번 갱신에서 새롭게 진입한 영상
+            </SubSectionTitle>
+          ) : null} */}
 
-                return (
-                  <Card
-                    key={`new-${item.video_id}`}
-                    onClick={() => handleCardClick(item.video_id)}
-                  >
-                    <MetricsContainer>
-                      <MetricBadge bg="#FFF4E5" color="#C92A2A">
-                        ✨ NEW
-                      </MetricBadge>
-                      {displayHotScore != null ? (
-                        <MetricBadge bg="#EAF4FF" color="#007BFF">
-                          🔥 Hot Score {displayHotScore}↑
-                        </MetricBadge>
-                      ) : null}
-                      <MetricBadge bg="#EAF4FF" color="#007BFF">
-                        {icon} {name} {auxRank}위
-                      </MetricBadge>
-                    </MetricsContainer>
-                    <VideoItem onClick={() => handleCardClick(item.video_id)}>
-                      <ThumbWrapper>
-                        <Thumbnail src={item.thumbnail} />
-                      </ThumbWrapper>
-                      <Info>
-                        <VideoTitle>
-                          {removeMarkTags(item.summary_data.headline_title)}
-                        </VideoTitle>
-                        <Meta>
-                          {removeMarkTags(item.summary_data.short_summary)}
-                        </Meta>
-                      </Info>
-                    </VideoItem>
-                    <ChannelFooter>
-                      <ChannelThumb
-                        src={item.channel_details.channel_thumbnail}
-                      />
-                      <ChannelInfo>
-                        <ChannelName>
-                          {item.channel_details.channel_name}
-                        </ChannelName>
-                        <ChannelMeta>
-                          {parseSubscribersCount(
-                            item.channel_details.channel_subscribers
-                          )}{" "}
-                          · {timeAgoUTC(item.upload_date)}
-                        </ChannelMeta>
-                      </ChannelInfo>
-                    </ChannelFooter>
-                    {item.summary_data.comment_social_proof?.comment?.trim() ? (
-                      <CommentSection>
-                        <Comment>
-                          <CommentIcon>💬</CommentIcon>
-                          <CommentText>
-                            {item.summary_data.comment_social_proof.comment}
-                          </CommentText>
-                        </Comment>
-                      </CommentSection>
-                    ) : null}
-                  </Card>
-                );
-              })}
-            </VideoList>
-          ) : null}
-
-          <SubSectionTitle>🔥 오늘의 TOP5 영상</SubSectionTitle>
-          <VideoList>
-            {topVideos.map((item, idx) => {
-              // Hot Score 순위
-              const hotRank = scoreRanking.indexOf(item.video_id) + 1;
-              const rawHotScore =
-                typeof item.score === "number"
-                  ? item.score
-                  : (item.summary_data?.score as number | undefined);
-              const displayHotScore =
-                getDisplayHotScore(rawHotScore) ?? item.summary_data.score;
-
-              // 보조지표 bestKey + 순위
-              const auxKeys = METRIC_KEYS.filter(
-                (k) => k !== "score"
-              ) as AuxKey[];
-              const bestKey = auxKeys.reduce(
-                (b, k) =>
-                  metricRankings[k].indexOf(item.video_id) <
-                  metricRankings[b].indexOf(item.video_id)
-                    ? k
-                    : b,
-                auxKeys[0]
-              );
-              const auxRank =
-                metricRankings[bestKey].indexOf(item.video_id) + 1;
-              const { icon, name } = metricMeta[bestKey];
-              return (
-                <Card
-                  key={item.video_id}
-                  onClick={() => handleCardClick(item.video_id)}
-                >
-                  {/* 카드 상단: 메트릭 배지 */}
-                  <MetricsContainer>
-                    {displayHotScore != null ? (
-                      <MetricBadge bg="#EAF4FF" color="#007BFF">
-                        🔥 Hot Score {displayHotScore}↑
-                      </MetricBadge>
-                    ) : null}
-                    <MetricBadge bg="#EAF4FF" color="#007BFF">
-                      {icon} {name} {auxRank}위
-                    </MetricBadge>
-                  </MetricsContainer>
-
-                  <VideoItem
-                    key={item.video_id}
-                    onClick={() => handleCardClick(item.video_id)}
-                  >
-                    <ThumbWrapper>
-                      <Thumbnail src={item.thumbnail} />
-                    </ThumbWrapper>
-                    <Info>
-                      <VideoTitle>
-                        {item.summary_data.headline_title}
-                      </VideoTitle>
-
-                      <Meta>
-                        {removeMarkTags(item.summary_data.short_summary)}
-                      </Meta>
-                    </Info>
-                  </VideoItem>
-                  {/* 카드 하단: 채널 정보 */}
-                  <ChannelFooter>
-                    <ChannelThumb
-                      src={item.channel_details.channel_thumbnail}
-                    />
-                    <ChannelInfo>
-                      <ChannelName>
-                        {item.channel_details.channel_name}
-                      </ChannelName>
-                      <ChannelMeta>
-                        {parseSubscribersCount(
-                          item.channel_details.channel_subscribers
-                        )}{" "}
-                        · {timeAgoUTC(item.upload_date)}
-                      </ChannelMeta>
-                    </ChannelInfo>
-                  </ChannelFooter>
-                  {/* 4. 댓글 섹션 */}
-                  {item.summary_data.comment_social_proof?.comment?.trim() ? (
-                    <CommentSection>
-                      <Comment>
-                        <CommentIcon>💬</CommentIcon>
-                        <CommentText>
-                          {item.summary_data.comment_social_proof.comment}
-                        </CommentText>
-                        {/* <LikeCount>
-              👍🏻 {summary_data.comment_social_proof.likeCount || 0}
-            </LikeCount> */}
-                      </Comment>
-                    </CommentSection>
-                  ) : null}
-                </Card>
-              );
-            })}
-          </VideoList>
+          {/* <SubSectionTitle>🔥 오늘의 TOP5 영상</SubSectionTitle> */}
+          {slotBlocks}
           {/* <SubContainer>
             <RecommendTitle
               dangerouslySetInnerHTML={{ __html: RECOMMEND_TITLE }}
@@ -761,6 +1103,34 @@ const Recommend = ({
 
 export default Recommend;
 
+interface SectionBadgeProps {
+  emoji?: string;
+  title: string;
+  subtitle?: string;
+  chip?: string;
+  category?: string;
+}
+
+const SectionBadgeBlock = ({
+  emoji,
+  title,
+  subtitle,
+  chip,
+  category,
+}: SectionBadgeProps) => (
+  <SectionBadge>
+    <SectionBadgeTitle>
+      {emoji ? <SectionBadgeEmoji>{emoji}</SectionBadgeEmoji> : null}
+      <SectionBadgeTitleText>{title}</SectionBadgeTitleText>
+      {category ? (
+        <SectionBadgeCategory>{category}</SectionBadgeCategory>
+      ) : null}
+      {chip ? <SectionBadgeChip>{chip}</SectionBadgeChip> : null}
+    </SectionBadgeTitle>
+    {subtitle ? <SectionBadgeSubtitle>{subtitle}</SectionBadgeSubtitle> : null}
+  </SectionBadge>
+);
+
 // Add the prop type for $isUnsubscribed
 // const Container = styled.div<{ $isUnsubscribed: boolean }>`
 //   margin-top: ${"100px"};
@@ -773,6 +1143,35 @@ const SubContainer = styled.div`
   margin-bottom: 20px;
   padding-top: 32px;
   margin-top: 72px;
+`;
+
+const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 16px;
+  color: #475569;
+  font-size: 15px;
+`;
+
+const spin = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3b82f6;
+  animation: ${spin} 0.9s linear infinite;
 `;
 
 const SubEditorContainer = styled.div`
@@ -938,6 +1337,67 @@ const VideoList = styled.ul`
   margin: 0;
 `;
 
+const MoneySectionBlock = styled.section`
+  /* padding: 20px; */
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  margin-bottom: 24px;
+`;
+
+const SectionBadge = styled.div`
+  border: 1px solid #e0e7ff;
+  background: #f5f7ff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const SectionBadgeTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-weight: 800;
+`;
+
+const SectionBadgeEmoji = styled.span`
+  font-size: 18px;
+`;
+
+const SectionBadgeTitleText = styled.span`
+  font-size: 16px;
+`;
+
+const SectionBadgeCategory = styled.span`
+  font-size: 13px;
+  color: #6b7280;
+`;
+
+const SectionBadgeChip = styled.span`
+  margin-left: auto;
+  font-size: 12px;
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+`;
+
+const SectionBadgeSubtitle = styled.span`
+  font-size: 13px;
+  color: #4b5563;
+`;
+
+const EditorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
 const VideoItem = styled.li`
   display: flex;
   align-items: flex-start;
@@ -1024,6 +1484,18 @@ const BadgeLabel = styled.span`
   font-size: 10px;
   font-weight: 400;
   opacity: 0.7;
+`;
+
+const SlotPhaseBadge = styled.span<{ $bg: string; $color: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: ${({ $bg }) => $bg};
+  color: ${({ $color }) => $color};
+  font-size: 12px;
+  font-weight: 600;
 `;
 const Info = styled.div`
   flex: 1;

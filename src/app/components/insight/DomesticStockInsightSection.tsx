@@ -15,7 +15,8 @@ import type {
   InsightStrategy,
   InsightSource,
 } from "@/types/insight";
-import type { SlotLabel } from "@/utils/briefingSlot";
+import type { BriefingSlot, SlotLabel } from "@/utils/briefingSlot";
+import { getBriefingSlot } from "@/utils/briefingSlot";
 import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
 import type { ReactNode } from "react";
 import {
@@ -256,6 +257,7 @@ const DomesticStockInsightSection = ({
 }: Props) => {
   const { data, label, updated_at } = section;
   const appliedSlotLabel = resolveInsightSlotCopy(label ?? "", slotLabel);
+  const slotPhase = slotLabel?.phase;
   const overview = data?.overview;
   const marketInsights = useMemo(
     () => data?.market_insights?.by_market || {},
@@ -485,6 +487,7 @@ const DomesticStockInsightSection = ({
                 hideInsightSectionList={hideInsightSectionList}
                 showCommentPreview={shouldShowStockPreview && index < 2}
                 sectionLabel={label}
+                slotPhase={slotPhase}
               />
             ))}
           </StockList>
@@ -1047,11 +1050,13 @@ const StockCard = ({
   hideInsightSectionList = false,
   showCommentPreview = false,
   sectionLabel,
+  slotPhase,
 }: {
   stock: InsightStock;
   hideInsightSectionList?: boolean;
   showCommentPreview?: boolean;
   sectionLabel?: string;
+  slotPhase?: BriefingSlot | null;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(
@@ -1342,7 +1347,7 @@ const StockCard = ({
   useEffect(() => {
     let canceled = false;
     const load = async () => {
-      const ids = await fetchOutlineVideoIds(stock.ticker).catch(
+      const ids = await fetchOutlineVideoIds(stock.ticker, slotPhase).catch(
         () => new Set<string>()
       );
       if (!canceled) setOutlineVideoIds(ids);
@@ -1351,7 +1356,7 @@ const StockCard = ({
     return () => {
       canceled = true;
     };
-  }, [stock.ticker]);
+  }, [stock.ticker, slotPhase]);
 
   if (!hasValidMetrics || !hasInsight) {
     return null;
@@ -1375,6 +1380,8 @@ const StockCard = ({
     <StockVideoSources
       stockName={stock.stock_name}
       sources={outlineVideoSources}
+      onEvidenceClick={handleEvidenceClick}
+      hasVideoSources={hasVideoSources}
     />
   ) : null;
 
@@ -1399,7 +1406,9 @@ const StockCard = ({
           📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
         </EvidenceButton>
         {!hasVideoSources ? (
-          <CTAHelperText>오늘 TOP5 영상에서 아직 언급되지 않았어요.</CTAHelperText>
+          <CTAHelperText>
+            오늘 TOP5 영상에서 아직 언급되지 않았어요.
+          </CTAHelperText>
         ) : null}
         <AlertButton type="button" onClick={handleAlertClick}>
           🔔 종목 알림 켜기
@@ -1899,11 +1908,20 @@ const collectOutlineVideoIds = (
   return set;
 };
 
-const buildOutlineFetchUrl = (ticker: string) => {
+interface OutlineFetchOptions {
+  slot?: BriefingSlot | null;
+  refresh?: boolean;
+}
+
+export const buildOutlineFetchUrl = (
+  ticker: string,
+  options?: OutlineFetchOptions
+) => {
   const params = new URLSearchParams();
-  params.append("sections", "domestic_stock");
-  params.append("sections", "overseas_stock");
-  params.append("max_videos", "5");
+  const slotParam = options?.slot ?? getBriefingSlot(new Date());
+  params.set("slot", slotParam);
+  params.set("max_videos", "5");
+  params.set("refresh", (options?.refresh ?? false).toString());
   const apiBase =
     process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
   const endpoint = `${apiBase}/insights/stocks/${ticker}/outlines`;
@@ -1911,15 +1929,19 @@ const buildOutlineFetchUrl = (ticker: string) => {
 };
 
 export const fetchOutlineVideoIds = async (
-  ticker?: string | null
+  ticker?: string | null,
+  slot?: BriefingSlot | null
 ): Promise<Set<string>> => {
   const normalized = ticker?.trim();
   if (!normalized) return new Set();
   try {
-    const res = await fetch(buildOutlineFetchUrl(normalized), {
-      method: "GET",
-      cache: "no-store",
-    });
+    const res = await fetch(
+      buildOutlineFetchUrl(normalized, { slot, refresh: false }),
+      {
+        method: "GET",
+        cache: "no-store",
+      }
+    );
     if (!res.ok) return new Set();
     const payload = (await res.json()) as OutlineResponsePayload;
     return collectOutlineVideoIds(payload);
@@ -1931,16 +1953,20 @@ export const fetchOutlineVideoIds = async (
 export const StockVideoSources = ({
   sources,
   stockName,
+  onEvidenceClick,
+  hasVideoSources = true,
 }: {
   sources?: InsightStock["sources"];
   stockName: string;
+  onEvidenceClick?: () => void;
+  hasVideoSources?: boolean;
 }) => {
   const user = useRecoilValue(userState);
   const eligibleSources = filterSourcesWithOutline(sources);
   if (eligibleSources.length === 0) return null;
   const MAX_DISPLAY_COUNT = 1;
   const displaySources = eligibleSources.slice(0, MAX_DISPLAY_COUNT);
-  const hasMoreSources = eligibleSources.length > displaySources.length;
+  const hasMoreSources = eligibleSources.length > MAX_DISPLAY_COUNT;
 
   return (
     <VideoSourcesSection>
@@ -2038,6 +2064,15 @@ export const StockVideoSources = ({
           나머지 영상은 근거 영상 모아보기에서 확인할 수 있어요.
         </VideoSourcesHint>
       ) : null}
+      <VideoSourcesActionRow>
+        <EvidenceButton
+          type="button"
+          onClick={onEvidenceClick}
+          disabled={!hasVideoSources}
+        >
+          📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
+        </EvidenceButton>
+      </VideoSourcesActionRow>
     </VideoSourcesSection>
   );
 };
@@ -4615,6 +4650,14 @@ const VideoSourcesHint = styled.p`
   color: #64748b;
 `;
 
+const VideoSourcesActionRow = styled.div`
+  margin-top: 8px;
+
+  ${EvidenceButton} {
+    width: 100%;
+  }
+`;
+
 const VideoSourceCard = styled(Link)`
   display: flex;
   flex-direction: column;
@@ -4642,17 +4685,17 @@ const VideoSourceCard = styled(Link)`
 
 const VideoThumbnailWrapper = styled.div`
   position: relative;
-  width: 120px;
+  /* width: 120px; */
   /* height: 68px; */
   border-radius: 8px;
   overflow: hidden;
   background: rgba(148, 163, 184, 0.15);
-  min-width: 160px;
-  max-height: 90px;
+  min-width: 140px;
+  max-height: 80px;
   @media (max-width: 480px) {
     width: 100%;
-    min-width: 160px;
-    aspect-ratio: 16/9;
+    /* min-width: 160px; */
+    aspect-ratio: 140/80;
   }
 `;
 

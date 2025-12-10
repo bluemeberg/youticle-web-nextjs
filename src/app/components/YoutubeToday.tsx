@@ -320,13 +320,17 @@ const OVERSEAS_STOCK_SLOT_LABELS: MoneySlotLabelMap = {
   },
 };
 
-const CATEGORY_DISPLAY_NAMES: Record<
-  Exclude<MoneyCategory, "other">,
-  string
-> = {
+const CATEGORY_DISPLAY_NAMES: Record<Exclude<MoneyCategory, "other">, string> = {
   domestic_stock: "국내 주식",
   overseas_stock: "해외 주식",
   crypto: "가상자산",
+};
+
+const resolveCategoryLabel = (section?: string | null) => {
+  if (!section) return undefined;
+  const category = resolveMoneyCategory(section);
+  if (category === "other") return undefined;
+  return CATEGORY_DISPLAY_NAMES[category as Exclude<MoneyCategory, "other">];
 };
 
 type MoneySlotSection = {
@@ -335,6 +339,16 @@ type MoneySlotSection = {
   title: string;
   description: string;
   items: DataProps[];
+  categoryLabel?: string;
+};
+
+type SlotSectionEntry = {
+  slotId: string;
+  label: string;
+  description: string;
+  relativeLabel: string;
+  items: DataProps[];
+  categoryLabel?: string;
 };
 
 const resolveMoneyCategory = (section: string): MoneyCategory => {
@@ -383,6 +397,7 @@ const buildCategorySlotSections = (
         title: fallbackMeta.title,
         description: fallbackMeta.description,
         items,
+        categoryLabel: resolveCategoryLabel(items[0]?.section),
       },
     ];
   }
@@ -401,6 +416,7 @@ const buildCategorySlotSections = (
       title,
       description: meta.description,
       items: groupedItems,
+      categoryLabel,
     };
   });
 };
@@ -799,6 +815,7 @@ const YoutubeToday = ({
         title: meta.title,
         description: meta.description,
         items: filteredItems,
+        categoryLabel: resolveCategoryLabel(filteredItems[0]?.section),
       },
     ];
   }, [stockSlotSections, matchesTopicFilter, selectedTopic]);
@@ -821,6 +838,7 @@ const YoutubeToday = ({
       if (filteredItems.length === 0) return;
 
       let slotItems = filteredItems;
+      const categoryLabel = resolveCategoryLabel(filteredItems[0]?.section);
 
       if (section.slot === "slot3") {
         const highlighted = filteredItems.filter(
@@ -841,12 +859,16 @@ const YoutubeToday = ({
                   (nowMinutes - highlightMinutes + totalMinutes) % totalMinutes
                 )
               : "방금 전";
+          const highlightCategoryLabel = resolveCategoryLabel(
+            highlighted[0]?.section ?? filteredItems[0]?.section
+          );
           sections.push({
             slot: section.slot,
             priority: section.priority + 0.01,
             title: `${relativeLabel} 신규 진입`,
             description: config?.label ?? "17:30 재랭킹",
             items: highlighted,
+            categoryLabel: highlightCategoryLabel,
           });
         }
       }
@@ -875,6 +897,7 @@ const YoutubeToday = ({
         title: meta.title,
         description: meta.description,
         items: slotItems,
+        categoryLabel,
       });
     });
 
@@ -906,10 +929,10 @@ const YoutubeToday = ({
     return nonNew.slice(0, 5);
   }, [filteredAndSortedData, selectedTopic]);
 
-  const slotSections = useMemo(() => {
+  const slotSections = useMemo<SlotSectionEntry[]>(() => {
     const nowMinutes = getKstMinutes(new Date());
     const totalMinutes = 24 * 60;
-    return SLOT_DISPLAY_CONFIGS.map((config) => {
+    const entries: Array<SlotSectionEntry | null> = SLOT_DISPLAY_CONFIGS.map((config) => {
       if (config.id === "slot_1730") return null; // 머니 섹션 전용으로 중복 노출 방지
       const requireNew = config.requireNew !== false;
       const items = filteredAndSortedData
@@ -922,25 +945,19 @@ const YoutubeToday = ({
       if (items.length === 0) return null;
       const diff = (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
       const relativeLabel = formatMinutesAgo(diff);
+      const categoryLabel = resolveCategoryLabel(items[0]?.section);
       return {
         slotId: config.id,
         label: config.label,
         description: config.description,
         relativeLabel,
         items,
+        categoryLabel,
       };
-    })
-      .filter(
-        (
-          section
-        ): section is {
-          slotId: string;
-          label: string;
-          description: string;
-          relativeLabel: string;
-          items: DataProps[];
-        } => Boolean(section)
-      )
+    });
+    return entries.filter(
+      (section): section is SlotSectionEntry => Boolean(section)
+    )
       .sort(
         (a, b) =>
           getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
@@ -1241,10 +1258,12 @@ const YoutubeToday = ({
               <MoneySectionBlock
                 key={`stock-slot-${section.slot}-${section.title}`}
               >
-                <MoneySectionHeader>
-                  <MoneySectionTitle>{`🟥 ${section.title}`}</MoneySectionTitle>
-                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
-                </MoneySectionHeader>
+                <SectionBadgeBlock
+                  emoji="🟥"
+                  title={section.title}
+                  subtitle={section.description}
+                  category={section.categoryLabel}
+                />
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `stock-${section.slot}-`, {
@@ -1264,12 +1283,20 @@ const YoutubeToday = ({
           <>
             {slotSections.map((section) => (
               <MoneySectionBlock key={section.slotId}>
-                <MoneySectionHeader>
-                  <MoneySectionTitle>
-                    🔥 {section.relativeLabel} 신규 진입
-                  </MoneySectionTitle>
-                  <MoneySectionMeta>{section.label}</MoneySectionMeta>
-                </MoneySectionHeader>
+                <SectionBadgeBlock
+                  emoji="🔥"
+                  title={
+                    section.relativeLabel
+                      ? `${section.relativeLabel} 진입`
+                      : section.label
+                  }
+                  subtitle={
+                    section.description
+                      ? `${section.label} · ${section.description}`
+                      : section.label
+                  }
+                  category={section.categoryLabel}
+                />
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `${section.slotId}-`)
@@ -1286,10 +1313,12 @@ const YoutubeToday = ({
               <MoneySectionBlock
                 key={`stock-slot-${section.slot}-${section.title}`}
               >
-                <MoneySectionHeader>
-                  <MoneySectionTitle>{`🎯 ${section.title}`}</MoneySectionTitle>
-                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
-                </MoneySectionHeader>
+                <SectionBadgeBlock
+                  emoji="🎯"
+                  title={section.title}
+                  subtitle={section.description}
+                  category={section.categoryLabel}
+                />
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `stock-${section.slot}-`, {
@@ -1309,10 +1338,11 @@ const YoutubeToday = ({
           <>
             {[...preMarketSections].reverse().map((section, index) => (
               <MoneySectionBlock key={`premarket-${section.title}-${index}`}>
-                <MoneySectionHeader>
-                  <MoneySectionTitle>{`⏰ ${section.title}`}</MoneySectionTitle>
-                  <MoneySectionMeta>{section.description}</MoneySectionMeta>
-                </MoneySectionHeader>
+                <SectionBadgeBlock
+                  emoji="⏰"
+                  title={section.title}
+                  subtitle={section.description}
+                />
                 <EditorContainer>
                   {section.items.map((item) =>
                     renderTopicCard(item, `premarket-${index}-`, {
@@ -1340,14 +1370,11 @@ const YoutubeToday = ({
 
         {!isMoneyTopic && persistingVideos.length > 0 ? (
           <MoneySectionBlock id="top-videos" ref={topVideosRef}>
-            <MoneySectionHeader>
-              <MoneySectionTitle>
-                🔥 계속 상위권 유지 중인 영상
-              </MoneySectionTitle>
-              <MoneySectionMeta>
-                어제/오늘 내내 TOP5를 지키는 카드
-              </MoneySectionMeta>
-            </MoneySectionHeader>
+            <SectionBadgeBlock
+              emoji="🔥"
+              title="계속 상위권 유지 중인 영상"
+              subtitle="어제/오늘 내내 TOP5를 지키는 카드"
+            />
             <EditorContainer>
               {persistingVideos.map((item) =>
                 renderTopicCard(item, "top-", {
@@ -1376,6 +1403,32 @@ const YoutubeToday = ({
 };
 
 export default YoutubeToday;
+
+interface SectionBadgeProps {
+  emoji?: string;
+  title: string;
+  subtitle?: string;
+  chip?: string;
+  category?: string;
+}
+
+const SectionBadgeBlock = ({
+  emoji,
+  title,
+  subtitle,
+  chip,
+  category,
+}: SectionBadgeProps) => (
+  <SectionBadge>
+    <SectionBadgeTitle>
+      {emoji ? <SectionBadgeEmoji>{emoji}</SectionBadgeEmoji> : null}
+      <SectionBadgeTitleText>{title}</SectionBadgeTitleText>
+      {category ? <SectionBadgeCategory>{category}</SectionBadgeCategory> : null}
+      {chip ? <SectionBadgeChip>{chip}</SectionBadgeChip> : null}
+    </SectionBadgeTitle>
+    {subtitle ? <SectionBadgeSubtitle>{subtitle}</SectionBadgeSubtitle> : null}
+  </SectionBadge>
+);
 
 /* 🛠 스타일 추가 */
 const fadeIn = keyframes`
@@ -1627,30 +1680,57 @@ const StickyCTAButton = styled.button`
 `;
 
 const MoneySectionBlock = styled.section`
-  /* margin: 24px 16px 0; */
   padding: 20px;
   border-radius: 16px;
-  /* border: 1px solid #e5e7eb; */
   background: #ffffff;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
 `;
 
-const MoneySectionHeader = styled.header`
+const SectionBadge = styled.div`
+  border: 1px solid #e0e7ff;
+  background: #f5f7ff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
 `;
 
-const MoneySectionTitle = styled.span`
-  font-size: 18px;
-  font-weight: 700;
+const SectionBadgeTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: #0f172a;
+  font-weight: 800;
 `;
 
-const MoneySectionMeta = styled.small`
-  font-size: 14px;
+const SectionBadgeEmoji = styled.span`
+  font-size: 18px;
+`;
+
+const SectionBadgeTitleText = styled.span`
+  font-size: 16px;
+`;
+
+const SectionBadgeCategory = styled.span`
+  font-size: 13px;
   color: #6b7280;
+`;
+
+const SectionBadgeChip = styled.span`
+  margin-left: auto;
+  font-size: 12px;
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+`;
+
+const SectionBadgeSubtitle = styled.span`
+  font-size: 13px;
+  color: #4b5563;
 `;
 
 // SubContainer modified to use React.forwardRef

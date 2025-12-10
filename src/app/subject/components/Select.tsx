@@ -73,7 +73,7 @@ const App = () => {
     } else if (selectedTopics.length < 3) {
       setSelectedTopics([...selectedTopics, topic]);
     } else {
-      setModalMessage("⚠️ 최대 3개의 키워드의 선택할 수 있습니다.");
+      setModalMessage("⚠️ 최대 3개의 키워드의 선택할 수 있습니다.");2
       setShowModal(true);
     }
   };

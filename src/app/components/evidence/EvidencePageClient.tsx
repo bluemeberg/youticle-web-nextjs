@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
@@ -22,6 +22,7 @@ import {
   isDomesticPriceSection,
   isDomesticValuationSection,
   isDomesticFlowSection,
+  buildOutlineFetchUrl,
 } from "@/components/insight/DomesticStockInsightSection";
 import {
   getOrCreateAnonId,
@@ -29,6 +30,8 @@ import {
   timeAgo,
   parseSubscribersCount,
 } from "@/utils/formatter";
+import { getBriefingSlot } from "@/utils/briefingSlot";
+import type { BriefingSlot } from "@/utils/briefingSlot";
 import {
   getUserByEmail,
   logCtaClick,
@@ -139,6 +142,7 @@ const EvidencePageClient = () => {
   const querySection = searchParams?.get("section")?.trim() || null;
   const queryName = searchParams?.get("name")?.trim() || null;
   const scheduleKey = "07_50";
+  const activeSlot = useMemo(() => getBriefingSlot(new Date()), []);
 
   useEffect(() => {
     setEmailValue(user.email ?? "");
@@ -196,6 +200,7 @@ const EvidencePageClient = () => {
           ticker: queryTicker,
           sectionLabel: querySection,
           stockNameFallback: queryName,
+          slot: activeSlot,
         });
         if (canceled) return;
         persistPayload(fetched);
@@ -214,7 +219,7 @@ const EvidencePageClient = () => {
     return () => {
       canceled = true;
     };
-  }, [persistPayload, queryTicker, querySection, queryName]);
+  }, [persistPayload, queryTicker, querySection, queryName, activeSlot]);
 
   const stock = payload?.stock;
   const stockNameDisplay = stock?.stock_name ?? "관심 종목";
@@ -363,16 +368,11 @@ const EvidencePageClient = () => {
     let canceled = false;
     const fetchOutlines = async () => {
       try {
-        const params = new URLSearchParams();
-        params.append("sections", "domestic_stock");
-        params.append("sections", "overseas_stock");
-        params.append("max_videos", "5");
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
-        const endpoint = apiBase
-          ? `${apiBase}/insights/stocks/${stockTicker}/outlines`
-          : `/insights/stocks/${stockTicker}/outlines`;
-        const res = await fetch(`${endpoint}?${params.toString()}`, {
+        const requestUrl = buildOutlineFetchUrl(stockTicker, {
+          slot: activeSlot,
+          refresh: false,
+        });
+        const res = await fetch(requestUrl, {
           method: "GET",
           cache: "no-store",
         });
@@ -407,7 +407,7 @@ const EvidencePageClient = () => {
     return () => {
       canceled = true;
     };
-  }, [stockTicker]);
+  }, [stockTicker, activeSlot]);
 
   if (loading) return null;
 
@@ -1109,22 +1109,20 @@ async function fetchEvidencePayloadByTicker({
   ticker,
   sectionLabel,
   stockNameFallback,
+  slot,
 }: {
   ticker: string;
   sectionLabel: string | null;
   stockNameFallback: string | null;
+  slot?: BriefingSlot | null;
 }): Promise<StoredEvidencePayload | null> {
-  const params = new URLSearchParams();
-  params.append("sections", "domestic_stock");
-  params.append("sections", "overseas_stock");
-  params.append("max_videos", "5");
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
-  const endpoint = `${apiBase}/insights/stocks/${ticker}/outlines`;
-  const response = await fetch(`${endpoint}?${params.toString()}`, {
-    method: "GET",
-    cache: "no-store",
-  });
+  const response = await fetch(
+    buildOutlineFetchUrl(ticker, { slot, refresh: false }),
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
   if (!response.ok) {
     throw new Error(`Outline payload request failed (${response.status})`);
   }

@@ -828,6 +828,8 @@ const StockInsightCard = ({
     <StockVideoSources
       stockName={stock.stock_name ?? ""}
       sources={stock.sources}
+      onEvidenceClick={handleEvidenceClick}
+      hasVideoSources={hasVideoSources}
     />
   ) : null;
 
