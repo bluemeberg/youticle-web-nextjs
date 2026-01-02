@@ -41,6 +41,8 @@ const FREE_BENEFITS_DESC = `
     <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
   </ul>`;
 
+const BRIEFING_DEMO_ID = "demo-20240101";
+
 const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   const router = useRouter();
   console.log(subjects.length);
@@ -169,6 +171,20 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
             </ServiceButton>
           </ButtonContainer>
         )}
+        <SecondaryEntryCard>
+          <div>
+            <SecondaryTitle>내 브리핑(카톡/이메일) 다시보기</SecondaryTitle>
+            <SecondaryText>
+              카톡으로 받았던 화면을 웹에서 그대로 열람할 수 있어요.
+            </SecondaryText>
+          </div>
+          <SecondaryButton
+            type="button"
+            onClick={() => router.push(`/b/${BRIEFING_DEMO_ID}`)}
+          >
+            브리핑 예시 보기
+          </SecondaryButton>
+        </SecondaryEntryCard>
       </ContentBox>
     </Container>
   );
@@ -298,6 +314,39 @@ const ButtonContainer = styled.div`
 `;
 const Announcement = styled.div`
   margin-bottom: 20px;
+`;
+
+const SecondaryEntryCard = styled.div`
+  margin-bottom: 20px;
+  border-radius: 16px;
+  border: 1px solid #dbe2ff;
+  background: #fff;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+`;
+
+const SecondaryTitle = styled.p`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+`;
+
+const SecondaryText = styled.p`
+  margin: 0;
+  color: #5a6386;
+  font-size: 14px;
+`;
+
+const SecondaryButton = styled.button`
+  border-radius: 999px;
+  padding: 10px 16px;
+  border: none;
+  background: #1f2b6c;
+  color: #fff;
+  font-weight: 700;
 `;
 
 const Title = styled.h2`
