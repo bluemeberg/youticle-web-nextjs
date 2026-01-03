@@ -1,6 +1,7 @@
 "use client";
 
 import styled, { keyframes } from "styled-components";
+import type { DefaultTheme } from "styled-components";
 import Link from "next/link";
 import React, {
   useEffect,
@@ -12,9 +13,9 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
-import StockMarketSection from "@/components/insight/StockMarketSection";
-import DomesticStockInsightSection from "@/components/insight/DomesticStockInsightSection";
-import CryptoInsightSection from "@/components/insight/CryptoInsightSection";
+import LandingDomesticStockInsightSection from "./LandingDomesticStockInsightSection";
+import LandingCryptoInsightSection from "./LandingCryptoInsightSection";
+import LandingStockMarketSection from "./LandingStockMarketSection";
 import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
 import type {
   InsightMarketDeltaCard,
@@ -32,9 +33,15 @@ import type {
 type Sentiment = "up" | "down" | "flat";
 
 type MoneySectionType = "stocks" | "crypto";
-type RankingSectionType = "realestate" | "generic";
+type RankingSectionType = "realestate";
 
 export type RankingTabKey = "topVideos" | "rankingUpdates";
+
+const sentimentColor = (sentiment: Sentiment, theme: DefaultTheme) => {
+  if (sentiment === "up") return theme.color.up;
+  if (sentiment === "down") return theme.color.down;
+  return theme.color.neutral;
+};
 
 export interface BriefingLandingData {
   briefingId: string;
@@ -82,6 +89,7 @@ export interface SlotPackage {
   label: string; // "프리1" "저녁" "심야"
   displayTime: string; // "21:00"
   default?: boolean;
+  description?: string;
   tabs: {
     market: {
       indexes: Array<{
@@ -812,17 +820,13 @@ const hasMarketDeltaData = (section?: InsightSection) =>
   !!section &&
   Object.keys(section.data?.market_delta_insights?.by_market ?? {}).length > 0;
 
-const isMoneySection = (
-  section: RecapSection
-): section is MoneyRecapSection | GeneralRecapSection =>
-  section.type === "stocks" ||
-  section.type === "crypto" ||
-  section.type === "general";
+const isMoneySection = (section: RecapSection): section is MoneyRecapSection =>
+  section.type === "stocks" || section.type === "crypto";
 
 const isRankingSection = (
   section: RecapSection
 ): section is RankingRecapSection =>
-  section.type === "realestate" || section.type === "generic";
+  section.type === "realestate";
 
 function safeKey(text: string, idx: number) {
   return `${idx}-${text}`;
@@ -1141,7 +1145,7 @@ const BriefingLandingPageClient = ({
       if (!insightSection) return null;
       if (section.type === "crypto") {
         return (
-          <CryptoInsightSection
+          <LandingCryptoInsightSection
             section={insightSection}
             slotLabel={slotLabel ?? undefined}
           />
@@ -1149,14 +1153,14 @@ const BriefingLandingPageClient = ({
       }
       if (hasMarketDeltaData(insightSection)) {
         return (
-          <StockMarketSection
+          <LandingStockMarketSection
             section={insightSection}
             slotLabel={slotLabel ?? undefined}
           />
         );
       }
       return (
-        <DomesticStockInsightSection
+        <LandingDomesticStockInsightSection
           section={insightSection}
           slotLabel={slotLabel ?? undefined}
         />
@@ -1281,6 +1285,7 @@ const BriefingLandingPageClient = ({
       section.tabs.rankingUpdatesByWindow[rankingWindow] ??
       section.tabs.rankingUpdatesByWindow[section.rankingWindows[0]] ??
       [];
+    const summaryLines = section.summaryBullets;
 
     return (
       <SectionBlock
