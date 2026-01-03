@@ -1,4 +1,6 @@
-export type RecapSectionType = "stocks" | "crypto" | "realestate";
+import type { InsightSection } from "@/types/insight";
+
+export type RecapSectionType = "stocks" | "crypto" | "realestate" | "general";
 
 export interface DeliveryMeta {
   deliveredAt: string;
@@ -62,6 +64,7 @@ export interface SlotTabContent {
   market: MarketInsightContent;
   insight: AssetInsightContent;
   videos: RecapVideoSummary[];
+  insightSection?: InsightSection;
 }
 
 export interface SlotPackage {
@@ -73,8 +76,9 @@ export interface SlotPackage {
   tabs: SlotTabContent;
 }
 
-export interface MoneyRecapSection extends BaseRecapSection {
-  type: "stocks" | "crypto";
+
+export interface GeneralRecapSection extends BaseRecapSection {
+  type: "general";
   slotPackages: SlotPackage[];
   defaultSlotId?: string;
 }
@@ -95,7 +99,7 @@ export interface RealEstateRecapSection extends BaseRecapSection {
   defaultRankingWindow?: string;
 }
 
-export type RecapSection = MoneyRecapSection | RealEstateRecapSection;
+export type RecapSection = MoneyRecapSection | RealEstateRecapSection | GeneralRecapSection;
 
 export interface ExploreTabLink {
   id: string;

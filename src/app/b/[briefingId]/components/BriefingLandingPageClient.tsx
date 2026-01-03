@@ -12,6 +12,10 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
+import StockMarketSection from "@/components/insight/StockMarketSection";
+import CryptoInsightSection from "@/components/insight/CryptoInsightSection";
+import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
+import type { InsightSection } from "@/types/insight";
 
 /**
  * =========================================================
@@ -24,7 +28,7 @@ type Sentiment = "up" | "down" | "flat";
 type MoneySectionType = "stocks" | "crypto";
 type RankingSectionType = "realestate" | "generic";
 
-export type MoneyTabKey = "market" | "insight" | "videos";
+export type MoneyTabKey = "market" | "stocks" | "videos";
 export type RankingTabKey = "topVideos" | "rankingUpdates";
 
 export interface BriefingLandingData {
@@ -95,6 +99,7 @@ export interface SlotPackage {
       }>;
     };
     videos: VideoCardData[];
+    insightSection?: InsightSection;
   };
 }
 
@@ -800,17 +805,27 @@ const MOCK_DATA: BriefingLandingData = {
 
 const moneyTabLabels: Record<MoneyTabKey, string> = {
   market: "마켓 인사이트",
-  insight: "종목 인사이트",
+  stocks: "종목 인사이트",
   videos: "TOP5 근거영상",
 };
 
 const getMoneyTabLabel = (sectionType: MoneySectionType, tab: MoneyTabKey) => {
-  if (tab !== "insight") return moneyTabLabels[tab];
-  return sectionType === "crypto" ? "코인 인사이트" : "종목 인사이트";
+  if (tab === "videos") return moneyTabLabels.videos;
+  if (tab === "stocks") {
+    return sectionType === "crypto" ? "코인 인사이트" : moneyTabLabels.stocks;
+  }
+  return moneyTabLabels.market;
 };
 
-const isMoneySection = (section: RecapSection): section is MoneyRecapSection =>
-  section.type === "stocks" || section.type === "crypto";
+const hasMarketDeltaData = (section?: InsightSection) =>
+  !!section &&
+  Object.keys(section.data?.market_delta_insights?.by_market ?? {}).length > 0;
+
+const hasStockInsightItems = (section?: InsightSection) =>
+  !!section && (section.data?.stocks?.length ?? 0) > 0;
+
+const isMoneySection = (section: RecapSection): section is MoneyRecapSection | GeneralRecapSection =>
+  section.type === "stocks" || section.type === "crypto" || section.type === "general";
 
 const isRankingSection = (
   section: RecapSection
@@ -1110,12 +1125,66 @@ const BriefingLandingPageClient = ({
   const renderMoneySection = (section: MoneyRecapSection) => {
     const activeSlot = getActiveSlot(section);
     const activeTab = moneyTabBySection[section.id] ?? "market";
-    const tabOptions: MoneyTabKey[] = ["market", "insight", "videos"];
+    const tabOptions: MoneyTabKey[] = ["market", "stocks", "videos"];
 
     const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
     const activeSlotId = activeSlotBySection[section.id];
     const activeDiff =
       diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlotId]?.diff ?? 0;
+    const slotLabel: SlotLabel | null = activeSlot
+      ? {
+          phase: (activeSlot.id as BriefingSlot) ?? "slot4",
+          title: activeSlot.label,
+          description: activeSlot.description ?? "",
+        }
+      : null;
+    const insightSection = activeSlot?.tabs.insightSection;
+
+    const renderMarketFallback = () => (
+      <MarketInsight>
+        <IndexGrid>
+          {activeSlot.tabs.market.indexes.map((index) => (
+            <IndexCard key={index.id}>
+              <IndexLabel>{index.label}</IndexLabel>
+              <IndexValue>{index.value}</IndexValue>
+              <IndexChange $sentiment={index.sentiment}>
+                {index.changeText} ({index.changeRate})
+              </IndexChange>
+            </IndexCard>
+          ))}
+        </IndexGrid>
+        <CommentaryList>
+          {activeSlot.tabs.market.commentary.map((comment, idx) => (
+            <li key={safeKey(comment, idx)}>{comment}</li>
+          ))}
+        </CommentaryList>
+      </MarketInsight>
+    );
+
+    const renderStocksFallback = () =>
+      activeSlot.tabs.insight.items.length > 0 ? (
+        <InsightList>
+          {activeSlot.tabs.insight.items.map((item) => (
+            <InsightRow key={item.id}>
+              <InsightMeta>
+                <InsightTicker>{item.ticker}</InsightTicker>
+                <InsightName>{item.name}</InsightName>
+              </InsightMeta>
+              <InsightActions>
+                <InsightChange>{item.changeText}</InsightChange>
+                <InlineLink href={item.detailHref}>세부 지표 보기</InlineLink>
+              </InsightActions>
+            </InsightRow>
+          ))}
+        </InsightList>
+      ) : (
+        <InsightEmptyState>관련 종목 인사이트를 가져오는 중이에요.</InsightEmptyState>
+      );
+
+    const summaryLines =
+      activeSlot?.tabs.market.commentary?.length
+        ? activeSlot.tabs.market.commentary
+        : section.summaryBullets;
 
     return (
       <SectionBlock
@@ -1131,8 +1200,9 @@ const BriefingLandingPageClient = ({
           <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint>
         </SectionTitleRow>
 
+        <SummarySource>카카오톡 브리핑 요약</SummarySource>
         <SummaryList>
-          {section.summaryBullets.map((line, idx) => (
+          {summaryLines.map((line, idx) => (
             <li key={safeKey(line, idx)}>{line}</li>
           ))}
         </SummaryList>
@@ -1196,43 +1266,37 @@ const BriefingLandingPageClient = ({
         {activeSlot ? (
           <TabPanel>
             {activeTab === "market" ? (
-              <MarketInsight>
-                <IndexGrid>
-                  {activeSlot.tabs.market.indexes.map((index) => (
-                    <IndexCard key={index.id}>
-                      <IndexLabel>{index.label}</IndexLabel>
-                      <IndexValue>{index.value}</IndexValue>
-                      <IndexChange $sentiment={index.sentiment}>
-                        {index.changeText} ({index.changeRate})
-                      </IndexChange>
-                    </IndexCard>
-                  ))}
-                </IndexGrid>
-                <CommentaryList>
-                  {activeSlot.tabs.market.commentary.map((comment, idx) => (
-                    <li key={safeKey(comment, idx)}>{comment}</li>
-                  ))}
-                </CommentaryList>
-              </MarketInsight>
+              insightSection && slotLabel ? (
+                section.type === "stocks" && hasMarketDeltaData(insightSection) ? (
+                  <StockMarketSection
+                    section={insightSection}
+                    slotLabel={slotLabel}
+                    hideStockSection
+                  />
+                ) : section.type === "crypto" && hasMarketDeltaData(insightSection) ? (
+                  <CryptoInsightSection
+                    section={insightSection}
+                    slotLabel={slotLabel}
+                  />
+                ) : (
+                  renderMarketFallback()
+                )
+              ) : (
+                renderMarketFallback()
+              )
             ) : null}
 
-            {activeTab === "insight" ? (
-              <InsightList>
-                {activeSlot.tabs.insight.items.map((item) => (
-                  <InsightRow key={item.id}>
-                    <InsightMeta>
-                      <InsightTicker>{item.ticker}</InsightTicker>
-                      <InsightName>{item.name}</InsightName>
-                    </InsightMeta>
-                    <InsightActions>
-                      <InsightChange>{item.changeText}</InsightChange>
-                      <InlineLink href={item.detailHref}>
-                        세부 지표 보기
-                      </InlineLink>
-                    </InsightActions>
-                  </InsightRow>
-                ))}
-              </InsightList>
+            {activeTab === "stocks" ? (
+              section.type === "stocks" && insightSection && slotLabel && hasStockInsightItems(insightSection) ? (
+                <StockMarketSection
+                  section={insightSection}
+                  slotLabel={slotLabel}
+                  hideMarketSection
+                  showHeader={false}
+                />
+              ) : (
+                renderStocksFallback()
+              )
             ) : null}
 
             {activeTab === "videos" ? (
@@ -1267,6 +1331,7 @@ const BriefingLandingPageClient = ({
     );
   };
 
+
   const renderRankingSection = (section: RankingRecapSection) => {
     const activeTab = rankingTabBySection[section.id] ?? "topVideos";
     const rankingWindow = rankingWindowBySection[section.id];
@@ -1288,6 +1353,7 @@ const BriefingLandingPageClient = ({
           <SectionTitle>{section.title}</SectionTitle>
         </SectionTitleRow>
 
+        <SummarySource>카카오톡 브리핑 요약</SummarySource>
         <SummaryList>
           {section.summaryBullets.map((line, idx) => (
             <li key={safeKey(line, idx)}>{line}</li>
@@ -1567,10 +1633,19 @@ const SectionMiniHint = styled.span`
   margin-top: 4px;
 `;
 
+const SummarySource = styled.p`
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #55607a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+
 const SummaryList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 16px 0;
+  margin: 8px 0 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1580,8 +1655,8 @@ const SummaryList = styled.ul`
 
 const SlotSelector = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 6px;
 `;
 
@@ -1655,6 +1730,17 @@ const TabPanel = styled.div`
   flex-direction: column;
   gap: 16px;
 `;
+
+const InsightEmptyState = styled.div`
+  border: 1px dashed #dfe4fb;
+  border-radius: 16px;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: #5a648a;
+  background: #f9faff;
+`;
+
 
 const MarketInsight = styled.div`
   display: flex;

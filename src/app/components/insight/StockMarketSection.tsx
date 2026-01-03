@@ -29,6 +29,8 @@ interface StockMarketSectionProps {
   showHeader?: boolean;
   defaultExpanded?: boolean;
   slotLabel?: SlotLabel;
+  hideMarketSection?: boolean;
+  hideStockSection?: boolean;
 }
 
 export type StockInsightSectionDetail = {
@@ -224,6 +226,8 @@ const StockMarketSection = ({
   showHeader = true,
   defaultExpanded,
   slotLabel,
+  hideMarketSection = false,
+  hideStockSection = false,
 }: StockMarketSectionProps) => {
   const delta = section.data?.market_delta_insights;
   const rawStocks = (section.data?.stocks ?? []) as InsightStock[];
@@ -340,12 +344,15 @@ const StockMarketSection = ({
     }
   })();
 
-  if (!delta || marketEntries.length === 0) {
+  const canShowMarketSection =
+    !hideMarketSection && delta && marketEntries.length > 0;
+  const canShowStockSection = !hideStockSection && hasStocks;
+  if (!canShowMarketSection && !canShowStockSection) {
     return null;
   }
   return (
     <Wrapper>
-      {showHeader ? (
+      {canShowMarketSection && showHeader ? (
         <SectionHeader>
           <Title>
             {section.label || "주식"} 마켓 인사이트
@@ -358,7 +365,7 @@ const StockMarketSection = ({
       {/* {appliedSlotLabel?.description ? (
         <MarketSectionMeta>{appliedSlotLabel.description}</MarketSectionMeta>
       ) : null} */}
-      <SectionIntro>{introText}</SectionIntro>
+      {canShowMarketSection ? <SectionIntro>{introText}</SectionIntro> : null}
 
       {/* {delta.quick?.length ? (
         <SectionQuickLines>
@@ -368,7 +375,7 @@ const StockMarketSection = ({
         </SectionQuickLines>
       ) : null} */}
 
-      {showHeader ? (
+      {canShowMarketSection && showHeader ? (
         <MarketGrid>
           {marketEntries.map(([marketKey, card]) => (
             <MarketCardWrapper key={`summary-${marketKey}`}>
@@ -378,7 +385,7 @@ const StockMarketSection = ({
         </MarketGrid>
       ) : null}
 
-      {showHeader && !showDetails && representativeMarketComment ? (
+      {canShowMarketSection && showHeader && !showDetails && representativeMarketComment ? (
         <MarketSummaryComment>
           {representativeMarketComment.title ? (
             <MarketCommentTitle>
@@ -398,7 +405,7 @@ const StockMarketSection = ({
         </MarketSummaryComment>
       ) : null}
 
-      {showHeader ? (
+      {canShowMarketSection && showHeader ? (
         <SectionToggleRow>
           <MarketToggleButton
             type="button"
@@ -413,107 +420,108 @@ const StockMarketSection = ({
         </SectionToggleRow>
       ) : null}
 
-      <MarketDetailCollapse
-        $expanded={shouldRenderDetails}
-        aria-hidden={showHeader ? !shouldRenderDetails : false}
-      >
-        <MarketGrid>
-          {marketEntries.map(([marketKey, card]) => {
-            const quickLines = card.quick_lines?.filter(Boolean) ?? [];
-            const intradayDetail = buildIntradayDetailFromCard(card);
-            const liquidityDetail = buildLiquidityDetailFromSentence({
-              sentences: card.sentences,
-              volume_value_str:
-                typeof card.volume_value_str === "string"
-                  ? card.volume_value_str
-                  : undefined,
-            });
-            const flowDetail = buildFlowDetail(card);
-            const extraSentences = extractAdditionalSentences(card);
+      {canShowMarketSection ? (
+        <MarketDetailCollapse
+          $expanded={shouldRenderDetails}
+          aria-hidden={showHeader ? !shouldRenderDetails : false}
+        >
+          <MarketGrid>
+            {marketEntries.map(([marketKey, card]) => {
+              const quickLines = card.quick_lines?.filter(Boolean) ?? [];
+              const intradayDetail = buildIntradayDetailFromCard(card);
+              const liquidityDetail = buildLiquidityDetailFromSentence({
+                sentences: card.sentences,
+                volume_value_str:
+                  typeof card.volume_value_str === "string"
+                    ? card.volume_value_str
+                    : undefined,
+              });
+              const flowDetail = buildFlowDetail(card);
+              const extraSentences = extractAdditionalSentences(card);
 
-            const headline =
-              card.sentences?.headline ||
-              card.comment_title ||
-              card.sentences?.comment;
-            const commentBody = card.comment_body || card.sentences?.comment;
-            const commentBullets = normalizeCommentBullets(
-              card.comment_bullets
-            );
-            const showComment = Boolean(
-              headline || commentBody || commentBullets.length > 0
-            );
+              const headline =
+                card.sentences?.headline ||
+                card.comment_title ||
+                card.sentences?.comment;
+              const commentBody = card.comment_body || card.sentences?.comment;
+              const commentBullets = normalizeCommentBullets(
+                card.comment_bullets
+              );
+              const showComment = Boolean(
+                headline || commentBody || commentBullets.length > 0
+              );
 
-            return (
-              <MarketCardWrapper key={marketKey}>
-                <MarketCardHeaderContent card={card} marketKey={marketKey} />
+              return (
+                <MarketCardWrapper key={marketKey}>
+                  <MarketCardHeaderContent card={card} marketKey={marketKey} />
 
-                <MarketDetailBody>
-                  {showComment ? (
-                    <MarketComment
-                      $withBorder={!commentBody && commentBullets.length === 0}
-                    >
-                      {headline ? (
-                        <MarketCommentTitle>{headline}</MarketCommentTitle>
-                      ) : null}
-                      {commentBullets.length > 0 ? (
-                        <CommentBulletList>
-                          {commentBullets.map((bullet, index) => (
-                            <CommentBulletItem
-                              key={`${marketKey}-comment-bullet-${index}`}
-                              dangerouslySetInnerHTML={{
-                                __html: formatCommentBullet(bullet),
-                              }}
-                            />
-                          ))}
-                        </CommentBulletList>
-                      ) : commentBody ? (
-                        <MarketCommentBody
-                          dangerouslySetInnerHTML={{
-                            __html: formatTextWithSentenceBreaks(commentBody),
-                          }}
-                        />
-                      ) : null}
-                    </MarketComment>
-                  ) : null}
+                  <MarketDetailBody>
+                    {showComment ? (
+                      <MarketComment
+                        $withBorder={!commentBody && commentBullets.length === 0}
+                      >
+                        {headline ? (
+                          <MarketCommentTitle>{headline}</MarketCommentTitle>
+                        ) : null}
+                        {commentBullets.length > 0 ? (
+                          <CommentBulletList>
+                            {commentBullets.map((bullet, index) => (
+                              <CommentBulletItem
+                                key={`${marketKey}-comment-bullet-${index}`}
+                                dangerouslySetInnerHTML={{
+                                  __html: formatCommentBullet(bullet),
+                                }}
+                              />
+                            ))}
+                          </CommentBulletList>
+                        ) : commentBody ? (
+                          <MarketCommentBody
+                            dangerouslySetInnerHTML={{
+                              __html: formatTextWithSentenceBreaks(commentBody),
+                            }}
+                          />
+                        ) : null}
+                      </MarketComment>
+                    ) : null}
 
-                  <MarketStatGrid>
-                    {intradayDetail ? (
-                      <MarketStat>
-                        <MarketStatLabel>장중 범위</MarketStatLabel>
-                        <IntradayChart>
-                          <IntradayIndicator>
-                            <IntradayRail />
-                            <IntradayFill
-                              style={{
-                                left: `${intradayDetail.lowPct}%`,
-                                width: `${Math.max(
-                                  intradayDetail.highPct -
-                                    intradayDetail.lowPct,
-                                  1
-                                )}%`,
-                              }}
-                            />
-                            <IntradayMarker
-                              $tone="open"
-                              style={{ left: `${intradayDetail.openPct}%` }}
-                            />
-                            <IntradayMarker
-                              $tone="close"
-                              style={{ left: `${intradayDetail.closePct}%` }}
-                            />
-                          </IntradayIndicator>
-                          <IntradayLabels>
-                            <strong>
-                              저 {intradayDetail.low.toLocaleString()}
-                            </strong>
-                            <span>
-                              시 {intradayDetail.open.toLocaleString()}
-                            </span>
-                            <strong>
-                              고 {intradayDetail.high.toLocaleString()}
-                            </strong>
-                          </IntradayLabels>
-                          <IntradaySummary
+                    <MarketStatGrid>
+                      {intradayDetail ? (
+                        <MarketStat>
+                          <MarketStatLabel>장중 범위</MarketStatLabel>
+                          <IntradayChart>
+                            <IntradayIndicator>
+                              <IntradayRail />
+                              <IntradayFill
+                                style={{
+                                  left: `${intradayDetail.lowPct}%`,
+                                  width: `${Math.max(
+                                    intradayDetail.highPct -
+                                      intradayDetail.lowPct,
+                                    1
+                                  )}%`,
+                                }}
+                              />
+                              <IntradayMarker
+                                $tone="open"
+                                style={{ left: `${intradayDetail.openPct}%` }}
+                              />
+                              <IntradayMarker
+                                $tone="close"
+                                style={{ left: `${intradayDetail.closePct}%` }}
+                              />
+                            </IntradayIndicator>
+                            <IntradayLabels>
+                              <strong>
+                                저 {intradayDetail.low.toLocaleString()}
+                              </strong>
+                              <span>
+                                시 {intradayDetail.open.toLocaleString()}
+                              </span>
+                              <strong>
+                                고 {intradayDetail.high.toLocaleString()}
+                              </strong>
+                            </IntradayLabels>
+                            <IntradaySummary
                             dangerouslySetInnerHTML={{
                               __html: emphasizeNumbers(intradayDetail.text),
                             }}
@@ -667,8 +675,9 @@ const StockMarketSection = ({
           })}
         </MarketGrid>
       </MarketDetailCollapse>
+      ) : null}
 
-      {hasStocks ? (
+      {canShowStockSection ? (
         <>
           <StockSubSectionHeader>
             <StockSubSectionTitle>
@@ -2296,15 +2305,35 @@ function findPricePositionSection(
   });
 }
 
+const flattenRichText = (value: unknown): string => {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => flattenRichText(entry)).join(" ");
+  }
+  if (typeof value === "object") {
+    const candidate = (value as { text?: unknown }).text;
+    if (typeof candidate === "string") return candidate;
+    return Object.values(value as Record<string, unknown>)
+      .map((entry) => flattenRichText(entry))
+      .join(" ");
+  }
+  return "";
+};
+
 function parsePricePosition(section?: {
   summary?: string | null;
   highlights?: string | null;
 }) {
   if (!section) return null;
-  const source = section.highlights || section.summary;
-  if (!source) return null;
+  const source = section.highlights ?? section.summary;
+  const sourceText = flattenRichText(source).trim();
+  if (!sourceText) return null;
 
-  const sanitized = source
+  const sanitized = sourceText
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -2372,23 +2401,24 @@ function parsePricePosition(section?: {
 
 function formatInsightText(
   section: StockInsightSectionDetail,
-  text?: string | null
+  text?: unknown
 ) {
-  if (!text) return text ?? "";
+  const resolvedText = flattenRichText(text).trim();
+  if (!resolvedText) return "";
   const context = `${section.category ?? ""} ${
     section.title ?? ""
-  } ${text}`.toLowerCase();
+  } ${resolvedText}`.toLowerCase();
   const isHundredMillionContext = HUNDRED_MILLION_KEYWORDS.some((keyword) =>
     context.includes(keyword)
   );
 
-  return text.replace(NUMBER_TOKEN_REGEX, (match, _token, index) => {
+  return resolvedText.replace(NUMBER_TOKEN_REGEX, (match, _token, index) => {
     const numeric = Number(match.replace(/,/g, ""));
     if (!Number.isFinite(numeric)) {
       return match;
     }
 
-    const after = text.slice(index + match.length);
+    const after = resolvedText.slice(index + match.length);
     const trimmedAfter = after.replace(/^\s*/, "");
     const lowerAfter = trimmedAfter.toLowerCase();
 
