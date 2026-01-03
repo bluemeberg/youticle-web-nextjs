@@ -11,6 +11,7 @@ import DomesticStockInsightSection, {
   MarketCommentBulletItem,
 } from "./DomesticStockInsightSection";
 import type {
+  InsightAsset,
   InsightSection,
   InsightStock,
   InsightStockMetrics,
@@ -160,9 +161,83 @@ function sanitizeStock(stock: InsightStock): InsightStock {
   };
 }
 
-const CryptoInsightSection = ({ section, slotLabel }: CryptoInsightSectionProps) => {
+const convertAssetToStock = (asset: InsightAsset): InsightStock => {
+  const realtime = asset.realtime ?? {};
+  const cryptoMetrics = asset.crypto_metrics ?? {};
+  const priceInfo: InsightStockMetrics["price_info"] = {
+    current_price:
+      realtime.trade_price ??
+      cryptoMetrics.vwap_day ??
+      cryptoMetrics.vwap_24h ??
+      undefined,
+    change_pct: cryptoMetrics.chg_pct ?? realtime.change_rate ?? undefined,
+    change_amount: realtime.change_price ?? undefined,
+    open: realtime.opening_price ?? undefined,
+    high: realtime.high_price ?? undefined,
+    low: realtime.low_price ?? undefined,
+    prev_close: realtime.prev_closing_price ?? undefined,
+  };
+
+  const range52w =
+    realtime.highest_52_week_price || realtime.lowest_52_week_price
+      ? {
+          high_52w: realtime.highest_52_week_price ?? undefined,
+          high_52w_date: realtime.highest_52_week_date ?? undefined,
+          low_52w: realtime.lowest_52_week_price ?? undefined,
+          low_52w_date: realtime.lowest_52_week_date ?? undefined,
+        }
+      : undefined;
+
+  const metricInsight = {
+    ...(asset.metric_insight ?? {}),
+    comment_bullets:
+      asset.metric_insight?.comment_bullets ??
+      asset.card_comment?.comment_bullets ??
+      [],
+    comment_body:
+      asset.metric_insight?.comment_body ?? asset.card_comment?.comment_body,
+    summary_sentence:
+      asset.metric_insight?.summary_sentence ??
+      asset.card_comment?.comment_title ??
+      undefined,
+  } as InsightStock["metric_insight"];
+
+  return {
+    stock_name: asset.asset_name,
+    ticker: asset.ticker ?? asset.asset_name,
+    company_description: asset.asset_description,
+    action_idea: asset.action_idea,
+    comment_bullets:
+      asset.card_comment?.comment_bullets ??
+      asset.metric_insight?.comment_bullets,
+    sources: asset.sources,
+    metrics: {
+      price_info: priceInfo,
+      market: realtime.market,
+      currency: realtime.market,
+      range_52w: range52w,
+      liquidity: {
+        volume: realtime.acc_trade_volume_24h ?? realtime.acc_trade_volume,
+        value: realtime.acc_trade_price_24h ?? realtime.acc_trade_price,
+      },
+    },
+    metric_insight: metricInsight,
+  };
+};
+
+const CryptoInsightSection = ({
+  section,
+  slotLabel,
+}: CryptoInsightSectionProps) => {
   const normalizedSection = useMemo<InsightSection>(() => {
-    const stocks = (section.data?.stocks ?? []).map((stock) =>
+    const rawStocks = section.data?.stocks ?? [];
+    const convertedStocks =
+      rawStocks.length > 0
+        ? rawStocks
+        : (section.data?.assets ?? [])
+            .map((asset) => (asset ? convertAssetToStock(asset) : null))
+            .filter((asset): asset is InsightStock => Boolean(asset));
+    const stocks = convertedStocks.map((stock) =>
       stock ? sanitizeStock(stock) : stock
     );
 

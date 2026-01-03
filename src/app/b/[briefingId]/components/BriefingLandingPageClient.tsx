@@ -13,9 +13,15 @@ import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import StockMarketSection from "@/components/insight/StockMarketSection";
+import DomesticStockInsightSection from "@/components/insight/DomesticStockInsightSection";
 import CryptoInsightSection from "@/components/insight/CryptoInsightSection";
 import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
-import type { InsightSection } from "@/types/insight";
+import type {
+  InsightMarketDeltaCard,
+  InsightSection,
+  InsightStock,
+  InsightStockMetrics,
+} from "@/types/insight";
 
 /**
  * =========================================================
@@ -28,7 +34,6 @@ type Sentiment = "up" | "down" | "flat";
 type MoneySectionType = "stocks" | "crypto";
 type RankingSectionType = "realestate" | "generic";
 
-export type MoneyTabKey = "market" | "stocks" | "videos";
 export type RankingTabKey = "topVideos" | "rankingUpdates";
 
 export interface BriefingLandingData {
@@ -803,29 +808,16 @@ const MOCK_DATA: BriefingLandingData = {
  * =========================================================
  */
 
-const moneyTabLabels: Record<MoneyTabKey, string> = {
-  market: "마켓 인사이트",
-  stocks: "종목 인사이트",
-  videos: "TOP5 근거영상",
-};
-
-const getMoneyTabLabel = (sectionType: MoneySectionType, tab: MoneyTabKey) => {
-  if (tab === "videos") return moneyTabLabels.videos;
-  if (tab === "stocks") {
-    return sectionType === "crypto" ? "코인 인사이트" : moneyTabLabels.stocks;
-  }
-  return moneyTabLabels.market;
-};
-
 const hasMarketDeltaData = (section?: InsightSection) =>
   !!section &&
   Object.keys(section.data?.market_delta_insights?.by_market ?? {}).length > 0;
 
-const hasStockInsightItems = (section?: InsightSection) =>
-  !!section && (section.data?.stocks?.length ?? 0) > 0;
-
-const isMoneySection = (section: RecapSection): section is MoneyRecapSection | GeneralRecapSection =>
-  section.type === "stocks" || section.type === "crypto" || section.type === "general";
+const isMoneySection = (
+  section: RecapSection
+): section is MoneyRecapSection | GeneralRecapSection =>
+  section.type === "stocks" ||
+  section.type === "crypto" ||
+  section.type === "general";
 
 const isRankingSection = (
   section: RecapSection
@@ -859,6 +851,16 @@ function badgeForDiff(diff: number) {
   if (diff >= 5) return "NEW";
   return `+${diff}`;
 }
+
+type HighlightStockItem = {
+  id: string;
+  name: string;
+  ticker: string;
+  changeText?: string;
+  summary?: string;
+  detailHref?: string;
+  insightStock?: InsightStock;
+};
 
 /**
  * =========================================================
@@ -923,13 +925,6 @@ const BriefingLandingPageClient = ({
     return Object.fromEntries(entries);
   };
 
-  const buildInitialMoneyTabs = () => {
-    const entries = data.sections
-      .filter(isMoneySection)
-      .map((section) => [section.id, "market" as MoneyTabKey]);
-    return Object.fromEntries(entries);
-  };
-
   const buildInitialRankingTabs = () => {
     const entries = data.sections
       .filter(isRankingSection)
@@ -950,10 +945,6 @@ const BriefingLandingPageClient = ({
   const [activeSlotBySection, setActiveSlotBySection] = useState<
     Record<string, string>
   >(buildInitialSlotState);
-
-  const [moneyTabBySection, setMoneyTabBySection] = useState<
-    Record<string, MoneyTabKey>
-  >(buildInitialMoneyTabs);
 
   const [rankingTabBySection, setRankingTabBySection] = useState<
     Record<string, RankingTabKey>
@@ -998,7 +989,6 @@ const BriefingLandingPageClient = ({
 
   useEffect(() => {
     setActiveSlotBySection(buildInitialSlotState());
-    setMoneyTabBySection(buildInitialMoneyTabs());
     setRankingTabBySection(buildInitialRankingTabs());
     setRankingWindowBySection(buildInitialRankingWindows());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1120,13 +1110,20 @@ const BriefingLandingPageClient = ({
         showToast(`${slot.label} 슬롯으로 이동했어요`);
       }
     }
+
+    if (typeof window !== "undefined") {
+      const target = sectionRefs.current[section.anchor];
+      if (target) {
+        const offset = Math.max(0, topbarH + keywordNavH + 24);
+        const top =
+          target.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    }
   };
 
   const renderMoneySection = (section: MoneyRecapSection) => {
     const activeSlot = getActiveSlot(section);
-    const activeTab = moneyTabBySection[section.id] ?? "market";
-    const tabOptions: MoneyTabKey[] = ["market", "stocks", "videos"];
-
     const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
     const activeSlotId = activeSlotBySection[section.id];
     const activeDiff =
@@ -1140,51 +1137,35 @@ const BriefingLandingPageClient = ({
       : null;
     const insightSection = activeSlot?.tabs.insightSection;
 
-    const renderMarketFallback = () => (
-      <MarketInsight>
-        <IndexGrid>
-          {activeSlot.tabs.market.indexes.map((index) => (
-            <IndexCard key={index.id}>
-              <IndexLabel>{index.label}</IndexLabel>
-              <IndexValue>{index.value}</IndexValue>
-              <IndexChange $sentiment={index.sentiment}>
-                {index.changeText} ({index.changeRate})
-              </IndexChange>
-            </IndexCard>
-          ))}
-        </IndexGrid>
-        <CommentaryList>
-          {activeSlot.tabs.market.commentary.map((comment, idx) => (
-            <li key={safeKey(comment, idx)}>{comment}</li>
-          ))}
-        </CommentaryList>
-      </MarketInsight>
-    );
-
-    const renderStocksFallback = () =>
-      activeSlot.tabs.insight.items.length > 0 ? (
-        <InsightList>
-          {activeSlot.tabs.insight.items.map((item) => (
-            <InsightRow key={item.id}>
-              <InsightMeta>
-                <InsightTicker>{item.ticker}</InsightTicker>
-                <InsightName>{item.name}</InsightName>
-              </InsightMeta>
-              <InsightActions>
-                <InsightChange>{item.changeText}</InsightChange>
-                <InlineLink href={item.detailHref}>세부 지표 보기</InlineLink>
-              </InsightActions>
-            </InsightRow>
-          ))}
-        </InsightList>
-      ) : (
-        <InsightEmptyState>관련 종목 인사이트를 가져오는 중이에요.</InsightEmptyState>
+    const insightContent = (() => {
+      if (!insightSection) return null;
+      if (section.type === "crypto") {
+        return (
+          <CryptoInsightSection
+            section={insightSection}
+            slotLabel={slotLabel ?? undefined}
+          />
+        );
+      }
+      if (hasMarketDeltaData(insightSection)) {
+        return (
+          <StockMarketSection
+            section={insightSection}
+            slotLabel={slotLabel ?? undefined}
+          />
+        );
+      }
+      return (
+        <DomesticStockInsightSection
+          section={insightSection}
+          slotLabel={slotLabel ?? undefined}
+        />
       );
+    })();
 
-    const summaryLines =
-      activeSlot?.tabs.market.commentary?.length
-        ? activeSlot.tabs.market.commentary
-        : section.summaryBullets;
+    const summaryLines = activeSlot?.tabs.market.commentary?.length
+      ? activeSlot.tabs.market.commentary
+      : section.summaryBullets;
 
     return (
       <SectionBlock
@@ -1200,6 +1181,38 @@ const BriefingLandingPageClient = ({
           <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint>
         </SectionTitleRow>
 
+        {section.slotPackages.length || activeSlot ? (
+          <SectionSlotBar $withShadow>
+            {section.slotPackages.length ? (
+              <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+                {section.slotPackages.map((slot) => {
+                  const badge =
+                    diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
+                  const isActive = slot.id === activeSlotBySection[section.id];
+                  return (
+                    <SlotChip
+                      key={slot.id}
+                      type="button"
+                      $active={isActive}
+                      onClick={() => onSlotSelect(section, slot.id)}
+                    >
+                      <span>{slot.label}</span>
+                      {badge ? (
+                        <ChipBadge $active={isActive}>{badge}</ChipBadge>
+                      ) : null}
+                    </SlotChip>
+                  );
+                })}
+              </SlotSelector>
+            ) : null}
+            {activeSlot ? (
+              <SlotMeta>
+                현재: {activeSlot.label} · {activeSlot.displayTime}
+              </SlotMeta>
+            ) : null}
+          </SectionSlotBar>
+        ) : null}
+
         <SummarySource>카카오톡 브리핑 요약</SummarySource>
         <SummaryList>
           {summaryLines.map((line, idx) => (
@@ -1207,130 +1220,59 @@ const BriefingLandingPageClient = ({
           ))}
         </SummaryList>
 
-        {section.slotPackages.length ? (
-          <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-            {section.slotPackages.map((slot) => {
-              const badge =
-                diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
-              const isActive = slot.id === activeSlotBySection[section.id];
-              return (
-                <SlotChip
-                  key={slot.id}
-                  type="button"
-                  $active={isActive}
-                  onClick={() => onSlotSelect(section, slot.id)}
-                >
-                  <span>{slot.label}</span>
-                  {badge ? (
-                    <ChipBadge $active={isActive}>{badge}</ChipBadge>
-                  ) : null}
-                </SlotChip>
-              );
-            })}
-          </SlotSelector>
-        ) : null}
+        {insightContent ? (
+          <InsightBlock>
+            <BlockHeader>
+              <BlockTitle>인사이트 강화</BlockTitle>
+              {slotLabel ? <BlockMeta>{slotLabel.title}</BlockMeta> : null}
+            </BlockHeader>
+            {insightContent}
+          </InsightBlock>
+        ) : (
+          <InsightEmptyState>
+            슬롯 인사이트를 불러오는 중이에요.
+          </InsightEmptyState>
+        )}
 
         {activeSlot ? (
-          <SlotMeta>
-            현재: {activeSlot.label} · {activeSlot.displayTime}
-          </SlotMeta>
-        ) : null}
-
-        <TabList role="tablist" aria-label={`${section.title} 탭`}>
-          {tabOptions.map((tabKey) => {
-            const isVideos = tabKey === "videos";
-            const showDot = isVideos && activeDiff > 0; // "새 근거영상" 기대감 표시
-            return (
-              <TabButton
-                key={tabKey}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tabKey}
-                $active={activeTab === tabKey}
-                onClick={() =>
-                  setMoneyTabBySection((prev) => ({
-                    ...prev,
-                    [section.id]: tabKey,
-                  }))
-                }
-              >
-                <TabLabel>
-                  {getMoneyTabLabel(section.type, tabKey)}
-                  {showDot ? <TabDot aria-hidden="true">●</TabDot> : null}
-                </TabLabel>
-              </TabButton>
-            );
-          })}
-        </TabList>
-
-        {activeSlot ? (
-          <TabPanel>
-            {activeTab === "market" ? (
-              insightSection && slotLabel ? (
-                section.type === "stocks" && hasMarketDeltaData(insightSection) ? (
-                  <StockMarketSection
-                    section={insightSection}
-                    slotLabel={slotLabel}
-                    hideStockSection
-                  />
-                ) : section.type === "crypto" && hasMarketDeltaData(insightSection) ? (
-                  <CryptoInsightSection
-                    section={insightSection}
-                    slotLabel={slotLabel}
-                  />
-                ) : (
-                  renderMarketFallback()
-                )
-              ) : (
-                renderMarketFallback()
-              )
-            ) : null}
-
-            {activeTab === "stocks" ? (
-              section.type === "stocks" && insightSection && slotLabel && hasStockInsightItems(insightSection) ? (
-                <StockMarketSection
-                  section={insightSection}
-                  slotLabel={slotLabel}
-                  hideMarketSection
-                  showHeader={false}
-                />
-              ) : (
-                renderStocksFallback()
-              )
-            ) : null}
-
-            {activeTab === "videos" ? (
-              <VideoList>
-                {activeSlot.tabs.videos.map((video) => {
-                  const isNew = !baseIds.has(video.id);
-                  return (
-                    <VideoCard key={video.id}>
-                      <VideoThumb src={video.thumbnail} alt={video.title} />
-                      <VideoContent>
-                        <VideoTitleRow>
-                          <VideoTitle>{video.title}</VideoTitle>
-                          {isNew ? <NewPill>NEW</NewPill> : null}
-                        </VideoTitleRow>
-                        <VideoMeta>
-                          {video.channel} · {video.duration}
-                        </VideoMeta>
-                        <BulletList>
-                          {video.summary.map((line, idx) => (
-                            <li key={safeKey(line, idx)}>{line}</li>
-                          ))}
-                        </BulletList>
-                      </VideoContent>
-                    </VideoCard>
-                  );
-                })}
-              </VideoList>
-            ) : null}
-          </TabPanel>
+          <VideoBlock>
+            <BlockHeader>
+              <BlockTitle>TOP5 근거영상</BlockTitle>
+              {activeDiff > 0 ? (
+                <BlockBadge>
+                  새 근거영상 <strong>+{activeDiff}</strong>
+                </BlockBadge>
+              ) : null}
+            </BlockHeader>
+            <VideoList>
+              {activeSlot.tabs.videos.map((video) => {
+                const isNew = !baseIds.has(video.id);
+                return (
+                  <VideoCard key={video.id}>
+                    <VideoThumb src={video.thumbnail} alt={video.title} />
+                    <VideoContent>
+                      <VideoTitleRow>
+                        <VideoTitle>{video.title}</VideoTitle>
+                        {isNew ? <NewPill>NEW</NewPill> : null}
+                      </VideoTitleRow>
+                      <VideoMeta>
+                        {video.channel} · {video.duration}
+                      </VideoMeta>
+                      <BulletList>
+                        {video.summary.map((line, idx) => (
+                          <li key={safeKey(line, idx)}>{line}</li>
+                        ))}
+                      </BulletList>
+                    </VideoContent>
+                  </VideoCard>
+                );
+              })}
+            </VideoList>
+          </VideoBlock>
         ) : null}
       </SectionBlock>
     );
   };
-
 
   const renderRankingSection = (section: RankingRecapSection) => {
     const activeTab = rankingTabBySection[section.id] ?? "topVideos";
@@ -1355,7 +1297,7 @@ const BriefingLandingPageClient = ({
 
         <SummarySource>카카오톡 브리핑 요약</SummarySource>
         <SummaryList>
-          {section.summaryBullets.map((line, idx) => (
+          {summaryLines.map((line, idx) => (
             <li key={safeKey(line, idx)}>{line}</li>
           ))}
         </SummaryList>
@@ -1653,24 +1595,95 @@ const SummaryList = styled.ul`
   color: #1f2a4a;
 `;
 
+const SectionSlotBar = styled.div<{ $withShadow?: boolean }>`
+  position: sticky;
+  top: var(--sticky-offset, 120px);
+  z-index: 8;
+  margin: 0 -20px 12px;
+  padding: 12px 20px 16px;
+  background: #fff;
+  box-shadow: ${({ $withShadow }) =>
+    $withShadow ? "0 6px 18px rgba(15, 23, 42, 0.05)" : "none"};
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+`;
+
+const InsightBlock = styled.section`
+  margin-top: 12px;
+  border-radius: 18px;
+  background: #f6f8ff;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const VideoBlock = styled.section`
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const BlockHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const BlockTitle = styled.h3`
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2a4a;
+`;
+
+const BlockMeta = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a648a;
+`;
+
+const BlockBadge = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2a4a;
+  background: #e4ecff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  strong {
+    font-weight: 900;
+  }
+`;
+
 const SlotSelector = styled.div`
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  padding-bottom: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 20px;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 const SlotChip = styled.button<{ $active: boolean }>`
+  flex: 0 0 auto;
   border-radius: 999px;
   border: none;
-  padding: 8px 14px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 800;
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  white-space: nowrap;
+  line-height: 1;
   background: ${({ $active }) => ($active ? "#1f2a4a" : "#e8ecff")};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
+  scroll-snap-align: start;
 `;
 
 const ChipBadge = styled.span<{ $active: boolean }>`
@@ -1741,13 +1754,6 @@ const InsightEmptyState = styled.div`
   background: #f9faff;
 `;
 
-
-const MarketInsight = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
 const IndexGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1783,61 +1789,6 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
       : $sentiment === "down"
       ? "#e05268"
       : "#5b6180"};
-`;
-
-const CommentaryList = styled.ul`
-  margin: 0;
-  padding-left: 18px;
-  color: #2c2f44;
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const InsightList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-const InsightRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #f8f9ff;
-`;
-
-const InsightMeta = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const InsightTicker = styled.span`
-  font-size: 12px;
-  color: #6a7391;
-  font-weight: 700;
-`;
-
-const InsightName = styled.span`
-  font-size: 15px;
-  font-weight: 800;
-`;
-
-const InsightActions = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-`;
-
-const InsightChange = styled.span`
-  font-size: 14px;
-  font-weight: 900;
-  color: #1f2a4a;
 `;
 
 const VideoList = styled.div`
@@ -2005,13 +1956,6 @@ const GhostButton = styled.button`
   background: transparent;
   color: #fff;
   font-weight: 800;
-`;
-
-const InlineLink = styled(Link)`
-  font-size: 12px;
-  color: #3240ff;
-  text-decoration: none;
-  font-weight: 900;
 `;
 
 const toastAnimation = keyframes`
