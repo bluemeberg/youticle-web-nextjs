@@ -11,7 +11,13 @@ import type {
   RecapVideoSummary,
   SlotPackage,
 } from "@/types/briefingLanding";
-import type { InsightSection, InsightSectionsResponse } from "@/types/insight";
+import type {
+  InsightAsset,
+  InsightSection,
+  InsightSectionsResponse,
+  InsightSource,
+  InsightStock,
+} from "@/types/insight";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
@@ -230,19 +236,131 @@ const buildInsightItems = (section?: InsightSection) => {
 };
 
 const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
-  videos.map((video) => ({
-    id: video.video_id,
-    title: video.title,
-    channel: video.channel_details?.channel_name ?? "",
-    thumbnail: video.thumbnail,
-    duration: video.duration,
-    summary:
-      video.summary_data?.key_points
-        ?.map((point: any) =>
-          typeof point === "string" ? point : point?.point ?? ""
-        )
-        .filter((line) => line.length > 0) ?? [],
-  }));
+  videos.map((video) => {
+    const headline =
+      video.summary_data?.headline_title?.trim() ||
+      video.summary_data?.headline_sub_title?.trim() ||
+      "";
+    const summaryList = (() => {
+      const shortSummary = video.summary_data?.short_summary?.trim();
+      if (shortSummary) return [shortSummary];
+      const keyPoints = video.summary_data?.key_points;
+      if (Array.isArray(keyPoints) && keyPoints.length > 0) {
+        return keyPoints
+          .map((point: any) =>
+            typeof point === "string" ? point : point?.point ?? ""
+          )
+          .filter((line) => line.length > 0);
+      }
+      return [];
+    })();
+
+    return {
+      id: video.video_id,
+      title: headline || video.title,
+      channel: video.channel_details?.channel_name ?? "",
+      thumbnail: video.thumbnail,
+      duration: video.duration,
+      summary: summaryList,
+    } satisfies RecapVideoSummary;
+  });
+
+const buildVideoMetaMap = (videos: DataProps[]) => {
+  const map = new Map<string, DataProps>();
+  videos.forEach((video) => {
+    if (!video?.video_id) return;
+    map.set(video.video_id, video);
+  });
+  return map;
+};
+
+const enrichSourcesWithVideoMeta = (
+  sources: InsightSource[] | undefined,
+  metaMap: Map<string, DataProps>
+): InsightSource[] | undefined => {
+  if (!Array.isArray(sources) || metaMap.size === 0) return sources;
+  let mutated = false;
+  const enriched = sources.map((source) => {
+    if (!source?.video_id) return source;
+    const meta = metaMap.get(source.video_id);
+    if (!meta) return source;
+    mutated = true;
+    const channel = meta.channel_details ?? {};
+    const summaryText = meta.summary_data?.short_summary?.trim();
+    const headlineTitle = meta.summary_data?.headline_title?.trim();
+    return {
+      ...source,
+      video_id: source.video_id ?? meta.video_id,
+      title: source.title ?? headlineTitle ?? meta.title,
+      thumbnail: source.thumbnail ?? meta.thumbnail,
+      upload_date: source.upload_date ?? meta.upload_date,
+      channel_id: source.channel_id ?? channel.channel_id,
+      channel_name: source.channel_name ?? channel.channel_name,
+      channel_thumbnail: source.channel_thumbnail ?? channel.channel_thumbnail,
+      channel_subscribers:
+        source.channel_subscribers ?? channel.channel_subscribers,
+      summary_data: source.summary_data ?? meta.summary_data,
+      summary: summaryText ?? source.summary,
+    } satisfies InsightSource;
+  });
+  return mutated ? enriched : sources;
+};
+
+const enrichStockWithVideoMeta = (
+  stock: InsightStock,
+  metaMap: Map<string, DataProps>
+): InsightStock => {
+  const mergedSources = enrichSourcesWithVideoMeta(stock.sources, metaMap);
+  if (!mergedSources || mergedSources === stock.sources) return stock;
+  return {
+    ...stock,
+    sources: mergedSources,
+  };
+};
+
+const enrichAssetWithVideoMeta = (
+  asset: InsightAsset,
+  metaMap: Map<string, DataProps>
+): InsightAsset => {
+  const mergedSources = enrichSourcesWithVideoMeta(asset.sources, metaMap);
+  if (!mergedSources || mergedSources === asset.sources) return asset;
+  return {
+    ...asset,
+    sources: mergedSources,
+  };
+};
+
+const enrichInsightSectionWithVideoMeta = (
+  section: InsightSection | undefined,
+  videos: DataProps[]
+): InsightSection | undefined => {
+  if (!section || videos.length === 0) return section;
+  const metaMap = buildVideoMetaMap(videos);
+  if (metaMap.size === 0) return section;
+  let stocksChanged = false;
+  let assetsChanged = false;
+  const stocks = section.data?.stocks?.map((stock) => {
+    if (!stock) return stock;
+    const next = enrichStockWithVideoMeta(stock, metaMap);
+    if (next !== stock) stocksChanged = true;
+    return next;
+  });
+  const assets = section.data?.assets?.map((asset) => {
+    if (!asset) return asset;
+    const next = enrichAssetWithVideoMeta(asset, metaMap);
+    if (next !== asset) assetsChanged = true;
+    return next;
+  });
+  if (!stocksChanged && !assetsChanged) return section;
+  return {
+    ...section,
+    data: {
+      ...section.data,
+      stocks: stocks ?? section.data?.stocks,
+      assets: assets ?? section.data?.assets,
+    },
+  };
+};
 
 const fetchJson = async <T>(url: string) => {
   const response = await fetch(url, { cache: "no-store" });
@@ -287,8 +405,9 @@ const fetchMoneySlotPackage = async (
 
   let videos: DataProps[] = [];
   if (slotPhase === "baseline") {
-    const baselineUrl = `${API_BASE_URL}/briefing/top_videos/stock`;
-    const baselineVideos = await fetchJson<DataProps[]>(baselineUrl);
+    const baselineUrl = new URL(`${API_BASE_URL}/briefing/top_videos/stock`);
+    if (date) baselineUrl.searchParams.set("date", date);
+    const baselineVideos = await fetchJson<DataProps[]>(baselineUrl.toString());
     videos = filterVideosByMoneySection(baselineVideos, sectionKey);
   } else {
     const slotNumber =
@@ -297,6 +416,7 @@ const fetchMoneySlotPackage = async (
         : SLOT_TIME_MAP[slotPhase] ?? SLOT_TIME_MAP.slot4;
     const videoUrl = new URL(TOP_VIDEOS_V2_ENDPOINT);
     videoUrl.searchParams.set("time_slot", String(slotNumber));
+    if (date) videoUrl.searchParams.set("date", date);
     const allVideos = await fetchJson<DataProps[]>(videoUrl.toString());
     let filteredVideos = filterVideosByMoneySection(allVideos, sectionKey);
     if (slotPhase === "ranking") {
@@ -321,7 +441,12 @@ const fetchMoneySlotPackage = async (
       section.key === config.insightKey || section.label === config.label
   );
 
-  return buildSlotPackage(slotPhase, videos, insightSection);
+  const enrichedSection = enrichInsightSectionWithVideoMeta(
+    insightSection,
+    videos
+  );
+
+  return buildSlotPackage(slotPhase, videos, enrichedSection);
 };
 
 const buildMoneySection = async (
@@ -363,12 +488,14 @@ const buildMoneySection = async (
 
 const fetchGeneralSection = async (
   generalKey: GeneralSectionKey,
-  rawParam: string
+  rawParam: string,
+  date?: string
 ): Promise<RecapSection> => {
   const config = GENERAL_SECTION_CONFIGS[generalKey];
   const sectionQuery = decodeURIComponent(rawParam);
   const videoUrl = new URL(SECTION_VIDEOS_ENDPOINT);
   videoUrl.searchParams.set("section", sectionQuery);
+  if (date) videoUrl.searchParams.set("date", date);
   const videos = await fetchJson<DataProps[]>(videoUrl.toString());
   const slotPackage: SlotPackage = {
     id: "general",
@@ -421,7 +548,11 @@ export async function fetchBriefingLanding(
           );
         } else if (entry.key in GENERAL_SECTION_CONFIGS) {
           sections.push(
-            await fetchGeneralSection(entry.key as GeneralSectionKey, entry.raw)
+            await fetchGeneralSection(
+              entry.key as GeneralSectionKey,
+              entry.raw,
+              apiDate
+            )
           );
         }
       } catch (error) {

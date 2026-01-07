@@ -274,19 +274,24 @@ const LandingDomesticStockInsightSection = ({
   const introText = (() => {
     switch (label) {
       case "해외 주식":
-        return "TOP5 영상에서 포착한 해외 주식 흐름을 글로벌 지표와 함께 다시 정리한 요약입니다.";
+        return "유튜브 TOP5 영상에서 포착한 해외 주식 흐름을 글로벌 지표와 함께 다시 정리한 요약입니다.";
       case "국내 가상자산":
-        return "TOP5 영상에서 포착한 국내 가상자산 흐름을 주요 온체인·거래 데이터를 묶어 정리한 요약입니다.";
+        return "유튜브 TOP5 영상에서 포착한 국내 가상자산 흐름을 주요 온체인·거래 데이터를 묶어 정리한 요약입니다.";
       case "해외 가상자산":
-        return "TOP5 영상에서 포착한 해외 가상자산 흐름을 글로벌 거래소의 데이터와 함께 정리한 요약입니다.";
+        return "유튜브 TOP5 영상에서 포착한 해외 가상자산 흐름을 글로벌 거래소의 데이터와 함께 정리한 요약입니다.";
       default:
-        return "TOP5 영상에서 포착한 국내 주식 시황을 실시간 시장 지표와 함께 다시 정리한 요약입니다.";
+        return "유튜브 TOP5 영상에서 포착한 국내 주식 시황을 실시간 시장 지표와 함께 다시 정리한 요약입니다.";
     }
   })();
-  const stockIntroText =
-    label === "국내 가상자산" || label === "해외 가상자산"
-      ? "종목 인사이트에서는 온체인 지표와 거래 흐름을 기반으로 TOP5 영상에 등장한 코인을 정리합니다."
-      : "종목 인사이트에서는 TOP5 영상에 등장한 종목을 현재 시세, 밸류에이션, 수급, 유동성까지 한눈에 정리합니다.";
+  const stockIntroText = (() => {
+    if (label?.includes("가상자산")) {
+      return "유튜브 TOP5 영상에서 포착된 가상자산(코인)에 대해 핵심 지표와 거래 흐름을 다시 정리한 요약입니다.";
+    }
+    if (label?.includes("해외 주식")) {
+      return "유튜브 TOP5 영상에서 포착된 해외 주식 종목의 핵심 포인트와 지표를 다시 정리한 요약입니다.";
+    }
+    return "유튜브 TOP5 영상에서 포착된 국내 주식 종목에 대한 핵심 흐름을 현재 지표와 함께 정리한 요약입니다.";
+  })();
   const hasMarketDetailToggle = label === "국내 주식" || label === "해외 주식";
   const [showMarketDetails, setShowMarketDetails] = useState(
     !hasMarketDetailToggle
@@ -356,10 +361,10 @@ const LandingDomesticStockInsightSection = ({
     <Wrapper>
       <SectionHeader>
         <Title>
-          {label} 마켓 인사이트
-          {appliedSlotLabel?.title ? (
+          🧭 마켓 인사이트
+          {/* {appliedSlotLabel?.title ? (
             <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
-          ) : null}
+          ) : null} */}
         </Title>
       </SectionHeader>
       {/* {appliedSlotLabel?.description ? (
@@ -467,18 +472,15 @@ const LandingDomesticStockInsightSection = ({
           <SubSectionHeader>
             <SubSectionTitle>
               📊 종목 인사이트
-              {appliedSlotLabel?.title ? (
+              {/* {appliedSlotLabel?.title ? (
                 <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
-              ) : null}
+              ) : null} */}
             </SubSectionTitle>
             {/* {updated_at && (
               <Timestamp>업데이트 : {formatDateTime(updated_at)}</Timestamp>
             )} */}
           </SubSectionHeader>
-          <SubSectionIntro>
-            {SOURCE_TAG_TEXT} ·{" "}
-            {appliedSlotLabel?.description ?? stockIntroText}
-          </SubSectionIntro>
+          <SubSectionIntro>{stockIntroText}</SubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
               <StockCard
@@ -1390,7 +1392,7 @@ const StockCard = ({
       <StockHeader>
         <StockTitle>
           {stock.stock_name}
-          {/* <StockPriceValue>{currentPriceText}</StockPriceValue> */}
+          <StockPriceValue>{currentPriceText}</StockPriceValue>
         </StockTitle>
         <StockDeltaBlock $positive={deltaPositive}>
           {/* {amountText ? <span>{amountText}</span> : null} */}
@@ -1842,18 +1844,29 @@ export const StockVisualSummaryBlocks = ({
   );
 };
 
+const resolveSourceVideoId = (source?: InsightSource | null) =>
+  source?.video_id || (source as any)?.video?.video_id || (source as any)?.id;
+
 export const filterSourcesWithOutline = (
   sources?: InsightStock["sources"],
   allowedVideoIds?: Set<string>
 ): InsightSource[] => {
   if (!Array.isArray(sources)) return [];
-  return sources.filter((source) => {
-    if (!source || !source.video_id) return false;
-    if (allowedVideoIds && allowedVideoIds.size > 0) {
-      return allowedVideoIds.has(source.video_id);
-    }
-    return true;
+
+  const sanitizedSources = sources.filter((source): source is InsightSource =>
+    Boolean(resolveSourceVideoId(source))
+  );
+
+  if (!allowedVideoIds || allowedVideoIds.size === 0) {
+    return sanitizedSources;
+  }
+
+  const filtered = sanitizedSources.filter((source) => {
+    const videoId = resolveSourceVideoId(source);
+    return videoId ? allowedVideoIds.has(videoId) : false;
   });
+
+  return filtered.length > 0 ? filtered : sanitizedSources;
 };
 
 interface OutlineSegment {
@@ -1955,29 +1968,37 @@ export const StockVideoSources = ({
   stockName,
   onEvidenceClick,
   hasVideoSources = true,
+  heading,
+  hideEvidenceButton = false,
 }: {
   sources?: InsightStock["sources"];
   stockName: string;
   onEvidenceClick?: () => void;
   hasVideoSources?: boolean;
+  heading?: string;
+  hideEvidenceButton?: boolean;
 }) => {
   const user = useRecoilValue(userState);
   const eligibleSources = filterSourcesWithOutline(sources);
-  if (eligibleSources.length === 0) return null;
+  const normalizedSources = eligibleSources
+    .map((source) => ({ source, videoId: resolveSourceVideoId(source) }))
+    .filter((entry): entry is { source: InsightSource; videoId: string } =>
+      Boolean(entry.videoId)
+    );
+  if (normalizedSources.length === 0) return null;
   const MAX_DISPLAY_COUNT = 1;
-  const displaySources = eligibleSources.slice(0, MAX_DISPLAY_COUNT);
-  const hasMoreSources = eligibleSources.length > MAX_DISPLAY_COUNT;
+  const displaySources = normalizedSources.slice(0, MAX_DISPLAY_COUNT);
+  const hasMoreSources = normalizedSources.length > MAX_DISPLAY_COUNT;
+  const titleText = heading ? heading : `“${stockName}” 언급된 오늘 TOP5 영상`;
 
   return (
     <VideoSourcesSection>
       <VideoSourcesHeader>
-        <VideoSourcesTitle>
-          &ldquo;{stockName}&rdquo; 언급된 오늘 TOP5 영상
-        </VideoSourcesTitle>
+        <VideoSourcesTitle>{titleText}</VideoSourcesTitle>
         {/* <VideoCountBadge>{sources.length}편</VideoCountBadge> */}
       </VideoSourcesHeader>
       <VideoSourceList>
-        {displaySources.map((source) => {
+        {displaySources.map(({ source, videoId }) => {
           const summaryData = source.summary_data;
           const headlineTitle = removeMarkTags(
             summaryData?.headline_title ??
@@ -1988,7 +2009,7 @@ export const StockVideoSources = ({
             summaryData?.short_summary ?? source.summary ?? ""
           );
           const href = {
-            pathname: `/detail/${source.video_id}`,
+            pathname: `/detail/${videoId}`,
             query: { focus: "stock-mentions" },
           };
           const uploadText = formatVideoDate(source.upload_date);
@@ -1999,14 +2020,14 @@ export const StockVideoSources = ({
             void logCtaClick(
               "metion_button_click",
               user?.id,
-              source.video_id,
+              videoId,
               getOrCreateAnonId()
             ).catch(() => {});
           };
 
           return (
             <VideoSourceCard
-              key={source.video_id}
+              key={videoId}
               href={href}
               onClick={handleVideoLinkClick}
             >
@@ -2022,7 +2043,7 @@ export const StockVideoSources = ({
                     />
                   ) : (
                     <VideoThumbnailFallback>
-                      <span>{stockName}</span>
+                      <span>{heading ?? stockName}</span>
                     </VideoThumbnailFallback>
                   )}
                 </VideoThumbnailWrapper>
@@ -2064,15 +2085,17 @@ export const StockVideoSources = ({
           나머지 영상은 근거 영상 모아보기에서 확인할 수 있어요.
         </VideoSourcesHint>
       ) : null}
-      <VideoSourcesActionRow>
-        <EvidenceButton
-          type="button"
-          onClick={onEvidenceClick}
-          disabled={!hasVideoSources}
-        >
-          📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
-        </EvidenceButton>
-      </VideoSourcesActionRow>
+      {hideEvidenceButton ? null : (
+        <VideoSourcesActionRow>
+          <EvidenceButton
+            type="button"
+            onClick={onEvidenceClick}
+            disabled={!hasVideoSources}
+          >
+            📊 {hasVideoSources ? "관련 영상 보기" : "영상 준비 중"}
+          </EvidenceButton>
+        </VideoSourcesActionRow>
+      )}
     </VideoSourcesSection>
   );
 };
@@ -3222,10 +3245,9 @@ function formatHighlightText(text: string) {
 }
 
 const Wrapper = styled.section`
-  /* margin: 20px 16px 12px; */
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 `;
 
 const SectionHeader = styled.div`
@@ -3237,12 +3259,13 @@ const SectionHeader = styled.div`
 
 const Title = styled.h3`
   margin: 0;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
 `;
 
 const SlotBadge = styled.span`
@@ -3256,20 +3279,19 @@ const SlotBadge = styled.span`
 
 const SectionMeta = styled.p`
   margin: 8px 0 12px;
-  font-size: 14px;
+  font-size: 13px;
   color: #4b5563;
 `;
 
 const Timestamp = styled.span`
-  font-size: 14px;
+  font-size: 12px;
   color: #64748b;
   font-weight: 700;
 `;
 
 const SectionIntro = styled.p`
-  /* margin: 8px; */
   font-size: 14px;
-  color: #6b7280;
+  color: #2e2e2e;
   line-height: 1.4;
   margin-top: -8px;
 `;
@@ -3278,10 +3300,11 @@ const OverviewCard = styled.div`
   background: ${COLOR_CARD_BG};
   border: 1px solid ${COLOR_TRACK};
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  box-shadow: none;
 `;
 
 const OverviewText = styled.p`
@@ -3363,13 +3386,14 @@ const MarketGrid = styled.div`
 `;
 
 const MarketCardWrapper = styled.div`
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${COLOR_TRACK};
   border-radius: 12px;
-  padding: 16px;
-  background: #fff;
+  padding: 12px;
+  background: ${COLOR_CARD_BG};
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: none;
 `;
 
 const MarketCardHeader = styled.div`
@@ -3423,10 +3447,6 @@ const MarketStatGrid = styled.div`
 const MarketStat = styled.div`
   flex: 1 1 240px;
   min-width: 220px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: ${COLOR_CARD_BG};
-  /* border: 1px solid ${COLOR_TRACK}; */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3442,7 +3462,7 @@ const SubSectionHeader = styled.div`
 
 const SubSectionTitle = styled.h3`
   margin: 0;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
@@ -3451,10 +3471,10 @@ const SubSectionTitle = styled.h3`
 `;
 
 const SubSectionIntro = styled.p`
-  /* margin: 4px 4px 12px; */
   font-size: 14px;
-  color: #6b7280;
+  color: #2e2e2e;
   margin-top: -12px;
+  line-height: 1.4;
 `;
 
 const MarketStatLabel = styled.span`
@@ -3679,16 +3699,13 @@ const ChangeValue = styled.span<{ $tone: "up" | "down" | "flat" }>`
 `;
 
 const MarketComment = styled.div<{ $withBorder?: boolean }>`
-  background: ${COLOR_CARD_BG};
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #e7ecff;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 12px;
   strong {
     font-weight: 700;
   }
@@ -3696,17 +3713,18 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
 
 const MarketSummaryComment = styled(MarketComment)`
   margin-top: 12px;
+  border: 1px solid #e7ecff;
 `;
 
 const MarketCommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 6px;
   color: #0b63f6;
-  font-size: 16px;
+  font-size: 15px;
 `;
 
 const MarketCommentBody = styled.div`
-  font-size: 16px;
+  font-size: 13px;
   line-height: 1.5;
 `;
 
@@ -3719,7 +3737,7 @@ const MarketCommentBulletList = styled.ul`
 `;
 
 const MarketCommentBulletItem = styled.li`
-  font-size: 16px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
   line-height: 1.5;
   list-style: disc;
@@ -3760,17 +3778,18 @@ const StockList = styled.div`
 const StockCardWrapper = styled.div`
   border: 1px solid ${COLOR_TRACK};
   border-radius: 12px;
-  padding: 18px 16px;
-  background: #fff;
+  padding: 12px;
+  background: ${COLOR_CARD_BG};
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  box-shadow: none;
 `;
 
 const StockDetailToggleRow = styled.div`
   display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
+  justify-content: center;
+  /* margin-top: 4px; */
 `;
 
 const StockListToggleRow = styled(StockDetailToggleRow)`
@@ -3785,7 +3804,7 @@ const StockDetailToggleButton = styled.button`
   border: none;
   background: transparent;
   color: #2563eb;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   padding: 4px 0;
@@ -3839,8 +3858,8 @@ const StockDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: #1f2937;
 `;
 
@@ -3851,7 +3870,7 @@ const StockHeader = styled.div`
 `;
 
 const StockTitle = styled.div`
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   display: flex;
@@ -3860,7 +3879,7 @@ const StockTitle = styled.div`
 `;
 
 const StockPriceValue = styled.span`
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: #475569;
 `;
@@ -3869,15 +3888,15 @@ const StockDeltaBlock = styled.div<{ $positive: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: ${({ $positive }) => ($positive ? COLOR_POSITIVE : COLOR_NEGATIVE)};
   span {
-    font-size: 16px;
+    font-size: 13px;
     color: ${({ $positive }) => ($positive ? COLOR_POSITIVE : COLOR_NEGATIVE)};
   }
   strong {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 700;
   }
 `;
@@ -3937,9 +3956,6 @@ const PriceVisualGrid = styled.div`
 const PriceVisualCard = styled.div`
   flex: 1 1 220px;
   min-width: 200px;
-  background: ${COLOR_CARD_BG};
-  border-radius: 12px;
-  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3976,9 +3992,6 @@ const ValuationMetricGrid = styled.div`
 `;
 
 const ValuationMetricCard = styled.div`
-  background: ${COLOR_CARD_BG};
-  border-radius: 12px;
-  padding: 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -4077,9 +4090,6 @@ const FlowStats = styled.div`
 const FlowStatCard = styled.div<{ $tone?: TonePositiveNeutralNegative }>`
   flex: 1 1 140px;
   min-width: 140px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4138,9 +4148,6 @@ const LiquidityStats = styled.div`
 const LiquidityStatCard = styled.div`
   flex: 1 1 160px;
   min-width: 160px;
-  background: ${COLOR_CARD_BG};
-  border-radius: 12px;
-  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4267,9 +4274,6 @@ const LevelsMeta = styled.div`
 `;
 
 const LevelsPivotCard = styled.div`
-  background: ${COLOR_CARD_BG};
-  border-radius: 12px;
-  padding: 12px 16px;
   display: inline-flex;
   flex-direction: column;
   gap: 4px;
@@ -4304,9 +4308,6 @@ const LevelColumnTitle = styled.span`
 `;
 
 const LevelCard = styled.div`
-  background: ${COLOR_CARD_BG};
-  border-radius: 12px;
-  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4523,9 +4524,9 @@ const CommentPreviewTitle = styled.div`
 
 const CommentTitle = styled.div`
   font-weight: 700;
-  margin-bottom: 4px;
+  /* margin-bottom: 4px; */
   color: #0b63f6;
-  font-size: 14px;
+  font-size: 15px;
 `;
 
 const CommentBody = styled.div`
@@ -4541,7 +4542,7 @@ const CommentBulletList = styled.ul`
 `;
 
 const CommentBulletItem = styled.li`
-  font-size: 16px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
   line-height: 1.6;
   list-style: disc;
@@ -4621,7 +4622,7 @@ const VideoSourcesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 18px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
 `;
 
@@ -4662,18 +4663,17 @@ const VideoSourceCard = styled(Link)`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
   text-decoration: none;
   color: inherit;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease;
 
   &:hover,
   &:focus-visible {
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-    transform: translateY(-2px);
+    opacity: 0.9;
     outline: none;
   }
 

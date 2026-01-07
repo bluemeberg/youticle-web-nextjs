@@ -13,13 +13,17 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
-import LandingDomesticStockInsightSection from "./LandingDomesticStockInsightSection";
+import LandingDomesticStockInsightSection, {
+  StockVideoSources,
+} from "./LandingDomesticStockInsightSection";
 import LandingCryptoInsightSection from "./LandingCryptoInsightSection";
 import LandingStockMarketSection from "./LandingStockMarketSection";
 import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
+import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
 import type {
   InsightMarketDeltaCard,
   InsightSection,
+  InsightSource,
   InsightStock,
   InsightStockMetrics,
 } from "@/types/insight";
@@ -825,8 +829,7 @@ const isMoneySection = (section: RecapSection): section is MoneyRecapSection =>
 
 const isRankingSection = (
   section: RecapSection
-): section is RankingRecapSection =>
-  section.type === "realestate";
+): section is RankingRecapSection => section.type === "realestate";
 
 function safeKey(text: string, idx: number) {
   return `${idx}-${text}`;
@@ -855,6 +858,35 @@ function badgeForDiff(diff: number) {
   if (diff >= 5) return "NEW";
   return `+${diff}`;
 }
+
+const BRIEFING_SLOT_PHASES: BriefingSlot[] = [
+  "baseline",
+  "slot1",
+  "slot2",
+  "slot3",
+  "ranking",
+  "slot4",
+];
+
+const resolveSlotPhase = (slotId?: string | null): BriefingSlot | null => {
+  if (!slotId) return null;
+  return BRIEFING_SLOT_PHASES.includes(slotId as BriefingSlot)
+    ? (slotId as BriefingSlot)
+    : null;
+};
+
+const buildSectionSlotLabel = (
+  sectionTitle: string,
+  slot: SlotPackage
+): SlotLabel => {
+  const phase = resolveSlotPhase(slot.id) || "slot4";
+  const baseLabel: SlotLabel = {
+    phase,
+    title: slot.label,
+    description: slot.description ?? "",
+  };
+  return resolveInsightSlotCopy(sectionTitle, baseLabel) ?? baseLabel;
+};
 
 type HighlightStockItem = {
   id: string;
@@ -1108,10 +1140,13 @@ const BriefingLandingPageClient = ({
     const slot = section.slotPackages.find((s) => s.id === slotId);
     const diff = diffBadgeByMoneySectionSlot?.[section.id]?.[slotId]?.diff ?? 0;
     if (slot) {
+      const slotCopy = buildSectionSlotLabel(section.title, slot);
       if (diff > 0) {
-        showToast(`${slot.label} TOP5로 갱신됐어요 · 새 근거영상 ${diff}개`);
+        showToast(
+          `${slotCopy.title} TOP5로 갱신됐어요 · 새 근거영상 ${diff}개`
+        );
       } else {
-        showToast(`${slot.label} 슬롯으로 이동했어요`);
+        showToast(`${slotCopy.title} 슬롯으로 이동했어요`);
       }
     }
 
@@ -1126,6 +1161,22 @@ const BriefingLandingPageClient = ({
     }
   };
 
+  const adaptSlotVideosToSources = (
+    videos: VideoCardData[]
+  ): InsightSource[] => {
+    return videos.map((video) => {
+      const summaryText =
+        video.summary?.find((line) => line && line.trim().length > 0) ?? "";
+      return {
+        video_id: video.id,
+        title: video.title,
+        thumbnail: video.thumbnail,
+        channel_name: video.channel,
+        summary: summaryText,
+      } as InsightSource;
+    });
+  };
+
   const renderMoneySection = (section: MoneyRecapSection) => {
     const activeSlot = getActiveSlot(section);
     const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
@@ -1133,11 +1184,7 @@ const BriefingLandingPageClient = ({
     const activeDiff =
       diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlotId]?.diff ?? 0;
     const slotLabel: SlotLabel | null = activeSlot
-      ? {
-          phase: (activeSlot.id as BriefingSlot) ?? "slot4",
-          title: activeSlot.label,
-          description: activeSlot.description ?? "",
-        }
+      ? buildSectionSlotLabel(section.title, activeSlot)
       : null;
     const insightSection = activeSlot?.tabs.insightSection;
 
@@ -1170,6 +1217,9 @@ const BriefingLandingPageClient = ({
     const summaryLines = activeSlot?.tabs.market.commentary?.length
       ? activeSlot.tabs.market.commentary
       : section.summaryBullets;
+    const slotVideoSources = activeSlot
+      ? adaptSlotVideosToSources(activeSlot.tabs.videos)
+      : [];
 
     return (
       <SectionBlock
@@ -1190,6 +1240,7 @@ const BriefingLandingPageClient = ({
             {section.slotPackages.length ? (
               <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
                 {section.slotPackages.map((slot) => {
+                  const slotCopy = buildSectionSlotLabel(section.title, slot);
                   const badge =
                     diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
                   const isActive = slot.id === activeSlotBySection[section.id];
@@ -1200,7 +1251,7 @@ const BriefingLandingPageClient = ({
                       $active={isActive}
                       onClick={() => onSlotSelect(section, slot.id)}
                     >
-                      <span>{slot.label}</span>
+                      <span>{slotCopy.title}</span>
                       {badge ? (
                         <ChipBadge $active={isActive}>{badge}</ChipBadge>
                       ) : null}
@@ -1211,18 +1262,21 @@ const BriefingLandingPageClient = ({
             ) : null}
             {activeSlot ? (
               <SlotMeta>
-                현재: {activeSlot.label} · {activeSlot.displayTime}
+                현재: {slotLabel?.title ?? activeSlot.label} ·{" "}
+                {activeSlot.displayTime}
               </SlotMeta>
             ) : null}
           </SectionSlotBar>
         ) : null}
 
-        <SummarySource>카카오톡 브리핑 요약</SummarySource>
-        <SummaryList>
-          {summaryLines.map((line, idx) => (
-            <li key={safeKey(line, idx)}>{line}</li>
-          ))}
-        </SummaryList>
+        <SummaryCard>
+          <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
+          <SummaryList>
+            {summaryLines.map((line, idx) => (
+              <li key={safeKey(line, idx)}>{line}</li>
+            ))}
+          </SummaryList>
+        </SummaryCard>
 
         {insightContent ? (
           <InsightBlock>
@@ -1230,6 +1284,7 @@ const BriefingLandingPageClient = ({
               <BlockTitle>인사이트 강화</BlockTitle>
               {slotLabel ? <BlockMeta>{slotLabel.title}</BlockMeta> : null}
             </BlockHeader>
+            <BlockDivider />
             {insightContent}
           </InsightBlock>
         ) : (
@@ -1300,12 +1355,14 @@ const BriefingLandingPageClient = ({
           <SectionTitle>{section.title}</SectionTitle>
         </SectionTitleRow>
 
-        <SummarySource>카카오톡 브리핑 요약</SummarySource>
-        <SummaryList>
-          {summaryLines.map((line, idx) => (
-            <li key={safeKey(line, idx)}>{line}</li>
-          ))}
-        </SummaryList>
+        <SummaryCard>
+          <SummarySource>카카오톡 브리핑 요약</SummarySource>
+          <SummaryList>
+            {summaryLines.map((line, idx) => (
+              <li key={safeKey(line, idx)}>{line}</li>
+            ))}
+          </SummaryList>
+        </SummaryCard>
 
         <TabList role="tablist" aria-label={`${section.title} 탭`}>
           {(
@@ -1477,10 +1534,11 @@ export default BriefingLandingPageClient;
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: #f4f6fb;
+  background: #f6f7fb;
   display: flex;
   flex-direction: column;
-  padding-bottom: 80px;
+  align-items: center;
+  padding: 0 16px 80px;
 `;
 
 const TopAppBar = styled.header`
@@ -1490,9 +1548,11 @@ const TopAppBar = styled.header`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 20px 12px;
-  background: #ffffff;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 720px;
+  padding: 16px 0 12px;
+  background: #f6f7fb;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
 `;
 
 const BackButton = styled(Link)`
@@ -1514,50 +1574,56 @@ const TopTime = styled.span`
 `;
 
 const TopDescription = styled.span`
-  font-size: 14px;
-  color: #4b4f63;
+  font-size: 13px;
+  color: #6b7280;
 `;
 
 const TopTagline = styled.span`
-  font-size: 13px;
-  color: #6a6f85;
+  font-size: 12px;
+  color: #94a3b8;
 `;
 
-const StickyKeywordNav = styled.div`
+const StickyKeywordNav = styled.nav`
   position: sticky;
   top: var(--topbar-h, 64px);
   z-index: 25;
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
+  max-width: 720px;
+  padding: 8px 0;
   overflow-x: auto;
-  padding: 12px 20px;
-  background: rgba(244, 246, 251, 0.92);
+  background: #f6f7fb;
   backdrop-filter: blur(8px);
 `;
 
 const KeywordChip = styled.button<{ $active: boolean }>`
+  height: 36px;
+  padding: 0 14px;
   border-radius: 999px;
-  border: none;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 800;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#e5e7eb")};
+  font-size: 13px;
+  font-weight: 700;
   white-space: nowrap;
-  background: ${({ $active }) => ($active ? "#1f2a4a" : "#e1e6ff")};
-  color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
+  background: ${({ $active }) => ($active ? "#111827" : "#e8edff")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#111827")};
 `;
 
 const SectionsContainer = styled.main`
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+  gap: 24px;
+  width: 100%;
+  max-width: 720px;
+  padding: 24px 0 40px;
 `;
 
 const SectionBlock = styled.section`
-  border-radius: 20px;
+  border-radius: 16px;
   background: #ffffff;
-  padding: 20px;
-  box-shadow: 0 12px 28px rgba(31, 42, 74, 0.08);
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
   scroll-margin-top: var(--sticky-offset, 140px);
 `;
 
@@ -1565,12 +1631,28 @@ const SectionTitleRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 `;
 
 const SectionTitle = styled.h2`
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  position: relative;
+  padding-left: 14px;
+  line-height: 1.35;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.2em;
+    bottom: 0.2em;
+    width: 4px;
+    border-radius: 999px;
+    background: #3247ff;
+  }
 `;
 
 const SectionMiniHint = styled.span`
@@ -1580,46 +1662,72 @@ const SectionMiniHint = styled.span`
   margin-top: 4px;
 `;
 
+const SummaryCard = styled.div`
+  background: #f3f6ff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0 16px;
+`;
+
 const SummarySource = styled.p`
-  margin: 16px 0 4px;
+  margin: 0 0 8px;
   font-size: 12px;
   font-weight: 700;
-  color: #55607a;
+  color: #6b7289;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 `;
 
 const SummaryList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 8px 0 16px;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.6;
   color: #1f2a4a;
+  margin-top: 12px;
+  li {
+    position: relative;
+    padding-left: 20px;
+  }
+  li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #3247ff;
+    font-weight: 900;
+  }
+  li:not(:last-child) {
+    margin-bottom: 8px;
+  }
 `;
 
 const SectionSlotBar = styled.div<{ $withShadow?: boolean }>`
   position: sticky;
-  top: var(--sticky-offset, 120px);
+  top: 152px;
   z-index: 8;
-  margin: 0 -20px 12px;
-  padding: 12px 20px 16px;
-  background: #fff;
-  box-shadow: ${({ $withShadow }) =>
-    $withShadow ? "0 6px 18px rgba(15, 23, 42, 0.05)" : "none"};
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  margin: 0 -16px 12px;
+  padding: 10px 16px 12px;
+  background: #f6f7fb;
+  border-top: 1px solid rgba(40, 51, 102, 0.12);
+  border-bottom: 1px solid rgba(40, 51, 102, 0.12);
+  box-shadow: none;
 `;
 
 const InsightBlock = styled.section`
-  margin-top: 12px;
-  border-radius: 18px;
-  background: #f6f8ff;
-  padding: 18px;
+  margin-top: 16px;
+  border-radius: 12px;
+  background: #f3f6ff;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-shadow: none;
 `;
 
 const VideoBlock = styled.section`
@@ -1634,6 +1742,12 @@ const BlockHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+`;
+
+const BlockDivider = styled.div`
+  width: 100%;
+  height: 1px;
+  background: rgba(15, 23, 42, 0.08);
 `;
 
 const BlockTitle = styled.h3`
@@ -1677,8 +1791,8 @@ const SlotSelector = styled.div`
 const SlotChip = styled.button<{ $active: boolean }>`
   flex: 0 0 auto;
   border-radius: 999px;
-  border: none;
-  padding: 8px 12px;
+  border: 1px solid #d4d9ef;
+  padding: 9px 14px;
   font-size: 12px;
   font-weight: 800;
   display: inline-flex;
@@ -1686,9 +1800,10 @@ const SlotChip = styled.button<{ $active: boolean }>`
   align-items: center;
   white-space: nowrap;
   line-height: 1;
-  background: ${({ $active }) => ($active ? "#1f2a4a" : "#e8ecff")};
+  background: ${({ $active }) => ($active ? "#1f2a4a" : "#f6f7ff")};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   scroll-snap-align: start;
+  transition: background 0.15s ease, border-color 0.15s ease;
 `;
 
 const ChipBadge = styled.span<{ $active: boolean }>`
@@ -1697,7 +1812,7 @@ const ChipBadge = styled.span<{ $active: boolean }>`
   padding: 3px 8px;
   border-radius: 999px;
   background: ${({ $active }) =>
-    $active ? "rgba(255,255,255,0.18)" : "#ffffff"};
+    $active ? "rgba(255,255,255,0.24)" : "#ffffff"};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   border: 1px solid rgba(31, 42, 74, 0.12);
 `;
@@ -1714,19 +1829,22 @@ const TabList = styled.div`
   display: flex;
   gap: 8px;
   padding: 4px;
-  background: #f0f2fb;
+  background: #f3f5ff;
+  border: 1px solid #e0e5ff;
   border-radius: 14px;
 `;
 
 const TabButton = styled.button<{ $active: boolean }>`
   flex: 1;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 10px 12px;
   font-weight: 800;
   font-size: 13px;
-  background: ${({ $active }) => ($active ? "#1f2a4a" : "transparent")};
-  color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
+  background: ${({ $active }) => ($active ? "#fff" : "transparent")};
+  color: #1f2a4a;
+  box-shadow: ${({ $active }) =>
+    $active ? "0 6px 18px rgba(31, 42, 74, 0.12)" : "none"};
 `;
 
 const TabLabel = styled.span`
@@ -1797,25 +1915,30 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
 `;
 
 const VideoList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
 `;
 
 const VideoCard = styled.article`
   display: flex;
-  gap: 14px;
-  border: 1px solid #e4e7fb;
-  border-radius: 18px;
-  padding: 12px;
-  background: #fafbff;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: flex-start;
+  background: transparent;
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const VideoThumb = styled.img`
-  width: 120px;
-  height: 80px;
-  border-radius: 12px;
+  width: 92px;
+  height: 52px;
+  border-radius: 10px;
   object-fit: cover;
+  flex: 0 0 auto;
 `;
 
 const VideoContent = styled.div`
@@ -1833,10 +1956,16 @@ const VideoTitleRow = styled.div`
 
 const VideoTitle = styled.h3`
   margin: 0;
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 1.25;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #1f2a4a;
   flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
 const NewPill = styled.span`
@@ -1850,9 +1979,9 @@ const NewPill = styled.span`
 `;
 
 const VideoMeta = styled.span`
-  font-size: 13px;
-  color: #626986;
-  font-weight: 700;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
 `;
 
 const BulletList = styled.ul`
@@ -1860,9 +1989,12 @@ const BulletList = styled.ul`
   padding-left: 18px;
   font-size: 13px;
   color: #2e344f;
+  line-height: 1.55;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  li:not(:last-child) {
+    margin-bottom: 6px;
+  }
 `;
 
 const RankingStream = styled.div`

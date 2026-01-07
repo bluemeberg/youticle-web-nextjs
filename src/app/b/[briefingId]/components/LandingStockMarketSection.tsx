@@ -19,7 +19,7 @@ import {
   buildFlowShareDetail,
   buildFlowShiftDetail,
 } from "@/components/insight/utils/marketDeltaParsers";
-import { StockVideoSources } from "@/components/insight/DomesticStockInsightSection";
+import { StockVideoSources } from "./LandingDomesticStockInsightSection";
 import { userState } from "@/store/user";
 import { logCtaClick } from "@/api/apiClient";
 import { getOrCreateAnonId } from "@/utils/formatter";
@@ -124,9 +124,9 @@ export type InsightVisualization =
 const COLOR_POSITIVE = "#ff6b6b";
 const COLOR_NEGATIVE = "#0b63f6";
 const COLOR_NEUTRAL = "#9db3ff";
-const COLOR_TRACK = "#e7ecff";
-const COLOR_CARD_BG = "#f5f7ff";
-const COLOR_TEXT = "#0f172a";
+const COLOR_TRACK = "#e1e6ff";
+const COLOR_CARD_BG = "#f6f8ff";
+const COLOR_TEXT = "#1f2a4a";
 const SOURCE_TAG_TEXT = "오늘 TOP5 유튜브 영상 기반";
 const DEFAULT_VISIBLE_STOCKS = 5;
 
@@ -354,7 +354,7 @@ const LandingStockMarketSection = ({
     <Wrapper>
       {canShowMarketSection && showHeader ? (
         <SectionHeader>
-          <Title>마켓 인사이트</Title>
+          <Title>🧭 마켓 인사이트</Title>
         </SectionHeader>
       ) : null}
       {/* {appliedSlotLabel?.description ? (
@@ -682,14 +682,13 @@ const LandingStockMarketSection = ({
           <StockSubSectionHeader>
             <StockSubSectionTitle>
               📊 종목 인사이트
-              {appliedSlotLabel?.title ? (
+              {/* {appliedSlotLabel?.title ? (
                 <SlotBadge>{appliedSlotLabel.title}</SlotBadge>
-              ) : null}
+              ) : null} */}
             </StockSubSectionTitle>
           </StockSubSectionHeader>
           <StockSubSectionIntro>
-            {SOURCE_TAG_TEXT} ·{" "}
-            {appliedSlotLabel?.description ?? stockIntroText}
+            {SOURCE_TAG_TEXT} · {appliedSlotLabel?.description ?? stockIntroText}
           </StockSubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
@@ -2545,15 +2544,16 @@ function formatNumberWithoutTrailingZeros(value: number) {
 }
 
 function getStockIntroText(label?: string | null) {
-  switch (label) {
-    case "국내 가상자산":
-    case "해외 가상자산":
-      return "종목 인사이트에서는 온체인 지표와 거래 흐름을 기반으로 TOP5 영상에 등장한 코인을 정리합니다.";
-    case "해외 주식":
-      return "종목 인사이트에서는 TOP5 영상에서 포착한 해외 주식 흐름을 글로벌 지표와 함께 다시 정리한 요약입니다.";
-    default:
-      return "종목 인사이트에서는 TOP5 영상에 등장한 종목을 현재 시세, 밸류에이션, 수급, 유동성까지 한눈에 정리합니다.";
+  if (label?.includes("가상자산")) {
+    return "유튜브 TOP5 영상에서 포착된 가상자산(코인)에 대한 핵심 지표와 거래 흐름을 다시 정리한 요약입니다.";
   }
+  if (label?.includes("해외 주식")) {
+    return "유튜브 TOP5 영상에서 포착된 해외 주식 종목의 핵심 포인트와 지표를 다시 정리한 요약입니다.";
+  }
+  if (label?.includes("주식")) {
+    return "유튜브 TOP5 영상에서 포착된 국내 주식 종목을 현재 시세와 수급 지표와 함께 정리한 요약입니다.";
+  }
+  return "유튜브 TOP5 영상에서 포착된 종목을 현재 시세와 핵심 지표와 함께 정리한 요약입니다.";
 }
 
 function extractAdditionalSentences(card: InsightMarketDeltaCard) {
@@ -2879,10 +2879,9 @@ function formatSignedNumberCompact(value: number) {
 }
 
 const Wrapper = styled.section`
-  /* margin: 20px 16px 12px; */
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 `;
 
 const SectionHeader = styled.div`
@@ -2894,12 +2893,13 @@ const SectionHeader = styled.div`
 
 const Title = styled.h3`
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
 `;
 
 const SlotBadge = styled.span`
@@ -2913,19 +2913,19 @@ const SlotBadge = styled.span`
 
 const MarketSectionMeta = styled.p`
   margin: 8px 0 12px;
-  font-size: 14px;
+  font-size: 12px;
   color: #4b5563;
 `;
 
 const SectionIntro = styled.p`
   font-size: 14px;
-  color: #6b7280;
+  color: #2e2e2e;
   line-height: 1.4;
   margin-top: -8px;
 `;
 
 const Timestamp = styled.span`
-  font-size: 14px;
+  font-size: 12px;
   color: #64748b;
   font-weight: 700;
 `;
@@ -2934,6 +2934,7 @@ const RelativeTimestamp = styled.span`
   margin-left: 6px;
   font-weight: 600;
   color: #94a3b8;
+  font-size: 12px;
 `;
 
 const QuickLines = styled.div`
@@ -2958,8 +2959,8 @@ const SectionQuickLines = styled.div`
 
 const SectionToggleRow = styled.div`
   display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
+  justify-content: center;
+  /* margin-top: 8px; */
 `;
 
 const MarketGrid = styled.div`
@@ -2968,13 +2969,14 @@ const MarketGrid = styled.div`
 `;
 
 const MarketCardWrapper = styled.article`
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${COLOR_TRACK};
   border-radius: 12px;
-  padding: 16px;
-  background: #fff;
+  padding: 12px;
+  background: ${COLOR_CARD_BG};
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: none;
 `;
 
 const MarketCardHeader = styled.div`
@@ -3003,6 +3005,7 @@ const MarketChange = styled.div<{ $positive: boolean }>`
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 15px;
 `;
 
 const StockSubSectionHeader = styled.div`
@@ -3015,7 +3018,7 @@ const StockSubSectionHeader = styled.div`
 
 const StockSubSectionTitle = styled.h3`
   margin: 0;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
@@ -3025,8 +3028,9 @@ const StockSubSectionTitle = styled.h3`
 
 const StockSubSectionIntro = styled.p`
   font-size: 14px;
-  color: #6b7280;
+  color: #2e2e2e;
   margin-top: -12px;
+  line-height: 1.4;
 `;
 
 const StockList = styled.div`
@@ -3038,11 +3042,12 @@ const StockList = styled.div`
 const StockCardWrapper = styled.article`
   border: 1px solid ${COLOR_TRACK};
   border-radius: 12px;
-  padding: 18px 16px;
-  background: #fff;
+  padding: 12px;
+  background: ${COLOR_CARD_BG};
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  box-shadow: none;
 `;
 
 const StockDetailToggleRow = styled.div`
@@ -3063,7 +3068,7 @@ const StockDetailToggleButton = styled.button`
   border: none;
   background: transparent;
   color: #2563eb;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   padding: 4px 0;
@@ -3104,13 +3109,13 @@ const StockDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 12px;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: #1f2937;
 `;
 
 const StockTitle = styled.div`
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: ${COLOR_TEXT};
   display: flex;
@@ -3119,7 +3124,7 @@ const StockTitle = styled.div`
 `;
 
 const StockPriceValue = styled.span`
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: #475569;
 `;
@@ -3128,7 +3133,7 @@ const StockDeltaBlock = styled.div<{ $tone: PriceTone }>`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: ${({ $tone }) =>
     $tone === "positive"
@@ -3138,7 +3143,7 @@ const StockDeltaBlock = styled.div<{ $tone: PriceTone }>`
       : "#475569"};
 
   span {
-    font-size: 16px;
+    font-size: 13px;
     color: ${({ $tone }) =>
       $tone === "positive"
         ? COLOR_POSITIVE
@@ -3500,7 +3505,7 @@ const MarketToggleButton = styled.button`
   border: none;
   background: transparent;
   color: #2563eb;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   padding: 4px 0;
@@ -3554,23 +3559,19 @@ const MarketDetailBody = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 8px;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: #1f2937;
 `;
 
 const MarketComment = styled.div<{ $withBorder?: boolean }>`
-  background: ${COLOR_CARD_BG};
-  padding: 12px;
-  border-radius: 10px;
-  border: ${({ $withBorder }) =>
-    $withBorder ? `1px solid ${COLOR_TRACK}` : "none"};
-  font-size: 16px;
+  font-size: 13px;
   line-height: 1.5;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 12px;
   strong {
     font-weight: 700;
   }
@@ -3580,11 +3581,11 @@ const MarketCommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 6px;
   color: #0b63f6;
-  font-size: 16px;
+  font-size: 15px;
 `;
 
 const MarketCommentBody = styled.div`
-  font-size: 16px;
+  font-size: 13px;
   line-height: 1.5;
 
   /* mark 기본 스타일 제거 + 폰트 강조만 */
@@ -3610,7 +3611,7 @@ const CommentBulletList = styled.ul`
 `;
 
 const CommentBulletItem = styled.li`
-  font-size: 16px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
   line-height: 1.5;
   list-style: disc;
@@ -3618,6 +3619,7 @@ const CommentBulletItem = styled.li`
 
 const MarketSummaryComment = styled(MarketComment)`
   margin-top: 12px;
+  border: 1px solid #e7ecff;
 `;
 
 const MarketStatGrid = styled.div`
@@ -3629,9 +3631,6 @@ const MarketStatGrid = styled.div`
 const MarketStat = styled.div`
   flex: 1 1 240px;
   min-width: 220px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: ${COLOR_CARD_BG};
   display: flex;
   flex-direction: column;
   gap: 10px;

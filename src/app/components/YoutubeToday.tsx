@@ -277,22 +277,22 @@ const STOCK_SLOT_LABELS: MoneySlotLabelMap = {
 const CRYPTO_SLOT_LABELS: MoneySlotLabelMap = {
   baseline: {
     title: "새벽·아침 코인 브리핑 1차",
-    description: "07:30 새벽/아침 사이 코인 흐름",
+    description: "07:30 새벽/아침 흐름",
   },
   slot1: {
-    title: "아침 코인 브리핑 2차",
-    description: "08:30 출근 직전 급등락 반영",
+    title: "아침 브리핑 2차",
+    description: "08:30 출근 직전 급등락 체크",
   },
   slot2: {
-    title: "점심 코인 브리핑",
+    title: "점심 브리핑",
     description: "점심 시간대 코인 반응",
   },
   slot3: {
-    title: "오후 코인 브리핑",
+    title: "오후 브리핑",
     description: "오후~퇴근 시간대 리듬",
   },
   slot4: {
-    title: "심야 코인 브리핑",
+    title: "심야 브리핑",
     description: "밤 시간대 미국장 반응",
   },
 };
