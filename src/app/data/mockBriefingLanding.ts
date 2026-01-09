@@ -304,6 +304,7 @@ const buildStockTabs = (
     },
     insight: {
       items: insightItems,
+      title: "TOP5 인사이트",
     },
     videos: buildVideos(idPrefix, isDomestic ? "국내 주식" : "해외 주식"),
   };
@@ -372,7 +373,7 @@ const buildCryptoTabs = (
             "ETF/기관 유입 뉴스 동시 확인",
           ],
     },
-    insight: { items: insightItems },
+    insight: { items: insightItems, title: "TOP5 인사이트" },
     videos: buildVideos(idPrefix, isKr ? "국내 코인" : "해외 코인"),
   };
 };
@@ -518,18 +519,12 @@ export const mockBriefingLanding: BriefingLandingData = {
       ],
       tabs: {
         topVideos: buildVideos("realestate", "부동산"),
-        rankingUpdatesByWindow: {
-          "3시간": [
-            { id: "re-1", elapsedLabel: "52분 전", message: "NEW #3 진입 (A 채널)" },
-            { id: "re-2", elapsedLabel: "1시간 전", message: "#1 유지 (B 채널)" },
-          ],
-          "12시간": [
-            { id: "re-3", elapsedLabel: "6시간 전", message: "#2→#4 하락 (C 채널)" },
-          ],
-          "24시간": [
-            { id: "re-4", elapsedLabel: "18시간 전", message: "NEW #1 진입 (D 채널)" },
-          ],
-        },
+        rankingUpdates: [
+          { id: "re-1", elapsedLabel: "52분 전", message: "NEW #3 진입 (A 채널)" },
+          { id: "re-2", elapsedLabel: "1시간 전", message: "#1 유지 (B 채널)" },
+          { id: "re-3", elapsedLabel: "6시간 전", message: "#2→#4 하락 (C 채널)" },
+          { id: "re-4", elapsedLabel: "18시간 전", message: "NEW #1 진입 (D 채널)" },
+        ],
       },
       rankingWindows: ["3시간", "12시간", "24시간"],
       defaultRankingWindow: "3시간",

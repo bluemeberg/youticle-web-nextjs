@@ -9,6 +9,7 @@ export interface DeliveryMeta {
   tagline: string;
   backLabel: string;
   backHref: string;
+  source?: "kakao" | "email" | "web";
 }
 
 export interface KeywordNavItem {
@@ -87,6 +88,14 @@ export interface RankingUpdateItem {
   id: string;
   elapsedLabel: string;
   message: string;
+}
+
+export type MoneySectionType = "stocks" | "crypto";
+
+export interface MoneyRecapSection extends BaseRecapSection {
+  type: MoneySectionType;
+  slotPackages: SlotPackage[];
+  defaultSlotId?: string;
 }
 
 export interface RealEstateRecapSection extends BaseRecapSection {

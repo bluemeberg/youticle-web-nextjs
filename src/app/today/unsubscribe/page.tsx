@@ -92,7 +92,7 @@ const UnsubscribePage = () => {
       }
     });
     return sortedData;
-  }, [selectedTopic, sortCriteria]);
+  }, [selectedTopic, sortCriteria, unsubscribedData]);
 
   return (
     <Container>

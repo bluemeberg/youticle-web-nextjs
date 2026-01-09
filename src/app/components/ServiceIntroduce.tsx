@@ -111,8 +111,8 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
               <Highlight> 핵심 요약</Highlight>과 함께 빠르게 살펴보세요.
             </DescriptionItem>
             <DescriptionItem>
-              하루 <Highlight>4회</Highlight> 자동 큐레이션으로 지금
-              반응 좋은 영상만 다시 뽑아드려요.
+              하루 <Highlight>4회</Highlight> 자동 큐레이션으로 지금 반응 좋은
+              영상만 다시 뽑아드려요.
             </DescriptionItem>
           </DescriptionList>
         </Announcement>{" "}
@@ -171,7 +171,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
             </ServiceButton>
           </ButtonContainer>
         )}
-        <SecondaryEntryCard>
+        {/* <SecondaryEntryCard>
           <div>
             <SecondaryTitle>내 브리핑(카톡/이메일) 다시보기</SecondaryTitle>
             <SecondaryText>
@@ -184,7 +184,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
           >
             브리핑 예시 보기
           </SecondaryButton>
-        </SecondaryEntryCard>
+        </SecondaryEntryCard> */}
       </ContentBox>
     </Container>
   );

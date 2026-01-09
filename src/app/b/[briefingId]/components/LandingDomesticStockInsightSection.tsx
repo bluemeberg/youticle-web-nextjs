@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
@@ -838,29 +838,11 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
   const commentTitle = card.comment_title || "마켓 코멘트";
   const hasComment = Boolean(commentBody || commentBullets.length > 0);
   const commentContent = hasComment ? (
-    <MarketComment $withBorder={!commentBody && commentBullets.length === 0}>
-      {commentTitle ? (
-        <MarketCommentTitle>{commentTitle}</MarketCommentTitle>
-      ) : null}
-      {commentBullets.length > 0 ? (
-        <MarketCommentBulletList>
-          {commentBullets.map((bullet, index) => (
-            <MarketCommentBulletItem
-              key={`market-comment-bullet-${index}`}
-              dangerouslySetInnerHTML={{
-                __html: formatCommentBullet(bullet),
-              }}
-            />
-          ))}
-        </MarketCommentBulletList>
-      ) : commentBody ? (
-        <MarketCommentBody
-          dangerouslySetInnerHTML={{
-            __html: formatCommentText(commentBody),
-          }}
-        />
-      ) : null}
-    </MarketComment>
+    <ExpandableMarketComment
+      title={commentTitle}
+      commentBody={commentBody}
+      commentBullets={commentBullets}
+    />
   ) : null;
   return (
     <MarketCardWrapper>
@@ -1044,6 +1026,65 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
         </QuickLines>
       )} */}
     </MarketCardWrapper>
+  );
+};
+
+const ExpandableMarketComment = ({
+  title,
+  commentBody,
+  commentBullets,
+}: {
+  title?: string | null;
+  commentBody?: string | null;
+  commentBullets: string[];
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const previewBullets = expanded
+    ? commentBullets
+    : commentBullets.slice(0, 3);
+  const normalizedBodyLength = commentBody
+    ? removeMarkTags(commentBody).length
+    : 0;
+  const shouldClampBody =
+    commentBullets.length === 0 && normalizedBodyLength > 160;
+  const needsToggle =
+    commentBullets.length > previewBullets.length || shouldClampBody;
+
+  return (
+    <MarketComment $withBorder={!commentBody && commentBullets.length === 0}>
+      {title ? <MarketCommentTitle>{title}</MarketCommentTitle> : null}
+      {previewBullets.length > 0 ? (
+        <MarketCommentBulletList>
+          {previewBullets.map((bullet, index) => (
+            <MarketCommentBulletItem
+              key={`market-comment-bullet-${index}`}
+              dangerouslySetInnerHTML={{
+                __html: formatCommentBullet(bullet),
+              }}
+            />
+          ))}
+        </MarketCommentBulletList>
+      ) : commentBody ? (
+        <MarketCommentBody
+          $clamped={!expanded && shouldClampBody}
+          dangerouslySetInnerHTML={{
+            __html: formatCommentText(commentBody),
+          }}
+        />
+      ) : null}
+      {needsToggle ? (
+        <CommentToggleButton
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "간단히 보기" : "자세히 보기"}
+          <ToggleChevron $expanded={expanded} aria-hidden={true}>
+            <span />
+          </ToggleChevron>
+        </CommentToggleButton>
+      ) : null}
+    </MarketComment>
   );
 };
 
@@ -3378,22 +3419,32 @@ const MarketIntroContainer = styled.div<{ $compact?: boolean }>`
   flex-direction: column;
   gap: 12px;
   margin: ${({ $compact }) => ($compact ? "0 0 12px" : "16px 4px 12px")};
+  padding: ${({ $compact }) => ($compact ? "8px 12px" : "16px")};
+  border-radius: 18px;
+  background: linear-gradient(120deg, rgba(236, 253, 245, 0.6), rgba(219, 234, 254, 0.9));
+  border: 1px solid rgba(59, 130, 246, 0.18);
 `;
 
 const MarketGrid = styled.div`
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+
+  @media (max-width: 640px) {
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
+  }
 `;
 
 const MarketCardWrapper = styled.div`
-  border: 1px solid ${COLOR_TRACK};
-  border-radius: 12px;
-  padding: 12px;
-  background: ${COLOR_CARD_BG};
+  border: 1px solid rgba(50, 71, 255, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #f4f6ff);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: none;
+  gap: 12px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
 `;
 
 const MarketCardHeader = styled.div`
@@ -3704,8 +3755,14 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid
+    ${({ $withBorder }) =>
+      $withBorder ? "rgba(148, 163, 184, 0.4)" : "rgba(50, 71, 255, 0.18)"};
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   strong {
     font-weight: 700;
   }
@@ -3719,13 +3776,35 @@ const MarketSummaryComment = styled(MarketComment)`
 const MarketCommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 6px;
-  color: #0b63f6;
   font-size: 15px;
+  background: linear-gradient(120deg, #0b63f6, #4c1d95);
+  -webkit-background-clip: text;
+  color: transparent;
 `;
 
-const MarketCommentBody = styled.div`
-  font-size: 13px;
-  line-height: 1.5;
+const MarketCommentBody = styled.div<{ $clamped?: boolean }>`
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  ${({ $clamped }) =>
+    $clamped
+      ? css`
+          max-height: 78px;
+          overflow: hidden;
+          position: relative;
+
+          &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0) 20%,
+              rgba(255, 255, 255, 0.95)
+            );
+          }
+        `
+      : null}
 `;
 
 const MarketCommentBulletList = styled.ul`
@@ -3741,6 +3820,7 @@ const MarketCommentBulletItem = styled.li`
   color: ${COLOR_TEXT};
   line-height: 1.5;
   list-style: disc;
+  word-break: keep-all;
 `;
 
 const QuickLines = styled.div`
@@ -3838,6 +3918,22 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
     border-bottom: 2px solid currentColor;
     transform: rotate(45deg);
   }
+`;
+
+const CommentToggleButton = styled.button`
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(147, 51, 234, 0.12));
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
 `;
 
 const StockDetailCollapse = styled.div<{ $expanded: boolean }>`

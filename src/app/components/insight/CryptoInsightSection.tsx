@@ -188,7 +188,7 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
         }
       : undefined;
 
-  const metricInsight = {
+  const metricInsight = ({
     ...(asset.metric_insight ?? {}),
     comment_bullets:
       asset.metric_insight?.comment_bullets ??
@@ -200,7 +200,7 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
       asset.metric_insight?.summary_sentence ??
       asset.card_comment?.comment_title ??
       undefined,
-  } as InsightStock["metric_insight"];
+  } as unknown) as InsightStock["metric_insight"];
 
   return {
     stock_name: asset.asset_name,
@@ -208,8 +208,8 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
     company_description: asset.asset_description,
     action_idea: asset.action_idea,
     comment_bullets:
-      asset.card_comment?.comment_bullets ??
-      asset.metric_insight?.comment_bullets,
+      (asset.card_comment?.comment_bullets ??
+        asset.metric_insight?.comment_bullets) as string[] | undefined,
     sources: asset.sources,
     metrics: {
       price_info: priceInfo,

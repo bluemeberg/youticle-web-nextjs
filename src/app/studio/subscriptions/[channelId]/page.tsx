@@ -147,7 +147,7 @@ export default function ChannelDetailPage() {
         console.warn("내 등록 채널 조회 실패", e);
       }
     })();
-  }, [user.email]);
+  }, [user?.email, user?.displayName]);
 
   // ----------------- 채널 상세 정보 및 영상 목록 불러오기 -----------------
   useEffect(() => {

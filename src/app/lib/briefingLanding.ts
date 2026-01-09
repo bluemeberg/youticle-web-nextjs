@@ -186,9 +186,22 @@ const buildMarketIndexes = (section?: InsightSection): MarketIndexCard[] => {
     id: `${section?.key ?? "market"}-${index}`,
     label: payload?.market ?? market,
     value: payload?.price_str ?? "-",
-    changeText: payload?.chg_point_str ?? payload?.chg_point ?? "",
-    changeRate: payload?.chg_pct_str ?? payload?.chg_pct ?? "",
-    sentiment: payload?.chg_pct_str?.includes("-") ? "down" : "up",
+    changeText:
+      typeof payload?.chg_point_str === "string"
+        ? payload.chg_point_str
+        : typeof payload?.chg_point === "string"
+        ? payload.chg_point
+        : "-",
+    changeRate:
+      typeof payload?.chg_pct_str === "string"
+        ? payload.chg_pct_str
+        : typeof payload?.chg_pct === "string"
+        ? payload.chg_pct
+        : "-",
+    sentiment:
+      typeof payload?.chg_pct_str === "string" && payload.chg_pct_str.includes("-")
+        ? "down"
+        : "up",
   }));
 };
 
@@ -529,7 +542,9 @@ export async function fetchBriefingLanding(
 ): Promise<BriefingLandingData | null> {
   const entries = decodeSectionEntries(query?.section);
   const slotQuery = query?.slot?.toLowerCase() as SlotPhase | undefined;
-  const slotPhase = SLOT_LABELS[slotQuery ?? ""] ? slotQuery! : "baseline";
+  const slotPhase: SlotPhase = slotQuery && SLOT_LABELS[slotQuery]
+    ? slotQuery
+    : "baseline";
   const dateParam = query?.date ?? query?.data;
   const apiDate = toApiDate(dateParam);
   const displayDate = toDisplayDate(dateParam);

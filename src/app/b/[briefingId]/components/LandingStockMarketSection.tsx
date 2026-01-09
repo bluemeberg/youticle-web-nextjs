@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { useRecoilValue } from "recoil";
 
 import type {
@@ -455,33 +455,16 @@ const LandingStockMarketSection = ({
 
                   <MarketDetailBody>
                     {showComment ? (
-                      <MarketComment
-                        $withBorder={
-                          !commentBody && commentBullets.length === 0
+                      <ExpandableMarketComment
+                        title={
+                          headline ||
+                          card.comment_title ||
+                          card.sentences?.comment ||
+                          "마켓 코멘트"
                         }
-                      >
-                        {headline ? (
-                          <MarketCommentTitle>{headline}</MarketCommentTitle>
-                        ) : null}
-                        {commentBullets.length > 0 ? (
-                          <CommentBulletList>
-                            {commentBullets.map((bullet, index) => (
-                              <CommentBulletItem
-                                key={`${marketKey}-comment-bullet-${index}`}
-                                dangerouslySetInnerHTML={{
-                                  __html: formatCommentBullet(bullet),
-                                }}
-                              />
-                            ))}
-                          </CommentBulletList>
-                        ) : commentBody ? (
-                          <MarketCommentBody
-                            dangerouslySetInnerHTML={{
-                              __html: formatTextWithSentenceBreaks(commentBody),
-                            }}
-                          />
-                        ) : null}
-                      </MarketComment>
+                        commentBody={commentBody}
+                        commentBullets={commentBullets}
+                      />
                     ) : null}
 
                     <MarketStatGrid>
@@ -1452,6 +1435,65 @@ const MarketCardHeaderContent = ({
         </MarketChange>
       ) : null}
     </MarketCardHeader>
+  );
+};
+
+const ExpandableMarketComment = ({
+  title,
+  commentBody,
+  commentBullets,
+}: {
+  title?: string | null;
+  commentBody?: string | null;
+  commentBullets: string[];
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const previewBullets = expanded
+    ? commentBullets
+    : commentBullets.slice(0, 3);
+  const normalizedBodyLength = commentBody
+    ? commentBody.replace(/<[^>]+>/g, "").length
+    : 0;
+  const shouldClampBody =
+    commentBullets.length === 0 && normalizedBodyLength > 180;
+  const needsToggle =
+    commentBullets.length > previewBullets.length || shouldClampBody;
+
+  return (
+    <MarketComment $withBorder={!commentBody && commentBullets.length === 0}>
+      {title ? <MarketCommentTitle>{title}</MarketCommentTitle> : null}
+      {previewBullets.length > 0 ? (
+        <CommentBulletList>
+          {previewBullets.map((bullet, index) => (
+            <CommentBulletItem
+              key={`delta-comment-bullet-${index}`}
+              dangerouslySetInnerHTML={{
+                __html: formatCommentBullet(bullet),
+              }}
+            />
+          ))}
+        </CommentBulletList>
+      ) : commentBody ? (
+        <MarketCommentBody
+          $clamped={!expanded && shouldClampBody}
+          dangerouslySetInnerHTML={{
+            __html: formatTextWithSentenceBreaks(commentBody),
+          }}
+        />
+      ) : null}
+      {needsToggle ? (
+        <CommentToggleButton
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "간단히 보기" : "자세히 보기"}
+          <ToggleChevron $expanded={expanded} aria-hidden={true}>
+            <span />
+          </ToggleChevron>
+        </CommentToggleButton>
+      ) : null}
+    </MarketComment>
   );
 };
 
@@ -2893,7 +2935,7 @@ const SectionHeader = styled.div`
 
 const Title = styled.h3`
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
@@ -2919,9 +2961,10 @@ const MarketSectionMeta = styled.p`
 
 const SectionIntro = styled.p`
   font-size: 14px;
-  color: #2e2e2e;
-  line-height: 1.4;
-  margin-top: -8px;
+  color: #334155;
+  line-height: 1.6;
+  margin-top: 4px;
+  word-break: keep-all;
 `;
 
 const Timestamp = styled.span`
@@ -2966,17 +3009,23 @@ const SectionToggleRow = styled.div`
 const MarketGrid = styled.div`
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 `;
 
 const MarketCardWrapper = styled.article`
-  border: 1px solid ${COLOR_TRACK};
-  border-radius: 12px;
-  padding: 12px;
-  background: ${COLOR_CARD_BG};
+  border: 1px solid rgba(50, 71, 255, 0.14);
+  border-radius: 20px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), #f3f6ff);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: none;
+  gap: 12px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 `;
 
 const MarketCardHeader = styled.div`
@@ -3541,6 +3590,21 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
   }
 `;
 
+const CommentToggleButton = styled.button`
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(147, 51, 234, 0.12));
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+`;
+
 const MarketDetailCollapse = styled.div<{ $expanded: boolean }>`
   overflow: hidden;
   max-height: ${({ $expanded }) => ($expanded ? "5000px" : "0px")};
@@ -3566,12 +3630,18 @@ const MarketDetailBody = styled.div`
 
 const MarketComment = styled.div<{ $withBorder?: boolean }>`
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid
+    ${({ $withBorder }) =>
+      $withBorder ? "rgba(148, 163, 184, 0.4)" : "rgba(37, 99, 235, 0.24)"};
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), #eef2ff);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   strong {
     font-weight: 700;
   }
@@ -3580,13 +3650,15 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
 const MarketCommentTitle = styled.div`
   font-weight: 700;
   margin-bottom: 6px;
-  color: #0b63f6;
   font-size: 15px;
+  background: linear-gradient(120deg, #2563eb, #7c3aed);
+  -webkit-background-clip: text;
+  color: transparent;
 `;
 
-const MarketCommentBody = styled.div`
-  font-size: 13px;
-  line-height: 1.5;
+const MarketCommentBody = styled.div<{ $clamped?: boolean }>`
+  font-size: 14px;
+  line-height: 1.6;
 
   /* mark 기본 스타일 제거 + 폰트 강조만 */
   mark,
@@ -3600,6 +3672,26 @@ const MarketCommentBody = styled.div`
     font-weight: 700; /* 강조는 굵기만 */
     font-style: normal;
   }
+
+  ${({ $clamped }) =>
+    $clamped
+      ? css`
+          max-height: 82px;
+          overflow: hidden;
+          position: relative;
+
+          &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0),
+              rgba(255, 255, 255, 0.95)
+            );
+          }
+        `
+      : null}
 `;
 
 const CommentBulletList = styled.ul`
@@ -3615,25 +3707,34 @@ const CommentBulletItem = styled.li`
   color: ${COLOR_TEXT};
   line-height: 1.5;
   list-style: disc;
+  word-break: keep-all;
 `;
 
 const MarketSummaryComment = styled(MarketComment)`
   margin-top: 12px;
-  border: 1px solid #e7ecff;
+  border-color: rgba(59, 130, 246, 0.25);
 `;
 
 const MarketStatGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 `;
 
 const MarketStat = styled.div`
-  flex: 1 1 240px;
-  min-width: 220px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), #f5f7ff);
+  border: 1px solid rgba(148, 163, 184, 0.3);
 `;
 
 const MarketStatLabel = styled.span`
@@ -3715,6 +3816,11 @@ const LiquidityRow = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 
 const LiquidityLabel = styled.span`
@@ -3813,6 +3919,7 @@ const FlowShareBar = styled.div`
   background: ${COLOR_TRACK};
   font-size: 11px;
   color: #fff;
+  width: 100%;
 `;
 
 const FlowShareSegment = styled.div<{ $color: string }>`
@@ -3820,6 +3927,9 @@ const FlowShareSegment = styled.div<{ $color: string }>`
   align-items: center;
   justify-content: center;
   background: ${({ $color }) => $color};
+  padding: 0 6px;
+  min-width: 0;
+  font-weight: 600;
 `;
 
 const FlowShiftContainer = styled.div`

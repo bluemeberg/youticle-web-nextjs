@@ -13,6 +13,7 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
+import LogoHeader from "@/common/LogoHeader";
 import LandingDomesticStockInsightSection, {
   StockVideoSources,
 } from "./LandingDomesticStockInsightSection";
@@ -55,14 +56,17 @@ export interface BriefingLandingData {
     tagline: string; // "오늘 뭐 봐야 함? 슬롯별로 한 번에"
     backHref: string; // "/feed"
     backLabel: string; // "전체"
-    source: "kakao" | "email" | "web";
+    source?: "kakao" | "email" | "web";
   };
   keywordNav?: Array<{ id: string; label: string; anchor: string }>;
   sections: RecapSection[];
   exploreTabs: Array<{ id: string; label: string; href: string }>;
 }
 
-export type RecapSection = MoneyRecapSection | RankingRecapSection;
+export type RecapSection =
+  | MoneyRecapSection
+  | RankingRecapSection
+  | GeneralRecapSection;
 
 export interface MoneyRecapSection {
   id: string;
@@ -84,8 +88,18 @@ export interface RankingRecapSection {
   defaultRankingWindow?: string;
   tabs: {
     topVideos: VideoCardData[];
-    rankingUpdatesByWindow: Record<string, RankingUpdate[]>;
+    rankingUpdates: RankingUpdate[];
   };
+}
+
+export interface GeneralRecapSection {
+  id: string;
+  type: "general";
+  title: string;
+  anchor: string;
+  summaryBullets: string[];
+  defaultSlotId?: string;
+  slotPackages: SlotPackage[];
 }
 
 export interface SlotPackage {
@@ -129,6 +143,27 @@ export interface VideoCardData {
   summary: string[];
   href?: string;
 }
+
+const convertMarkToStrong = (text?: string | null) => {
+  if (text == null) return "";
+  const source = typeof text === "string" ? text : String(text);
+  const placeholderOpen = "__MARK_OPEN__";
+  const placeholderClose = "__MARK_CLOSE__";
+  const withPlaceholders = source
+    .replace(/<mark>/gi, placeholderOpen)
+    .replace(/<\/mark>/gi, placeholderClose);
+  const escaped = withPlaceholders
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return escaped
+    .replace(new RegExp(placeholderOpen, "g"), "<strong>")
+    .replace(new RegExp(placeholderClose, "g"), "</strong>");
+};
+
+const createMarkedHtml = (text: string) => ({
+  __html: convertMarkToStrong(text),
+});
 
 export interface RankingUpdate {
   id: string;
@@ -750,59 +785,38 @@ const MOCK_DATA: BriefingLandingData = {
             summary: ["금리", "정책", "시나리오"],
           },
         ],
-        rankingUpdatesByWindow: {
-          "3시간": [
-            {
-              id: "u1",
-              elapsedLabel: "52분 전",
-              message: "NEW #3 진입 (서울 흐름)",
-            },
-            {
-              id: "u2",
-              elapsedLabel: "1시간 전",
-              message: "#1 유지 (전망센터)",
-            },
-            {
-              id: "u3",
-              elapsedLabel: "2시간 전",
-              message: "#5 이탈 (지방리포트)",
-            },
-          ],
-          "12시간": [
-            {
-              id: "u4",
-              elapsedLabel: "3시간 전",
-              message: "NEW #2 진입 (정책브리핑)",
-            },
-            {
-              id: "u5",
-              elapsedLabel: "5시간 전",
-              message: "#2 → #4 하락 (재건축랩)",
-            },
-            {
-              id: "u6",
-              elapsedLabel: "11시간 전",
-              message: "#1 유지 (전망센터)",
-            },
-          ],
-          "24시간": [
-            {
-              id: "u7",
-              elapsedLabel: "18시간 전",
-              message: "NEW #1 진입 (부동산읽기)",
-            },
-            {
-              id: "u8",
-              elapsedLabel: "21시간 전",
-              message: "#4 → #2 상승 (정책브리핑)",
-            },
-            {
-              id: "u9",
-              elapsedLabel: "23시간 전",
-              message: "#3 유지 (지방리포트)",
-            },
-          ],
-        },
+        rankingUpdates: [
+          {
+            id: "u1",
+            elapsedLabel: "52분 전",
+            message: "NEW #3 진입 (서울 흐름)",
+          },
+          {
+            id: "u2",
+            elapsedLabel: "1시간 전",
+            message: "#1 유지 (전망센터)",
+          },
+          {
+            id: "u3",
+            elapsedLabel: "2시간 전",
+            message: "#5 이탈 (지방리포트)",
+          },
+          {
+            id: "u4",
+            elapsedLabel: "3시간 전",
+            message: "NEW #2 진입 (정책브리핑)",
+          },
+          {
+            id: "u5",
+            elapsedLabel: "5시간 전",
+            message: "#2 → #4 하락 (재건축랩)",
+          },
+          {
+            id: "u6",
+            elapsedLabel: "11시간 전",
+            message: "#1 유지 (전망센터)",
+          },
+        ],
       },
     },
   ],
@@ -1227,7 +1241,7 @@ const BriefingLandingPageClient = ({
         id={section.anchor}
         data-anchor-id={section.anchor}
         ref={(node) => {
-          sectionRefs.current[section.anchor] = node;
+          sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
         }}
       >
         <SectionTitleRow>
@@ -1273,7 +1287,10 @@ const BriefingLandingPageClient = ({
           <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
           <SummaryList>
             {summaryLines.map((line, idx) => (
-              <li key={safeKey(line, idx)}>{line}</li>
+              <li
+                key={safeKey(line, idx)}
+                dangerouslySetInnerHTML={createMarkedHtml(line)}
+              />
             ))}
           </SummaryList>
         </SummaryCard>
@@ -1319,7 +1336,10 @@ const BriefingLandingPageClient = ({
                       </VideoMeta>
                       <BulletList>
                         {video.summary.map((line, idx) => (
-                          <li key={safeKey(line, idx)}>{line}</li>
+                          <li
+                            key={safeKey(line, idx)}
+                            dangerouslySetInnerHTML={createMarkedHtml(line)}
+                          />
                         ))}
                       </BulletList>
                     </VideoContent>
@@ -1336,10 +1356,7 @@ const BriefingLandingPageClient = ({
   const renderRankingSection = (section: RankingRecapSection) => {
     const activeTab = rankingTabBySection[section.id] ?? "topVideos";
     const rankingWindow = rankingWindowBySection[section.id];
-    const updates =
-      section.tabs.rankingUpdatesByWindow[rankingWindow] ??
-      section.tabs.rankingUpdatesByWindow[section.rankingWindows[0]] ??
-      [];
+    const updates = section.tabs.rankingUpdates ?? [];
     const summaryLines = section.summaryBullets;
 
     return (
@@ -1348,7 +1365,7 @@ const BriefingLandingPageClient = ({
         id={section.anchor}
         data-anchor-id={section.anchor}
         ref={(node) => {
-          sectionRefs.current[section.anchor] = node;
+          sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
         }}
       >
         <SectionTitleRow>
@@ -1359,7 +1376,10 @@ const BriefingLandingPageClient = ({
           <SummarySource>카카오톡 브리핑 요약</SummarySource>
           <SummaryList>
             {summaryLines.map((line, idx) => (
-              <li key={safeKey(line, idx)}>{line}</li>
+              <li
+                key={safeKey(line, idx)}
+                dangerouslySetInnerHTML={createMarkedHtml(line)}
+              />
             ))}
           </SummaryList>
         </SummaryCard>
@@ -1461,11 +1481,14 @@ const BriefingLandingPageClient = ({
         } as React.CSSProperties
       }
     >
-      <TopAppBar ref={topBarRef}>
+      <LogoHeaderDock>
+        <LogoHeader showLogo />
+      </LogoHeaderDock>
+      <TopAppBar>
         <BackButton href={data.deliveryMeta.backHref}>
           {`< ${data.deliveryMeta.backLabel}`}
         </BackButton>
-        <TopMeta>
+        <TopMeta ref={topBarRef}>
           <TopTime>{data.deliveryMeta.displayLabel}</TopTime>
           <TopDescription>{data.deliveryMeta.description}</TopDescription>
           <TopTagline>{data.deliveryMeta.tagline}</TopTagline>
@@ -1534,25 +1557,26 @@ export default BriefingLandingPageClient;
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: #f6f7fb;
+  background: linear-gradient(180deg, #eef2ff 0%, #f9fafb 55%, #ffffff 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 16px 80px;
+  /* padding: 0 16px 80px; */
+`;
+
+const LogoHeaderDock = styled.div`
+  width: 100%;
+  max-width: 720px;
+  padding: 12px 0 4px;
 `;
 
 const TopAppBar = styled.header`
-  position: sticky;
-  top: 0;
-  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 100%;
   max-width: 720px;
-  padding: 16px 0 12px;
-  background: #f6f7fb;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  padding: 12px 0 8px;
 `;
 
 const BackButton = styled(Link)`
@@ -1562,10 +1586,24 @@ const BackButton = styled(Link)`
   font-weight: 700;
 `;
 
-const TopMeta = styled.div`
+const TopMeta = styled.div.attrs({
+  className: "BriefingLandingPageClient__TopMeta",
+})`
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 16px 16px 0px;
+  background: linear-gradient(
+    180deg,
+    rgba(246, 247, 251, 0.95) 0%,
+    rgba(246, 247, 251, 0.8) 72%,
+    rgba(246, 247, 251, 0)
+  );
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
 `;
 
 const TopTime = styled.span`
@@ -1585,15 +1623,16 @@ const TopTagline = styled.span`
 
 const StickyKeywordNav = styled.nav`
   position: sticky;
-  top: var(--topbar-h, 64px);
+  top: 52px;
+  /* top: var(--topbar-h, 64px); */
   z-index: 25;
   display: flex;
   gap: 8px;
   width: 100%;
   max-width: 720px;
-  padding: 8px 0;
+  padding: 8px 16px;
   overflow-x: auto;
-  background: #f6f7fb;
+  background: rgba(246, 247, 251, 0.96);
   backdrop-filter: blur(8px);
 `;
 
@@ -1619,11 +1658,15 @@ const SectionsContainer = styled.main`
 `;
 
 const SectionBlock = styled.section`
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    #ffffff 100%
+  );
+  border: 1px solid rgba(50, 71, 255, 0.08);
   padding: 16px;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07);
   scroll-margin-top: var(--sticky-offset, 140px);
 `;
 
@@ -1663,11 +1706,15 @@ const SectionMiniHint = styled.span`
 `;
 
 const SummaryCard = styled.div`
-  background: #f3f6ff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px;
-  margin: 8px 0 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(50, 71, 255, 0.08),
+    rgba(14, 165, 233, 0.06)
+  );
+  border: none;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 8px 0 20px;
 `;
 
 const SummarySource = styled.p`
@@ -1692,6 +1739,7 @@ const SummaryList = styled.ul`
   li {
     position: relative;
     padding-left: 20px;
+    word-break: keep-all;
   }
   li::before {
     content: "•";
@@ -1706,28 +1754,33 @@ const SummaryList = styled.ul`
   }
 `;
 
-const SectionSlotBar = styled.div<{ $withShadow?: boolean }>`
+const SectionSlotBar = styled.div.attrs({
+  className: "BriefingLandingPageClient__SectionSlotBar",
+})<{ $withShadow?: boolean }>`
   position: sticky;
-  top: 152px;
+  top: 96px;
+  /* top: calc(var(--topbar-h, 64px) + var(--keywordnav-h, 52px) + 12px); */
   z-index: 8;
-  margin: 0 -16px 12px;
-  padding: 10px 16px 12px;
-  background: #f6f7fb;
-  border-top: 1px solid rgba(40, 51, 102, 0.12);
-  border-bottom: 1px solid rgba(40, 51, 102, 0.12);
-  box-shadow: none;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(40, 51, 102, 0.08);
+  box-shadow: ${({ $withShadow }) =>
+    $withShadow ? "0 12px 24px rgba(15, 23, 42, 0.12)" : "none"};
+  backdrop-filter: blur(12px);
 `;
 
 const InsightBlock = styled.section`
   margin-top: 16px;
-  border-radius: 12px;
-  background: #f3f6ff;
-  border: 1px solid #e5e7eb;
-  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(243, 246, 255, 0.82), #eef6ff);
+  border: 1px solid rgba(50, 71, 255, 0.08);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: none;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 `;
 
 const VideoBlock = styled.section`
@@ -1747,7 +1800,11 @@ const BlockHeader = styled.div`
 const BlockDivider = styled.div`
   width: 100%;
   height: 1px;
-  background: rgba(15, 23, 42, 0.08);
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.08),
+    rgba(50, 71, 255, 0.25)
+  );
 `;
 
 const BlockTitle = styled.h3`
@@ -1791,8 +1848,8 @@ const SlotSelector = styled.div`
 const SlotChip = styled.button<{ $active: boolean }>`
   flex: 0 0 auto;
   border-radius: 999px;
-  border: 1px solid #d4d9ef;
-  padding: 9px 14px;
+  border: 1px solid rgba(50, 71, 255, 0.16);
+  padding: 10px 16px;
   font-size: 12px;
   font-weight: 800;
   display: inline-flex;
@@ -1800,10 +1857,15 @@ const SlotChip = styled.button<{ $active: boolean }>`
   align-items: center;
   white-space: nowrap;
   line-height: 1;
-  background: ${({ $active }) => ($active ? "#1f2a4a" : "#f6f7ff")};
+  background: ${({ $active }) =>
+    $active
+      ? "linear-gradient(135deg, #1f2a4a, #3730a3)"
+      : "linear-gradient(135deg, #f8f9ff, #eef2ff)"};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   scroll-snap-align: start;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  box-shadow: ${({ $active }) =>
+    $active ? "0 6px 15px rgba(31, 42, 74, 0.4)" : "none"};
 `;
 
 const ChipBadge = styled.span<{ $active: boolean }>`
@@ -1812,7 +1874,7 @@ const ChipBadge = styled.span<{ $active: boolean }>`
   padding: 3px 8px;
   border-radius: 999px;
   background: ${({ $active }) =>
-    $active ? "rgba(255,255,255,0.24)" : "#ffffff"};
+    $active ? "rgba(255, 255, 255, 0.3)" : "rgba(50, 71, 255, 0.08)"};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   border: 1px solid rgba(31, 42, 74, 0.12);
 `;
