@@ -16,6 +16,17 @@ import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
 import LandingDomesticStockInsightSection, {
   StockVideoSources,
+  VideoSourceCard,
+  VideoSourceContainer,
+  VideoSourceList,
+  VideoThumbnailWrapper,
+  VideoThumbnailImage,
+  VideoSourceBody,
+  VideoSummary,
+  VideoMetaRow,
+  VideoMetaRowContainer,
+  VideoMetaRowSubContainer,
+  ChannelAvatarImage,
 } from "./LandingDomesticStockInsightSection";
 import LandingCryptoInsightSection from "./LandingCryptoInsightSection";
 import LandingStockMarketSection from "./LandingStockMarketSection";
@@ -1330,29 +1341,32 @@ const BriefingLandingPageClient = ({
                 </BlockBadge>
               ) : null}
             </BlockHeader>
-            <VideoList>
+            <VideoSourceList>
               {activeSlot.tabs.videos.map((video) => {
                 const isNew = !baseIds.has(video.id);
-                console.log(video);
                 return (
-                  <>
-                    <VideoCard key={video.id}>
-                      <VideoThumb src={video.thumbnail} alt={video.title} />
-                      <VideoContent>
+                  <VideoSourceCard key={video.id} href={video.href ?? "#"}>
+                    <VideoSourceContainer>
+                      <VideoThumbnailWrapper>
+                        <VideoThumb src={video.thumbnail} alt={video.title} />
+                      </VideoThumbnailWrapper>
+                      <VideoSourceBody>
                         <VideoTitleRow>
                           <VideoTitle>{video.title}</VideoTitle>
                           {isNew ? <NewPill>NEW</NewPill> : null}
                         </VideoTitleRow>
-                        <BulletList>
-                          {video.summary.map((line, idx) => (
-                            <li
-                              key={safeKey(line, idx)}
-                              dangerouslySetInnerHTML={createMarkedHtml(line)}
-                            />
-                          ))}
-                        </BulletList>
-                      </VideoContent>
-                    </VideoCard>
+                        {video.summary.length ? (
+                          <VideoSummary>
+                            {video.summary.map((line, idx) => (
+                              <span
+                                key={safeKey(line, idx)}
+                                dangerouslySetInnerHTML={createMarkedHtml(line)}
+                              />
+                            ))}
+                          </VideoSummary>
+                        ) : null}
+                      </VideoSourceBody>
+                    </VideoSourceContainer>
                     <VideoMetaRow>
                       {video.channelThumbnail ? (
                         <ChannelAvatarImage
@@ -1360,7 +1374,6 @@ const BriefingLandingPageClient = ({
                           alt={video.channel || "채널"}
                           width={40}
                           height={40}
-                          style={{ width: 40, height: 40 }}
                         />
                       ) : null}
                       <VideoMetaRowContainer>
@@ -1371,10 +1384,10 @@ const BriefingLandingPageClient = ({
                         </VideoMetaRowSubContainer>
                       </VideoMetaRowContainer>
                     </VideoMetaRow>
-                  </>
+                  </VideoSourceCard>
                 );
               })}
-            </VideoList>
+            </VideoSourceList>
           </VideoBlock>
         ) : null}
       </SectionBlock>
@@ -1638,13 +1651,13 @@ const TopMeta = styled.div.attrs({
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 16px 16px 0px;
-  background: linear-gradient(
+  padding: 16px 16px 12px;
+  /* background: linear-gradient(
     180deg,
     rgba(246, 247, 251, 0.95) 0%,
     rgba(246, 247, 251, 0.8) 72%,
     rgba(246, 247, 251, 0)
-  );
+  ); */
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(17, 24, 39, 0.06);
 `;
@@ -1675,7 +1688,7 @@ const StickyKeywordNav = styled.nav`
   max-width: 720px;
   padding: 8px 16px;
   overflow-x: auto;
-  background: rgba(246, 247, 251, 0.96);
+  /* background: rgba(246, 247, 251, 0.96); */
   backdrop-filter: blur(8px);
 `;
 
@@ -1700,7 +1713,7 @@ const SectionsContainer = styled.main`
   gap: 24px;
   width: 100%;
   max-width: 720px;
-  padding: 24px 16px 40px;
+  padding: 4px 16px 40px;
   font-family: inherit;
 `;
 
@@ -1718,7 +1731,7 @@ const SectionBlock = styled.section`
   );
   border: 1px solid rgba(50, 71, 255, 0.08);
   padding: 16px;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   scroll-margin-top: var(--sticky-offset, 140px);
 `;
 
@@ -1758,15 +1771,12 @@ const SectionMiniHint = styled.span`
 `;
 
 const SummaryCard = styled.div`
-  background: linear-gradient(
-    135deg,
-    rgba(50, 71, 255, 0.08),
-    rgba(14, 165, 233, 0.06)
-  );
-  border: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
+  border: 1px solid rgba(50, 71, 255, 0.18);
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 20px;
   margin: 8px 0 20px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 `;
 
 const SummarySource = styled.p`
@@ -1810,16 +1820,15 @@ const SectionSlotBar = styled.div.attrs({
   className: "BriefingLandingPageClient__SectionSlotBar",
 })<{ $withShadow?: boolean }>`
   position: sticky;
-  top: 100px;
+  top: 104px;
   /* top: calc(var(--topbar-h, 64px) + var(--keywordnav-h, 52px) + 12px); */
   z-index: 8;
   margin: 12px 0;
   padding: 16px 12px 0px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(40, 51, 102, 0.08);
-  box-shadow: ${({ $withShadow }) =>
-    $withShadow ? "0 12px 24px rgba(15, 23, 42, 0.12)" : "none"};
+  background: rgba(246, 247, 251, 0.96);
+  border: 1px solid rgba(50, 71, 255, 0.18);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(12px);
 `;
 
@@ -1827,8 +1836,8 @@ const InsightBlock = styled.section`
   margin-top: 16px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(243, 246, 255, 0.82), #eef6ff);
-  border: 1px solid rgba(50, 71, 255, 0.08);
-  padding: 16px;
+  border: 1px solid rgba(50, 71, 255, 0.18);
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2028,13 +2037,6 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
       : "#5b6180"};
 `;
 
-const VideoList = styled.div`
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #ffffff;
-`;
-
 const VideoCard = styled.article`
   display: flex;
   gap: 12px;
@@ -2053,48 +2055,6 @@ const VideoThumb = styled.img`
   border-radius: 10px;
   object-fit: cover;
   flex: 0 0 auto;
-`;
-
-const ChannelAvatarImage = styled.img`
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  object-fit: cover;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-`;
-
-const VideoMetaRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 6px 0 4px;
-`;
-
-const VideoMetaRowContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  color: #475569;
-
-  span {
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
-  }
-`;
-
-const VideoMetaRowSubContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #64748b;
-
-  strong {
-    font-weight: 600;
-    color: #111827;
-  }
 `;
 
 const VideoContent = styled.div`

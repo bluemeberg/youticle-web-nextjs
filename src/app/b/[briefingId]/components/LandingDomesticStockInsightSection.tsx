@@ -799,7 +799,7 @@ const MarketCardHeaderContent = ({ card }: { card: InsightMarketCard }) => (
     <MarketChange
       $positive={!!card.chg_pct_str && card.chg_pct_str.includes("+")}
     >
-      {card.chg_point_str && <span>{card.chg_point_str}</span>}{" "}
+      {/* {card.chg_point_str && <span>{card.chg_point_str}</span>}{" "} */}
       {card.chg_pct_str}
     </MarketChange>
   </MarketCardHeader>
@@ -3430,14 +3430,14 @@ const MarketGrid = styled.div`
 `;
 
 const MarketCardWrapper = styled.div`
-  border: 1px solid rgba(50, 71, 255, 0.12);
+  border: 1px solid rgba(50, 71, 255, 0.18);
   border-radius: 18px;
   padding: 16px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #f4f6ff);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 `;
 
 const MarketCardHeader = styled.div`
@@ -3749,11 +3749,9 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px;
+  padding: 16px 20px;
   border-radius: 16px;
-  border: 1px solid
-    ${({ $withBorder }) =>
-      $withBorder ? "rgba(148, 163, 184, 0.4)" : "rgba(50, 71, 255, 0.18)"};
+  border: 1px solid rgba(50, 71, 255, 0.18);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   strong {
@@ -3762,8 +3760,8 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
 `;
 
 const MarketSummaryComment = styled(MarketComment)`
-  margin-top: 12px;
-  border: 1px solid #e7ecff;
+  /* margin-top: 12px; */
+  /* border: 1px solid #e7ecff; */
 `;
 
 const MarketCommentTitle = styled.div`
@@ -3849,14 +3847,14 @@ const StockList = styled.div`
 `;
 
 const StockCardWrapper = styled.div`
-  border: 1px solid ${COLOR_TRACK};
+  border: 1px solid rgba(50, 71, 255, 0.18);
   border-radius: 12px;
-  padding: 12px;
-  background: ${COLOR_CARD_BG};
+  padding: 16px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: none;
+  gap: 4px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 `;
 
 const StockDetailToggleRow = styled.div`
@@ -4530,16 +4528,17 @@ const ActionIdea = styled.div`
 `;
 
 const CommentBox = styled.div`
-  border: 1px solid ${COLOR_TRACK};
+  border: 1px solid rgba(50, 71, 255, 0.18);
   border-radius: 10px;
-  padding: 12px;
-  background: ${COLOR_CARD_BG};
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
   font-size: 16px;
   line-height: 1.5;
   color: ${COLOR_TEXT};
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   strong {
     color: ${COLOR_TEXT};
     font-weight: 700;
@@ -4612,7 +4611,7 @@ const CommentPreviewTitle = styled.div`
   margin-bottom: 8px;
   font-weight: 700;
   color: #000;
-  font-size: 16px;
+  font-size: 15px;
 `;
 
 const CommentTitle = styled.div`
@@ -4706,7 +4705,7 @@ const VideoSourcesSection = styled.div`
   margin-top: 20px;
 `;
 
-const VideoSourceContainer = styled.div`
+export const VideoSourceContainer = styled.div`
   display: flex;
   flex-direction: row;
 `;
@@ -4732,7 +4731,7 @@ const VideoCountBadge = styled.span`
   border-radius: 999px;
 `;
 
-const VideoSourceList = styled.div`
+export const VideoSourceList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4752,7 +4751,7 @@ const VideoSourcesActionRow = styled.div`
   }
 `;
 
-const VideoSourceCard = styled(Link)`
+export const VideoSourceCard = styled(Link)`
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -4776,7 +4775,7 @@ const VideoSourceCard = styled(Link)`
   }
 `;
 
-const VideoThumbnailWrapper = styled.div`
+export const VideoThumbnailWrapper = styled.div`
   position: relative;
   /* width: 120px; */
   /* height: 68px; */
@@ -4792,7 +4791,7 @@ const VideoThumbnailWrapper = styled.div`
   }
 `;
 
-const VideoThumbnailImage = styled(Image)`
+export const VideoThumbnailImage = styled(Image)`
   object-fit: cover;
 `;
 
@@ -4808,7 +4807,7 @@ const VideoThumbnailFallback = styled.div`
   padding: 8px;
 `;
 
-const VideoSourceBody = styled.div`
+export const VideoSourceBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4827,7 +4826,7 @@ const VideoTitle = styled.span`
   overflow: hidden;
 `;
 
-const VideoSummary = styled.p`
+export const VideoSummary = styled.p`
   margin: 0;
   font-size: 13px;
   color: #475569;
@@ -4838,7 +4837,7 @@ const VideoSummary = styled.p`
   overflow: hidden;
 `;
 
-const VideoMetaRow = styled.div`
+export const VideoMetaRow = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4847,7 +4846,7 @@ const VideoMetaRow = styled.div`
   flex-wrap: wrap;
 `;
 
-const ChannelAvatarImage = styled(Image)`
+export const ChannelAvatarImage = styled(Image)`
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -4860,7 +4859,7 @@ const VideoMetaDot = styled.span`
   color: #94a3b8;
 `;
 
-const VideoMetaRowContainer = styled.div`
+export const VideoMetaRowContainer = styled.div`
   display: flex;
   flex-direction: column;
   font-size: 15px;
@@ -4870,7 +4869,7 @@ const VideoMetaRowContainer = styled.div`
   }
 `;
 
-const VideoMetaRowSubContainer = styled.div`
+export const VideoMetaRowSubContainer = styled.div`
   display: flex;
   margin-top: 4px;
   font-size: 13px;
