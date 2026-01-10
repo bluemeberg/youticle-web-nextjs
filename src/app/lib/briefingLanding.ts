@@ -282,6 +282,7 @@ const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
         if (subs == null) return undefined;
         return typeof subs === "string" ? subs : subs.toString();
       })(),
+      href: video.video_id ? `/detail/${video.video_id}` : undefined,
       summary: summaryList,
     } satisfies RecapVideoSummary;
   });

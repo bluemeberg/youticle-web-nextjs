@@ -37,7 +37,7 @@ const COLOR_CARD_BG = "#f5f7ff";
 const COLOR_TEXT = "#0f172a";
 const OVERSEAS_STOCK_LABEL = "해외 주식";
 const SOURCE_TAG_TEXT = "오늘 TOP5 유튜브 영상 기반";
-const DEFAULT_VISIBLE_STOCKS = 5;
+const DEFAULT_VISIBLE_STOCKS = 3;
 const PLACEHOLDER_TEXT_PATTERN = /정보가 없습니다/;
 
 function normalizeCommentBullets(value?: unknown): string[] {
@@ -309,9 +309,10 @@ const LandingDomesticStockInsightSection = ({
   const [showAllStocks, setShowAllStocks] = useState(false);
   const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
   const displayedStocks =
-    showAllStocks || !hasMoreStocks
+    showAllStocks || stocks.length <= DEFAULT_VISIBLE_STOCKS
       ? stocks
       : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const isCollapsed = !showAllStocks && stocks.length > DEFAULT_VISIBLE_STOCKS;
   const remainingStockCount = hasMoreStocks
     ? stocks.length - DEFAULT_VISIBLE_STOCKS
     : 0;
@@ -487,7 +488,9 @@ const LandingDomesticStockInsightSection = ({
                 key={`${stock.ticker}-${stock.stock_name}`}
                 stock={stock}
                 hideInsightSectionList={hideInsightSectionList}
-                showCommentPreview={shouldShowStockPreview && index < 2}
+                showCommentPreview={
+                  shouldShowStockPreview && (!isCollapsed || index < 3)
+                }
                 sectionLabel={label}
                 slotPhase={slotPhase}
               />
@@ -3766,7 +3769,7 @@ const MarketSummaryComment = styled(MarketComment)`
 
 const MarketCommentTitle = styled.div`
   font-weight: 700;
-  margin-bottom: 6px;
+  /* margin-bottom: 6px; */
   font-size: 15px;
   background: linear-gradient(120deg, #0b63f6, #4c1d95);
   -webkit-background-clip: text;
@@ -3860,7 +3863,7 @@ const StockCardWrapper = styled.div`
 const StockDetailToggleRow = styled.div`
   display: flex;
   justify-content: center;
-  /* margin-top: 4px; */
+  margin-top: 4px;
 `;
 
 const StockListToggleRow = styled(StockDetailToggleRow)`
@@ -4608,7 +4611,7 @@ const CTAHelperText = styled.small`
 `;
 
 const CommentPreviewTitle = styled.div`
-  margin-bottom: 8px;
+  /* margin-bottom: 8px; */
   font-weight: 700;
   color: #000;
   font-size: 15px;
@@ -4755,22 +4758,22 @@ export const VideoSourceCard = styled(Link)`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  border: none;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.25);
   text-decoration: none;
   color: inherit;
-  transition: opacity 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 
   &:hover,
   &:focus-visible {
-    opacity: 0.9;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    transform: translateY(-2px);
     outline: none;
   }
 
   @media (max-width: 480px) {
-    grid-template-columns: 1fr;
     align-items: stretch;
   }
 `;
@@ -4847,8 +4850,8 @@ export const VideoMetaRow = styled.div`
 `;
 
 export const ChannelAvatarImage = styled(Image)`
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(148, 163, 184, 0.3);
@@ -4862,7 +4865,7 @@ const VideoMetaDot = styled.span`
 export const VideoMetaRowContainer = styled.div`
   display: flex;
   flex-direction: column;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   strong {
     margin-left: 6px;

@@ -128,7 +128,7 @@ const COLOR_TRACK = "#e1e6ff";
 const COLOR_CARD_BG = "#f6f8ff";
 const COLOR_TEXT = "#1f2a4a";
 const SOURCE_TAG_TEXT = "오늘 TOP5 유튜브 영상 기반";
-const DEFAULT_VISIBLE_STOCKS = 5;
+const DEFAULT_VISIBLE_STOCKS = 3;
 
 const FLOW_COLORS: Record<string, string> = {
   foreign: "#0b63f6",
@@ -239,10 +239,12 @@ const LandingStockMarketSection = ({
   const hasStocks = stocks.length > 0;
   const [showAllStocks, setShowAllStocks] = useState(false);
   const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
-  const displayedStocks =
-    showAllStocks || !hasMoreStocks
-      ? stocks
-      : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const displayedStocks = (() => {
+    if (stocks.length <= DEFAULT_VISIBLE_STOCKS) return stocks;
+    if (showAllStocks) return stocks;
+    return stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  })();
+  const isCollapsed = !showAllStocks && stocks.length > DEFAULT_VISIBLE_STOCKS;
   const remainingStockCount = hasMoreStocks
     ? stocks.length - DEFAULT_VISIBLE_STOCKS
     : 0;
@@ -680,7 +682,9 @@ const LandingStockMarketSection = ({
                 key={stock.ticker || stock.stock_name || `stock-${index}`}
                 stock={stock}
                 sectionLabel={section.label}
-                showCommentPreview={shouldShowStockPreview && index < 2}
+                showCommentPreview={
+                  shouldShowStockPreview && (!isCollapsed || index < 3)
+                }
               />
             ))}
           </StockList>
@@ -693,7 +697,7 @@ const LandingStockMarketSection = ({
               >
                 {showAllStocks
                   ? "종목 목록 접기"
-                  : `${remainingStockCount}개 종목 더 보기`}
+                  : `${Math.max(0, remainingStockCount)}개 종목 더 보기`}
                 <ToggleChevron aria-hidden={true} $expanded={showAllStocks}>
                   <span />
                 </ToggleChevron>
@@ -2963,7 +2967,7 @@ const SectionIntro = styled.p`
   font-size: 14px;
   color: #334155;
   line-height: 1.6;
-  margin-top: 4px;
+  /* margin-top: 4px; */
   word-break: keep-all;
 `;
 
@@ -3013,7 +3017,7 @@ const MarketGrid = styled.div`
 
   @media (max-width: 640px) {
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: 6px;
   }
 `;
 
@@ -3078,7 +3082,7 @@ const StockSubSectionTitle = styled.h3`
 const StockSubSectionIntro = styled.p`
   font-size: 14px;
   color: #2e2e2e;
-  margin-top: -12px;
+  margin-top: -8px;
   line-height: 1.4;
 `;
 
@@ -3089,19 +3093,19 @@ const StockList = styled.div`
 `;
 
 const StockCardWrapper = styled.article`
-  border: 1px solid ${COLOR_TRACK};
+  border: 1px solid rgba(50, 71, 255, 0.18);
   border-radius: 12px;
-  padding: 12px;
-  background: ${COLOR_CARD_BG};
+  padding: 16px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: none;
+  gap: 4px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 `;
 
 const StockDetailToggleRow = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin-top: 8px;
 `;
 
@@ -3117,7 +3121,7 @@ const StockDetailToggleButton = styled.button`
   border: none;
   background: transparent;
   color: #2563eb;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   padding: 4px 0;
@@ -3439,12 +3443,18 @@ const StockInsightHighlights = styled.div`
 
 const StockComment = styled.div`
   border-radius: 10px;
-  border: 1px solid ${COLOR_TRACK};
-  background: ${COLOR_CARD_BG};
-  padding: 12px;
+  border: 1px solid rgba(50, 71, 255, 0.18);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  color: ${COLOR_TEXT};
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  strong {
+    color: ${COLOR_TEXT};
+    font-weight: 700;
+  }
 `;
 
 const StockPreviewComment = styled(StockComment)`
@@ -3639,13 +3649,11 @@ const MarketComment = styled.div<{ $withBorder?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px;
+  padding: 16px 20px;
   border-radius: 16px;
-  border: 1px solid
-    ${({ $withBorder }) =>
-      $withBorder ? "rgba(148, 163, 184, 0.4)" : "rgba(37, 99, 235, 0.24)"};
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), #eef2ff);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(50, 71, 255, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #f4f6ff);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   strong {
     font-weight: 700;
   }
@@ -3657,7 +3665,7 @@ const MarketCommentTitle = styled.div`
   font-size: 15px;
   background: linear-gradient(120deg, #2563eb, #7c3aed);
   -webkit-background-clip: text;
-  color: transparent;
+  color: #1f2a4a;
 `;
 
 const MarketCommentBody = styled.div<{ $clamped?: boolean }>`
@@ -3715,7 +3723,7 @@ const CommentBulletItem = styled.li`
 `;
 
 const MarketSummaryComment = styled(MarketComment)`
-  margin-top: 12px;
+  margin-top: 4px;
   border-color: rgba(59, 130, 246, 0.25);
 `;
 

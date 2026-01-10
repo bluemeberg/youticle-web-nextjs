@@ -1209,6 +1209,7 @@ const BriefingLandingPageClient = ({
         channel_name: video.channel,
         channel_thumbnail: video.channelThumbnail,
         summary: summaryText,
+        href: video.href ?? (video.id ? `/detail/${video.id}` : undefined),
       } as InsightSource;
     });
   };
@@ -1341,11 +1342,11 @@ const BriefingLandingPageClient = ({
                 </BlockBadge>
               ) : null}
             </BlockHeader>
-            <VideoSourceList>
+            <VideoList>
               {activeSlot.tabs.videos.map((video) => {
                 const isNew = !baseIds.has(video.id);
                 return (
-                  <VideoSourceCard key={video.id} href={video.href ?? "#"}>
+                  <VideoSourceCard key={video.id} href={video.href ?? `/detail/${video.id}`}>
                     <VideoSourceContainer>
                       <VideoThumbnailWrapper>
                         <VideoThumb src={video.thumbnail} alt={video.title} />
@@ -1353,7 +1354,7 @@ const BriefingLandingPageClient = ({
                       <VideoSourceBody>
                         <VideoTitleRow>
                           <VideoTitle>{video.title}</VideoTitle>
-                          {isNew ? <NewPill>NEW</NewPill> : null}
+                          {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
                         </VideoTitleRow>
                         {video.summary.length ? (
                           <VideoSummary>
@@ -1387,7 +1388,7 @@ const BriefingLandingPageClient = ({
                   </VideoSourceCard>
                 );
               })}
-            </VideoSourceList>
+            </VideoList>
           </VideoBlock>
         ) : null}
       </SectionBlock>
@@ -1577,7 +1578,7 @@ const BriefingLandingPageClient = ({
         })}
       </SectionsContainer>
 
-      <FooterExplore>
+      {/* <FooterExplore>
         <FooterTitle>더 탐색하기</FooterTitle>
         <ExploreGrid>
           {data.exploreTabs.map((tab) => (
@@ -1595,7 +1596,7 @@ const BriefingLandingPageClient = ({
             {saved ? "저장됨 ✓" : "내 브리핑 저장하기"}
           </PrimaryButton>
         </FooterActions>
-      </FooterExplore>
+      </FooterExplore> */}
 
       {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
     </PageContainer>
@@ -2037,6 +2038,16 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
       : "#5b6180"};
 `;
 
+const VideoList = styled.div`
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
 const VideoCard = styled.article`
   display: flex;
   gap: 12px;
@@ -2050,8 +2061,8 @@ const VideoCard = styled.article`
 `;
 
 const VideoThumb = styled.img`
-  width: 92px;
-  height: 52px;
+  width: 140px;
+  height: 80px;
   border-radius: 10px;
   object-fit: cover;
   flex: 0 0 auto;
