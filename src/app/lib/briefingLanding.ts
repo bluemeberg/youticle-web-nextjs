@@ -199,7 +199,8 @@ const buildMarketIndexes = (section?: InsightSection): MarketIndexCard[] => {
         ? payload.chg_pct
         : "-",
     sentiment:
-      typeof payload?.chg_pct_str === "string" && payload.chg_pct_str.includes("-")
+      typeof payload?.chg_pct_str === "string" &&
+      payload.chg_pct_str.includes("-")
         ? "down"
         : "up",
   }));
@@ -250,6 +251,7 @@ const buildInsightItems = (section?: InsightSection) => {
 
 const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
   videos.map((video) => {
+    console.log(video);
     const headline =
       video.summary_data?.headline_title?.trim() ||
       video.summary_data?.headline_sub_title?.trim() ||
@@ -274,6 +276,12 @@ const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
       channel: video.channel_details?.channel_name ?? "",
       thumbnail: video.thumbnail,
       duration: video.duration,
+      channelThumbnail: video.channel_details?.channel_thumbnail,
+      subscriberText: (() => {
+        const subs = video.channel_details?.channel_subscribers;
+        if (subs == null) return undefined;
+        return typeof subs === "string" ? subs : subs.toString();
+      })(),
       summary: summaryList,
     } satisfies RecapVideoSummary;
   });
@@ -542,9 +550,8 @@ export async function fetchBriefingLanding(
 ): Promise<BriefingLandingData | null> {
   const entries = decodeSectionEntries(query?.section);
   const slotQuery = query?.slot?.toLowerCase() as SlotPhase | undefined;
-  const slotPhase: SlotPhase = slotQuery && SLOT_LABELS[slotQuery]
-    ? slotQuery
-    : "baseline";
+  const slotPhase: SlotPhase =
+    slotQuery && SLOT_LABELS[slotQuery] ? slotQuery : "baseline";
   const dateParam = query?.date ?? query?.data;
   const apiDate = toApiDate(dateParam);
   const displayDate = toDisplayDate(dateParam);

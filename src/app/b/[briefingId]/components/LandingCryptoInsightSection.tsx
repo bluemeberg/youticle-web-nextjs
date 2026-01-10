@@ -151,7 +151,9 @@ function formatCommentText(text: string) {
   return parts.join("<br/>");
 }
 
-const StyledDomesticSection = LandingDomesticStockInsightSection;
+const StyledDomesticSection = styled(LandingDomesticStockInsightSection)`
+  font-family: "Pretendard", sans-serif;
+`;
 
 function sanitizeStock(stock: InsightStock): InsightStock {
   const metrics = sanitizeMetrics(stock.metrics);
@@ -188,7 +190,7 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
         }
       : undefined;
 
-  const metricInsight = ({
+  const metricInsight = {
     ...(asset.metric_insight ?? {}),
     comment_bullets:
       asset.metric_insight?.comment_bullets ??
@@ -200,16 +202,15 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
       asset.metric_insight?.summary_sentence ??
       asset.card_comment?.comment_title ??
       undefined,
-  } as unknown) as InsightStock["metric_insight"];
+  } as unknown as InsightStock["metric_insight"];
 
   return {
     stock_name: asset.asset_name,
     ticker: asset.ticker ?? asset.asset_name,
     company_description: asset.asset_description,
     action_idea: asset.action_idea,
-    comment_bullets:
-      (asset.card_comment?.comment_bullets ??
-        asset.metric_insight?.comment_bullets) as string[] | undefined,
+    comment_bullets: (asset.card_comment?.comment_bullets ??
+      asset.metric_insight?.comment_bullets) as string[] | undefined,
     sources: asset.sources,
     metrics: {
       price_info: priceInfo,
@@ -269,7 +270,7 @@ const LandingCryptoInsightSection = ({
   const marketIntro = useMemo<ReactNode | null>(() => {
     if (marketCards.length === 0) return null;
     return (
-      <CryptoMarketIntro>
+      <>
         {marketCards.map((card) => {
           const bullets = normalizeCommentBullets(card.comment_bullets);
           const body = card.comment_body ?? "";
@@ -279,9 +280,7 @@ const LandingCryptoInsightSection = ({
               key={card.market ?? card.comment_title}
               $withBorder={!hasBody && bullets.length === 0}
             >
-              <MarketCommentTitle>
-                {card.comment_title ?? "마켓 코멘트"}
-              </MarketCommentTitle>
+              <MarketCommentTitle>{"마켓 코멘트"}</MarketCommentTitle>
               {bullets.length > 0 ? (
                 <MarketCommentBulletList>
                   {bullets.map((bullet, index) => (
@@ -303,7 +302,7 @@ const LandingCryptoInsightSection = ({
             </MarketComment>
           );
         })}
-      </CryptoMarketIntro>
+      </>
     );
   }, [marketCards]);
 
@@ -327,9 +326,9 @@ const CryptoMarketIntro = styled.div`
   gap: 12px;
   padding: 16px;
   border-radius: 20px;
-  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.85), #0f172a);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.45);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), #eef2ff);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 `;
 
 const MarketCommentBody = styled.div`

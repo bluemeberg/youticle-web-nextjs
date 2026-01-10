@@ -1039,9 +1039,7 @@ const ExpandableMarketComment = ({
   commentBullets: string[];
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const previewBullets = expanded
-    ? commentBullets
-    : commentBullets.slice(0, 3);
+  const previewBullets = expanded ? commentBullets : commentBullets.slice(0, 3);
   const normalizedBodyLength = commentBody
     ? removeMarkTags(commentBody).length
     : 0;
@@ -3289,6 +3287,7 @@ const Wrapper = styled.section`
   display: flex;
   flex-direction: column;
   gap: 16px;
+  font-family: "Pretendard", sans-serif;
 `;
 
 const SectionHeader = styled.div`
@@ -3417,12 +3416,6 @@ const HeatmapChip = styled.span<{ $tone: "positive" | "negative" }>`
 const MarketIntroContainer = styled.div<{ $compact?: boolean }>`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: ${({ $compact }) => ($compact ? "0 0 12px" : "16px 4px 12px")};
-  padding: ${({ $compact }) => ($compact ? "8px 12px" : "16px")};
-  border-radius: 18px;
-  background: linear-gradient(120deg, rgba(236, 253, 245, 0.6), rgba(219, 234, 254, 0.9));
-  border: 1px solid rgba(59, 130, 246, 0.18);
 `;
 
 const MarketGrid = styled.div`
@@ -3779,7 +3772,7 @@ const MarketCommentTitle = styled.div`
   font-size: 15px;
   background: linear-gradient(120deg, #0b63f6, #4c1d95);
   -webkit-background-clip: text;
-  color: transparent;
+  color: #000;
 `;
 
 const MarketCommentBody = styled.div<{ $clamped?: boolean }>`
@@ -3929,7 +3922,11 @@ const CommentToggleButton = styled.button`
   padding: 4px 10px;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(147, 51, 234, 0.12));
+  background: linear-gradient(
+    120deg,
+    rgba(37, 99, 235, 0.12),
+    rgba(147, 51, 234, 0.12)
+  );
   color: #1d4ed8;
   font-weight: 700;
   font-size: 12px;
@@ -4614,7 +4611,7 @@ const CTAHelperText = styled.small`
 const CommentPreviewTitle = styled.div`
   margin-bottom: 8px;
   font-weight: 700;
-  color: #0b63f6;
+  color: #000;
   font-size: 16px;
 `;
 

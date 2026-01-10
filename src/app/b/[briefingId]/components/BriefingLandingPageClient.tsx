@@ -142,6 +142,8 @@ export interface VideoCardData {
   duration: string;
   summary: string[];
   href?: string;
+  channelThumbnail?: string;
+  subscriberText?: string;
 }
 
 const convertMarkToStrong = (text?: string | null) => {
@@ -926,7 +928,7 @@ const BriefingLandingPageClient = ({
   data: inputData,
 }: BriefingLandingPageClientProps) => {
   const data = inputData ?? MOCK_DATA;
-
+  console.log(data);
   const router = useRouter();
   const user = useRecoilValue(userState);
 
@@ -1044,6 +1046,10 @@ const BriefingLandingPageClient = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.sections]);
 
+  const [saved, setSaved] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const stickyOffset = topbarH + keywordNavH + 16;
+
   /**
    * IntersectionObserver: 현재 섹션 하이라이트
    * - ref가 채워진 다음에 observe
@@ -1069,7 +1075,10 @@ const BriefingLandingPageClient = ({
           if (id) setActiveAnchor(id);
         }
       },
-      { threshold: 0.3 }
+      {
+        threshold: 0.2,
+        rootMargin: `-${stickyOffset}px 0px -55%`,
+      }
     );
 
     // DOM이 안정된 다음 observe
@@ -1081,10 +1090,7 @@ const BriefingLandingPageClient = ({
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [data.sections, navItems.length]);
-
-  const [saved, setSaved] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  }, [data.sections, navItems.length, stickyOffset]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1093,7 +1099,11 @@ const BriefingLandingPageClient = ({
 
   const handleNavClick = (anchor: string) => {
     const target = sectionRefs.current[anchor];
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!target) return;
+    setActiveAnchor(anchor);
+    const rect = target.getBoundingClientRect();
+    const nextY = window.scrollY + rect.top - stickyOffset;
+    window.scrollTo({ top: Math.max(0, nextY), behavior: "smooth" });
   };
 
   const handleSave = () => {
@@ -1186,6 +1196,7 @@ const BriefingLandingPageClient = ({
         title: video.title,
         thumbnail: video.thumbnail,
         channel_name: video.channel,
+        channel_thumbnail: video.channelThumbnail,
         summary: summaryText,
       } as InsightSource;
     });
@@ -1236,14 +1247,13 @@ const BriefingLandingPageClient = ({
       : [];
 
     return (
-      <SectionBlock
-        key={section.id}
-        id={section.anchor}
-        data-anchor-id={section.anchor}
-        ref={(node) => {
-          sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
-        }}
-      >
+      <SectionBlock key={section.id} id={section.anchor}>
+        <SectionAnchorMarker
+          data-anchor-id={section.anchor}
+          ref={(node) => {
+            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
+          }}
+        />
         <SectionTitleRow>
           <SectionTitle>{section.title}</SectionTitle>
           <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint>
@@ -1323,27 +1333,45 @@ const BriefingLandingPageClient = ({
             <VideoList>
               {activeSlot.tabs.videos.map((video) => {
                 const isNew = !baseIds.has(video.id);
+                console.log(video);
                 return (
-                  <VideoCard key={video.id}>
-                    <VideoThumb src={video.thumbnail} alt={video.title} />
-                    <VideoContent>
-                      <VideoTitleRow>
-                        <VideoTitle>{video.title}</VideoTitle>
-                        {isNew ? <NewPill>NEW</NewPill> : null}
-                      </VideoTitleRow>
-                      <VideoMeta>
-                        {video.channel} · {video.duration}
-                      </VideoMeta>
-                      <BulletList>
-                        {video.summary.map((line, idx) => (
-                          <li
-                            key={safeKey(line, idx)}
-                            dangerouslySetInnerHTML={createMarkedHtml(line)}
-                          />
-                        ))}
-                      </BulletList>
-                    </VideoContent>
-                  </VideoCard>
+                  <>
+                    <VideoCard key={video.id}>
+                      <VideoThumb src={video.thumbnail} alt={video.title} />
+                      <VideoContent>
+                        <VideoTitleRow>
+                          <VideoTitle>{video.title}</VideoTitle>
+                          {isNew ? <NewPill>NEW</NewPill> : null}
+                        </VideoTitleRow>
+                        <BulletList>
+                          {video.summary.map((line, idx) => (
+                            <li
+                              key={safeKey(line, idx)}
+                              dangerouslySetInnerHTML={createMarkedHtml(line)}
+                            />
+                          ))}
+                        </BulletList>
+                      </VideoContent>
+                    </VideoCard>
+                    <VideoMetaRow>
+                      {video.channelThumbnail ? (
+                        <ChannelAvatarImage
+                          src={video.channelThumbnail}
+                          alt={video.channel || "채널"}
+                          width={40}
+                          height={40}
+                          style={{ width: 40, height: 40 }}
+                        />
+                      ) : null}
+                      <VideoMetaRowContainer>
+                        {video.channel ? <span>{video.channel}</span> : null}
+                        <VideoMetaRowSubContainer>
+                          {video.subscriberText ?? ""}
+                          <strong>{video.duration}</strong>
+                        </VideoMetaRowSubContainer>
+                      </VideoMetaRowContainer>
+                    </VideoMetaRow>
+                  </>
                 );
               })}
             </VideoList>
@@ -1360,14 +1388,13 @@ const BriefingLandingPageClient = ({
     const summaryLines = section.summaryBullets;
 
     return (
-      <SectionBlock
-        key={section.id}
-        id={section.anchor}
-        data-anchor-id={section.anchor}
-        ref={(node) => {
-          sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
-        }}
-      >
+      <SectionBlock key={section.id} id={section.anchor}>
+        <SectionAnchorMarker
+          data-anchor-id={section.anchor}
+          ref={(node) => {
+            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
+          }}
+        />
         <SectionTitleRow>
           <SectionTitle>{section.title}</SectionTitle>
         </SectionTitleRow>
@@ -1419,9 +1446,24 @@ const BriefingLandingPageClient = ({
                     <VideoTitleRow>
                       <VideoTitle>{video.title}</VideoTitle>
                     </VideoTitleRow>
-                    <VideoMeta>
-                      {video.channel} · {video.duration}
-                    </VideoMeta>
+                    <VideoMetaRow>
+                      {video.channelThumbnail ? (
+                        <ChannelAvatarImage
+                          src={video.channelThumbnail}
+                          alt={video.channel || "채널"}
+                          width={40}
+                          height={40}
+                          style={{ width: 40, height: 40 }}
+                        />
+                      ) : null}
+                      <VideoMetaRowContainer>
+                        {video.channel ? <span>{video.channel}</span> : null}
+                        <VideoMetaRowSubContainer>
+                          {video.subscriberText ?? ""}
+                          <strong>{video.duration}</strong>
+                        </VideoMetaRowSubContainer>
+                      </VideoMetaRowContainer>
+                    </VideoMetaRow>
                     <BulletList>
                       {video.summary.map((line, idx) => (
                         <li key={safeKey(line, idx)}>{line}</li>
@@ -1561,6 +1603,7 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  font-family: "Pretendard", sans-serif;
   /* padding: 0 16px 80px; */
 `;
 
@@ -1644,8 +1687,11 @@ const KeywordChip = styled.button<{ $active: boolean }>`
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
-  background: ${({ $active }) => ($active ? "#111827" : "#e8edff")};
-  color: ${({ $active }) => ($active ? "#ffffff" : "#111827")};
+  background: ${({ $active }) =>
+    $active
+      ? "linear-gradient(135deg, #1f2a4a, #3730a3)"
+      : "linear-gradient(135deg, #f8f9ff, #eef2ff)"};
+  color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
 `;
 
 const SectionsContainer = styled.main`
@@ -1654,7 +1700,13 @@ const SectionsContainer = styled.main`
   gap: 24px;
   width: 100%;
   max-width: 720px;
-  padding: 24px 0 40px;
+  padding: 24px 16px 40px;
+  font-family: inherit;
+`;
+
+const SectionAnchorMarker = styled.div`
+  width: 100%;
+  height: 1px;
 `;
 
 const SectionBlock = styled.section`
@@ -1758,11 +1810,11 @@ const SectionSlotBar = styled.div.attrs({
   className: "BriefingLandingPageClient__SectionSlotBar",
 })<{ $withShadow?: boolean }>`
   position: sticky;
-  top: 96px;
+  top: 100px;
   /* top: calc(var(--topbar-h, 64px) + var(--keywordnav-h, 52px) + 12px); */
   z-index: 8;
   margin: 12px 0;
-  padding: 12px 16px;
+  padding: 16px 12px 0px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(40, 51, 102, 0.08);
@@ -1864,8 +1916,8 @@ const SlotChip = styled.button<{ $active: boolean }>`
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   scroll-snap-align: start;
   transition: background 0.2s ease, border-color 0.2s ease;
-  box-shadow: ${({ $active }) =>
-    $active ? "0 6px 15px rgba(31, 42, 74, 0.4)" : "none"};
+  /* box-shadow: ${({ $active }) =>
+    $active ? "0 6px 15px rgba(31, 42, 74, 0.4)" : "none"}; */
 `;
 
 const ChipBadge = styled.span<{ $active: boolean }>`
@@ -2003,6 +2055,48 @@ const VideoThumb = styled.img`
   flex: 0 0 auto;
 `;
 
+const ChannelAvatarImage = styled.img`
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+`;
+
+const VideoMetaRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 4px;
+`;
+
+const VideoMetaRowContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #475569;
+
+  span {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+`;
+
+const VideoMetaRowSubContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+
+  strong {
+    font-weight: 600;
+    color: #111827;
+  }
+`;
+
 const VideoContent = styled.div`
   display: flex;
   flex-direction: column;
@@ -2038,12 +2132,6 @@ const NewPill = styled.span`
   background: #1f2a4a;
   color: #fff;
   white-space: nowrap;
-`;
-
-const VideoMeta = styled.span`
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
 `;
 
 const BulletList = styled.ul`

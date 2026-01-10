@@ -58,6 +58,8 @@ export interface RecapVideoSummary {
   channel: string;
   thumbnail: string;
   duration: string;
+  channelThumbnail?: string;
+  subscriberText?: string;
   summary: string[];
 }
 

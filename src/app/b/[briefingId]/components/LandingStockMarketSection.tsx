@@ -671,7 +671,8 @@ const LandingStockMarketSection = ({
             </StockSubSectionTitle>
           </StockSubSectionHeader>
           <StockSubSectionIntro>
-            {SOURCE_TAG_TEXT} · {appliedSlotLabel?.description ?? stockIntroText}
+            {SOURCE_TAG_TEXT} ·{" "}
+            {appliedSlotLabel?.description ?? stockIntroText}
           </StockSubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
@@ -1448,9 +1449,7 @@ const ExpandableMarketComment = ({
   commentBullets: string[];
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const previewBullets = expanded
-    ? commentBullets
-    : commentBullets.slice(0, 3);
+  const previewBullets = expanded ? commentBullets : commentBullets.slice(0, 3);
   const normalizedBodyLength = commentBody
     ? commentBody.replace(/<[^>]+>/g, "").length
     : 0;
@@ -2924,6 +2923,7 @@ const Wrapper = styled.section`
   display: flex;
   flex-direction: column;
   gap: 16px;
+  font-family: "Pretendard", sans-serif;
 `;
 
 const SectionHeader = styled.div`
@@ -2935,8 +2935,8 @@ const SectionHeader = styled.div`
 
 const Title = styled.h3`
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   color: #0f172a;
   display: flex;
   align-items: center;
@@ -3454,8 +3454,8 @@ const StockPreviewComment = styled(StockComment)`
 const StockPreviewCommentTitle = styled.div`
   margin-bottom: 8px;
   font-weight: 700;
-  font-size: 16px;
-  color: ${COLOR_NEGATIVE};
+  font-size: 15px;
+  color: #000;
 `;
 
 const StockCommentTitle = styled.span`
@@ -3482,7 +3482,7 @@ const StockCommentBulletList = styled.ul`
 `;
 
 const StockCommentBulletItem = styled.li`
-  font-size: 16px;
+  font-size: 15px;
   color: ${COLOR_TEXT};
   line-height: 1.6;
   list-style: disc;
@@ -3598,7 +3598,11 @@ const CommentToggleButton = styled.button`
   padding: 4px 10px;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(147, 51, 234, 0.12));
+  background: linear-gradient(
+    120deg,
+    rgba(37, 99, 235, 0.12),
+    rgba(147, 51, 234, 0.12)
+  );
   color: #1d4ed8;
   font-weight: 700;
   font-size: 12px;
