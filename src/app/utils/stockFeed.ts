@@ -12,15 +12,22 @@ export interface StockSlotPayload extends StockSlotRequest {
   data: DataProps[];
 }
 
-const MAX_STOCK_SLOT = 4;
-
 const STOCK_SLOT_LABELS: Record<StockSlotPhase, { label: string; description: string }> = {
   baseline: { label: "07:30 베이스라인", description: "야간 반응을 모아둔 첫 선정" },
-  slot1: { label: "08:30 1차 갱신", description: "장 시작 직후 갱신" },
-  slot2: { label: "12:40 2차 갱신", description: "점심 휴장 시간 집중 모니터링" },
-  slot3: { label: "15:10 3차 갱신", description: "오후 장 마감 직전 체크" },
-  slot4: { label: "21:40 마감", description: "장 마감 이후 저녁 재랭킹" },
+  slot2: { label: "11:00 1차 갱신", description: "오전 장 흐름·수급 확인" },
+  slot3: { label: "14:30 2차 갱신", description: "점심 이후 변동성 체크" },
+  slot4: { label: "17:00 3차 갱신", description: "장 마감 직전 핵심 정리" },
+  slot5: { label: "21:00 마지막 갱신", description: "저녁 재랭킹·복습" },
 };
+
+const SLOT_REQUEST_SEQUENCE: Array<{ phase: StockSlotPhase; timeSlot: number }> = [
+  { phase: "slot2", timeSlot: 2 },
+  { phase: "slot3", timeSlot: 3 },
+  { phase: "slot4", timeSlot: 4 },
+  { phase: "slot5", timeSlot: 5 },
+];
+
+const MAX_STOCK_SLOT = SLOT_REQUEST_SEQUENCE.length;
 
 export interface StockSlotSection {
   slot: StockSlotPhase;
@@ -44,11 +51,12 @@ export const buildStockSlotRequests = ({
   ];
 
   const slotCount = Math.max(0, Math.min(MAX_STOCK_SLOT, currentSlot ?? 0));
-  for (let slot = 1; slot <= slotCount; slot += 1) {
+  for (let index = 0; index < slotCount; index += 1) {
+    const config = SLOT_REQUEST_SEQUENCE[index];
     requests.push({
-      slot: `slot${slot}` as `slot${1 | 2 | 3 | 4}`,
-      url: `${v2BaseUrl}?time_slot=${slot}`,
-      priority: slot,
+      slot: config.phase,
+      url: `${v2BaseUrl}?time_slot=${config.timeSlot}`,
+      priority: index + 1,
     });
   }
 

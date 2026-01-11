@@ -11,7 +11,7 @@ interface BriefingLandingPageProps {
 
 export const revalidate = 0;
 
-const normalizeSearchParams = (
+export const normalizeSearchParams = (
   raw?: Record<string, string | string[] | undefined>
 ) => {
   if (!raw) return undefined;

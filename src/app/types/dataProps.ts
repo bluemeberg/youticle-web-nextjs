@@ -1,4 +1,9 @@
-export type StockFeedSlotPhase = "baseline" | "slot1" | "slot2" | "slot3" | "slot4";
+export type StockFeedSlotPhase =
+  | "baseline"
+  | "slot2"
+  | "slot3"
+  | "slot4"
+  | "slot5";
 
 export interface DataProps {
   video_id: string;

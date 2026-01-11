@@ -9,6 +9,7 @@ import type {
   MoneyRecapSection,
   RecapSection,
   RecapVideoSummary,
+  SectionBriefingData,
   SlotPackage,
 } from "@/types/briefingLanding";
 import type {
@@ -25,11 +26,37 @@ const LANDING_ENDPOINT = `${API_BASE_URL}/briefing/landing`;
 const TOP_VIDEOS_V2_ENDPOINT = `${API_BASE_URL}/briefing_v2/top_videos/v2`;
 const SECTION_VIDEOS_ENDPOINT = `${API_BASE_URL}/briefing/top_videos/section`;
 const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
+const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
-type SlotPhase = "baseline" | "slot1" | "slot2" | "slot3" | "slot4" | "ranking";
+type SlotPhase =
+  | "baseline"
+  | "slot2"
+  | "slot3"
+  | "slot4"
+  | "slot5"
+  | "ranking";
 type MoneySectionKey = keyof typeof MONEY_SECTION_CONFIGS;
 type GeneralSectionKey = keyof typeof GENERAL_SECTION_CONFIGS;
+
+interface KakaoIntegratedBriefingItem {
+  title?: string;
+  so_what?: string;
+  references?: string[];
+}
+
+interface KakaoIntegratedSectionPayload {
+  section: string;
+  updated_at?: string;
+  data?: {
+    keywords?: string[];
+    briefing?: KakaoIntegratedBriefingItem[];
+  };
+}
+
+interface KakaoIntegratedResponse {
+  sections?: KakaoIntegratedSectionPayload[];
+}
 
 const MONEY_SECTION_CONFIGS = {
   domestic_stock: {
@@ -89,6 +116,50 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
   realestate: "realestate",
 };
 
+const buildSectionBriefingEntry = (
+  item: KakaoIntegratedBriefingItem,
+  index: number
+) => {
+  const title = (item.title ?? `브리핑 ${index + 1}`).trim();
+  const soWhat = (item.so_what ?? "").trim();
+  const references = Array.isArray(item.references)
+    ? item.references.filter(
+        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
+      )
+    : [];
+  return { title, soWhat, references };
+};
+
+const fetchIntegratedBriefing = async (
+  sectionLabel: string
+): Promise<SectionBriefingData | undefined> => {
+  try {
+    const url = new URL(KAKAO_CACHE_ENDPOINT);
+    url.searchParams.set("sections", sectionLabel);
+    url.searchParams.set("variant", "integrated");
+    const payload = await fetchJson<KakaoIntegratedResponse>(url.toString());
+    const target = payload.sections?.find(
+      (entry) => entry.section === sectionLabel
+    );
+    if (!target?.data) return undefined;
+    const keywords = (target.data.keywords ?? []).filter(
+      (keyword): keyword is string => typeof keyword === "string" && keyword.trim().length > 0
+    );
+    const entries = (target.data.briefing ?? [])
+      .map((item, idx) => buildSectionBriefingEntry(item, idx))
+      .filter((entry) => entry.title || entry.soWhat);
+    if (keywords.length === 0 && entries.length === 0) return undefined;
+    return {
+      keywords,
+      entries,
+      updatedAt: target.updated_at,
+    };
+  } catch (error) {
+    console.warn("fetchIntegratedBriefing failed", error);
+    return undefined;
+  }
+};
+
 const SLOT_LABELS: Record<
   SlotPhase,
   { title: string; description: string; time: string }
@@ -98,28 +169,28 @@ const SLOT_LABELS: Record<
     description: "07:30 장 시작 전",
     time: "07:30",
   },
-  slot1: { title: "프리 마켓 2차", description: "08:30 직전", time: "08:30" },
-  slot2: { title: "점심장 브리핑", description: "12:30 점검", time: "12:30" },
-  slot3: { title: "장 마감 전", description: "15:10 체크", time: "15:10" },
+  slot2: { title: "오전 1차", description: "11:00 장 중", time: "11:00" },
+  slot3: { title: "오후 2차", description: "14:30 점검", time: "14:30" },
+  slot4: { title: "장 마감 전", description: "17:00 체크", time: "17:00" },
   ranking: { title: "장 마감 이후", description: "랭킹 재정렬", time: "18:10" },
-  slot4: { title: "저녁 리뷰", description: "21:00 리뷰", time: "21:00" },
+  slot5: { title: "저녁 리뷰", description: "21:00 리뷰", time: "21:00" },
 };
 
 const ALL_SLOT_PHASES: SlotPhase[] = [
   "baseline",
-  "slot1",
   "slot2",
   "slot3",
-  "ranking",
   "slot4",
+  "ranking",
+  "slot5",
 ];
 
 const SLOT_TIME_MAP: Record<SlotPhase, number> = {
   baseline: 1,
-  slot1: 1,
   slot2: 2,
   slot3: 3,
   slot4: 4,
+  slot5: 5,
   ranking: 4,
 };
 
@@ -441,8 +512,8 @@ const fetchMoneySlotPackage = async (
   } else {
     const slotNumber =
       slotPhase === "ranking"
-        ? 3
-        : SLOT_TIME_MAP[slotPhase] ?? SLOT_TIME_MAP.slot4;
+        ? SLOT_TIME_MAP.slot4
+        : SLOT_TIME_MAP[slotPhase] ?? SLOT_TIME_MAP.slot5;
     const videoUrl = new URL(TOP_VIDEOS_V2_ENDPOINT);
     videoUrl.searchParams.set("time_slot", String(slotNumber));
     if (date) videoUrl.searchParams.set("date", date);
@@ -504,12 +575,14 @@ const buildMoneySection = async (
   const preferredPackage =
     slotPackages.find((pkg) => pkg.id === slotPhase) ??
     slotPackages[slotPackages.length - 1];
+  const summaryBriefing = await fetchIntegratedBriefing(config.label);
   return {
     id: `section-${sectionKey}`,
     type: config.type,
     anchor: config.anchor,
     title: config.label,
     summaryBullets: preferredPackage.tabs.market.commentary,
+    summaryBriefing,
     defaultSlotId: preferredPackage.id,
     slotPackages,
   } as RecapSection;
@@ -526,6 +599,13 @@ const fetchGeneralSection = async (
   videoUrl.searchParams.set("section", sectionQuery);
   if (date) videoUrl.searchParams.set("date", date);
   const videos = await fetchJson<DataProps[]>(videoUrl.toString());
+  const summaryBriefing = await fetchIntegratedBriefing(sectionQuery);
+  const summaryBullets =
+    summaryBriefing?.entries.length
+      ? summaryBriefing.entries
+          .map((entry) => entry.soWhat || entry.title)
+          .filter((line): line is string => typeof line === "string" && line.trim().length > 0)
+      : ["시간 순으로 TOP 영상을 모았어요"];
   const slotPackage: SlotPackage = {
     id: "general",
     label: config.label,
@@ -546,14 +626,15 @@ const fetchGeneralSection = async (
     type: "stocks",
     anchor: config.anchor,
     title: config.label,
-    summaryBullets: ["시간 순으로 TOP 영상을 모았어요"],
+    summaryBullets,
+    summaryBriefing,
     slotPackages: [slotPackage],
     defaultSlotId: slotPackage.id,
   } as RecapSection;
 };
 
 export async function fetchBriefingLanding(
-  briefingId: string,
+  briefingId: string | null,
   query?: BriefingLandingQuery
 ): Promise<BriefingLandingData | null> {
   const entries = decodeSectionEntries(query?.section);
@@ -592,12 +673,10 @@ export async function fetchBriefingLanding(
 
     if (sections.length > 0) {
       return {
-        briefingId,
+        briefingId: briefingId ?? "briefing-landing",
         deliveryMeta: {
           deliveredAt: new Date().toISOString(),
-          displayLabel: `${displayDate ?? "오늘"} · ${
-            SLOT_LABELS[slotPhase].time
-          }`,
+          displayLabel: `${displayDate ?? "오늘"}`,
           description: SLOT_LABELS[slotPhase].description,
           tagline: SLOT_LABELS[slotPhase].title,
           backHref: "/today",
@@ -621,14 +700,16 @@ export async function fetchBriefingLanding(
 
   try {
     const response = await fetch(
-      `${LANDING_ENDPOINT}/${encodeURIComponent(briefingId)}`,
+      `${LANDING_ENDPOINT}/${encodeURIComponent(briefingId ?? "")}`,
       {
         cache: "no-store",
       }
     );
     if (!response.ok) {
       if (response.status === 404) {
-        return mockBriefingLandingById[briefingId] ?? mockBriefingLanding;
+        return briefingId
+          ? mockBriefingLandingById[briefingId] ?? mockBriefingLanding
+          : mockBriefingLanding;
       }
       throw new Error(`Failed to load briefing landing: ${response.status}`);
     }
@@ -636,6 +717,8 @@ export async function fetchBriefingLanding(
     return payload;
   } catch (error) {
     console.warn("fetchBriefingLanding fallback", error);
-    return mockBriefingLandingById[briefingId] ?? mockBriefingLanding;
+    return briefingId
+      ? mockBriefingLandingById[briefingId] ?? mockBriefingLanding
+      : mockBriefingLanding;
   }
 }

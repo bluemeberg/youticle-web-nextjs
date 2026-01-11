@@ -4,7 +4,7 @@ import type {
   SlotTabContent,
 } from "@/types/briefingLanding";
 
-type SlotPhase = "baseline" | "slot1" | "slot2" | "slot3" | "slot4";
+type SlotPhase = "baseline" | "slot2" | "slot3" | "slot4" | "slot5";
 
 type SlotLabelDefinition = {
   title: string;
@@ -13,10 +13,10 @@ type SlotLabelDefinition = {
 
 const SLOT_PHASES: SlotPhase[] = [
   "baseline",
-  "slot1",
   "slot2",
   "slot3",
   "slot4",
+  "slot5",
 ];
 
 const STOCK_SLOT_LABELS: Record<SlotPhase, SlotLabelDefinition> = {
@@ -24,19 +24,19 @@ const STOCK_SLOT_LABELS: Record<SlotPhase, SlotLabelDefinition> = {
     title: "프리 마켓 1차 브리핑",
     description: "07:30 장 시작 전 베이스라인",
   },
-  slot1: {
-    title: "프리 마켓 2차 브리핑",
-    description: "08:30 장 시작 직전 업데이트",
-  },
   slot2: {
-    title: "점심장 중간 브리핑",
-    description: "12:30 점심장 흐름 점검",
+    title: "오전 1차 브리핑",
+    description: "11:00 장 중 흐름 점검",
   },
   slot3: {
-    title: "장 마감 전 브리핑",
-    description: "15:10 장 마감 직전 체크",
+    title: "오후 2차 브리핑",
+    description: "14:30 점심 이후 체크",
   },
   slot4: {
+    title: "장 마감 전 브리핑",
+    description: "17:00 장 마감 직전 체크",
+  },
+  slot5: {
     title: "저녁 리뷰 브리핑",
     description: "21:00 장 마감 리뷰",
   },
@@ -47,19 +47,19 @@ const OVERSEAS_STOCK_SLOT_LABELS: Record<SlotPhase, SlotLabelDefinition> = {
     title: "간밤 미국장 1차 요약",
     description: "07:30 미국장 핵심 요약",
   },
-  slot1: {
-    title: "간밤 미국장 2차 요약",
-    description: "08:30 새 소식 업데이트",
-  },
   slot2: {
-    title: "오늘 밤 미국장 프리뷰 1차",
-    description: "12:30 오늘 밤 주목 포인트",
+    title: "간밤 미국장 2차 요약",
+    description: "11:00 새 소식 업데이트",
   },
   slot3: {
-    title: "오늘 밤 미국장 프리뷰 2차",
-    description: "15:10 마감 전 리마인드",
+    title: "오늘 밤 미국장 프리뷰 1차",
+    description: "14:30 오늘 밤 주목 포인트",
   },
   slot4: {
+    title: "오늘 밤 미국장 프리뷰 2차",
+    description: "17:00 마감 전 리마인드",
+  },
+  slot5: {
     title: "미국 프리마켓 체크",
     description: "21:00 프리마켓 동향",
   },
@@ -70,46 +70,46 @@ const CRYPTO_SLOT_LABELS: Record<SlotPhase, SlotLabelDefinition> = {
     title: "새벽·아침 코인 브리핑 1차",
     description: "07:30 새벽/아침 흐름",
   },
-  slot1: {
-    title: "아침 브리핑 2차",
-    description: "08:30 출근 직전 급등락 체크",
-  },
   slot2: {
-    title: "점심 브리핑",
-    description: "점심 시간대 코인 반응",
+    title: "오전 브리핑",
+    description: "11:00 출근 이후 급등락 체크",
   },
   slot3: {
-    title: "오후 브리핑",
-    description: "오후~퇴근 시간대 리듬",
+    title: "점심 브리핑",
+    description: "14:30 점심 시간대 반응",
   },
   slot4: {
+    title: "오후 브리핑",
+    description: "17:00 퇴근 직전 리듬",
+  },
+  slot5: {
     title: "심야 브리핑",
-    description: "밤 시간대 미국장 반응",
+    description: "21:00 밤 시간대 미국장 반응",
   },
 };
 
 const STOCK_SLOT_TIMES: Record<SlotPhase, string> = {
   baseline: "07:30",
-  slot1: "08:30",
-  slot2: "12:30",
-  slot3: "15:10",
-  slot4: "21:00",
+  slot2: "11:00",
+  slot3: "14:30",
+  slot4: "17:00",
+  slot5: "21:00",
 };
 
 const OVERSEAS_STOCK_SLOT_TIMES: Record<SlotPhase, string> = {
   baseline: "07:30",
-  slot1: "08:30",
-  slot2: "12:30",
-  slot3: "15:10",
-  slot4: "21:00",
+  slot2: "11:00",
+  slot3: "14:30",
+  slot4: "17:00",
+  slot5: "21:00",
 };
 
 const CRYPTO_SLOT_TIMES: Record<SlotPhase, string> = {
   baseline: "07:30",
-  slot1: "08:30",
-  slot2: "12:30",
-  slot3: "18:00",
-  slot4: "01:00",
+  slot2: "11:00",
+  slot3: "14:30",
+  slot4: "18:00",
+  slot5: "01:00",
 };
 
 const DOMESTIC_STOCK_INSIGHTS = [
@@ -517,6 +517,29 @@ export const mockBriefingLanding: BriefingLandingData = {
         "💱 환율·정책 방향성",
         "🧾 지역 양극화 심화",
       ],
+      summaryBriefing: {
+        keywords: ["기관 매입 0.5%", "노후 한옥", "26조 예수금"],
+        entries: [
+          {
+            title: "기관 매입 비중",
+            soWhat:
+              "기관 주택 매입 비중이 <mark>0.5%</mark>라 단기적으로는 보수적인 심리가 이어질 수 있어요.",
+            references: [],
+          },
+          {
+            title: "한옥 투자 체크",
+            soWhat:
+              "<mark>노후 한옥</mark>은 리모델링 비용과 문화재 지정 가능성을 먼저 확인해야 한다는 의견이 많습니다.",
+            references: [],
+          },
+          {
+            title: "증시 예수금 흐름",
+            soWhat:
+              "증시 예수금 <mark>26조</mark>가 당장 부동산으로 유입되긴 어려워 단기 반등은 제한적일 수 있다는 분석입니다.",
+            references: [],
+          },
+        ],
+      },
       tabs: {
         topVideos: buildVideos("realestate", "부동산"),
         rankingUpdates: [

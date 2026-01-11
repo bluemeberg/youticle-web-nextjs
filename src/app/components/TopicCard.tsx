@@ -79,10 +79,10 @@ const MINUTES_PER_DAY = 24 * 60;
 
 const STOCK_SLOT_PHASE_LABELS: Record<StockFeedSlotPhase, string> = {
   baseline: "프리 마켓 1차",
-  slot1: "프리 마켓 2차",
-  slot2: "점심 브리핑",
-  slot3: "오후 브리핑",
-  slot4: "저녁 브리핑",
+  slot2: "오전 브리핑",
+  slot3: "점심 브리핑",
+  slot4: "오후 브리핑",
+  slot5: "저녁 브리핑",
 };
 
 const getKstMinutes = (date: Date) => {

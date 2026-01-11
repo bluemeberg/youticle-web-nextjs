@@ -256,19 +256,19 @@ const STOCK_SLOT_LABELS: MoneySlotLabelMap = {
     title: "프리 마켓 1차 브리핑",
     description: "07:30 장 시작 전 베이스라인",
   },
-  slot1: {
-    title: "프리 마켓 2차 브리핑",
-    description: "08:30 장 시작 직전 업데이트",
-  },
   slot2: {
-    title: "점심장 중간 브리핑",
-    description: "12:30 점심장 흐름 점검",
+    title: "오전 1차 브리핑",
+    description: "11:00 장 중 핵심 업데이트",
   },
   slot3: {
-    title: "장 마감 전 브리핑",
-    description: "15:10 장 마감 직전 체크",
+    title: "오후 2차 브리핑",
+    description: "14:30 점심 이후 체크",
   },
   slot4: {
+    title: "장 마감 전 브리핑",
+    description: "17:00 장 마감 직전 체크",
+  },
+  slot5: {
     title: "저녁 리뷰 브리핑",
     description: "21:00 장 마감 리뷰",
   },
@@ -279,21 +279,21 @@ const CRYPTO_SLOT_LABELS: MoneySlotLabelMap = {
     title: "새벽·아침 코인 브리핑 1차",
     description: "07:30 새벽/아침 흐름",
   },
-  slot1: {
-    title: "아침 브리핑 2차",
-    description: "08:30 출근 직전 급등락 체크",
-  },
   slot2: {
-    title: "점심 브리핑",
-    description: "점심 시간대 코인 반응",
+    title: "오전 브리핑",
+    description: "11:00 오전 급등락 체크",
   },
   slot3: {
-    title: "오후 브리핑",
-    description: "오후~퇴근 시간대 리듬",
+    title: "점심 브리핑",
+    description: "14:30 점심 시간대 반응",
   },
   slot4: {
+    title: "오후 브리핑",
+    description: "17:00 퇴근 직전 리듬",
+  },
+  slot5: {
     title: "심야 브리핑",
-    description: "밤 시간대 미국장 반응",
+    description: "21:00 밤 시간대 미국장 반응",
   },
 };
 
@@ -302,25 +302,28 @@ const OVERSEAS_STOCK_SLOT_LABELS: MoneySlotLabelMap = {
     title: "간밤 미국장 1차 요약",
     description: "07:30 미국장 핵심 요약",
   },
-  slot1: {
-    title: "간밤 미국장 2차 요약",
-    description: "08:30 새 소식 업데이트",
-  },
   slot2: {
-    title: "오늘 밤 미국장 프리뷰 1차",
-    description: "12:30 오늘 밤 주목 포인트",
+    title: "간밤 미국장 2차 요약",
+    description: "11:00 새 소식 업데이트",
   },
   slot3: {
-    title: "오늘 밤 미국장 프리뷰 2차",
-    description: "15:10 마감 전 리마인드",
+    title: "오늘 밤 미국장 프리뷰 1차",
+    description: "14:30 오늘 밤 주목 포인트",
   },
   slot4: {
+    title: "오늘 밤 미국장 프리뷰 2차",
+    description: "17:00 마감 전 리마인드",
+  },
+  slot5: {
     title: "미국 프리마켓 체크",
     description: "21:00 프리마켓 동향",
   },
 };
 
-const CATEGORY_DISPLAY_NAMES: Record<Exclude<MoneyCategory, "other">, string> = {
+const CATEGORY_DISPLAY_NAMES: Record<
+  Exclude<MoneyCategory, "other">,
+  string
+> = {
   domestic_stock: "국내 주식",
   overseas_stock: "해외 주식",
   crypto: "가상자산",
@@ -932,32 +935,34 @@ const YoutubeToday = ({
   const slotSections = useMemo<SlotSectionEntry[]>(() => {
     const nowMinutes = getKstMinutes(new Date());
     const totalMinutes = 24 * 60;
-    const entries: Array<SlotSectionEntry | null> = SLOT_DISPLAY_CONFIGS.map((config) => {
-      if (config.id === "slot_1730") return null; // 머니 섹션 전용으로 중복 노출 방지
-      const requireNew = config.requireNew !== false;
-      const items = filteredAndSortedData
-        .filter((item) => {
-          if (!item.detected_slots?.[config.id]) return false;
-          if (requireNew && !item.is_new) return false;
-          return true;
-        })
-        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-      if (items.length === 0) return null;
-      const diff = (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
-      const relativeLabel = formatMinutesAgo(diff);
-      const categoryLabel = resolveCategoryLabel(items[0]?.section);
-      return {
-        slotId: config.id,
-        label: config.label,
-        description: config.description,
-        relativeLabel,
-        items,
-        categoryLabel,
-      };
-    });
-    return entries.filter(
-      (section): section is SlotSectionEntry => Boolean(section)
-    )
+    const entries: Array<SlotSectionEntry | null> = SLOT_DISPLAY_CONFIGS.map(
+      (config) => {
+        if (config.id === "slot_1730") return null; // 머니 섹션 전용으로 중복 노출 방지
+        const requireNew = config.requireNew !== false;
+        const items = filteredAndSortedData
+          .filter((item) => {
+            if (!item.detected_slots?.[config.id]) return false;
+            if (requireNew && !item.is_new) return false;
+            return true;
+          })
+          .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        if (items.length === 0) return null;
+        const diff =
+          (nowMinutes - config.minutes + totalMinutes) % totalMinutes;
+        const relativeLabel = formatMinutesAgo(diff);
+        const categoryLabel = resolveCategoryLabel(items[0]?.section);
+        return {
+          slotId: config.id,
+          label: config.label,
+          description: config.description,
+          relativeLabel,
+          items,
+          categoryLabel,
+        };
+      }
+    );
+    return entries
+      .filter((section): section is SlotSectionEntry => Boolean(section))
       .sort(
         (a, b) =>
           getSlotDisplayPriority(a.slotId) - getSlotDisplayPriority(b.slotId)
@@ -1175,12 +1180,12 @@ const YoutubeToday = ({
             <ScheduleItem>
               <ScheduleLabel>주식·가상자산</ScheduleLabel>
               <ScheduleDesc>
-                하루 <ScheduleHighlight>6번 모니터링</ScheduleHighlight>해서
+                하루 <ScheduleHighlight>5번 모니터링</ScheduleHighlight>해서
                 <ScheduleHighlight>지금 반응 좋은 영상</ScheduleHighlight>만
                 다시 골라드려요.
               </ScheduleDesc>
               <ScheduleTiming>
-                ⏱ 07:30 · 08:30 · 12:40 · 15:10 · 18:10(재랭킹) · 21:40
+                ⏱ 07:30 · 11:00 · 14:30 · 17:00 · 21:00
               </ScheduleTiming>
             </ScheduleItem>
             <ScheduleItem>
@@ -1423,7 +1428,9 @@ const SectionBadgeBlock = ({
     <SectionBadgeTitle>
       {emoji ? <SectionBadgeEmoji>{emoji}</SectionBadgeEmoji> : null}
       <SectionBadgeTitleText>{title}</SectionBadgeTitleText>
-      {category ? <SectionBadgeCategory>{category}</SectionBadgeCategory> : null}
+      {category ? (
+        <SectionBadgeCategory>{category}</SectionBadgeCategory>
+      ) : null}
       {chip ? <SectionBadgeChip>{chip}</SectionBadgeChip> : null}
     </SectionBadgeTitle>
     {subtitle ? <SectionBadgeSubtitle>{subtitle}</SectionBadgeSubtitle> : null}

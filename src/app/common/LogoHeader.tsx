@@ -23,6 +23,7 @@ interface LogoHeaderProps {
   onBack?: () => void; // 뒤로가기 핸들러 추가
   onBackHome?: () => void;
   showLogo?: boolean;
+  forceLightTheme?: boolean;
 }
 
 const LogoHeader = ({
@@ -30,6 +31,7 @@ const LogoHeader = ({
   onBack,
   onBackHome,
   showLogo = false,
+  forceLightTheme = false,
 }: LogoHeaderProps) => {
   const user = useRecoilValue(userState);
   const setUser = useSetRecoilState(userState);
@@ -86,7 +88,10 @@ const LogoHeader = ({
     pathname.endsWith("/unsubscribe") || pathname.endsWith("/subject/modify");
 
   const shouldUseLightTheme =
-    isDetailPage || isEvidencePage || isUnsubscribeOrModifyPage;
+    forceLightTheme ||
+    isDetailPage ||
+    isEvidencePage ||
+    isUnsubscribeOrModifyPage;
 
   const shouldShowBackIcon =
     Boolean(onBack) ||

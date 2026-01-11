@@ -74,6 +74,18 @@ export interface BriefingLandingData {
   exploreTabs: Array<{ id: string; label: string; href: string }>;
 }
 
+interface SummaryBriefingEntry {
+  title: string;
+  soWhat: string;
+  references?: string[];
+}
+
+interface SummaryBriefingData {
+  keywords: string[];
+  entries: SummaryBriefingEntry[];
+  updatedAt?: string | null;
+}
+
 export type RecapSection =
   | MoneyRecapSection
   | RankingRecapSection
@@ -85,6 +97,7 @@ export interface MoneyRecapSection {
   title: string; // "국내 주식" / "가상자산"
   anchor: string; // "stocks" / "crypto"
   summaryBullets: string[];
+  summaryBriefing?: SummaryBriefingData;
   defaultSlotId?: string;
   slotPackages: SlotPackage[];
 }
@@ -95,6 +108,7 @@ export interface RankingRecapSection {
   title: string; // "부동산" 또는 다른 키워드
   anchor: string; // "realestate"
   summaryBullets: string[];
+  summaryBriefing?: SummaryBriefingData;
   rankingWindows: string[]; // ["3시간", "12시간", "24시간"]
   defaultRankingWindow?: string;
   tabs: {
@@ -109,6 +123,7 @@ export interface GeneralRecapSection {
   title: string;
   anchor: string;
   summaryBullets: string[];
+  summaryBriefing?: SummaryBriefingData;
   defaultSlotId?: string;
   slotPackages: SlotPackage[];
 }
@@ -177,6 +192,54 @@ const convertMarkToStrong = (text?: string | null) => {
 const createMarkedHtml = (text: string) => ({
   __html: convertMarkToStrong(text),
 });
+
+const renderSummaryContent = (
+  briefing: SummaryBriefingData | undefined,
+  fallback: string[]
+) => {
+  if (briefing && briefing.entries.length > 0) {
+    return (
+      <>
+        {briefing.keywords.length ? (
+          <SummaryKeywordList>
+            {briefing.keywords.map((keyword, idx) => (
+              <SummaryKeyword key={safeKey(keyword, idx)}>
+                {keyword}
+              </SummaryKeyword>
+            ))}
+          </SummaryKeywordList>
+        ) : null}
+        <SummaryBriefingList>
+          {briefing.entries.map((entry, idx) => (
+            <SummaryBriefingItem
+              key={safeKey(entry.title || entry.soWhat || "brief", idx)}
+            >
+              {entry.title ? (
+                <SummaryBriefingTitle>{entry.title}</SummaryBriefingTitle>
+              ) : null}
+              {entry.soWhat ? (
+                <SummaryBriefingBody
+                  dangerouslySetInnerHTML={createMarkedHtml(entry.soWhat)}
+                />
+              ) : null}
+            </SummaryBriefingItem>
+          ))}
+        </SummaryBriefingList>
+      </>
+    );
+  }
+
+  return (
+    <SummaryList>
+      {fallback.map((line, idx) => (
+        <li
+          key={safeKey(line, idx)}
+          dangerouslySetInnerHTML={createMarkedHtml(line)}
+        />
+      ))}
+    </SummaryList>
+  );
+};
 
 export interface RankingUpdate {
   id: string;
@@ -748,6 +811,42 @@ const MOCK_DATA: BriefingLandingData = {
         "🧾 정책 변수(대출/세제) 예고: 심리 변동 가능",
         "📉 재건축/재개발은 공사비·사업지연 리스크 점검",
       ],
+      summaryBriefing: {
+        keywords: [
+          "미래에 대한 불안감",
+          "140년 한옥",
+          "26조 원 증가",
+          "대지 218평",
+          "0.5%",
+        ],
+        entries: [
+          {
+            title: "🧘미래 불안, 요가 활용 전략",
+            soWhat:
+              "<mark>미래에 대한 불안감</mark>을 느낀다면 생활 패턴을 조정하고 취미/부업을 통해 현금흐름을 다변화해야 한다는 의견이 많아요.",
+          },
+          {
+            title: "🏡부여 5천만원 농가주택",
+            soWhat:
+              "<mark>대지 218평</mark> 농가주택은 노후 시설과 인프라 부족을 감안해 실거주·세컨하우스 용도부터 판단하라는 조언입니다.",
+          },
+          {
+            title: "🏘️기관 주택 매입 0.5%",
+            soWhat:
+              "기관 매입 비중이 <mark>0.5%</mark> 수준이라 단기 심리 영향은 있더라도 구조적 추세 전환까지는 시간이 걸릴 수 있다고 봤어요.",
+          },
+          {
+            title: "🏚️의성 140년 한옥 매매",
+            soWhat:
+              "<mark>140년 된 한옥</mark>은 리모델링 비용과 문화재 지정 가능성을 따져 장기 투자 여부를 결정하라는 의견도 있었습니다.",
+          },
+          {
+            title: "📉증시 예수금 26조 증가",
+            soWhat:
+              "<mark>26조 원 증가</mark>한 증시 예수금이 부동산으로 바로 유입되기 어려워 단기적으로 보수적인 심리가 이어질 수 있다는 분석입니다.",
+          },
+        ],
+      },
       rankingWindows: ["3시간", "12시간", "24시간"],
       defaultRankingWindow: "12시간",
       tabs: {
@@ -888,11 +987,11 @@ function badgeForDiff(diff: number) {
 
 const BRIEFING_SLOT_PHASES: BriefingSlot[] = [
   "baseline",
-  "slot1",
   "slot2",
   "slot3",
-  "ranking",
   "slot4",
+  "ranking",
+  "slot5",
 ];
 
 const resolveSlotPhase = (slotId?: string | null): BriefingSlot | null => {
@@ -906,7 +1005,7 @@ const buildSectionSlotLabel = (
   sectionTitle: string,
   slot: SlotPackage
 ): SlotLabel => {
-  const phase = resolveSlotPhase(slot.id) || "slot4";
+  const phase = resolveSlotPhase(slot.id) || "slot5";
   const baseLabel: SlotLabel = {
     phase,
     title: slot.label,
@@ -1108,6 +1207,14 @@ const BriefingLandingPageClient = ({
     setTimeout(() => setToastMessage(null), 2200);
   };
 
+  const handleLogoBack = () => {
+    if (data.deliveryMeta.backHref) {
+      router.push(data.deliveryMeta.backHref);
+    } else {
+      router.back();
+    }
+  };
+
   const handleNavClick = (anchor: string) => {
     const target = sectionRefs.current[anchor];
     if (!target) return;
@@ -1214,6 +1321,18 @@ const BriefingLandingPageClient = ({
     });
   };
 
+  const parseSlotTimeToDate = (displayTime?: string | null) => {
+    if (!displayTime) return null;
+    const [hours, minutes] = displayTime
+      .split(":")
+      .map((token) => Number(token));
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(hours, minutes, 0, 0);
+    return target;
+  };
+
   const renderMoneySection = (section: MoneyRecapSection) => {
     const activeSlot = getActiveSlot(section);
     const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
@@ -1224,11 +1343,6 @@ const BriefingLandingPageClient = ({
       ? buildSectionSlotLabel(section.title, activeSlot)
       : null;
     const insightSection = activeSlot?.tabs.insightSection;
-
-    const pendingSlot = activeSlot ?? section.slotPackages[0];
-    const pendingMessage = !insightSection && pendingSlot
-      ? `${pendingSlot.displayTime}에 갱신 예정이에요. 해당 시각 이후에 다시 확인해주세요!`
-      : null;
 
     const insightContent = (() => {
       if (!insightSection) return null;
@@ -1256,12 +1370,97 @@ const BriefingLandingPageClient = ({
       );
     })();
 
+    const isStaticSection =
+      section.slotPackages.length === 1 &&
+      section.slotPackages[0]?.id === "general";
+    const pendingSlot = activeSlot ?? section.slotPackages[0];
+    const slotTime = parseSlotTimeToDate(pendingSlot?.displayTime);
+    const now = new Date();
+    const hasVideoData =
+      (activeSlot?.tabs.videos && activeSlot.tabs.videos.length > 0) || false;
+    const isFutureSlot =
+      !insightSection &&
+      !hasVideoData &&
+      slotTime &&
+      slotTime.getTime() > now.getTime();
+    const isMissingSlot = !insightSection && !hasVideoData && !isFutureSlot;
+
+    const summaryBriefing = section.summaryBriefing;
     const summaryLines = activeSlot?.tabs.market.commentary?.length
       ? activeSlot.tabs.market.commentary
       : section.summaryBullets;
-    const slotVideoSources = activeSlot
-      ? adaptSlotVideosToSources(activeSlot.tabs.videos)
-      : [];
+    const isBaselineSlot =
+      isStaticSection ||
+      !activeSlot ||
+      activeSlot.id === "baseline" ||
+      !summaryBriefing;
+    const renderEmptySlotNotice = (variant: "pending" | "error") => {
+      const label = pendingSlot?.label ?? section.title;
+      const timeText = pendingSlot?.displayTime;
+      const message =
+        variant === "pending" && timeText
+          ? `${timeText}에 갱신 예정이에요. 해당 시각 이후에 다시 확인해주세요!`
+          : "데이터를 불러오지 못했어요. 새로고침 후 다시 시도해주세요.";
+      return (
+        <SectionBlock key={section.id} id={section.anchor}>
+          <SectionAnchorMarker
+            data-anchor-id={section.anchor}
+            ref={(node) => {
+              sectionRefs.current[section.anchor] =
+                node as HTMLDivElement | null;
+            }}
+          />
+          <SectionTitleRow>
+            <SectionTitle>{section.title}</SectionTitle>
+            {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
+          </SectionTitleRow>
+
+          {!isStaticSection && (section.slotPackages.length || activeSlot) ? (
+            <SectionSlotBar $withShadow>
+              {section.slotPackages.length ? (
+                <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+                  {section.slotPackages.map((slot) => {
+                    const slotCopy = buildSectionSlotLabel(section.title, slot);
+                    const badge =
+                      diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]
+                        ?.badge;
+                    const isActive =
+                      slot.id === activeSlotBySection[section.id];
+                    return (
+                      <SlotChip
+                        key={slot.id}
+                        type="button"
+                        $active={isActive}
+                        onClick={() => onSlotSelect(section, slot.id)}
+                      >
+                        <span>{slotCopy.title}</span>
+                        {badge ? (
+                          <ChipBadge $active={isActive}>{badge}</ChipBadge>
+                        ) : null}
+                      </SlotChip>
+                    );
+                  })}
+                </SlotSelector>
+              ) : null}
+              {variant === "pending" && pendingSlot ? (
+                <SlotMeta>예정: {pendingSlot.displayTime}</SlotMeta>
+              ) : null}
+            </SectionSlotBar>
+          ) : null}
+
+          <SlotNotice $variant={variant}>
+            <SlotNoticeTitle>
+              {label} {variant === "pending" ? "준비 중" : "데이터 오류"}
+            </SlotNoticeTitle>
+            <SlotNoticeText>{message}</SlotNoticeText>
+          </SlotNotice>
+        </SectionBlock>
+      );
+    };
+
+    if (isFutureSlot || isMissingSlot) {
+      return renderEmptySlotNotice(isFutureSlot ? "pending" : "error");
+    }
 
     return (
       <SectionBlock key={section.id} id={section.anchor}>
@@ -1273,14 +1472,14 @@ const BriefingLandingPageClient = ({
         />
         <SectionTitleRow>
           <SectionTitle>{section.title}</SectionTitle>
-          <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint>
+          {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
         </SectionTitleRow>
 
-        {section.slotPackages.length || activeSlot ? (
-          <SectionSlotBar $withShadow>
-            {section.slotPackages.length ? (
-              <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-                {section.slotPackages.map((slot) => {
+          {!isStaticSection && (section.slotPackages.length || activeSlot) ? (
+            <SectionSlotBar $withShadow>
+              {section.slotPackages.length ? (
+                <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+                  {section.slotPackages.map((slot) => {
                   const slotCopy = buildSectionSlotLabel(section.title, slot);
                   const badge =
                     diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
@@ -1312,17 +1511,21 @@ const BriefingLandingPageClient = ({
 
         <SummaryCard>
           <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
-          <SummaryList>
-            {summaryLines.map((line, idx) => (
-              <li
-                key={safeKey(line, idx)}
-                dangerouslySetInnerHTML={createMarkedHtml(line)}
-              />
-            ))}
-          </SummaryList>
+          {summaryBriefing ? (
+            isBaselineSlot ? (
+              renderSummaryContent(summaryBriefing, summaryLines)
+            ) : (
+              <SummaryNotice>
+                카카오톡 브리핑은 해당 슬롯에서 준비 중이에요. 베이스라인을
+                선택하면 최신 요약을 볼 수 있어요.
+              </SummaryNotice>
+            )
+          ) : (
+            renderSummaryContent(undefined, summaryLines)
+          )}
         </SummaryCard>
 
-        {insightContent ? (
+        {!isStaticSection && insightContent ? (
           <InsightBlock>
             <BlockHeader>
               <BlockTitle>인사이트 강화</BlockTitle>
@@ -1331,13 +1534,11 @@ const BriefingLandingPageClient = ({
             <BlockDivider />
             {insightContent}
           </InsightBlock>
-        ) : (
+        ) : !isStaticSection ? (
           <InsightEmptyState>
-            {pendingMessage
-              ? pendingMessage
-              : "슬롯 인사이트를 불러오는 중이에요."}
+            슬롯 인사이트를 불러오는 중이에요.
           </InsightEmptyState>
-        )}
+        ) : null}
 
         {activeSlot ? (
           <VideoBlock>
@@ -1353,14 +1554,21 @@ const BriefingLandingPageClient = ({
               {activeSlot.tabs.videos.map((video) => {
                 const isNew = !baseIds.has(video.id);
                 return (
-                  <VideoSourceCard key={video.id} href={video.href ?? `/detail/${video.id}`}>
+                  <VideoSourceCard
+                    key={video.id}
+                    href={video.href ?? `/detail/${video.id}`}
+                  >
                     <VideoSourceContainer>
                       <VideoThumbnailWrapper>
                         <VideoThumb src={video.thumbnail} alt={video.title} />
                       </VideoThumbnailWrapper>
                       <VideoSourceBody>
                         <VideoTitleRow>
-                          <VideoTitle>{video.title}</VideoTitle>
+                          <VideoTitle
+                            dangerouslySetInnerHTML={createMarkedHtml(
+                              video.title
+                            )}
+                          />
                           {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
                         </VideoTitleRow>
                         {video.summary.length ? (
@@ -1422,14 +1630,7 @@ const BriefingLandingPageClient = ({
 
         <SummaryCard>
           <SummarySource>카카오톡 브리핑 요약</SummarySource>
-          <SummaryList>
-            {summaryLines.map((line, idx) => (
-              <li
-                key={safeKey(line, idx)}
-                dangerouslySetInnerHTML={createMarkedHtml(line)}
-              />
-            ))}
-          </SummaryList>
+          {renderSummaryContent(section.summaryBriefing, summaryLines)}
         </SummaryCard>
 
         <TabList role="tablist" aria-label={`${section.title} 탭`}>
@@ -1465,7 +1666,9 @@ const BriefingLandingPageClient = ({
                   <VideoThumb src={video.thumbnail} alt={video.title} />
                   <VideoContent>
                     <VideoTitleRow>
-                      <VideoTitle>{video.title}</VideoTitle>
+                      <VideoTitle
+                        dangerouslySetInnerHTML={createMarkedHtml(video.title)}
+                      />
                     </VideoTitleRow>
                     <VideoMetaRow>
                       {video.channelThumbnail ? (
@@ -1545,7 +1748,7 @@ const BriefingLandingPageClient = ({
       }
     >
       <LogoHeaderDock>
-        <LogoHeader showLogo />
+        <LogoHeader showLogo onBack={handleLogoBack} forceLightTheme />
       </LogoHeaderDock>
       <TopAppBar>
         <BackButton href={data.deliveryMeta.backHref}>
@@ -1553,8 +1756,9 @@ const BriefingLandingPageClient = ({
         </BackButton>
         <TopMeta ref={topBarRef}>
           <TopTime>{data.deliveryMeta.displayLabel}</TopTime>
-          <TopDescription>{data.deliveryMeta.description}</TopDescription>
-          <TopTagline>{data.deliveryMeta.tagline}</TopTagline>
+          {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
+          <TopTagline>{data.deliveryMeta.tagline}</TopTagline> */}
+          <TopDescription>구독 키워드 브리핑</TopDescription>
         </TopMeta>
       </TopAppBar>
 
@@ -1620,7 +1824,7 @@ export default BriefingLandingPageClient;
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(180deg, #eef2ff 0%, #f9fafb 55%, #ffffff 100%);
+  /* background: linear-gradient(180deg, #eef2ff 0%, #f9fafb 55%, #ffffff 100%); */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1718,28 +1922,28 @@ const KeywordChip = styled.button<{ $active: boolean }>`
 const SectionsContainer = styled.main`
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 100px;
   width: 100%;
   max-width: 720px;
-  padding: 4px 16px 40px;
+  padding: 40px 16px 40px;
   font-family: inherit;
 `;
-
 const SectionAnchorMarker = styled.div`
   width: 100%;
   height: 1px;
 `;
 
 const SectionBlock = styled.section`
-  border-radius: 20px;
-  background: linear-gradient(
+  /* border-radius: 20px; */
+  /* background: linear-
+gradient(
     180deg,
     rgba(255, 255, 255, 0.96) 0%,
     #ffffff 100%
   );
   border: 1px solid rgba(50, 71, 255, 0.08);
   padding: 16px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06); */
   scroll-margin-top: var(--sticky-offset, 140px);
 `;
 
@@ -1822,6 +2026,71 @@ const SummaryList = styled.ul`
   li:not(:last-child) {
     margin-bottom: 8px;
   }
+`;
+
+const SummaryKeywordList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const SummaryKeyword = styled.li`
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1f2a4a;
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const SummaryBriefingList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const SummaryBriefingItem = styled.li`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+
+  &:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+`;
+
+const SummaryBriefingTitle = styled.p`
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+`;
+
+const SummaryBriefingBody = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #1f2a4a;
+`;
+
+const SummaryNotice = styled.p`
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: rgba(50, 71, 255, 0.06);
+  color: #1f2a4a;
+  font-weight: 600;
 `;
 
 const SectionSlotBar = styled.div.attrs({
@@ -2046,10 +2315,10 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
 `;
 
 const VideoList = styled.div`
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  /* border: 1px solid #e5e7eb;
+  border-radius: 14px; */
   background: #ffffff;
-  padding: 12px;
+  /* padding: 12px; */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2088,18 +2357,52 @@ const VideoTitleRow = styled.div`
   gap: 8px;
 `;
 
-const VideoTitle = styled.h3`
+const VideoTitle = styled.h3.attrs({
+  className: "BriefingLandingPageClient__VideoTitle",
+})`
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.35;
   color: #1f2a4a;
   flex: 1;
   min-width: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+`;
+
+const SlotNotice = styled.div<{ $variant: "pending" | "error" }>`
+  margin: 16px 0;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid
+    ${({ $variant }) =>
+      $variant === "pending"
+        ? "rgba(99, 102, 241, 0.25)"
+        : "rgba(240, 82, 82, 0.3)"};
+  background: ${({ $variant }) =>
+    $variant === "pending"
+      ? "linear-gradient(180deg, rgba(247, 250, 255, 1), rgba(230, 239, 255, 1))"
+      : "linear-gradient(180deg, rgba(255, 247, 247, 1), rgba(255, 231, 231, 1))"};
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const SlotNoticeTitle = styled.h3`
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1d2145;
+`;
+
+const SlotNoticeText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.5;
 `;
 
 const NewPill = styled.span`

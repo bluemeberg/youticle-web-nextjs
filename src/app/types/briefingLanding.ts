@@ -23,6 +23,19 @@ export interface BaseRecapSection {
   anchor: string;
   title: string;
   summaryBullets: string[];
+  summaryBriefing?: SectionBriefingData;
+}
+
+export interface SectionBriefingEntry {
+  title: string;
+  soWhat: string;
+  references: string[];
+}
+
+export interface SectionBriefingData {
+  keywords: string[];
+  entries: SectionBriefingEntry[];
+  updatedAt?: string;
 }
 
 export interface MarketIndexCard {

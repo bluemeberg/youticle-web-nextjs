@@ -2,11 +2,11 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export type BriefingSlot =
   | "baseline"
-  | "slot1"
   | "slot2"
   | "slot3"
+  | "slot4"
   | "ranking"
-  | "slot4";
+  | "slot5";
 
 interface SlotConfig {
   slot: BriefingSlot;
@@ -25,23 +25,23 @@ const SLOT_SEQUENCE: SlotConfig[] = [
     orderText: "아침 베이스라인",
   },
   {
-    slot: "slot1",
-    startHour: 8,
-    startMinute: 30,
+    slot: "slot2",
+    startHour: 11,
+    startMinute: 0,
     refreshCount: 1,
     orderText: "오늘 1번째 갱신",
   },
   {
-    slot: "slot2",
-    startHour: 12,
-    startMinute: 40,
+    slot: "slot3",
+    startHour: 14,
+    startMinute: 30,
     refreshCount: 2,
     orderText: "오늘 2번째 갱신",
   },
   {
-    slot: "slot3",
-    startHour: 15,
-    startMinute: 10,
+    slot: "slot4",
+    startHour: 17,
+    startMinute: 0,
     refreshCount: 3,
     orderText: "오늘 3번째 갱신",
   },
@@ -53,9 +53,9 @@ const SLOT_SEQUENCE: SlotConfig[] = [
     orderText: "오늘 4번째 갱신",
   },
   {
-    slot: "slot4",
+    slot: "slot5",
     startHour: 21,
-    startMinute: 40,
+    startMinute: 0,
     refreshCount: null,
     orderText: "오늘 마지막 갱신 이후 유지",
   },
@@ -109,25 +109,25 @@ const SLOT_LABEL_MAP: Record<BriefingSlot, Omit<SlotLabel, "phase">> = {
     title: "프리 마켓 1차 브리핑",
     description: "07:30 장 시작 전 핵심 이슈",
   },
-  slot1: {
-    title: "프리 마켓 2차 브리핑",
-    description: "08:30 장 시작 직전 업데이트",
-  },
   slot2: {
-    title: "점심장 중간 브리핑",
-    description: "점심장 변동성과 수급 점검",
+    title: "오전 1차 브리핑",
+    description: "11:00 장 중 핵심 업데이트",
   },
   slot3: {
-    title: "장 마감 전 브리핑",
-    description: "15:10 장 마감 직전 체크",
+    title: "오후 2차 브리핑",
+    description: "14:30 점심 이후 체크",
+  },
+  slot4: {
+    title: "장 마감 직전 브리핑",
+    description: "17:00 마감 직전 흐름",
   },
   ranking: {
     title: "장 마감 리뷰 브리핑",
     description: "18:10 장 마감 핵심 복습",
   },
-  slot4: {
+  slot5: {
     title: "저녁 리뷰 브리핑",
-    description: "21:40 저녁 재랭킹 요약",
+    description: "21:00 저녁 재랭킹 요약",
   },
 };
 
@@ -177,12 +177,12 @@ export const getBriefingSlot = (date: Date): BriefingSlot => {
 
 export const resolveStockSlot = (date: Date): number | null => {
   const slot = getBriefingSlot(date);
-  if (slot === "slot4") return 4;
   if (slot === "baseline") return null;
-  if (slot === "slot1") return 1;
-  if (slot === "slot2") return 2;
-  if (slot === "slot3") return 3;
-  if (slot === "ranking") return 3; // ranking data uses the slot3 payload
+  if (slot === "slot2") return 1;
+  if (slot === "slot3") return 2;
+  if (slot === "slot4") return 3;
+  if (slot === "ranking") return 3; // ranking data uses 직전 슬롯 payload
+  if (slot === "slot5") return 4;
   return null;
 };
 

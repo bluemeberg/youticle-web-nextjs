@@ -1065,7 +1065,6 @@ const ExpandableMarketComment = ({
   );
 };
 
-
 const StockCard = ({
   stock,
   hideInsightSectionList = false,
@@ -3891,7 +3890,6 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
   }
 `;
 
-
 const StockDetailCollapse = styled.div<{ $expanded: boolean }>`
   overflow: hidden;
   max-height: ${({ $expanded }) => ($expanded ? "5000px" : "0px")};
@@ -4793,7 +4791,7 @@ export const VideoSummary = styled.p`
   color: #475569;
   line-height: 1.2;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 `;

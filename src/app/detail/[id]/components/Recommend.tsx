@@ -100,10 +100,10 @@ const SLOT_PHASE_META: Record<
   { label: string; short: string }
 > = {
   baseline: { label: "07:30 베이스라인", short: "베이스라인" },
-  slot1: { label: "08:30 1차 갱신", short: "1차 갱신" },
-  slot2: { label: "12:40 2차 갱신", short: "2차 갱신" },
-  slot3: { label: "15:10 3차 갱신", short: "3차 갱신" },
-  slot4: { label: "21:40 마감", short: "저녁 재랭킹" },
+  slot2: { label: "11:00 1차 갱신", short: "1차 갱신" },
+  slot3: { label: "14:30 2차 갱신", short: "2차 갱신" },
+  slot4: { label: "17:00 3차 갱신", short: "3차 갱신" },
+  slot5: { label: "21:00 마지막 갱신", short: "저녁 재랭킹" },
 };
 
 const SLOT_PHASE_COLORS: Record<
@@ -111,18 +111,18 @@ const SLOT_PHASE_COLORS: Record<
   { bg: string; color: string }
 > = {
   baseline: { bg: "#fef3c7", color: "#92400e" },
-  slot1: { bg: "#dbeafe", color: "#1d4ed8" },
-  slot2: { bg: "#dcfce7", color: "#047857" },
-  slot3: { bg: "#f3e8ff", color: "#7e22ce" },
-  slot4: { bg: "#e0e7ff", color: "#4338ca" },
+  slot2: { bg: "#dbeafe", color: "#1d4ed8" },
+  slot3: { bg: "#dcfce7", color: "#047857" },
+  slot4: { bg: "#f3e8ff", color: "#7e22ce" },
+  slot5: { bg: "#e0e7ff", color: "#4338ca" },
 };
 
 const SLOT_EMOJI: Record<StockFeedSlotPhase, string> = {
   baseline: "⏰",
-  slot1: "🎯",
   slot2: "🎯",
   slot3: "🎯",
-  slot4: "🟥",
+  slot4: "🎯",
+  slot5: "🟥",
 };
 
 const DETECTED_SLOT_MAP: Record<string, { label: string; minutes: number }> = {
