@@ -1225,6 +1225,11 @@ const BriefingLandingPageClient = ({
       : null;
     const insightSection = activeSlot?.tabs.insightSection;
 
+    const pendingSlot = activeSlot ?? section.slotPackages[0];
+    const pendingMessage = !insightSection && pendingSlot
+      ? `${pendingSlot.displayTime}에 갱신 예정이에요. 해당 시각 이후에 다시 확인해주세요!`
+      : null;
+
     const insightContent = (() => {
       if (!insightSection) return null;
       if (section.type === "crypto") {
@@ -1328,7 +1333,9 @@ const BriefingLandingPageClient = ({
           </InsightBlock>
         ) : (
           <InsightEmptyState>
-            슬롯 인사이트를 불러오는 중이에요.
+            {pendingMessage
+              ? pendingMessage
+              : "슬롯 인사이트를 불러오는 중이에요."}
           </InsightEmptyState>
         )}
 

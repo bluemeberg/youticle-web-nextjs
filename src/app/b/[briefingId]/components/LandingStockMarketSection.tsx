@@ -310,10 +310,8 @@ const LandingStockMarketSection = ({
     return dateFromMarket || delta?.date_kst || null;
   }, [marketEntries, delta?.date_kst]);
 
-  const [showDetails, setShowDetails] = useState(
-    defaultExpanded ?? !showHeader
-  );
-  const shouldRenderDetails = showHeader ? showDetails : true;
+  const [showDetails, setShowDetails] = useState(true);
+  const shouldRenderDetails = true;
 
   const stockUpdatedAt = section.updated_at ?? null;
   const stockTimestampText = stockUpdatedAt
@@ -405,26 +403,8 @@ const LandingStockMarketSection = ({
         </MarketSummaryComment>
       ) : null}
 
-      {canShowMarketSection && showHeader ? (
-        <SectionToggleRow>
-          <MarketToggleButton
-            type="button"
-            onClick={() => setShowDetails((prev) => !prev)}
-            aria-expanded={showDetails}
-          >
-            {showDetails ? "마켓 인사이트 접기" : "마켓 인사이트 펼치기"}
-            <ToggleChevron aria-hidden={true} $expanded={showDetails}>
-              <span />
-            </ToggleChevron>
-          </MarketToggleButton>
-        </SectionToggleRow>
-      ) : null}
-
       {canShowMarketSection ? (
-        <MarketDetailCollapse
-          $expanded={shouldRenderDetails}
-          aria-hidden={showHeader ? !shouldRenderDetails : false}
-        >
+        <MarketDetailCollapse $expanded={true} aria-hidden={false}>
           <MarketGrid>
             {marketEntries.map(([marketKey, card]) => {
               const quickLines = card.quick_lines?.filter(Boolean) ?? [];

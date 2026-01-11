@@ -64,6 +64,11 @@ const GENERAL_SECTION_CONFIGS = {
     anchor: "beauty",
     query: "뷰티/메이크업",
   },
+  realestate: {
+    label: "부동산",
+    anchor: "realestate",
+    query: "부동산",
+  },
 } as const;
 
 const formatSectionQuery = (label: string) =>
@@ -80,6 +85,8 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
   overseas_crypto: "overseas_crypto",
   뷰티: "beauty",
   "뷰티/메이크업": "beauty",
+  부동산: "realestate",
+  realestate: "realestate",
 };
 
 const SLOT_LABELS: Record<

@@ -308,10 +308,11 @@ const LandingDomesticStockInsightSection = ({
     forceStockPreview || (typeof label === "string" && label.includes("주식"));
   const [showAllStocks, setShowAllStocks] = useState(false);
   const hasMoreStocks = stocks.length > DEFAULT_VISIBLE_STOCKS;
-  const displayedStocks =
-    showAllStocks || stocks.length <= DEFAULT_VISIBLE_STOCKS
-      ? stocks
-      : stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  const displayedStocks = (() => {
+    if (stocks.length <= DEFAULT_VISIBLE_STOCKS) return stocks;
+    if (showAllStocks) return stocks;
+    return stocks.slice(0, DEFAULT_VISIBLE_STOCKS);
+  })();
   const isCollapsed = !showAllStocks && stocks.length > DEFAULT_VISIBLE_STOCKS;
   const remainingStockCount = hasMoreStocks
     ? stocks.length - DEFAULT_VISIBLE_STOCKS
@@ -1041,53 +1042,29 @@ const ExpandableMarketComment = ({
   commentBody?: string | null;
   commentBullets: string[];
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const previewBullets = expanded ? commentBullets : commentBullets.slice(0, 3);
-  const normalizedBodyLength = commentBody
-    ? removeMarkTags(commentBody).length
-    : 0;
-  const shouldClampBody =
-    commentBullets.length === 0 && normalizedBodyLength > 160;
-  const needsToggle =
-    commentBullets.length > previewBullets.length || shouldClampBody;
-
   return (
-    <MarketComment $withBorder={!commentBody && commentBullets.length === 0}>
+    <MarketComment>
       {title ? <MarketCommentTitle>{title}</MarketCommentTitle> : null}
-      {previewBullets.length > 0 ? (
+      {commentBullets.length > 0 ? (
         <MarketCommentBulletList>
-          {previewBullets.map((bullet, index) => (
+          {commentBullets.map((bullet, index) => (
             <MarketCommentBulletItem
-              key={`market-comment-bullet-${index}`}
-              dangerouslySetInnerHTML={{
-                __html: formatCommentBullet(bullet),
-              }}
+              key={`domestic-market-comment-bullet-${index}`}
+              dangerouslySetInnerHTML={{ __html: formatCommentBullet(bullet) }}
             />
           ))}
         </MarketCommentBulletList>
       ) : commentBody ? (
         <MarketCommentBody
-          $clamped={!expanded && shouldClampBody}
           dangerouslySetInnerHTML={{
             __html: formatCommentText(commentBody),
           }}
         />
       ) : null}
-      {needsToggle ? (
-        <CommentToggleButton
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          aria-expanded={expanded}
-        >
-          {expanded ? "간단히 보기" : "자세히 보기"}
-          <ToggleChevron $expanded={expanded} aria-hidden={true}>
-            <span />
-          </ToggleChevron>
-        </CommentToggleButton>
-      ) : null}
     </MarketComment>
   );
 };
+
 
 const StockCard = ({
   stock,
@@ -3914,25 +3891,6 @@ const ToggleChevron = styled.span<{ $expanded: boolean }>`
   }
 `;
 
-const CommentToggleButton = styled.button`
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(
-    120deg,
-    rgba(37, 99, 235, 0.12),
-    rgba(147, 51, 234, 0.12)
-  );
-  color: #1d4ed8;
-  font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-`;
 
 const StockDetailCollapse = styled.div<{ $expanded: boolean }>`
   overflow: hidden;
