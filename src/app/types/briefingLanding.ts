@@ -30,6 +30,7 @@ export interface SectionBriefingEntry {
   title: string;
   soWhat: string;
   references: string[];
+  videoIds?: string[];
 }
 
 export interface SectionBriefingData {

@@ -46,13 +46,6 @@ const SLOT_SEQUENCE: SlotConfig[] = [
     orderText: "오늘 3번째 갱신",
   },
   {
-    slot: "ranking",
-    startHour: 18,
-    startMinute: 10,
-    refreshCount: 4,
-    orderText: "오늘 4번째 갱신",
-  },
-  {
     slot: "slot5",
     startHour: 21,
     startMinute: 0,

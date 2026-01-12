@@ -78,6 +78,7 @@ interface SummaryBriefingEntry {
   title: string;
   soWhat: string;
   references?: string[];
+  videoIds?: string[];
 }
 
 interface SummaryBriefingData {
@@ -193,9 +194,15 @@ const createMarkedHtml = (text: string) => ({
   __html: convertMarkToStrong(text),
 });
 
+const stripMarkTags = (text?: string | null) => {
+  if (!text) return "";
+  return text.replace(/<mark[^>]*>/gi, "").replace(/<\/mark>/gi, "");
+};
+
 const renderSummaryContent = (
   briefing: SummaryBriefingData | undefined,
-  fallback: string[]
+  fallback: string[],
+  videoLookup?: Map<string, VideoCardData>
 ) => {
   if (briefing && briefing.entries.length > 0) {
     return (
@@ -219,8 +226,77 @@ const renderSummaryContent = (
               ) : null}
               {entry.soWhat ? (
                 <SummaryBriefingBody
-                  dangerouslySetInnerHTML={createMarkedHtml(entry.soWhat)}
+                  dangerouslySetInnerHTML={createMarkedHtml(
+                    stripMarkTags(entry.soWhat)
+                  )}
                 />
+              ) : null}
+              {entry.videoIds?.length ? (
+                <SummaryVideoCardList>
+                  {entry.videoIds.map((videoId, videoIndex) => {
+                    const video = videoLookup?.get(videoId);
+                    if (!video) {
+                      return (
+                        <SummaryVideoPlaceholderCard
+                          key={safeKey(videoId, videoIndex)}
+                          href={`/detail/${videoId}`}
+                        >
+                          <SummaryVideoPlaceholderText>
+                            근거영상 #{videoIndex + 1}
+                          </SummaryVideoPlaceholderText>
+                        </SummaryVideoPlaceholderCard>
+                      );
+                    }
+                    return (
+                      <SummaryVideoCard
+                        key={safeKey(videoId, videoIndex)}
+                        href={video.href ?? `/detail/${video.id}`}
+                      >
+                        <VideoSourceContainer>
+                          <VideoThumbnailWrapper>
+                            <VideoThumbnailImage
+                              src={video.thumbnail}
+                              alt={video.title}
+                              width={120}
+                              height={68}
+                              style={{ width: "100%", height: "100%" }}
+                            />
+                          </VideoThumbnailWrapper>
+                          <VideoSourceBody>
+                            <VideoTitle>
+                              {stripMarkTags(video.title)}
+                            </VideoTitle>
+                            {video.summary.length ? (
+                              <VideoSummary>
+                                {stripMarkTags(video.summary[0])}
+                              </VideoSummary>
+                            ) : null}
+                          </VideoSourceBody>
+                        </VideoSourceContainer>
+                        <VideoMetaRow>
+                          {video.channelThumbnail ? (
+                            <ChannelAvatarImage
+                              src={video.channelThumbnail}
+                              alt={video.channel || "채널"}
+                              width={40}
+                              height={40}
+                              style={{ width: 40, height: 40 }}
+                            />
+                          ) : null}
+                          <VideoMetaRowContainer>
+                            {video.channel ? (
+                              <span>{video.channel}</span>
+                            ) : null}
+                            <VideoMetaRowSubContainer>
+                              {video.subscriberText ?? ""}
+                              <strong>{video.duration}</strong>
+                            </VideoMetaRowSubContainer>
+                          </VideoMetaRowContainer>
+                        </VideoMetaRow>
+                      </SummaryVideoCard>
+                    );
+                  })}
+                </SummaryVideoCardList>
               ) : null}
             </SummaryBriefingItem>
           ))}
@@ -957,15 +1033,21 @@ const isRankingSection = (
   section: RecapSection
 ): section is RankingRecapSection => section.type === "realestate";
 
+const filterOutRankingSlots = (slots: SlotPackage[]) =>
+  slots.filter((slot) => slot.id !== "ranking");
+
 function safeKey(text: string, idx: number) {
   return `${idx}-${text}`;
 }
 
 function getDefaultSlotId(section: MoneyRecapSection) {
+  const slots = filterOutRankingSlots(section.slotPackages);
+  if (!slots.length) return "";
+  const explicitDefault = slots.find((slot) => slot.id === section.defaultSlotId);
   return (
-    section.defaultSlotId ||
-    section.slotPackages.find((s) => s.default)?.id ||
-    section.slotPackages[0]?.id ||
+    explicitDefault?.id ||
+    slots.find((s) => s.default)?.id ||
+    slots[0]?.id ||
     ""
   );
 }
@@ -993,6 +1075,14 @@ const BRIEFING_SLOT_PHASES: BriefingSlot[] = [
   "ranking",
   "slot5",
 ];
+
+const SLOT_DISPLAY_ORDER = [
+  "baseline",
+  "slot2",
+  "slot3",
+  "slot4",
+  "slot5",
+] as const;
 
 const resolveSlotPhase = (slotId?: string | null): BriefingSlot | null => {
   if (!slotId) return null;
@@ -1121,9 +1211,9 @@ const BriefingLandingPageClient = ({
     const m: Record<string, Set<string>> = {};
     data.sections.filter(isMoneySection).forEach((section) => {
       const baseSlotId = getDefaultSlotId(section);
+      const visibleSlots = filterOutRankingSlots(section.slotPackages);
       const baseSlot =
-        section.slotPackages.find((s) => s.id === baseSlotId) ||
-        section.slotPackages[0];
+        visibleSlots.find((s) => s.id === baseSlotId) || visibleSlots[0];
       const ids = new Set<string>(
         (baseSlot?.tabs.videos ?? []).map((v) => v.id)
       );
@@ -1141,7 +1231,7 @@ const BriefingLandingPageClient = ({
       const baseIds =
         baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
       m[section.id] = {};
-      section.slotPackages.forEach((slot) => {
+      filterOutRankingSlots(section.slotPackages).forEach((slot) => {
         const diff = diffCountFromBase(baseIds, slot.tabs.videos);
         m[section.id][slot.id] = { diff, badge: badgeForDiff(diff) };
       });
@@ -1267,9 +1357,10 @@ const BriefingLandingPageClient = ({
     section: MoneyRecapSection
   ): SlotPackage | undefined => {
     const activeSlotId = activeSlotBySection[section.id];
+    const visibleSlots = filterOutRankingSlots(section.slotPackages);
     return (
-      section.slotPackages.find((slot) => slot.id === activeSlotId) ||
-      section.slotPackages[0]
+      visibleSlots.find((slot) => slot.id === activeSlotId) ||
+      visibleSlots[0]
     );
   };
 
@@ -1279,7 +1370,9 @@ const BriefingLandingPageClient = ({
   const onSlotSelect = (section: MoneyRecapSection, slotId: string) => {
     setActiveSlotBySection((prev) => ({ ...prev, [section.id]: slotId }));
 
-    const slot = section.slotPackages.find((s) => s.id === slotId);
+    const slot = filterOutRankingSlots(section.slotPackages).find(
+      (s) => s.id === slotId
+    );
     const diff = diffBadgeByMoneySectionSlot?.[section.id]?.[slotId]?.diff ?? 0;
     if (slot) {
       const slotCopy = buildSectionSlotLabel(section.title, slot);
@@ -1321,6 +1414,18 @@ const BriefingLandingPageClient = ({
     });
   };
 
+  const buildVideoLookup = (packages: SlotPackage[]) => {
+    const map = new Map<string, VideoCardData>();
+    packages.forEach((pkg) => {
+      pkg.tabs.videos.forEach((video) => {
+        if (video?.id) {
+          map.set(video.id, video);
+        }
+      });
+    });
+    return map;
+  };
+
   const parseSlotTimeToDate = (displayTime?: string | null) => {
     if (!displayTime) return null;
     const [hours, minutes] = displayTime
@@ -1334,9 +1439,22 @@ const BriefingLandingPageClient = ({
   };
 
   const renderMoneySection = (section: MoneyRecapSection) => {
-    const activeSlot = getActiveSlot(section);
-    const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
+    const slotPool = filterOutRankingSlots(section.slotPackages)
+      .slice()
+      .sort((a, b) => {
+        const orderA = SLOT_DISPLAY_ORDER.indexOf(a.id as any);
+        const orderB = SLOT_DISPLAY_ORDER.indexOf(b.id as any);
+        const safeA = orderA === -1 ? Number.MAX_SAFE_INTEGER : orderA;
+        const safeB = orderB === -1 ? Number.MAX_SAFE_INTEGER : orderB;
+        return safeA - safeB;
+      });
+    if (slotPool.length === 0) {
+      return null;
+    }
     const activeSlotId = activeSlotBySection[section.id];
+    const activeSlot =
+      slotPool.find((slot) => slot.id === activeSlotId) ?? slotPool[0];
+    const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
     const activeDiff =
       diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlotId]?.diff ?? 0;
     const slotLabel: SlotLabel | null = activeSlot
@@ -1371,9 +1489,8 @@ const BriefingLandingPageClient = ({
     })();
 
     const isStaticSection =
-      section.slotPackages.length === 1 &&
-      section.slotPackages[0]?.id === "general";
-    const pendingSlot = activeSlot ?? section.slotPackages[0];
+      slotPool.length === 1 && slotPool[0]?.id === "general";
+    const pendingSlot = activeSlot ?? slotPool[0];
     const slotTime = parseSlotTimeToDate(pendingSlot?.displayTime);
     const now = new Date();
     const hasVideoData =
@@ -1389,6 +1506,7 @@ const BriefingLandingPageClient = ({
     const summaryLines = activeSlot?.tabs.market.commentary?.length
       ? activeSlot.tabs.market.commentary
       : section.summaryBullets;
+    const summaryVideoLookup = buildVideoLookup(slotPool);
     const isBaselineSlot =
       isStaticSection ||
       !activeSlot ||
@@ -1415,11 +1533,11 @@ const BriefingLandingPageClient = ({
             {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
           </SectionTitleRow>
 
-          {!isStaticSection && (section.slotPackages.length || activeSlot) ? (
+          {!isStaticSection && slotPool.length ? (
             <SectionSlotBar $withShadow>
-              {section.slotPackages.length ? (
+              {slotPool.length ? (
                 <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-                  {section.slotPackages.map((slot) => {
+                  {slotPool.map((slot) => {
                     const slotCopy = buildSectionSlotLabel(section.title, slot);
                     const badge =
                       diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]
@@ -1475,11 +1593,11 @@ const BriefingLandingPageClient = ({
           {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
         </SectionTitleRow>
 
-          {!isStaticSection && (section.slotPackages.length || activeSlot) ? (
-            <SectionSlotBar $withShadow>
-              {section.slotPackages.length ? (
-                <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-                  {section.slotPackages.map((slot) => {
+        {!isStaticSection && slotPool.length ? (
+          <SectionSlotBar $withShadow>
+            {slotPool.length ? (
+              <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+                {slotPool.map((slot) => {
                   const slotCopy = buildSectionSlotLabel(section.title, slot);
                   const badge =
                     diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
@@ -1513,7 +1631,11 @@ const BriefingLandingPageClient = ({
           <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
           {summaryBriefing ? (
             isBaselineSlot ? (
-              renderSummaryContent(summaryBriefing, summaryLines)
+              renderSummaryContent(
+                summaryBriefing,
+                summaryLines,
+                summaryVideoLookup
+              )
             ) : (
               <SummaryNotice>
                 카카오톡 브리핑은 해당 슬롯에서 준비 중이에요. 베이스라인을
@@ -1521,7 +1643,7 @@ const BriefingLandingPageClient = ({
               </SummaryNotice>
             )
           ) : (
-            renderSummaryContent(undefined, summaryLines)
+            renderSummaryContent(undefined, summaryLines, summaryVideoLookup)
           )}
         </SummaryCard>
 
@@ -1553,6 +1675,7 @@ const BriefingLandingPageClient = ({
             <VideoList>
               {activeSlot.tabs.videos.map((video) => {
                 const isNew = !baseIds.has(video.id);
+                const videoTitle = stripMarkTags(video.title);
                 return (
                   <VideoSourceCard
                     key={video.id}
@@ -1564,11 +1687,9 @@ const BriefingLandingPageClient = ({
                       </VideoThumbnailWrapper>
                       <VideoSourceBody>
                         <VideoTitleRow>
-                          <VideoTitle
-                            dangerouslySetInnerHTML={createMarkedHtml(
-                              video.title
-                            )}
-                          />
+                          <VideoTitle title={videoTitle}>
+                            {videoTitle}
+                          </VideoTitle>
                           {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
                         </VideoTitleRow>
                         {video.summary.length ? (
@@ -1615,6 +1736,12 @@ const BriefingLandingPageClient = ({
     const rankingWindow = rankingWindowBySection[section.id];
     const updates = section.tabs.rankingUpdates ?? [];
     const summaryLines = section.summaryBullets;
+    const rankingVideoLookup = new Map<string, VideoCardData>();
+    section.tabs.topVideos.forEach((video) => {
+      if (video?.id) {
+        rankingVideoLookup.set(video.id, video);
+      }
+    });
 
     return (
       <SectionBlock key={section.id} id={section.anchor}>
@@ -1630,7 +1757,11 @@ const BriefingLandingPageClient = ({
 
         <SummaryCard>
           <SummarySource>카카오톡 브리핑 요약</SummarySource>
-          {renderSummaryContent(section.summaryBriefing, summaryLines)}
+          {renderSummaryContent(
+            section.summaryBriefing,
+            summaryLines,
+            rankingVideoLookup
+          )}
         </SummaryCard>
 
         <TabList role="tablist" aria-label={`${section.title} 탭`}>
@@ -1661,41 +1792,44 @@ const BriefingLandingPageClient = ({
         <TabPanel>
           {activeTab === "topVideos" ? (
             <VideoList>
-              {section.tabs.topVideos.map((video) => (
-                <VideoCard key={video.id}>
-                  <VideoThumb src={video.thumbnail} alt={video.title} />
-                  <VideoContent>
-                    <VideoTitleRow>
-                      <VideoTitle
-                        dangerouslySetInnerHTML={createMarkedHtml(video.title)}
-                      />
-                    </VideoTitleRow>
-                    <VideoMetaRow>
-                      {video.channelThumbnail ? (
-                        <ChannelAvatarImage
-                          src={video.channelThumbnail}
-                          alt={video.channel || "채널"}
-                          width={40}
-                          height={40}
-                          style={{ width: 40, height: 40 }}
-                        />
-                      ) : null}
-                      <VideoMetaRowContainer>
-                        {video.channel ? <span>{video.channel}</span> : null}
-                        <VideoMetaRowSubContainer>
-                          {video.subscriberText ?? ""}
-                          <strong>{video.duration}</strong>
-                        </VideoMetaRowSubContainer>
-                      </VideoMetaRowContainer>
-                    </VideoMetaRow>
-                    <BulletList>
-                      {video.summary.map((line, idx) => (
-                        <li key={safeKey(line, idx)}>{line}</li>
-                      ))}
-                    </BulletList>
-                  </VideoContent>
-                </VideoCard>
-              ))}
+              {section.tabs.topVideos.map((video) => {
+                const videoTitle = stripMarkTags(video.title);
+                return (
+                  <VideoCard key={video.id}>
+                    <VideoThumb src={video.thumbnail} alt={video.title} />
+                    <VideoContent>
+                      <VideoTitleRow>
+                        <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
+                      </VideoTitleRow>
+                      <VideoMetaRow>
+                        {video.channelThumbnail ? (
+                          <ChannelAvatarImage
+                            src={video.channelThumbnail}
+                            alt={video.channel || "채널"}
+                            width={40}
+                            height={40}
+                            style={{ width: 40, height: 40 }}
+                          />
+                        ) : null}
+                        <VideoMetaRowContainer>
+                          {video.channel ? <span>{video.channel}</span> : null}
+                          <VideoMetaRowSubContainer>
+                            {video.subscriberText ?? ""}
+                            <strong>{video.duration}</strong>
+                          </VideoMetaRowSubContainer>
+                        </VideoMetaRowContainer>
+                      </VideoMetaRow>
+                      <BulletList>
+                        {video.summary.map((line, idx) => (
+                          <li key={safeKey(line, idx)}>
+                            {stripMarkTags(line)}
+                          </li>
+                        ))}
+                      </BulletList>
+                    </VideoContent>
+                  </VideoCard>
+                );
+              })}
             </VideoList>
           ) : null}
 
@@ -2091,6 +2225,30 @@ const SummaryNotice = styled.p`
   background: rgba(50, 71, 255, 0.06);
   color: #1f2a4a;
   font-weight: 600;
+`;
+
+const SummaryVideoCardList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+`;
+
+const SummaryVideoCard = styled(VideoSourceCard)`
+  background: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.4);
+`;
+
+const SummaryVideoPlaceholderCard = styled(SummaryVideoCard)`
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+`;
+
+const SummaryVideoPlaceholderText = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
 `;
 
 const SectionSlotBar = styled.div.attrs({

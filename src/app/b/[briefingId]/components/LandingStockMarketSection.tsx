@@ -3827,6 +3827,7 @@ const LiquidityMeter = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
 `;
 
 const LiquidityTrack = styled.div`

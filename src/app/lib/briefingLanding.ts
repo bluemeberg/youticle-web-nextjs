@@ -29,13 +29,7 @@ const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
 const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
-type SlotPhase =
-  | "baseline"
-  | "slot2"
-  | "slot3"
-  | "slot4"
-  | "slot5"
-  | "ranking";
+type SlotPhase = "baseline" | "slot2" | "slot3" | "slot4" | "slot5" | "ranking";
 type MoneySectionKey = keyof typeof MONEY_SECTION_CONFIGS;
 type GeneralSectionKey = keyof typeof GENERAL_SECTION_CONFIGS;
 
@@ -127,7 +121,8 @@ const buildSectionBriefingEntry = (
         (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
       )
     : [];
-  return { title, soWhat, references };
+  const videoIds = references.filter((ref) => /[A-Za-z0-9_-]+/.test(ref));
+  return { title, soWhat, references, videoIds };
 };
 
 const fetchIntegratedBriefing = async (
@@ -143,7 +138,8 @@ const fetchIntegratedBriefing = async (
     );
     if (!target?.data) return undefined;
     const keywords = (target.data.keywords ?? []).filter(
-      (keyword): keyword is string => typeof keyword === "string" && keyword.trim().length > 0
+      (keyword): keyword is string =>
+        typeof keyword === "string" && keyword.trim().length > 0
     );
     const entries = (target.data.briefing ?? [])
       .map((item, idx) => buildSectionBriefingEntry(item, idx))
@@ -600,12 +596,14 @@ const fetchGeneralSection = async (
   if (date) videoUrl.searchParams.set("date", date);
   const videos = await fetchJson<DataProps[]>(videoUrl.toString());
   const summaryBriefing = await fetchIntegratedBriefing(sectionQuery);
-  const summaryBullets =
-    summaryBriefing?.entries.length
-      ? summaryBriefing.entries
-          .map((entry) => entry.soWhat || entry.title)
-          .filter((line): line is string => typeof line === "string" && line.trim().length > 0)
-      : ["시간 순으로 TOP 영상을 모았어요"];
+  const summaryBullets = summaryBriefing?.entries.length
+    ? summaryBriefing.entries
+        .map((entry) => entry.soWhat || entry.title)
+        .filter(
+          (line): line is string =>
+            typeof line === "string" && line.trim().length > 0
+        )
+    : ["시간 순으로 TOP 영상을 모았어요"];
   const slotPackage: SlotPackage = {
     id: "general",
     label: config.label,

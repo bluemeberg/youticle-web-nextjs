@@ -12,15 +12,24 @@ export interface StockSlotPayload extends StockSlotRequest {
   data: DataProps[];
 }
 
-const STOCK_SLOT_LABELS: Record<StockSlotPhase, { label: string; description: string }> = {
-  baseline: { label: "07:30 베이스라인", description: "야간 반응을 모아둔 첫 선정" },
+const STOCK_SLOT_LABELS: Record<
+  StockSlotPhase,
+  { label: string; description: string }
+> = {
+  baseline: {
+    label: "07:30 베이스라인",
+    description: "야간 반응을 모아둔 첫 선정",
+  },
   slot2: { label: "11:00 1차 갱신", description: "오전 장 흐름·수급 확인" },
   slot3: { label: "14:30 2차 갱신", description: "점심 이후 변동성 체크" },
   slot4: { label: "17:00 3차 갱신", description: "장 마감 직전 핵심 정리" },
   slot5: { label: "21:00 마지막 갱신", description: "저녁 재랭킹·복습" },
 };
 
-const SLOT_REQUEST_SEQUENCE: Array<{ phase: StockSlotPhase; timeSlot: number }> = [
+const SLOT_REQUEST_SEQUENCE: Array<{
+  phase: StockSlotPhase;
+  timeSlot: number;
+}> = [
   { phase: "slot2", timeSlot: 2 },
   { phase: "slot3", timeSlot: 3 },
   { phase: "slot4", timeSlot: 4 },
@@ -73,7 +82,9 @@ const annotatePayloads = (payloads: StockSlotPayload[]): StockSlotPayload[] =>
     })),
   }));
 
-export const mergeStockSlotPayloads = (payloads: StockSlotPayload[]): DataProps[] => {
+export const mergeStockSlotPayloads = (
+  payloads: StockSlotPayload[]
+): DataProps[] => {
   if (payloads.length === 0) return [];
   const annotated = annotatePayloads(payloads);
   return annotated
