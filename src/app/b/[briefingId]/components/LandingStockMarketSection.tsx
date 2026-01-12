@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled, { css } from "styled-components";
 import { useRecoilValue } from "recoil";
@@ -310,8 +310,12 @@ const LandingStockMarketSection = ({
     return dateFromMarket || delta?.date_kst || null;
   }, [marketEntries, delta?.date_kst]);
 
-  const [showDetails, setShowDetails] = useState(true);
-  const shouldRenderDetails = true;
+  const [showDetails, setShowDetails] = useState(
+    defaultExpanded ?? true
+  );
+  const marketToggleLabel = showDetails
+    ? "마켓 인사이트 접기"
+    : "마켓 인사이트 펼치기";
 
   const stockUpdatedAt = section.updated_at ?? null;
   const stockTimestampText = stockUpdatedAt
@@ -404,9 +408,22 @@ const LandingStockMarketSection = ({
       ) : null}
 
       {canShowMarketSection ? (
-        <MarketDetailCollapse $expanded={true} aria-hidden={false}>
-          <MarketGrid>
-            {marketEntries.map(([marketKey, card]) => {
+        <>
+          <SectionToggleRow>
+            <MarketToggleButton
+              type="button"
+              onClick={() => setShowDetails((prev) => !prev)}
+              aria-expanded={showDetails}
+            >
+              {marketToggleLabel}
+              <ToggleChevron aria-hidden={true} $expanded={showDetails}>
+                <span />
+              </ToggleChevron>
+            </MarketToggleButton>
+          </SectionToggleRow>
+          <MarketDetailCollapse $expanded={showDetails} aria-hidden={!showDetails}>
+            <MarketGrid>
+              {marketEntries.map(([marketKey, card]) => {
               const quickLines = card.quick_lines?.filter(Boolean) ?? [];
               const intradayDetail = buildIntradayDetailFromCard(card);
               const liquidityDetail = buildLiquidityDetailFromSentence({
@@ -446,6 +463,7 @@ const LandingStockMarketSection = ({
                         }
                         commentBody={commentBody}
                         commentBullets={commentBullets}
+                        autoExpandToken={showDetails}
                       />
                     ) : null}
 
@@ -638,8 +656,9 @@ const LandingStockMarketSection = ({
                 </MarketCardWrapper>
               );
             })}
-          </MarketGrid>
-        </MarketDetailCollapse>
+            </MarketGrid>
+          </MarketDetailCollapse>
+        </>
       ) : null}
 
       {canShowStockSection ? (
@@ -1427,12 +1446,17 @@ const ExpandableMarketComment = ({
   title,
   commentBody,
   commentBullets,
+  autoExpandToken,
 }: {
   title?: string | null;
   commentBody?: string | null;
   commentBullets: string[];
+  autoExpandToken?: boolean;
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(Boolean(autoExpandToken));
+  useEffect(() => {
+    setExpanded(Boolean(autoExpandToken));
+  }, [autoExpandToken]);
   const previewBullets = expanded ? commentBullets : commentBullets.slice(0, 3);
   const normalizedBodyLength = commentBody
     ? commentBody.replace(/<[^>]+>/g, "").length
