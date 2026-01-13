@@ -1043,7 +1043,9 @@ function safeKey(text: string, idx: number) {
 function getDefaultSlotId(section: MoneyRecapSection) {
   const slots = filterOutRankingSlots(section.slotPackages);
   if (!slots.length) return "";
-  const explicitDefault = slots.find((slot) => slot.id === section.defaultSlotId);
+  const explicitDefault = slots.find(
+    (slot) => slot.id === section.defaultSlotId
+  );
   return (
     explicitDefault?.id ||
     slots.find((s) => s.default)?.id ||
@@ -1359,8 +1361,7 @@ const BriefingLandingPageClient = ({
     const activeSlotId = activeSlotBySection[section.id];
     const visibleSlots = filterOutRankingSlots(section.slotPackages);
     return (
-      visibleSlots.find((slot) => slot.id === activeSlotId) ||
-      visibleSlots[0]
+      visibleSlots.find((slot) => slot.id === activeSlotId) || visibleSlots[0]
     );
   };
 
@@ -2059,7 +2060,7 @@ const SectionsContainer = styled.main`
   gap: 100px;
   width: 100%;
   max-width: 720px;
-  padding: 40px 16px 40px;
+  padding: 32px 16px 40px;
   font-family: inherit;
 `;
 const SectionAnchorMarker = styled.div`
@@ -2204,14 +2205,15 @@ const SummaryBriefingItem = styled.li`
 
 const SummaryBriefingTitle = styled.p`
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #111827;
+  margin-top: 12px;
 `;
 
 const SummaryBriefingBody = styled.p`
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
   color: #1f2a4a;
 `;
