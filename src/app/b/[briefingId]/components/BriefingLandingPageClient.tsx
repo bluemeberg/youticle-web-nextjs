@@ -4,6 +4,7 @@ import styled, { keyframes } from "styled-components";
 import type { DefaultTheme } from "styled-components";
 import Link from "next/link";
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -1148,6 +1149,16 @@ const BriefingLandingPageClient = ({
 
   const [activeAnchor, setActiveAnchor] = useState(navItems[0]?.anchor ?? "");
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingNavAnchorRef = useRef<string | null>(null);
+
+  const visibleSections = useMemo(() => {
+    if (!activeAnchor) return data.sections.slice(0, 1);
+    const filtered = data.sections.filter(
+      (section) => section.anchor === activeAnchor
+    );
+    if (filtered.length > 0) return filtered;
+    return data.sections.slice(0, 1);
+  }, [data.sections, activeAnchor]);
 
   // sticky 높이 동적 계산 → 앵커 점프/scroll-margin-top 정확히
   const [topbarH, setTopbarH] = useState(64);
@@ -1168,6 +1179,17 @@ const BriefingLandingPageClient = ({
     data.deliveryMeta.tagline,
     navItems.length,
   ]);
+
+  useEffect(() => {
+    if (!navItems.length) {
+      if (activeAnchor !== "") setActiveAnchor("");
+      return;
+    }
+    const hasActive = navItems.some((item) => item.anchor === activeAnchor);
+    if (!hasActive) {
+      setActiveAnchor(navItems[0]?.anchor ?? "");
+    }
+  }, [navItems, activeAnchor]);
 
   /**
    * 초기 상태 구성
@@ -1252,6 +1274,28 @@ const BriefingLandingPageClient = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const stickyOffset = topbarH + keywordNavH + 16;
 
+  const scrollToAnchor = useCallback(
+    (anchor: string) => {
+      if (typeof window === "undefined") return false;
+      const target = sectionRefs.current[anchor];
+      if (!target) return false;
+      const offset = Math.max(0, topbarH + keywordNavH + 24);
+      const top = target.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: "smooth" });
+      return true;
+    },
+    [keywordNavH, topbarH]
+  );
+
+  useLayoutEffect(() => {
+    if (!pendingNavAnchorRef.current) return;
+    if (pendingNavAnchorRef.current !== activeAnchor) return;
+    const didScroll = scrollToAnchor(activeAnchor);
+    if (didScroll) {
+      pendingNavAnchorRef.current = null;
+    }
+  }, [activeAnchor, scrollToAnchor]);
+
   /**
    * IntersectionObserver: 현재 섹션 하이라이트
    * - ref가 채워진 다음에 observe
@@ -1292,7 +1336,7 @@ const BriefingLandingPageClient = ({
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [data.sections, navItems.length, stickyOffset]);
+  }, [data.sections, navItems.length, stickyOffset, activeAnchor]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1308,12 +1352,14 @@ const BriefingLandingPageClient = ({
   };
 
   const handleNavClick = (anchor: string) => {
-    const target = sectionRefs.current[anchor];
-    if (!target) return;
+    pendingNavAnchorRef.current = anchor;
     setActiveAnchor(anchor);
-    const rect = target.getBoundingClientRect();
-    const nextY = window.scrollY + rect.top - stickyOffset;
-    window.scrollTo({ top: Math.max(0, nextY), behavior: "smooth" });
+    if (anchor === activeAnchor) {
+      const didScroll = scrollToAnchor(anchor);
+      if (didScroll) {
+        pendingNavAnchorRef.current = null;
+      }
+    }
   };
 
   const handleSave = () => {
@@ -1917,7 +1963,7 @@ const BriefingLandingPageClient = ({
       </StickyKeywordNav>
 
       <SectionsContainer>
-        {data.sections.map((section) => {
+        {visibleSections.map((section) => {
           if (isMoneySection(section)) return renderMoneySection(section);
           if (isRankingSection(section)) return renderRankingSection(section);
           return null;

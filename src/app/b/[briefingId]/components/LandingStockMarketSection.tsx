@@ -310,9 +310,7 @@ const LandingStockMarketSection = ({
     return dateFromMarket || delta?.date_kst || null;
   }, [marketEntries, delta?.date_kst]);
 
-  const [showDetails, setShowDetails] = useState(
-    defaultExpanded ?? true
-  );
+  const [showDetails, setShowDetails] = useState(defaultExpanded ?? false);
   const marketToggleLabel = showDetails
     ? "마켓 인사이트 접기"
     : "마켓 인사이트 펼치기";
@@ -421,241 +419,258 @@ const LandingStockMarketSection = ({
               </ToggleChevron>
             </MarketToggleButton>
           </SectionToggleRow>
-          <MarketDetailCollapse $expanded={showDetails} aria-hidden={!showDetails}>
+          <MarketDetailCollapse
+            $expanded={showDetails}
+            aria-hidden={!showDetails}
+          >
             <MarketGrid>
               {marketEntries.map(([marketKey, card]) => {
-              const quickLines = card.quick_lines?.filter(Boolean) ?? [];
-              const intradayDetail = buildIntradayDetailFromCard(card);
-              const liquidityDetail = buildLiquidityDetailFromSentence({
-                sentences: card.sentences,
-                volume_value_str:
-                  typeof card.volume_value_str === "string"
-                    ? card.volume_value_str
-                    : undefined,
-              });
-              const flowDetail = buildFlowDetail(card);
-              const extraSentences = extractAdditionalSentences(card);
+                const quickLines = card.quick_lines?.filter(Boolean) ?? [];
+                const intradayDetail = buildIntradayDetailFromCard(card);
+                const liquidityDetail = buildLiquidityDetailFromSentence({
+                  sentences: card.sentences,
+                  volume_value_str:
+                    typeof card.volume_value_str === "string"
+                      ? card.volume_value_str
+                      : undefined,
+                });
+                const flowDetail = buildFlowDetail(card);
+                const extraSentences = extractAdditionalSentences(card);
 
-              const headline =
-                card.sentences?.headline ||
-                card.comment_title ||
-                card.sentences?.comment;
-              const commentBody = card.comment_body || card.sentences?.comment;
-              const commentBullets = normalizeCommentBullets(
-                card.comment_bullets
-              );
-              const showComment = Boolean(
-                headline || commentBody || commentBullets.length > 0
-              );
+                const headline =
+                  card.sentences?.headline ||
+                  card.comment_title ||
+                  card.sentences?.comment;
+                const commentBody =
+                  card.comment_body || card.sentences?.comment;
+                const commentBullets = normalizeCommentBullets(
+                  card.comment_bullets
+                );
+                const showComment = Boolean(
+                  headline || commentBody || commentBullets.length > 0
+                );
 
-              return (
-                <MarketCardWrapper key={marketKey}>
-                  <MarketCardHeaderContent card={card} marketKey={marketKey} />
+                return (
+                  <MarketCardWrapper key={marketKey}>
+                    <MarketCardHeaderContent
+                      card={card}
+                      marketKey={marketKey}
+                    />
 
-                  <MarketDetailBody>
-                    {showComment ? (
-                      <ExpandableMarketComment
-                        title={
-                          headline ||
-                          card.comment_title ||
-                          card.sentences?.comment ||
-                          "마켓 코멘트"
-                        }
-                        commentBody={commentBody}
-                        commentBullets={commentBullets}
-                        autoExpandToken={showDetails}
-                      />
-                    ) : null}
+                    <MarketDetailBody>
+                      {showComment ? (
+                        <ExpandableMarketComment
+                          title={
+                            headline ||
+                            card.comment_title ||
+                            card.sentences?.comment ||
+                            "마켓 코멘트"
+                          }
+                          commentBody={commentBody}
+                          commentBullets={commentBullets}
+                          autoExpandToken={showDetails}
+                        />
+                      ) : null}
 
-                    <MarketStatGrid>
-                      {intradayDetail ? (
-                        <MarketStat>
-                          <MarketStatLabel>장중 범위</MarketStatLabel>
-                          <IntradayChart>
-                            <IntradayIndicator>
-                              <IntradayRail />
-                              <IntradayFill
-                                style={{
-                                  left: `${intradayDetail.lowPct}%`,
-                                  width: `${Math.max(
-                                    intradayDetail.highPct -
-                                      intradayDetail.lowPct,
-                                    1
-                                  )}%`,
+                      <MarketStatGrid>
+                        {intradayDetail ? (
+                          <MarketStat>
+                            <MarketStatLabel>장중 범위</MarketStatLabel>
+                            <IntradayChart>
+                              <IntradayIndicator>
+                                <IntradayRail />
+                                <IntradayFill
+                                  style={{
+                                    left: `${intradayDetail.lowPct}%`,
+                                    width: `${Math.max(
+                                      intradayDetail.highPct -
+                                        intradayDetail.lowPct,
+                                      1
+                                    )}%`,
+                                  }}
+                                />
+                                <IntradayMarker
+                                  $tone="open"
+                                  style={{ left: `${intradayDetail.openPct}%` }}
+                                />
+                                <IntradayMarker
+                                  $tone="close"
+                                  style={{
+                                    left: `${intradayDetail.closePct}%`,
+                                  }}
+                                />
+                              </IntradayIndicator>
+                              <IntradayLabels>
+                                <strong>
+                                  저 {intradayDetail.low.toLocaleString()}
+                                </strong>
+                                <span>
+                                  시 {intradayDetail.open.toLocaleString()}
+                                </span>
+                                <strong>
+                                  고 {intradayDetail.high.toLocaleString()}
+                                </strong>
+                              </IntradayLabels>
+                              <IntradaySummary
+                                dangerouslySetInnerHTML={{
+                                  __html: emphasizeNumbers(intradayDetail.text),
                                 }}
                               />
-                              <IntradayMarker
-                                $tone="open"
-                                style={{ left: `${intradayDetail.openPct}%` }}
-                              />
-                              <IntradayMarker
-                                $tone="close"
-                                style={{ left: `${intradayDetail.closePct}%` }}
-                              />
-                            </IntradayIndicator>
-                            <IntradayLabels>
-                              <strong>
-                                저 {intradayDetail.low.toLocaleString()}
-                              </strong>
-                              <span>
-                                시 {intradayDetail.open.toLocaleString()}
-                              </span>
-                              <strong>
-                                고 {intradayDetail.high.toLocaleString()}
-                              </strong>
-                            </IntradayLabels>
-                            <IntradaySummary
-                              dangerouslySetInnerHTML={{
-                                __html: emphasizeNumbers(intradayDetail.text),
-                              }}
-                            />
-                          </IntradayChart>
-                        </MarketStat>
-                      ) : null}
+                            </IntradayChart>
+                          </MarketStat>
+                        ) : null}
 
-                      {liquidityDetail ? (
-                        <MarketStat>
-                          <MarketStatLabel>유동성</MarketStatLabel>
-                          <LiquidityBox>
-                            <LiquidityRow>
-                              <LiquidityLabel>거래량</LiquidityLabel>
-                              <LiquidityMeter>
-                                <LiquidityTrack>
-                                  <LiquidityFill
-                                    $tone={liquidityDetail.volumeTone ?? "flat"}
-                                    style={{
-                                      left: `${toPct(
-                                        liquidityDetail.volumeLeft,
-                                        50
-                                      )}%`,
-                                      width: `${Math.max(
-                                        toPct(liquidityDetail.volumeWidth, 0),
-                                        1
-                                      )}%`,
-                                    }}
-                                  />
-                                  <LiquidityPointer
-                                    $tone={liquidityDetail.volumeTone ?? "flat"}
-                                    style={{
-                                      left: `${toPct(
-                                        liquidityDetail.volumePointer,
-                                        50
-                                      )}%`,
-                                    }}
-                                  />
-                                </LiquidityTrack>
-                                <LiquidityMeta>
-                                  <span>{liquidityDetail.volumeRatioText}</span>
-                                  {liquidityDetail.volumeSummary ? (
-                                    <ChangeValue
-                                      $tone={liquidityDetail.volumeTone}
-                                    >
-                                      {liquidityDetail.volumeSummary}
-                                    </ChangeValue>
-                                  ) : null}
-                                </LiquidityMeta>
-                              </LiquidityMeter>
-                            </LiquidityRow>
-                            <LiquidityRow>
-                              <LiquidityLabel>거래대금</LiquidityLabel>
-                              <LiquidityMeter>
-                                <LiquidityTrack>
-                                  <LiquidityFill
-                                    $tone={liquidityDetail.valueTone}
-                                    style={{
-                                      left: `${liquidityDetail.valueLeft}%`,
-                                      width: `${Math.max(
-                                        liquidityDetail.valueWidth,
-                                        1
-                                      )}%`,
-                                    }}
-                                  />
-                                  <LiquidityPointer
-                                    $tone={liquidityDetail.valueTone}
-                                    style={{
-                                      left: `${liquidityDetail.valuePointer}%`,
-                                    }}
-                                  />
-                                </LiquidityTrack>
-                                <LiquidityMeta>
-                                  <span>{liquidityDetail.valueRatioText}</span>
-                                  {liquidityDetail.valueSummary ? (
-                                    <ChangeValue
-                                      $tone={liquidityDetail.valueTone}
-                                    >
-                                      {liquidityDetail.valueSummary}
-                                    </ChangeValue>
-                                  ) : null}
-                                </LiquidityMeta>
-                              </LiquidityMeter>
-                            </LiquidityRow>
-                          </LiquidityBox>
-                          <StatDescriptor
-                            dangerouslySetInnerHTML={{
-                              __html: emphasizeNumbers(
-                                liquidityDetail.summaryHtml
-                              ),
-                            }}
-                          />
-                        </MarketStat>
-                      ) : null}
-
-                      {flowDetail ? (
-                        <MarketStat>
-                          <MarketStatLabel>수급</MarketStatLabel>
-                          {flowDetail.share ? (
-                            <FlowShareBar>
-                              {flowDetail.share.segments.map((segment) => (
-                                <FlowShareSegment
-                                  key={segment.key}
-                                  $color={
-                                    FLOW_COLORS[segment.tone] ||
-                                    FLOW_COLORS.others
-                                  }
-                                  style={{ width: `${segment.percent}%` }}
-                                >
-                                  {segment.label} {segment.percent}%
-                                </FlowShareSegment>
-                              ))}
-                            </FlowShareBar>
-                          ) : null}
-                          {flowDetail.summary ? (
-                            <StatDescriptor
-                              dangerouslySetInnerHTML={{
-                                __html: emphasizeNumbers(flowDetail.summary),
-                              }}
-                            />
-                          ) : null}
-                          {flowDetail.stats.length ? (
-                            <FlowStatList>
-                              {flowDetail.stats.map((stat) => (
-                                <li key={stat.key}>
-                                  {stat.label ? (
-                                    <strong>{stat.label}</strong>
-                                  ) : null}
-                                  {stat.value ? (
-                                    <span
-                                      dangerouslySetInnerHTML={{
-                                        __html: emphasizeNumbers(stat.value),
+                        {liquidityDetail ? (
+                          <MarketStat>
+                            <MarketStatLabel>유동성</MarketStatLabel>
+                            <LiquidityBox>
+                              <LiquidityRow>
+                                <LiquidityLabel>거래량</LiquidityLabel>
+                                <LiquidityMeter>
+                                  <LiquidityTrack>
+                                    <LiquidityFill
+                                      $tone={
+                                        liquidityDetail.volumeTone ?? "flat"
+                                      }
+                                      style={{
+                                        left: `${toPct(
+                                          liquidityDetail.volumeLeft,
+                                          50
+                                        )}%`,
+                                        width: `${Math.max(
+                                          toPct(liquidityDetail.volumeWidth, 0),
+                                          1
+                                        )}%`,
                                       }}
                                     />
-                                  ) : null}
-                                </li>
-                              ))}
-                            </FlowStatList>
-                          ) : null}
-                          {flowDetail.shift ? (
-                            <FlowShiftContainer>
-                              {renderFlowShift(flowDetail.shift)}
-                            </FlowShiftContainer>
-                          ) : null}
-                        </MarketStat>
-                      ) : null}
-                    </MarketStatGrid>
-                  </MarketDetailBody>
-                </MarketCardWrapper>
-              );
-            })}
+                                    <LiquidityPointer
+                                      $tone={
+                                        liquidityDetail.volumeTone ?? "flat"
+                                      }
+                                      style={{
+                                        left: `${toPct(
+                                          liquidityDetail.volumePointer,
+                                          50
+                                        )}%`,
+                                      }}
+                                    />
+                                  </LiquidityTrack>
+                                  <LiquidityMeta>
+                                    <span>
+                                      {liquidityDetail.volumeRatioText}
+                                    </span>
+                                    {liquidityDetail.volumeSummary ? (
+                                      <ChangeValue
+                                        $tone={liquidityDetail.volumeTone}
+                                      >
+                                        {liquidityDetail.volumeSummary}
+                                      </ChangeValue>
+                                    ) : null}
+                                  </LiquidityMeta>
+                                </LiquidityMeter>
+                              </LiquidityRow>
+                              <LiquidityRow>
+                                <LiquidityLabel>거래대금</LiquidityLabel>
+                                <LiquidityMeter>
+                                  <LiquidityTrack>
+                                    <LiquidityFill
+                                      $tone={liquidityDetail.valueTone}
+                                      style={{
+                                        left: `${liquidityDetail.valueLeft}%`,
+                                        width: `${Math.max(
+                                          liquidityDetail.valueWidth,
+                                          1
+                                        )}%`,
+                                      }}
+                                    />
+                                    <LiquidityPointer
+                                      $tone={liquidityDetail.valueTone}
+                                      style={{
+                                        left: `${liquidityDetail.valuePointer}%`,
+                                      }}
+                                    />
+                                  </LiquidityTrack>
+                                  <LiquidityMeta>
+                                    <span>
+                                      {liquidityDetail.valueRatioText}
+                                    </span>
+                                    {liquidityDetail.valueSummary ? (
+                                      <ChangeValue
+                                        $tone={liquidityDetail.valueTone}
+                                      >
+                                        {liquidityDetail.valueSummary}
+                                      </ChangeValue>
+                                    ) : null}
+                                  </LiquidityMeta>
+                                </LiquidityMeter>
+                              </LiquidityRow>
+                            </LiquidityBox>
+                            <StatDescriptor
+                              dangerouslySetInnerHTML={{
+                                __html: emphasizeNumbers(
+                                  liquidityDetail.summaryHtml
+                                ),
+                              }}
+                            />
+                          </MarketStat>
+                        ) : null}
+
+                        {flowDetail ? (
+                          <MarketStat>
+                            <MarketStatLabel>수급</MarketStatLabel>
+                            {flowDetail.share ? (
+                              <FlowShareBar>
+                                {flowDetail.share.segments.map((segment) => (
+                                  <FlowShareSegment
+                                    key={segment.key}
+                                    $color={
+                                      FLOW_COLORS[segment.tone] ||
+                                      FLOW_COLORS.others
+                                    }
+                                    style={{ width: `${segment.percent}%` }}
+                                  >
+                                    {segment.label} {segment.percent}%
+                                  </FlowShareSegment>
+                                ))}
+                              </FlowShareBar>
+                            ) : null}
+                            {flowDetail.summary ? (
+                              <StatDescriptor
+                                dangerouslySetInnerHTML={{
+                                  __html: emphasizeNumbers(flowDetail.summary),
+                                }}
+                              />
+                            ) : null}
+                            {flowDetail.stats.length ? (
+                              <FlowStatList>
+                                {flowDetail.stats.map((stat) => (
+                                  <li key={stat.key}>
+                                    {stat.label ? (
+                                      <strong>{stat.label}</strong>
+                                    ) : null}
+                                    {stat.value ? (
+                                      <span
+                                        dangerouslySetInnerHTML={{
+                                          __html: emphasizeNumbers(stat.value),
+                                        }}
+                                      />
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </FlowStatList>
+                            ) : null}
+                            {flowDetail.shift ? (
+                              <FlowShiftContainer>
+                                {renderFlowShift(flowDetail.shift)}
+                              </FlowShiftContainer>
+                            ) : null}
+                          </MarketStat>
+                        ) : null}
+                      </MarketStatGrid>
+                    </MarketDetailBody>
+                  </MarketCardWrapper>
+                );
+              })}
             </MarketGrid>
           </MarketDetailCollapse>
         </>
