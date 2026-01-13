@@ -74,6 +74,8 @@ export interface RecapVideoSummary {
   duration: string;
   channelThumbnail?: string;
   subscriberText?: string;
+  channelSubscribers?: number | null;
+  uploadDate?: string | null;
   href?: string;
   summary: string[];
 }

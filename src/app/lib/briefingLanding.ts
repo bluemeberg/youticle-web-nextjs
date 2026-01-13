@@ -90,6 +90,11 @@ const GENERAL_SECTION_CONFIGS = {
     anchor: "realestate",
     query: "부동산",
   },
+  business: {
+    label: "비즈니스/사업",
+    anchor: "business",
+    query: "비즈니스/사업",
+  },
 } as const;
 
 const formatSectionQuery = (label: string) =>
@@ -108,6 +113,10 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
   "뷰티/메이크업": "beauty",
   부동산: "realestate",
   realestate: "realestate",
+  비즈니스: "business",
+  사업: "business",
+  "비즈니스/사업": "business",
+  business: "business",
 };
 
 const buildSectionBriefingEntry = (
@@ -129,10 +138,22 @@ const fetchIntegratedBriefing = async (
   sectionLabel: string
 ): Promise<SectionBriefingData | undefined> => {
   try {
-    const url = new URL(KAKAO_CACHE_ENDPOINT);
-    url.searchParams.set("sections", sectionLabel);
-    url.searchParams.set("variant", "integrated");
-    const payload = await fetchJson<KakaoIntegratedResponse>(url.toString());
+    const buildRequestUrl = (variant: string) => {
+      const url = new URL(KAKAO_CACHE_ENDPOINT);
+      url.searchParams.set("sections", sectionLabel);
+      url.searchParams.set("variant", variant);
+      return url;
+    };
+
+    const primaryUrl = buildRequestUrl("keyword_long");
+    let payload =
+      (await fetchJson<KakaoIntegratedResponse>(primaryUrl.toString())) ?? {};
+    if (!payload.sections?.length) {
+      const fallbackUrl = buildRequestUrl("integrated");
+      payload =
+        (await fetchJson<KakaoIntegratedResponse>(fallbackUrl.toString())) ??
+        {};
+    }
     const target = payload.sections?.find(
       (entry) => entry.section === sectionLabel
     );
@@ -323,6 +344,16 @@ const buildInsightItems = (section?: InsightSection) => {
   return [];
 };
 
+const toNumericSubscribers = (value: unknown): number | undefined => {
+  if (value == null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const numeric = Number(value.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }
+  return undefined;
+};
+
 const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
   videos.map((video) => {
     console.log(video);
@@ -356,6 +387,10 @@ const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
         if (subs == null) return undefined;
         return typeof subs === "string" ? subs : subs.toString();
       })(),
+      channelSubscribers: toNumericSubscribers(
+        video.channel_details?.channel_subscribers
+      ) ?? null,
+      uploadDate: video.upload_date ?? null,
       href: video.video_id ? `/detail/${video.video_id}` : undefined,
       summary: summaryList,
     } satisfies RecapVideoSummary;

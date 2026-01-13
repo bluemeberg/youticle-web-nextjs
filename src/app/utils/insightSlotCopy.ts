@@ -4,28 +4,28 @@ import type { BriefingSlot } from "@/utils/briefingSlot";
 const BASE_LABELS: Record<BriefingSlot, SlotLabel> = {
   baseline: {
     phase: "baseline",
-    title: "프리 마켓 1차 브리핑",
-    description: "07:30 장 시작 전 베이스라인",
+    title: "프리 마켓 브리핑",
+    description: "07:30 장 시작 전 시나리오",
   },
   slot2: {
     phase: "slot2",
-    title: "오전 1차 브리핑",
-    description: "11:00 장 중 핵심 업데이트",
+    title: "장초반 브리핑",
+    description: "11:00 장 초반 핵심 업데이트",
   },
   slot3: {
     phase: "slot3",
-    title: "오후 2차 브리핑",
-    description: "14:30 점심 이후 점검",
+    title: "오후 장중 브리핑",
+    description: "14:30 오후 장중 핵심 업데이트",
   },
   slot4: {
     phase: "slot4",
-    title: "장 마감 직전 브리핑",
-    description: "17:00 마감 직전 체크",
+    title: "장 마감 브리핑",
+    description: "17:00 장 마감 브리핑",
   },
   slot5: {
     phase: "slot5",
     title: "저녁 리뷰 브리핑",
-    description: "21:00 저녁 재랭킹",
+    description: "21:00 금일 장 리뷰",
   },
   ranking: {
     phase: "ranking",
@@ -38,27 +38,27 @@ const OVERSEAS_LABELS: Record<BriefingSlot, SlotLabel> = {
   baseline: {
     phase: "baseline",
     title: "간밤 미국장 1차 요약",
-    description: "07:30 미국장 핵심 요약",
+    description: "07:30 금일 미국장 1차 브리핑",
   },
   slot2: {
     phase: "slot2",
-    title: "미국장 오전 리마인드",
-    description: "11:00 간밤 후속 업데이트",
+    title: "간밤 미국장 2차 요약",
+    description: "11:00 금일 미국장 2차 브리핑",
   },
   slot3: {
     phase: "slot3",
     title: "오늘 밤 미국장 프리뷰 1차",
-    description: "14:30 오늘 밤 주목 포인트",
+    description: "14:30 내일 미국장 프리뷰 1차 브리핑",
   },
   slot4: {
     phase: "slot4",
     title: "오늘 밤 미국장 프리뷰 2차",
-    description: "17:00 마감 전 리마인드",
+    description: "17:00 내일 미국장 프리뷰 2차 브리핑",
   },
   slot5: {
     phase: "slot5",
     title: "미국 프리마켓 체크",
-    description: "21:00 프리마켓 동향",
+    description: "21:00 내일 미국장 프리마켓 동향",
   },
   ranking: {
     phase: "ranking",
@@ -70,28 +70,28 @@ const OVERSEAS_LABELS: Record<BriefingSlot, SlotLabel> = {
 const CRYPTO_LABELS: Record<BriefingSlot, SlotLabel> = {
   baseline: {
     phase: "baseline",
-    title: "새벽·아침 코인 브리핑 1차",
-    description: "07:30 새벽/아침 흐름",
+    title: "새벽 코인 브리핑",
+    description: "07:30 새벽/아침 코인 흐름 브리핑",
   },
   slot2: {
     phase: "slot2",
     title: "오전 코인 브리핑",
-    description: "11:00 오전 급등락 체크",
+    description: "11:00 오전 코인 시황 브리핑",
   },
   slot3: {
     phase: "slot3",
     title: "점심·오후 브리핑",
-    description: "14:30 점심 이후 반응",
+    description: "14:30 점심 이후 코인 시황 반응 브리핑",
   },
   slot4: {
     phase: "slot4",
     title: "퇴근 직전 브리핑",
-    description: "17:00 오후 변동성 요약",
+    description: "17:00 오후 코인 시황 변동성 브리핑",
   },
   slot5: {
     phase: "slot5",
-    title: "심야 브리핑",
-    description: "21:00 밤 시간대 미국장 반응",
+    title: "저녁 브리핑",
+    description: "21:00 밤 시간대 코인 시황 브리핑",
   },
   ranking: {
     phase: "ranking",

@@ -3,6 +3,7 @@
 import styled, { keyframes } from "styled-components";
 import type { DefaultTheme } from "styled-components";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import React, {
   useCallback,
   useEffect,
@@ -33,6 +34,7 @@ import LandingCryptoInsightSection from "./LandingCryptoInsightSection";
 import LandingStockMarketSection from "./LandingStockMarketSection";
 import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
 import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
+import { parseSubscribersCount, timeAgoUTC } from "@/utils/formatter";
 import type {
   InsightMarketDeltaCard,
   InsightSection,
@@ -172,6 +174,8 @@ export interface VideoCardData {
   href?: string;
   channelThumbnail?: string;
   subscriberText?: string;
+  channelSubscribers?: number | null;
+  uploadDate?: string | null;
 }
 
 const convertMarkToStrong = (text?: string | null) => {
@@ -194,6 +198,25 @@ const convertMarkToStrong = (text?: string | null) => {
 const createMarkedHtml = (text: string) => ({
   __html: convertMarkToStrong(text),
 });
+
+const resolveVideoMetaInfo = (video: VideoCardData) => {
+  const subscriberLabel = (() => {
+    if (
+      video.channelSubscribers != null &&
+      Number.isFinite(video.channelSubscribers)
+    ) {
+      return parseSubscribersCount(video.channelSubscribers);
+    }
+    return video.subscriberText ?? "";
+  })();
+  const uploadLabel = video.uploadDate
+    ? timeAgoUTC(video.uploadDate)
+    : video.duration;
+  return {
+    subscriberLabel,
+    uploadLabel,
+  };
+};
 
 const stripMarkTags = (text?: string | null) => {
   if (!text) return "";
@@ -248,6 +271,7 @@ const renderSummaryContent = (
                         </SummaryVideoPlaceholderCard>
                       );
                     }
+                    const meta = resolveVideoMetaInfo(video);
                     return (
                       <SummaryVideoCard
                         key={safeKey(videoId, videoIndex)}
@@ -288,10 +312,20 @@ const renderSummaryContent = (
                             {video.channel ? (
                               <span>{video.channel}</span>
                             ) : null}
-                            <VideoMetaRowSubContainer>
-                              {video.subscriberText ?? ""}
-                              <strong>{video.duration}</strong>
-                            </VideoMetaRowSubContainer>
+                            {(() => {
+                              const meta = resolveVideoMetaInfo(video);
+                              if (!meta.subscriberLabel && !meta.uploadLabel) {
+                                return null;
+                              }
+                              return (
+                                <VideoMetaRowSubContainer>
+                                  {meta.subscriberLabel ?? ""}
+                                  {meta.uploadLabel ? (
+                                    <strong>{meta.uploadLabel}</strong>
+                                  ) : null}
+                                </VideoMetaRowSubContainer>
+                              );
+                            })()}
                           </VideoMetaRowContainer>
                         </VideoMetaRow>
                       </SummaryVideoCard>
@@ -1272,19 +1306,34 @@ const BriefingLandingPageClient = ({
 
   const [saved, setSaved] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showInitialLoading, setShowInitialLoading] = useState(true);
   const stickyOffset = topbarH + keywordNavH + 16;
 
+  const scrollOffset = 58;
+
+  useEffect(() => {
+    if (!isNavigating) return undefined;
+    const timer = setTimeout(() => setIsNavigating(false), 1200);
+    return () => clearTimeout(timer);
+  }, [isNavigating]);
+
+  useEffect(() => {
+    setShowInitialLoading(true);
+    const timer = setTimeout(() => setShowInitialLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
   const scrollToAnchor = useCallback(
     (anchor: string) => {
       if (typeof window === "undefined") return false;
       const target = sectionRefs.current[anchor];
       if (!target) return false;
-      const offset = Math.max(0, topbarH + keywordNavH + 24);
-      const top = target.getBoundingClientRect().top + window.scrollY - offset;
+      const top =
+        target.getBoundingClientRect().top + window.scrollY - scrollOffset;
       window.scrollTo({ top, behavior: "smooth" });
       return true;
     },
-    [keywordNavH, topbarH]
+    [scrollOffset]
   );
 
   useLayoutEffect(() => {
@@ -1343,12 +1392,20 @@ const BriefingLandingPageClient = ({
     setTimeout(() => setToastMessage(null), 2200);
   };
 
+  const triggerNavigationLoading = () => setIsNavigating(true);
+
   const handleLogoBack = () => {
+    triggerNavigationLoading();
     if (data.deliveryMeta.backHref) {
       router.push(data.deliveryMeta.backHref);
     } else {
       router.back();
     }
+  };
+
+  const handleLogoHome = () => {
+    triggerNavigationLoading();
+    router.push("/");
   };
 
   const handleNavClick = (anchor: string) => {
@@ -1433,13 +1490,10 @@ const BriefingLandingPageClient = ({
     }
 
     if (typeof window !== "undefined") {
-      const target = sectionRefs.current[section.anchor];
-      if (target) {
-        const offset = Math.max(0, topbarH + keywordNavH + 24);
-        const top =
-          target.getBoundingClientRect().top + window.scrollY - offset;
-        window.scrollTo({ top, behavior: "smooth" });
-      }
+      const scrollToTop = () =>
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      scrollToTop();
+      window.requestAnimationFrame(scrollToTop);
     }
   };
 
@@ -1485,7 +1539,9 @@ const BriefingLandingPageClient = ({
     return target;
   };
 
-  const renderMoneySection = (section: MoneyRecapSection) => {
+  const renderMoneySection = (
+    section: MoneyRecapSection
+  ): { slotBar: ReactNode; node: ReactNode } => {
     const slotPool = filterOutRankingSlots(section.slotPackages)
       .slice()
       .sort((a, b) => {
@@ -1496,7 +1552,7 @@ const BriefingLandingPageClient = ({
         return safeA - safeB;
       });
     if (slotPool.length === 0) {
-      return null;
+      return { slotBar: null, node: null };
     }
     const activeSlotId = activeSlotBySection[section.id];
     const activeSlot =
@@ -1559,6 +1615,44 @@ const BriefingLandingPageClient = ({
       !activeSlot ||
       activeSlot.id === "baseline" ||
       !summaryBriefing;
+    const slotMetaText = (() => {
+      if (isStaticSection || !slotPool.length) return null;
+      if (isFutureSlot && pendingSlot?.displayTime) {
+        return `예정: ${pendingSlot.displayTime}`;
+      }
+      if (isMissingSlot) return null;
+      if (activeSlot) {
+        return `${slotLabel?.description ?? activeSlot.displayTime}`;
+      }
+      return null;
+    })();
+    const slotSelectorBar =
+      !isStaticSection && slotPool.length ? (
+        <SectionSlotBar $withShadow>
+          <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+            {slotPool.map((slot) => {
+              const slotCopy = buildSectionSlotLabel(section.title, slot);
+              const badge =
+                diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
+              const isActive = slot.id === activeSlotBySection[section.id];
+              return (
+                <SlotChip
+                  key={slot.id}
+                  type="button"
+                  $active={isActive}
+                  onClick={() => onSlotSelect(section, slot.id)}
+                >
+                  <span>{slotCopy.title}</span>
+                  {badge ? (
+                    <ChipBadge $active={isActive}>{badge}</ChipBadge>
+                  ) : null}
+                </SlotChip>
+              );
+            })}
+          </SlotSelector>
+          {slotMetaText ? <SlotMeta>{slotMetaText}</SlotMeta> : null}
+        </SectionSlotBar>
+      ) : null;
     const renderEmptySlotNotice = (variant: "pending" | "error") => {
       const label = pendingSlot?.label ?? section.title;
       const timeText = pendingSlot?.displayTime;
@@ -1580,39 +1674,6 @@ const BriefingLandingPageClient = ({
             {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
           </SectionTitleRow>
 
-          {!isStaticSection && slotPool.length ? (
-            <SectionSlotBar $withShadow>
-              {slotPool.length ? (
-                <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-                  {slotPool.map((slot) => {
-                    const slotCopy = buildSectionSlotLabel(section.title, slot);
-                    const badge =
-                      diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]
-                        ?.badge;
-                    const isActive =
-                      slot.id === activeSlotBySection[section.id];
-                    return (
-                      <SlotChip
-                        key={slot.id}
-                        type="button"
-                        $active={isActive}
-                        onClick={() => onSlotSelect(section, slot.id)}
-                      >
-                        <span>{slotCopy.title}</span>
-                        {badge ? (
-                          <ChipBadge $active={isActive}>{badge}</ChipBadge>
-                        ) : null}
-                      </SlotChip>
-                    );
-                  })}
-                </SlotSelector>
-              ) : null}
-              {variant === "pending" && pendingSlot ? (
-                <SlotMeta>예정: {pendingSlot.displayTime}</SlotMeta>
-              ) : null}
-            </SectionSlotBar>
-          ) : null}
-
           <SlotNotice $variant={variant}>
             <SlotNoticeTitle>
               {label} {variant === "pending" ? "준비 중" : "데이터 오류"}
@@ -1624,158 +1685,138 @@ const BriefingLandingPageClient = ({
     };
 
     if (isFutureSlot || isMissingSlot) {
-      return renderEmptySlotNotice(isFutureSlot ? "pending" : "error");
+      return {
+        slotBar: slotSelectorBar,
+        node: renderEmptySlotNotice(isFutureSlot ? "pending" : "error"),
+      };
     }
 
-    return (
-      <SectionBlock key={section.id} id={section.anchor}>
-        <SectionAnchorMarker
-          data-anchor-id={section.anchor}
-          ref={(node) => {
-            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
-          }}
-        />
-        <SectionTitleRow>
-          <SectionTitle>{section.title}</SectionTitle>
-          {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
-        </SectionTitleRow>
+    return {
+      slotBar: slotSelectorBar,
+      node: (
+        <SectionBlock key={section.id} id={section.anchor}>
+          <SectionAnchorMarker
+            data-anchor-id={section.anchor}
+            ref={(node) => {
+              sectionRefs.current[section.anchor] =
+                node as HTMLDivElement | null;
+            }}
+          />
+          <SectionTitleRow>
+            <SectionTitle>{section.title}</SectionTitle>
+            {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
+          </SectionTitleRow>
 
-        {!isStaticSection && slotPool.length ? (
-          <SectionSlotBar $withShadow>
-            {slotPool.length ? (
-              <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
-                {slotPool.map((slot) => {
-                  const slotCopy = buildSectionSlotLabel(section.title, slot);
-                  const badge =
-                    diffBadgeByMoneySectionSlot?.[section.id]?.[slot.id]?.badge;
-                  const isActive = slot.id === activeSlotBySection[section.id];
-                  return (
-                    <SlotChip
-                      key={slot.id}
-                      type="button"
-                      $active={isActive}
-                      onClick={() => onSlotSelect(section, slot.id)}
-                    >
-                      <span>{slotCopy.title}</span>
-                      {badge ? (
-                        <ChipBadge $active={isActive}>{badge}</ChipBadge>
-                      ) : null}
-                    </SlotChip>
-                  );
-                })}
-              </SlotSelector>
-            ) : null}
-            {activeSlot ? (
-              <SlotMeta>
-                현재: {slotLabel?.title ?? activeSlot.label} ·{" "}
-                {activeSlot.displayTime}
-              </SlotMeta>
-            ) : null}
-          </SectionSlotBar>
-        ) : null}
-
-        <SummaryCard>
-          <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
-          {summaryBriefing ? (
-            isBaselineSlot ? (
-              renderSummaryContent(
-                summaryBriefing,
-                summaryLines,
-                summaryVideoLookup
+          <SummaryCard>
+            <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
+            {summaryBriefing ? (
+              isBaselineSlot ? (
+                renderSummaryContent(
+                  summaryBriefing,
+                  summaryLines,
+                  summaryVideoLookup
+                )
+              ) : (
+                <SummaryNotice>
+                  카카오톡 브리핑은 해당 슬롯에서는 아직 준비 중이에요. 오픈되면
+                  바로 신청 안내 드릴게요!
+                </SummaryNotice>
               )
             ) : (
-              <SummaryNotice>
-                카카오톡 브리핑은 해당 슬롯에서 준비 중이에요. 베이스라인을
-                선택하면 최신 요약을 볼 수 있어요.
-              </SummaryNotice>
-            )
-          ) : (
-            renderSummaryContent(undefined, summaryLines, summaryVideoLookup)
-          )}
-        </SummaryCard>
+              renderSummaryContent(undefined, summaryLines, summaryVideoLookup)
+            )}
+          </SummaryCard>
 
-        {!isStaticSection && insightContent ? (
-          <InsightBlock>
-            <BlockHeader>
-              <BlockTitle>인사이트 강화</BlockTitle>
-              {slotLabel ? <BlockMeta>{slotLabel.title}</BlockMeta> : null}
-            </BlockHeader>
-            <BlockDivider />
-            {insightContent}
-          </InsightBlock>
-        ) : !isStaticSection ? (
-          <InsightEmptyState>
-            슬롯 인사이트를 불러오는 중이에요.
-          </InsightEmptyState>
-        ) : null}
+          {!isStaticSection && insightContent ? (
+            <InsightBlock>
+              <BlockHeader>
+                <BlockTitle>인사이트 강화</BlockTitle>
+                {slotLabel ? <BlockMeta>{slotLabel.title}</BlockMeta> : null}
+              </BlockHeader>
+              <BlockDivider />
+              {insightContent}
+            </InsightBlock>
+          ) : !isStaticSection ? (
+            <InsightEmptyState>
+              슬롯 인사이트를 불러오는 중이에요.
+            </InsightEmptyState>
+          ) : null}
 
-        {activeSlot ? (
-          <VideoBlock>
-            <BlockHeader>
-              <BlockTitle>TOP5 근거영상</BlockTitle>
-              {activeDiff > 0 ? (
-                <BlockBadge>
-                  새 근거영상 <strong>+{activeDiff}</strong>
-                </BlockBadge>
-              ) : null}
-            </BlockHeader>
-            <VideoList>
-              {activeSlot.tabs.videos.map((video) => {
-                const isNew = !baseIds.has(video.id);
-                const videoTitle = stripMarkTags(video.title);
-                return (
-                  <VideoSourceCard
-                    key={video.id}
-                    href={video.href ?? `/detail/${video.id}`}
-                  >
-                    <VideoSourceContainer>
-                      <VideoThumbnailWrapper>
-                        <VideoThumb src={video.thumbnail} alt={video.title} />
-                      </VideoThumbnailWrapper>
-                      <VideoSourceBody>
-                        <VideoTitleRow>
-                          <VideoTitle title={videoTitle}>
-                            {videoTitle}
-                          </VideoTitle>
-                          {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
-                        </VideoTitleRow>
-                        {video.summary.length ? (
-                          <VideoSummary>
-                            {video.summary.map((line, idx) => (
-                              <span
-                                key={safeKey(line, idx)}
-                                dangerouslySetInnerHTML={createMarkedHtml(line)}
-                              />
-                            ))}
-                          </VideoSummary>
+          {activeSlot ? (
+            <VideoBlock>
+              <BlockHeader>
+                <BlockTitle>오늘 갱신된 TOP5 근거영상 모아보기</BlockTitle>
+                {activeDiff > 0 ? (
+                  <BlockBadge>
+                    새 근거영상 <strong>+{activeDiff}</strong>
+                  </BlockBadge>
+                ) : null}
+              </BlockHeader>
+              <VideoList>
+                {activeSlot.tabs.videos.map((video) => {
+                  const isNew = !baseIds.has(video.id);
+                  const videoTitle = stripMarkTags(video.title);
+                  const meta = resolveVideoMetaInfo(video);
+                  return (
+                    <VideoSourceCard
+                      key={video.id}
+                      href={video.href ?? `/detail/${video.id}`}
+                    >
+                      <VideoSourceContainer>
+                        <VideoThumbnailWrapper>
+                          <VideoThumb src={video.thumbnail} alt={video.title} />
+                        </VideoThumbnailWrapper>
+                        <VideoSourceBody>
+                          <VideoTitleRow>
+                            <VideoTitle title={videoTitle}>
+                              {videoTitle}
+                            </VideoTitle>
+                            {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
+                          </VideoTitleRow>
+                          {video.summary.length ? (
+                            <VideoSummary>
+                              {video.summary.map((line, idx) => (
+                                <span
+                                  key={safeKey(line, idx)}
+                                  dangerouslySetInnerHTML={createMarkedHtml(
+                                    line
+                                  )}
+                                />
+                              ))}
+                            </VideoSummary>
+                          ) : null}
+                        </VideoSourceBody>
+                      </VideoSourceContainer>
+                      <VideoMetaRow>
+                        {video.channelThumbnail ? (
+                          <ChannelAvatarImage
+                            src={video.channelThumbnail}
+                            alt={video.channel || "채널"}
+                            width={40}
+                            height={40}
+                          />
                         ) : null}
-                      </VideoSourceBody>
-                    </VideoSourceContainer>
-                    <VideoMetaRow>
-                      {video.channelThumbnail ? (
-                        <ChannelAvatarImage
-                          src={video.channelThumbnail}
-                          alt={video.channel || "채널"}
-                          width={40}
-                          height={40}
-                        />
-                      ) : null}
-                      <VideoMetaRowContainer>
-                        {video.channel ? <span>{video.channel}</span> : null}
-                        <VideoMetaRowSubContainer>
-                          {video.subscriberText ?? ""}
-                          <strong>{video.duration}</strong>
-                        </VideoMetaRowSubContainer>
-                      </VideoMetaRowContainer>
-                    </VideoMetaRow>
-                  </VideoSourceCard>
-                );
-              })}
-            </VideoList>
-          </VideoBlock>
-        ) : null}
-      </SectionBlock>
-    );
+                        <VideoMetaRowContainer>
+                          {video.channel ? <span>{video.channel}</span> : null}
+                          {meta.subscriberLabel || meta.uploadLabel ? (
+                            <VideoMetaRowSubContainer>
+                              {meta.subscriberLabel ?? ""}
+                              {meta.uploadLabel ? (
+                                <strong>{meta.uploadLabel}</strong>
+                              ) : null}
+                            </VideoMetaRowSubContainer>
+                          ) : null}
+                        </VideoMetaRowContainer>
+                      </VideoMetaRow>
+                    </VideoSourceCard>
+                  );
+                })}
+              </VideoList>
+            </VideoBlock>
+          ) : null}
+        </SectionBlock>
+      ),
+    };
   };
 
   const renderRankingSection = (section: RankingRecapSection) => {
@@ -1814,7 +1855,7 @@ const BriefingLandingPageClient = ({
         <TabList role="tablist" aria-label={`${section.title} 탭`}>
           {(
             [
-              { key: "topVideos", label: "TOP5 근거영상" },
+              { key: "topVideos", label: "오늘 갱신된 TOP5 근거영상" },
               { key: "rankingUpdates", label: "랭킹 갱신 스트림" },
             ] as { key: RankingTabKey; label: string }[]
           ).map((tab) => (
@@ -1841,6 +1882,7 @@ const BriefingLandingPageClient = ({
             <VideoList>
               {section.tabs.topVideos.map((video) => {
                 const videoTitle = stripMarkTags(video.title);
+                const meta = resolveVideoMetaInfo(video);
                 return (
                   <VideoCard key={video.id}>
                     <VideoThumb src={video.thumbnail} alt={video.title} />
@@ -1860,10 +1902,14 @@ const BriefingLandingPageClient = ({
                         ) : null}
                         <VideoMetaRowContainer>
                           {video.channel ? <span>{video.channel}</span> : null}
-                          <VideoMetaRowSubContainer>
-                            {video.subscriberText ?? ""}
-                            <strong>{video.duration}</strong>
-                          </VideoMetaRowSubContainer>
+                          {meta.subscriberLabel || meta.uploadLabel ? (
+                            <VideoMetaRowSubContainer>
+                              {meta.subscriberLabel ?? ""}
+                              {meta.uploadLabel ? (
+                                <strong>{meta.uploadLabel}</strong>
+                              ) : null}
+                            </VideoMetaRowSubContainer>
+                          ) : null}
                         </VideoMetaRowContainer>
                       </VideoMetaRow>
                       <BulletList>
@@ -1918,6 +1964,17 @@ const BriefingLandingPageClient = ({
     );
   };
 
+  let activeSectionSlotBar: ReactNode = null;
+  const renderedSections = visibleSections.map((section) => {
+    if (isMoneySection(section)) {
+      const { slotBar, node } = renderMoneySection(section);
+      activeSectionSlotBar = slotBar ?? null;
+      return node;
+    }
+    if (isRankingSection(section)) return renderRankingSection(section);
+    return null;
+  });
+
   return (
     <PageContainer
       style={
@@ -1929,7 +1986,12 @@ const BriefingLandingPageClient = ({
       }
     >
       <LogoHeaderDock>
-        <LogoHeader showLogo onBack={handleLogoBack} forceLightTheme />
+        <LogoHeader
+          showLogo
+          onBack={handleLogoBack}
+          onBackHome={handleLogoHome}
+          forceLightTheme
+        />
       </LogoHeaderDock>
       <TopAppBar>
         <BackButton href={data.deliveryMeta.backHref}>
@@ -1943,32 +2005,37 @@ const BriefingLandingPageClient = ({
         </TopMeta>
       </TopAppBar>
 
-      <StickyKeywordNav
-        ref={keywordNavRef}
-        role="tablist"
-        aria-label="섹션 이동"
-      >
-        {navItems.map((item) => (
-          <KeywordChip
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={activeAnchor === item.anchor}
-            $active={activeAnchor === item.anchor}
-            onClick={() => handleNavClick(item.anchor)}
-          >
-            {item.label}
-          </KeywordChip>
-        ))}
-      </StickyKeywordNav>
+      <StickyControlDock ref={keywordNavRef}>
+        <StickyKeywordNav role="tablist" aria-label="섹션 이동">
+          {navItems.map((item) => (
+            <KeywordChip
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={activeAnchor === item.anchor}
+              $active={activeAnchor === item.anchor}
+              onClick={() => handleNavClick(item.anchor)}
+            >
+              {item.label}
+            </KeywordChip>
+          ))}
+        </StickyKeywordNav>
 
-      <SectionsContainer>
-        {visibleSections.map((section) => {
-          if (isMoneySection(section)) return renderMoneySection(section);
-          if (isRankingSection(section)) return renderRankingSection(section);
-          return null;
-        })}
-      </SectionsContainer>
+        {activeSectionSlotBar ? (
+          <SlotBarDock>{activeSectionSlotBar}</SlotBarDock>
+        ) : null}
+      </StickyControlDock>
+
+      {(showInitialLoading || isNavigating) && (
+        <LoadingCurtain aria-live="polite" role="status">
+          <LoadingSpinner />
+          <LoadingMessage>
+            {isNavigating ? "페이지 이동 중이에요" : "콘텐츠 불러오는 중"}
+          </LoadingMessage>
+        </LoadingCurtain>
+      )}
+
+      <SectionsContainer>{renderedSections}</SectionsContainer>
 
       {/* <FooterExplore>
         <FooterTitle>더 탐색하기</FooterTitle>
@@ -2025,7 +2092,7 @@ const TopAppBar = styled.header`
   gap: 8px;
   width: 100%;
   max-width: 720px;
-  padding: 12px 0 8px;
+  /* padding: 12px 0 8px; */
 `;
 
 const BackButton = styled(Link)`
@@ -2044,7 +2111,7 @@ const TopMeta = styled.div.attrs({
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 16px 16px 12px;
+  padding: 24px 16px 18px;
   /* background: linear-gradient(
     180deg,
     rgba(246, 247, 251, 0.95) 0%,
@@ -2070,19 +2137,37 @@ const TopTagline = styled.span`
   color: #94a3b8;
 `;
 
-const StickyKeywordNav = styled.nav`
+const StickyControlDock = styled.div`
   position: sticky;
   top: 52px;
-  /* top: var(--topbar-h, 64px); */
   z-index: 25;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* padding-top: 8px; */
+  background: linear-gradient(
+    180deg,
+    rgba(246, 247, 251, 0.98) 0%,
+    rgba(246, 247, 251, 0.92) 60%,
+    rgba(246, 247, 251, 0)
+  );
+  backdrop-filter: blur(10px);
+`;
+
+const StickyKeywordNav = styled.nav`
+  pointer-events: auto;
   display: flex;
   gap: 8px;
   width: 100%;
   max-width: 720px;
-  padding: 8px 16px;
+  padding: 8px 16px 4px;
+  box-sizing: border-box;
   overflow-x: auto;
-  /* background: rgba(246, 247, 251, 0.96); */
-  backdrop-filter: blur(8px);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 const KeywordChip = styled.button<{ $active: boolean }>`
@@ -2299,20 +2384,75 @@ const SummaryVideoPlaceholderText = styled.span`
   color: #475569;
 `;
 
+const spin = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const LoadingCurtain = styled.div`
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  animation: ${spin} 0.8s linear infinite;
+`;
+
+const LoadingMessage = styled.span`
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 600;
+`;
+
+const SlotBarDock = styled.div`
+  pointer-events: auto;
+  width: 100%;
+  max-width: 720px;
+  padding: 0 16px 8px;
+  box-sizing: border-box;
+
+  @media (max-width: 640px) {
+    padding: 0 12px 8px;
+  }
+`;
+
 const SectionSlotBar = styled.div.attrs({
   className: "BriefingLandingPageClient__SectionSlotBar",
 })<{ $withShadow?: boolean }>`
-  position: sticky;
-  top: 104px;
-  /* top: calc(var(--topbar-h, 64px) + var(--keywordnav-h, 52px) + 12px); */
-  z-index: 8;
-  margin: 12px 0;
-  padding: 16px 12px 0px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 14px 16px 8px;
   border-radius: 16px;
   background: rgba(246, 247, 251, 0.96);
   border: 1px solid rgba(50, 71, 255, 0.18);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  @media (max-width: 640px) {
+    padding: 10px 10px 6px;
+    border-radius: 12px;
+  }
 `;
 
 const InsightBlock = styled.section`
@@ -2378,12 +2518,14 @@ const BlockBadge = styled.span`
 
 const SlotSelector = styled.div`
   display: flex;
+  width: 100%;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 4px;
+  margin: 0;
   scroll-snap-type: x proximity;
   scroll-padding: 0 20px;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   &::-webkit-scrollbar {
     display: none;
   }
