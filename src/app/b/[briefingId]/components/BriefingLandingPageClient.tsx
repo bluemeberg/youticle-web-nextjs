@@ -1157,6 +1157,13 @@ const buildSectionSlotLabel = (
   return resolveInsightSlotCopy(sectionTitle, baseLabel) ?? baseLabel;
 };
 
+const HIGHLIGHT_SECTION_OPT_OUT_TITLES = new Set([
+  "국내 주식",
+  "국내 가상자산",
+  "해외 주식",
+  "해외 가상자산",
+]);
+
 type HighlightStockItem = {
   id: string;
   name: string;
@@ -1768,6 +1775,10 @@ const BriefingLandingPageClient = ({
       !activeSlot ||
       activeSlot.id === "baseline" ||
       !summaryBriefing;
+    const videoPrimarySlotMap = new Map<
+      string,
+      ReturnType<typeof pickPrimaryDetectedSlot>
+    >();
     const highlightGroups = (() => {
       const groups: Record<
         string,
@@ -1775,6 +1786,7 @@ const BriefingLandingPageClient = ({
       > = {};
       activeSlot.tabs.videos.forEach((video) => {
         const primarySlot = pickPrimaryDetectedSlot(video.detectedSlots);
+        videoPrimarySlotMap.set(video.id, primarySlot);
         if (!primarySlot) return;
         const shouldHighlight =
           video.isNew ?? (!baseIds.has(video.id) && Boolean(primarySlot));
@@ -1797,11 +1809,38 @@ const BriefingLandingPageClient = ({
     const highlightedVideoIds = new Set(
       highlightGroups.flatMap((group) => group.videos.map((video) => video.id))
     );
-    const regularVideos = highlightGroups.length
+    let regularVideos = highlightGroups.length
       ? activeSlot.tabs.videos.filter(
           (video) => !highlightedVideoIds.has(video.id)
         )
       : activeSlot.tabs.videos;
+    const fallbackRegularGroup = (() => {
+      if (HIGHLIGHT_SECTION_OPT_OUT_TITLES.has(section.title)) return null;
+      const undetected = regularVideos.filter(
+        (video) => !videoPrimarySlotMap.get(video.id)
+      );
+      if (!undetected.length) return null;
+      const slotTitleText =
+        slotLabel?.title?.trim() ||
+        activeSlot?.label?.trim() ||
+        section.title.trim();
+      const timeText = activeSlot?.displayTime?.trim();
+      const baseLabel = [timeText, slotTitleText].filter(Boolean).join(" ");
+      if (!baseLabel) return null;
+      return {
+        label: `오늘 TOP5 영상 첫 진입`,
+        subtitle: `${undetected.length}개 근거영상이 오늘 오전 7시 30분에 TOP5로 선정됐어요.`,
+        videos: undetected,
+      };
+    })();
+    if (fallbackRegularGroup) {
+      const fallbackIds = new Set(
+        fallbackRegularGroup.videos.map((video) => video.id)
+      );
+      regularVideos = regularVideos.filter(
+        (video) => !fallbackIds.has(video.id)
+      );
+    }
     const slotMetaText = (() => {
       if (isStaticSection || !slotPool.length) return null;
       if (isFutureSlot && pendingSlot?.displayTime) {
@@ -1958,11 +1997,30 @@ const BriefingLandingPageClient = ({
                   ))}
                 </>
               ) : null}
+              {fallbackRegularGroup ? (
+                <HighlightSection>
+                  <HighlightHeader>
+                    <HighlightTitle>
+                      {fallbackRegularGroup.label}
+                    </HighlightTitle>
+                  </HighlightHeader>
+                  {fallbackRegularGroup.subtitle ? (
+                    <HighlightSubtitle>
+                      {fallbackRegularGroup.subtitle}
+                    </HighlightSubtitle>
+                  ) : null}
+                  <VideoList>
+                    {fallbackRegularGroup.videos.map((video) =>
+                      renderVideoCard(video)
+                    )}
+                  </VideoList>
+                </HighlightSection>
+              ) : null}
               {regularVideos.length ? (
                 <VideoList>
                   {regularVideos.map((video) => renderVideoCard(video))}
                 </VideoList>
-              ) : !highlightGroups.length ? (
+              ) : !highlightGroups.length && !fallbackRegularGroup ? (
                 <VideoList>
                   {activeSlot.tabs.videos.map((video) =>
                     renderVideoCard(video)
