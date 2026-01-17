@@ -73,6 +73,7 @@ export interface BriefingLandingData {
     backHref: string; // "/feed"
     backLabel: string; // "전체"
     source?: "kakao" | "email" | "web";
+    deliveredAt?: string | null;
   };
   keywordNav?: Array<{ id: string; label: string; anchor: string }>;
   sections: RecapSection[];
@@ -389,6 +390,7 @@ const MOCK_DATA: BriefingLandingData = {
     backHref: "/feed",
     backLabel: "전체",
     source: "kakao",
+    deliveredAt: "2026-01-02T21:00:00+09:00",
   },
   sections: [
     {
