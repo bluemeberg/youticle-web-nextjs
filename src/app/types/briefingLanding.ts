@@ -76,6 +76,8 @@ export interface RecapVideoSummary {
   subscriberText?: string;
   channelSubscribers?: number | null;
   uploadDate?: string | null;
+  detectedSlots?: Record<string, boolean> | null;
+  isNew?: boolean | null;
   href?: string;
   summary: string[];
 }

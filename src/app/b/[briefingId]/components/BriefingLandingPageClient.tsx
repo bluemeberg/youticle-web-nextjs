@@ -43,6 +43,8 @@ import type {
   InsightStockMetrics,
 } from "@/types/insight";
 
+const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
 /**
  * =========================================================
  * Mock Types (최소 실사용 형태)
@@ -176,6 +178,8 @@ export interface VideoCardData {
   subscriberText?: string;
   channelSubscribers?: number | null;
   uploadDate?: string | null;
+  detectedSlots?: Record<string, boolean> | null;
+  isNew?: boolean | null;
 }
 
 const convertMarkToStrong = (text?: string | null) => {
@@ -199,6 +203,20 @@ const createMarkedHtml = (text: string) => ({
   __html: convertMarkToStrong(text),
 });
 
+const stripMarkTags = (text?: string | null) => {
+  if (!text) return "";
+  return text.replace(/<mark[^>]*>/gi, "").replace(/<\/mark>/gi, "");
+};
+
+const splitSoWhatLines = (text?: string | null) => {
+  if (!text) return [];
+  return text
+    .split(/(?<=\.)\s+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => (segment.endsWith(".") ? segment : `${segment}.`));
+};
+
 const resolveVideoMetaInfo = (video: VideoCardData) => {
   const subscriberLabel = (() => {
     if (
@@ -216,11 +234,6 @@ const resolveVideoMetaInfo = (video: VideoCardData) => {
     subscriberLabel,
     uploadLabel,
   };
-};
-
-const stripMarkTags = (text?: string | null) => {
-  if (!text) return "";
-  return text.replace(/<mark[^>]*>/gi, "").replace(/<\/mark>/gi, "");
 };
 
 const renderSummaryContent = (
@@ -249,11 +262,14 @@ const renderSummaryContent = (
                 <SummaryBriefingTitle>{entry.title}</SummaryBriefingTitle>
               ) : null}
               {entry.soWhat ? (
-                <SummaryBriefingBody
-                  dangerouslySetInnerHTML={createMarkedHtml(
-                    stripMarkTags(entry.soWhat)
-                  )}
-                />
+                <SummaryBriefingBody>
+                  {splitSoWhatLines(entry.soWhat).map((line, index) => (
+                    <SummaryBriefingParagraph
+                      key={safeKey(line, index)}
+                      dangerouslySetInnerHTML={createMarkedHtml(line)}
+                    />
+                  ))}
+                </SummaryBriefingBody>
               ) : null}
               {entry.videoIds?.length ? (
                 <SummaryVideoCardList>
@@ -1311,6 +1327,21 @@ const BriefingLandingPageClient = ({
   const stickyOffset = topbarH + keywordNavH + 16;
 
   const scrollOffset = 58;
+  const topTimeLabel = useMemo(() => {
+    const base = data.deliveryMeta.displayLabel;
+    const deliveredAt = data.deliveryMeta.deliveredAt;
+    if (!deliveredAt) return base;
+    const date = new Date(deliveredAt);
+    if (Number.isNaN(date.getTime())) return base;
+    const weekday = WEEKDAY_LABELS[date.getDay()];
+    if (!weekday) return base;
+    const parts = base.split("·");
+    if (!parts.length) return `${base} (${weekday})`;
+    const [datePart, ...rest] = parts;
+    if (datePart.includes("(") && datePart.includes(")")) return base;
+    const rebuilt = `${datePart.trim()} (${weekday})`;
+    return rest.length ? `${rebuilt} · ${rest.join("·").trim()}` : rebuilt;
+  }, [data.deliveryMeta.displayLabel, data.deliveryMeta.deliveredAt]);
 
   useEffect(() => {
     if (!isNavigating) return undefined;
@@ -1527,6 +1558,62 @@ const BriefingLandingPageClient = ({
     return map;
   };
 
+  const SLOT_DETECTED_LABELS: Record<string, string> = {
+    slot_0730: "07:30 선정",
+    slot_0830: "08:30 갱신",
+    slot_1130: "11:30 재랭킹",
+    slot_1240: "12:40 갱신",
+    slot_1510: "15:10 갱신",
+    slot_1530: "15:30 재랭킹",
+    slot_1600: "16:00 재랭킹",
+    slot_1730: "17:30 재랭킹",
+    slot_1810: "18:10 재랭킹",
+    slot_2030: "20:30 재랭킹",
+    slot_2100: "21:00 재랭킹",
+    slot_2140: "21:40 갱신",
+  };
+
+  const SLOT_DETECTED_PRIORITY: Record<string, number> = {
+    slot_0730: 0,
+    slot_0830: 1,
+    slot_1130: 2,
+    slot_1240: 3,
+    slot_1510: 4,
+    slot_1530: 5,
+    slot_1600: 6,
+    slot_1730: 7,
+    slot_1810: 8,
+    slot_2030: 9,
+    slot_2100: 10,
+    slot_2140: 11,
+  };
+
+  const resolveDetectedSlotLabels = (
+    detectedSlots?: Record<string, boolean> | null
+  ) => {
+    if (!detectedSlots) return [] as string[];
+    return Object.entries(detectedSlots)
+      .filter(([, flag]) => Boolean(flag))
+      .map(([slotId]) => SLOT_DETECTED_LABELS[slotId] ?? slotId);
+  };
+
+  const pickPrimaryDetectedSlot = (
+    detectedSlots?: Record<string, boolean> | null
+  ) => {
+    if (!detectedSlots) return null;
+    const entries = Object.entries(detectedSlots)
+      .filter(([, flag]) => Boolean(flag))
+      .map(([slotId]) => ({
+        slotId,
+        label: SLOT_DETECTED_LABELS[slotId] ?? slotId,
+        priority: SLOT_DETECTED_PRIORITY[slotId] ?? Number.MAX_SAFE_INTEGER,
+      }));
+    if (!entries.length) return null;
+    entries.sort((a, b) => a.priority - b.priority);
+    const top = entries[0];
+    return { slotId: top.slotId, label: top.label };
+  };
+
   const parseSlotTimeToDate = (displayTime?: string | null) => {
     if (!displayTime) return null;
     const [hours, minutes] = displayTime
@@ -1610,11 +1697,111 @@ const BriefingLandingPageClient = ({
       ? activeSlot.tabs.market.commentary
       : section.summaryBullets;
     const summaryVideoLookup = buildVideoLookup(slotPool);
+    const renderVideoCard = (video: VideoCardData) => {
+      const videoTitle = stripMarkTags(video.title);
+      const meta = resolveVideoMetaInfo(video);
+      const highlightedSlots = resolveDetectedSlotLabels(video.detectedSlots);
+      const showNewBadge = video.isNew ?? !baseIds.has(video.id);
+      return (
+        <VideoSourceCard
+          key={video.id}
+          href={video.href ?? `/detail/${video.id}`}
+        >
+          <VideoSourceContainer>
+            <VideoThumbnailWrapper>
+              <VideoThumb src={video.thumbnail} alt={video.title} />
+            </VideoThumbnailWrapper>
+            <VideoSourceBody>
+              {/* {showNewBadge ? (
+                <VideoNewBadge aria-label="새 영상">NEW</VideoNewBadge>
+              ) : null} */}
+              <VideoTitleRow>
+                <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
+              </VideoTitleRow>
+              {video.summary.length ? (
+                <VideoSummary>
+                  {video.summary.map((line, idx) => (
+                    <span
+                      key={safeKey(line, idx)}
+                      dangerouslySetInnerHTML={createMarkedHtml(line)}
+                    />
+                  ))}
+                </VideoSummary>
+              ) : null}
+            </VideoSourceBody>
+          </VideoSourceContainer>
+          <VideoMetaRow>
+            {video.channelThumbnail ? (
+              <ChannelAvatarImage
+                src={video.channelThumbnail}
+                alt={video.channel || "채널"}
+                width={40}
+                height={40}
+              />
+            ) : null}
+            <VideoMetaRowContainer>
+              {video.channel ? <span>{video.channel}</span> : null}
+              {meta.subscriberLabel || meta.uploadLabel ? (
+                <VideoMetaRowSubContainer>
+                  {meta.subscriberLabel ?? ""}
+                  {meta.uploadLabel ? (
+                    <strong>{meta.uploadLabel}</strong>
+                  ) : null}
+                </VideoMetaRowSubContainer>
+              ) : null}
+            </VideoMetaRowContainer>
+          </VideoMetaRow>
+          {/* {highlightedSlots.length ? (
+            <DetectedSlotBadges>
+              {highlightedSlots.map((slotLabel, slotIdx) => (
+                <DetectedSlotBadge key={safeKey(slotLabel, slotIdx)}>
+                  {slotLabel}
+                </DetectedSlotBadge>
+              ))}
+            </DetectedSlotBadges>
+          ) : null} */}
+        </VideoSourceCard>
+      );
+    };
     const isBaselineSlot =
       isStaticSection ||
       !activeSlot ||
       activeSlot.id === "baseline" ||
       !summaryBriefing;
+    const highlightGroups = (() => {
+      const groups: Record<
+        string,
+        { slotId: string; label: string; videos: VideoCardData[] }
+      > = {};
+      activeSlot.tabs.videos.forEach((video) => {
+        const primarySlot = pickPrimaryDetectedSlot(video.detectedSlots);
+        if (!primarySlot) return;
+        const shouldHighlight =
+          video.isNew ?? (!baseIds.has(video.id) && Boolean(primarySlot));
+        if (!shouldHighlight) return;
+        if (!groups[primarySlot.slotId]) {
+          groups[primarySlot.slotId] = {
+            slotId: primarySlot.slotId,
+            label: primarySlot.label,
+            videos: [],
+          };
+        }
+        groups[primarySlot.slotId].videos.push(video);
+      });
+      return Object.values(groups).sort(
+        (a, b) =>
+          (SLOT_DETECTED_PRIORITY[a.slotId] ?? Number.MAX_SAFE_INTEGER) -
+          (SLOT_DETECTED_PRIORITY[b.slotId] ?? Number.MAX_SAFE_INTEGER)
+      );
+    })();
+    const highlightedVideoIds = new Set(
+      highlightGroups.flatMap((group) => group.videos.map((video) => video.id))
+    );
+    const regularVideos = highlightGroups.length
+      ? activeSlot.tabs.videos.filter(
+          (video) => !highlightedVideoIds.has(video.id)
+        )
+      : activeSlot.tabs.videos;
     const slotMetaText = (() => {
       if (isStaticSection || !slotPool.length) return null;
       if (isFutureSlot && pendingSlot?.displayTime) {
@@ -1708,7 +1895,7 @@ const BriefingLandingPageClient = ({
           </SectionTitleRow>
 
           <SummaryCard>
-            <BlockTitle>카카오톡 브리핑 요약</BlockTitle>
+            <BlockTitle $variant="summary">카카오톡 브리핑 요약</BlockTitle>
             {summaryBriefing ? (
               isBaselineSlot ? (
                 renderSummaryContent(
@@ -1752,66 +1939,36 @@ const BriefingLandingPageClient = ({
                   </BlockBadge>
                 ) : null}
               </BlockHeader>
-              <VideoList>
-                {activeSlot.tabs.videos.map((video) => {
-                  const isNew = !baseIds.has(video.id);
-                  const videoTitle = stripMarkTags(video.title);
-                  const meta = resolveVideoMetaInfo(video);
-                  return (
-                    <VideoSourceCard
-                      key={video.id}
-                      href={video.href ?? `/detail/${video.id}`}
-                    >
-                      <VideoSourceContainer>
-                        <VideoThumbnailWrapper>
-                          <VideoThumb src={video.thumbnail} alt={video.title} />
-                        </VideoThumbnailWrapper>
-                        <VideoSourceBody>
-                          <VideoTitleRow>
-                            <VideoTitle title={videoTitle}>
-                              {videoTitle}
-                            </VideoTitle>
-                            {/* {isNew ? <NewPill>NEW</NewPill> : null} */}
-                          </VideoTitleRow>
-                          {video.summary.length ? (
-                            <VideoSummary>
-                              {video.summary.map((line, idx) => (
-                                <span
-                                  key={safeKey(line, idx)}
-                                  dangerouslySetInnerHTML={createMarkedHtml(
-                                    line
-                                  )}
-                                />
-                              ))}
-                            </VideoSummary>
-                          ) : null}
-                        </VideoSourceBody>
-                      </VideoSourceContainer>
-                      <VideoMetaRow>
-                        {video.channelThumbnail ? (
-                          <ChannelAvatarImage
-                            src={video.channelThumbnail}
-                            alt={video.channel || "채널"}
-                            width={40}
-                            height={40}
-                          />
-                        ) : null}
-                        <VideoMetaRowContainer>
-                          {video.channel ? <span>{video.channel}</span> : null}
-                          {meta.subscriberLabel || meta.uploadLabel ? (
-                            <VideoMetaRowSubContainer>
-                              {meta.subscriberLabel ?? ""}
-                              {meta.uploadLabel ? (
-                                <strong>{meta.uploadLabel}</strong>
-                              ) : null}
-                            </VideoMetaRowSubContainer>
-                          ) : null}
-                        </VideoMetaRowContainer>
-                      </VideoMetaRow>
-                    </VideoSourceCard>
-                  );
-                })}
-              </VideoList>
+              {highlightGroups.length ? (
+                <>
+                  {highlightGroups.map((group) => (
+                    <HighlightSection key={group.slotId}>
+                      <HighlightHeader>
+                        <HighlightTitle>{group.label} 신규 진입</HighlightTitle>
+                        <HighlightChip>NEW</HighlightChip>
+                      </HighlightHeader>
+                      <HighlightSubtitle>
+                        {group.videos.length}개 근거영상이 {group.label}에서
+                        감지됐어요.
+                      </HighlightSubtitle>
+                      <VideoList>
+                        {group.videos.map((video) => renderVideoCard(video))}
+                      </VideoList>
+                    </HighlightSection>
+                  ))}
+                </>
+              ) : null}
+              {regularVideos.length ? (
+                <VideoList>
+                  {regularVideos.map((video) => renderVideoCard(video))}
+                </VideoList>
+              ) : !highlightGroups.length ? (
+                <VideoList>
+                  {activeSlot.tabs.videos.map((video) =>
+                    renderVideoCard(video)
+                  )}
+                </VideoList>
+              ) : null}
             </VideoBlock>
           ) : null}
         </SectionBlock>
@@ -1998,7 +2155,7 @@ const BriefingLandingPageClient = ({
           {`< ${data.deliveryMeta.backLabel}`}
         </BackButton>
         <TopMeta ref={topBarRef}>
-          <TopTime>{data.deliveryMeta.displayLabel}</TopTime>
+          <TopTime>{topTimeLabel}</TopTime>
           {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
           <TopTagline>{data.deliveryMeta.tagline}</TopTagline> */}
           <TopDescription>구독 키워드 브리핑</TopDescription>
@@ -2336,17 +2493,31 @@ const SummaryBriefingItem = styled.li`
 
 const SummaryBriefingTitle = styled.p`
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #111827;
   margin-top: 12px;
+  margin-bottom: 4px;
+  line-height: 1.4;
 `;
 
-const SummaryBriefingBody = styled.p`
+const SummaryBriefingBody = styled.div`
   margin: 0;
   font-size: 15px;
   line-height: 1.55;
   color: #1f2a4a;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const SummaryBriefingParagraph = styled.span`
+  display: block;
+  line-height: 1.6;
+  strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
 `;
 
 const SummaryNotice = styled.p`
@@ -2381,6 +2552,72 @@ const SummaryVideoPlaceholderCard = styled(SummaryVideoCard)`
 const SummaryVideoPlaceholderText = styled.span`
   font-size: 13px;
   font-weight: 600;
+  color: #475569;
+`;
+
+const DetectedSlotBadges = styled.div`
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+`;
+
+const DetectedSlotBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(31, 42, 74, 0.08);
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const VideoNewBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: #fb7185;
+  border-radius: 999px;
+`;
+
+const HighlightSection = styled.div`
+  margin-bottom: 28px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.85);
+`;
+
+const HighlightHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const HighlightTitle = styled.span`
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+`;
+
+const HighlightChip = styled.span`
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const HighlightSubtitle = styled.p`
+  margin: 8px 0 16px;
+  font-size: 13px;
   color: #475569;
 `;
 
@@ -2468,7 +2705,7 @@ const InsightBlock = styled.section`
 `;
 
 const VideoBlock = styled.section`
-  margin-top: 24px;
+  margin-top: 60px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2491,11 +2728,14 @@ const BlockDivider = styled.div`
   );
 `;
 
-const BlockTitle = styled.h3`
+const BlockTitle = styled.h3<{ $variant?: "default" | "summary" }>`
   margin: 0;
   font-size: 16px;
   font-weight: 800;
   color: #1f2a4a;
+  border-bottom: ${({ $variant }) =>
+    $variant === "summary" ? "1px solid rgba(15, 23, 42, 0.12)" : "none"};
+  padding-bottom: ${({ $variant }) => ($variant === "summary" ? "6px" : 0)};
 `;
 
 const BlockMeta = styled.span`
