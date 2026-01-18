@@ -25,7 +25,7 @@ import {
   removeMarkTags,
   timeAgo,
 } from "@/utils/formatter";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { logCtaClick } from "@/api/apiClient";
 import MarketInsightSection from "@/components/marketInsight/MarketInsightSection";
 
@@ -144,6 +144,7 @@ interface Props {
   renderMarketIntro?: ReactNode;
   forceStockPreview?: boolean;
   slotLabel?: SlotLabel;
+  onVideoNavigate?: () => void;
 }
 
 interface ValuationDetail {
@@ -254,7 +255,11 @@ const LandingDomesticStockInsightSection = ({
   renderMarketIntro,
   forceStockPreview = false,
   slotLabel,
+  onVideoNavigate,
 }: Props) => {
+  const handleSectionVideoNavigate = useCallback(() => {
+    if (onVideoNavigate) onVideoNavigate();
+  }, [onVideoNavigate]);
   const { data, label, updated_at } = section;
   const appliedSlotLabel = resolveInsightSlotCopy(label ?? "", slotLabel);
   const slotPhase = slotLabel?.phase;
@@ -485,18 +490,19 @@ const LandingDomesticStockInsightSection = ({
           <SubSectionIntro>{stockIntroText}</SubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
-              <StockCard
-                key={`${stock.ticker}-${stock.stock_name}`}
-                stock={stock}
-                hideInsightSectionList={hideInsightSectionList}
-                showCommentPreview={
-                  shouldShowStockPreview && (!isCollapsed || index < 3)
-                }
-                sectionLabel={label}
-                slotPhase={slotPhase}
-              />
-            ))}
-          </StockList>
+          <StockCard
+            key={`${stock.ticker}-${stock.stock_name}`}
+            stock={stock}
+            hideInsightSectionList={hideInsightSectionList}
+            showCommentPreview={
+              shouldShowStockPreview && (!isCollapsed || index < 3)
+            }
+            sectionLabel={label}
+            slotPhase={slotPhase}
+            onVideoNavigate={onVideoNavigate}
+          />
+        ))}
+      </StockList>
           {hasMoreStocks ? (
             <StockListToggleRow>
               <StockDetailToggleButton
@@ -1071,13 +1077,18 @@ const StockCard = ({
   showCommentPreview = false,
   sectionLabel,
   slotPhase,
+  onVideoNavigate,
 }: {
   stock: InsightStock;
   hideInsightSectionList?: boolean;
   showCommentPreview?: boolean;
   sectionLabel?: string;
   slotPhase?: BriefingSlot | null;
+  onVideoNavigate?: () => void;
 }) => {
+  const handleVideoNavigate = useCallback(() => {
+    if (onVideoNavigate) onVideoNavigate();
+  }, [onVideoNavigate]);
   const [showDetails, setShowDetails] = useState(false);
   const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(
     null
@@ -1402,6 +1413,7 @@ const StockCard = ({
       sources={outlineVideoSources}
       onEvidenceClick={handleEvidenceClick}
       hasVideoSources={hasVideoSources}
+      onVideoNavigate={handleVideoNavigate}
     />
   ) : null;
 
@@ -1988,6 +2000,7 @@ export const StockVideoSources = ({
   hasVideoSources = true,
   heading,
   hideEvidenceButton = false,
+  onVideoNavigate,
 }: {
   sources?: InsightStock["sources"];
   stockName: string;
@@ -1995,7 +2008,9 @@ export const StockVideoSources = ({
   hasVideoSources?: boolean;
   heading?: string;
   hideEvidenceButton?: boolean;
+  onVideoNavigate?: () => void;
 }) => {
+  const handleVideoNavigate = onVideoNavigate ?? (() => {});
   const user = useRecoilValue(userState);
   const eligibleSources = filterSourcesWithOutline(sources);
   const normalizedSources = eligibleSources
@@ -2034,6 +2049,7 @@ export const StockVideoSources = ({
           const hasChannel = Boolean(source.channel_name);
 
           const handleVideoLinkClick = () => {
+            handleVideoNavigate();
             // 네비게이션을 막지 않도록 await 금지
             void logCtaClick(
               "metion_button_click",

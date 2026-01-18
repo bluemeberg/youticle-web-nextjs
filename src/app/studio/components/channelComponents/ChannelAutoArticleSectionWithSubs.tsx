@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -519,7 +519,7 @@ export default function ChannelAutoArticleSection() {
     }
   };
 
-  const fetchRegisteredChannel = async () => {
+  const fetchRegisteredChannel = useCallback(async () => {
     try {
       const res = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${user.id}`
@@ -531,7 +531,7 @@ export default function ChannelAutoArticleSection() {
     } catch (err) {
       console.error("채널 조회 실패:", err);
     }
-  };
+  }, [user.id]);
 
   useEffect(() => {
     if (!user.id) {
@@ -542,7 +542,7 @@ export default function ChannelAutoArticleSection() {
     }
     fetchRegisteredChannel();
     fetchTodayArticles(user.id);
-  }, [user.id]);
+  }, [user.id, fetchRegisteredChannel]);
 
   // 등록된 채널 개요 (overview -> description)
   const truncateOrOverview = () => {

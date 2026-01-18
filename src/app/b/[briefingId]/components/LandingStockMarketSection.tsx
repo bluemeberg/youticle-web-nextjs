@@ -31,6 +31,7 @@ interface StockMarketSectionProps {
   slotLabel?: SlotLabel;
   hideMarketSection?: boolean;
   hideStockSection?: boolean;
+  onVideoNavigate?: () => void;
 }
 
 export type StockInsightSectionDetail = {
@@ -228,7 +229,9 @@ const LandingStockMarketSection = ({
   slotLabel,
   hideMarketSection = false,
   hideStockSection = false,
+  onVideoNavigate,
 }: StockMarketSectionProps) => {
+  const handleVideoNavigate = onVideoNavigate ?? (() => {});
   const delta = section.data?.market_delta_insights;
   const rawStocks = (section.data?.stocks ?? []) as InsightStock[];
   const stocks = rawStocks.filter(
@@ -699,6 +702,7 @@ const LandingStockMarketSection = ({
                 showCommentPreview={
                   shouldShowStockPreview && (!isCollapsed || index < 3)
                 }
+                onVideoNavigate={handleVideoNavigate}
               />
             ))}
           </StockList>
@@ -730,11 +734,14 @@ const StockInsightCard = ({
   stock,
   sectionLabel,
   showCommentPreview = false,
+  onVideoNavigate,
 }: {
   stock: InsightStock;
   sectionLabel?: string | null;
   showCommentPreview?: boolean;
+  onVideoNavigate?: () => void;
 }) => {
+  const handleVideoNavigate = onVideoNavigate ?? (() => {});
   const insight = stock.metric_insight;
   const insightSections = (insight?.insight_sections ?? []) as Array<
     StockInsightSectionDetail | null | undefined
@@ -840,6 +847,7 @@ const StockInsightCard = ({
       sources={stock.sources}
       onEvidenceClick={handleEvidenceClick}
       hasVideoSources={hasVideoSources}
+      onVideoNavigate={handleVideoNavigate}
     />
   ) : null;
 

@@ -924,6 +924,15 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
   //   fetchThumbnails();
   // }, [id]);
   const router = useRouter();
+  const briefFromParam = searchParams?.get("from");
+  const briefIdParam = searchParams?.get("briefingId");
+  const fromPathParam = searchParams?.get("fromPath");
+  const backToBriefingHref = useMemo(() => {
+    if (briefFromParam !== "briefing") return null;
+    if (fromPathParam) return fromPathParam;
+    if (briefIdParam) return `/b/${briefIdParam}`;
+    return null;
+  }, [briefFromParam, briefIdParam, fromPathParam]);
   const [isLeaving, setIsLeaving] = useState(false); // 페이지 전환 중 여부
   const [isLeavingHome, setIsLeavingHome] = useState(false); // 페이지 전환 중 여부
   const [isInsightVisible, setIsInsightVisible] = useState(false);
@@ -1214,7 +1223,11 @@ const ClientSide = ({ id, detailData, clientContext }: ClientSideProps) => {
         onBack={() => {
           setIsLeaving(true); // 로딩 유지
           setTimeout(() => {
-            router.push("/");
+            if (backToBriefingHref) {
+              router.push(backToBriefingHref);
+            } else {
+              router.push("/");
+            }
           }, 500);
         }}
         onBackHome={() => {

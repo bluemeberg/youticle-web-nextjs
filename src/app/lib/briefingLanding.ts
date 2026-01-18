@@ -409,10 +409,9 @@ const filterVideosByMoneySection = (
   ].filter((token): token is string => Boolean(token));
   if (normalizedTargets.length === 0) return videos;
   const targetSet = new Set(normalizedTargets);
-  const filtered = videos.filter((video) =>
+  return videos.filter((video) =>
     targetSet.has(normalizeSectionText(video.section))
   );
-  return filtered.length > 0 ? filtered : videos;
 };
 
 const extractSummaryLines = (section?: InsightSection) => {
@@ -508,7 +507,6 @@ const toNumericSubscribers = (value: unknown): number | undefined => {
 
 const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
   videos.map((video) => {
-    console.log(video);
     const headline =
       video.summary_data?.headline_title?.trim() ||
       video.summary_data?.headline_sub_title?.trim() ||
@@ -703,6 +701,9 @@ const fetchMoneySlotPackage = async (
     videoUrl.searchParams.set("time_slot", String(slotNumber));
     if (date) videoUrl.searchParams.set("date", date);
     const allVideos = await fetchJson<DataProps[]>(videoUrl.toString());
+    console.log("check");
+    console.log(allVideos);
+    console.log(sectionKey);
     let filteredVideos = filterVideosByMoneySection(allVideos, sectionKey);
     if (slotPhase === "ranking") {
       filteredVideos = filteredVideos.filter((video) => video.is_new);

@@ -23,6 +23,7 @@ import type { SlotLabel } from "@/utils/briefingSlot";
 interface LandingCryptoInsightSectionProps {
   section: InsightSection;
   slotLabel?: SlotLabel;
+  onVideoNavigate?: () => void;
 }
 
 function buildCryptoMarketInsights(
@@ -229,6 +230,7 @@ const convertAssetToStock = (asset: InsightAsset): InsightStock => {
 const LandingCryptoInsightSection = ({
   section,
   slotLabel,
+  onVideoNavigate,
 }: LandingCryptoInsightSectionProps) => {
   const normalizedSection = useMemo<InsightSection>(() => {
     const rawStocks = section.data?.stocks ?? [];
@@ -314,6 +316,7 @@ const LandingCryptoInsightSection = ({
       renderMarketIntro={marketIntro}
       forceStockPreview
       slotLabel={slotLabel}
+      onVideoNavigate={onVideoNavigate}
     />
   );
 };

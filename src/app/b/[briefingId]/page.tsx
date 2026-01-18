@@ -11,7 +11,7 @@ interface BriefingLandingPageProps {
 
 export const revalidate = 0;
 
-export const normalizeSearchParams = (
+const normalizeSearchParams = (
   raw?: Record<string, string | string[] | undefined>
 ) => {
   if (!raw) return undefined;
@@ -41,5 +41,11 @@ export default async function BriefingLandingPage({
     notFound();
   }
 
-  return <BriefingLandingPageClient data={data} />;
+  return (
+    <BriefingLandingPageClient
+      data={data}
+      phoneNumber={query?.phone}
+      queryParams={query}
+    />
+  );
 }

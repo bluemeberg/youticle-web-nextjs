@@ -12,7 +12,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { logCtaClick } from "@/api/apiClient";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRecoilValue } from "recoil";
 import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
@@ -34,7 +35,11 @@ import LandingCryptoInsightSection from "./LandingCryptoInsightSection";
 import LandingStockMarketSection from "./LandingStockMarketSection";
 import type { SlotLabel, BriefingSlot } from "@/utils/briefingSlot";
 import { resolveInsightSlotCopy } from "@/utils/insightSlotCopy";
-import { parseSubscribersCount, timeAgoUTC } from "@/utils/formatter";
+import {
+  getOrCreateAnonId,
+  parseSubscribersCount,
+  timeAgoUTC,
+} from "@/utils/formatter";
 import type {
   InsightMarketDeltaCard,
   InsightSection,
@@ -240,7 +245,12 @@ const resolveVideoMetaInfo = (video: VideoCardData) => {
 const renderSummaryContent = (
   briefing: SummaryBriefingData | undefined,
   fallback: string[],
-  videoLookup?: Map<string, VideoCardData>
+  videoLookup?: Map<string, VideoCardData>,
+  onVideoNavigate?: () => void,
+  buildDetailHref?: (
+    videoId: string,
+    customHref?: string | null
+  ) => string | undefined
 ) => {
   if (briefing && briefing.entries.length > 0) {
     return (
@@ -260,7 +270,9 @@ const renderSummaryContent = (
               key={safeKey(entry.title || entry.soWhat || "brief", idx)}
             >
               {entry.title ? (
-                <SummaryBriefingTitle>{entry.title}</SummaryBriefingTitle>
+                <SummaryBriefingTitle>
+                  {stripMarkTags(entry.title)}
+                </SummaryBriefingTitle>
               ) : null}
               {entry.soWhat ? (
                 <SummaryBriefingBody>
@@ -280,7 +292,10 @@ const renderSummaryContent = (
                       return (
                         <SummaryVideoPlaceholderCard
                           key={safeKey(videoId, videoIndex)}
-                          href={`/detail/${videoId}`}
+                          href={
+                            buildDetailHref?.(videoId) || `/detail/${videoId}`
+                          }
+                          onClick={onVideoNavigate}
                         >
                           <SummaryVideoPlaceholderText>
                             근거영상 #{videoIndex + 1}
@@ -292,7 +307,12 @@ const renderSummaryContent = (
                     return (
                       <SummaryVideoCard
                         key={safeKey(videoId, videoIndex)}
-                        href={video.href ?? `/detail/${video.id}`}
+                        href={
+                          buildDetailHref?.(video.id, video.href) ||
+                          video.href ||
+                          `/detail/${video.id}`
+                        }
+                        onClick={onVideoNavigate}
                       >
                         <VideoSourceContainer>
                           <VideoThumbnailWrapper>
@@ -1118,7 +1138,7 @@ function diffCountFromBase(
 
 function badgeForDiff(diff: number) {
   if (diff <= 0) return null;
-  if (diff >= 5) return "NEW";
+  return `+${diff}`;
   return `+${diff}`;
 }
 
@@ -1144,6 +1164,14 @@ const resolveSlotPhase = (slotId?: string | null): BriefingSlot | null => {
   return BRIEFING_SLOT_PHASES.includes(slotId as BriefingSlot)
     ? (slotId as BriefingSlot)
     : null;
+};
+
+const resolveSectionKey = (section: RecapSection) => {
+  if (section.id?.startsWith("section-")) {
+    return section.id.replace("section-", "");
+  }
+  if (section.anchor) return section.anchor;
+  return section.id || section.title;
 };
 
 const buildSectionSlotLabel = (
@@ -1184,15 +1212,195 @@ type HighlightStockItem = {
 
 interface BriefingLandingPageClientProps {
   data?: BriefingLandingData;
+  phoneNumber?: string;
+  queryParams?: Record<string, string>;
 }
 
 const BriefingLandingPageClient = ({
   data: inputData,
+  phoneNumber,
+  queryParams,
 }: BriefingLandingPageClientProps) => {
   const data = inputData ?? MOCK_DATA;
-  console.log(data);
   const router = useRouter();
   const user = useRecoilValue(userState);
+  const routeSearchParams = useSearchParams();
+  const normalizedPhone = useMemo(() => {
+    if (phoneNumber?.trim()) return phoneNumber.trim();
+    const paramPhone = routeSearchParams?.get("phone")?.trim();
+    return paramPhone && paramPhone.length > 0 ? paramPhone : null;
+  }, [phoneNumber, routeSearchParams]);
+  const inferredDate =
+    queryParams?.date ||
+    queryParams?.data ||
+    data.deliveryMeta.displayLabel?.split("·")?.[0]?.trim() ||
+    "today";
+  const anonIdRef = useRef<string | null>(null);
+  const videoObserverRef = useRef<IntersectionObserver | null>(null);
+  const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const loggedVideoViewsRef = useRef(new Set<string>());
+  const loggedViewThresholdsRef = useRef<Record<string, Set<number>>>({});
+  const VIDEO_VIEW_THRESHOLDS = [0.3, 0.5, 0.8];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      anonIdRef.current = getOrCreateAnonId();
+    } catch {
+      anonIdRef.current = null;
+    }
+  }, []);
+
+  type VideoInteractionAction =
+    | "video_card_click"
+    | `video_card_view_${number}`;
+
+  const logVideoInteraction = useCallback(
+    (
+      action: VideoInteractionAction,
+      videoId: string,
+      sectionKeyParam: string,
+      slotId?: string | null
+    ) => {
+      let anonId = anonIdRef.current;
+      if (!anonId && typeof window !== "undefined") {
+        try {
+          anonId = getOrCreateAnonId();
+          anonIdRef.current = anonId;
+        } catch {
+          anonId = null;
+        }
+      }
+      const context: Record<string, string> = {
+        video_id: videoId,
+        section_key: sectionKeyParam,
+      };
+      if (slotId) context.slot_key = slotId;
+      console.log(normalizedPhone);
+      console.log(inferredDate);
+      const userEmailFallback =
+        normalizedPhone && inferredDate
+          ? `${inferredDate}_${normalizedPhone}`
+          : normalizedPhone || undefined;
+      console.log(userEmailFallback);
+      logCtaClick(
+        action,
+        user?.id,
+        user?.email ?? userEmailFallback,
+        anonId ?? undefined,
+        context
+      );
+    },
+    [user?.id, user?.email, normalizedPhone, inferredDate]
+  );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const target = entry.target as HTMLElement;
+          const videoId = target.dataset.videoId;
+          if (!videoId) return;
+          const sectionKeyParam = target.dataset.sectionKey ?? "";
+          const slotId = target.dataset.slotId ?? undefined;
+          const ratio = entry.intersectionRatio;
+          if (ratio >= 0.95 && !loggedVideoViewsRef.current.has(videoId)) {
+            loggedVideoViewsRef.current.add(videoId);
+            logVideoInteraction(
+              "video_card_view_100",
+              videoId,
+              sectionKeyParam,
+              slotId
+            );
+          }
+          const loggedSet =
+            loggedViewThresholdsRef.current[videoId] ?? new Set<number>();
+          VIDEO_VIEW_THRESHOLDS.forEach((threshold) => {
+            if (ratio >= threshold && !loggedSet.has(threshold)) {
+              loggedSet.add(threshold);
+              loggedViewThresholdsRef.current[videoId] = loggedSet;
+              const label = Math.round(threshold * 100);
+              logVideoInteraction(
+                `video_card_view_${label}` as any,
+                videoId,
+                sectionKeyParam,
+                slotId
+              );
+            }
+          });
+        });
+      },
+      { threshold: VIDEO_VIEW_THRESHOLDS }
+    );
+    videoObserverRef.current = observer;
+    Object.values(videoRefs.current).forEach((node) => {
+      if (node) observer.observe(node);
+    });
+    return () => {
+      observer.disconnect();
+      videoObserverRef.current = null;
+    };
+  }, [logVideoInteraction]);
+
+  const attachVideoObserver = useCallback(
+    (videoId: string, sectionKeyParam: string, slotId?: string | null) =>
+      (node: HTMLDivElement | null) => {
+        const prev = videoRefs.current[videoId];
+        if (prev && videoObserverRef.current) {
+          videoObserverRef.current.unobserve(prev);
+        }
+        if (node) {
+          node.dataset.videoId = videoId;
+          node.dataset.sectionKey = sectionKeyParam;
+          node.dataset.slotId = slotId ?? "";
+          videoRefs.current[videoId] = node;
+          videoObserverRef.current?.observe(node);
+        } else {
+          if (videoRefs.current[videoId]) {
+            videoObserverRef.current?.unobserve(videoRefs.current[videoId]!);
+          }
+          delete videoRefs.current[videoId];
+        }
+      },
+    []
+  );
+  const [landingPath, setLandingPath] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setLandingPath(window.location.pathname + window.location.search);
+  }, []);
+
+  const buildBriefingDetailHref = useCallback(
+    (videoId?: string | null, customHref?: string | null) => {
+      if (customHref) {
+        if (customHref.startsWith("/detail/")) {
+          const detailUrl = new URL(customHref, "http://placeholder.local");
+          detailUrl.searchParams.set("from", "briefing");
+          if (data.briefingId) {
+            detailUrl.searchParams.set("briefingId", data.briefingId);
+          }
+          if (landingPath) {
+            detailUrl.searchParams.set("fromPath", landingPath);
+          }
+          const query = detailUrl.searchParams.toString();
+          return `${detailUrl.pathname}${query ? `?${query}` : ""}`;
+        }
+        return customHref;
+      }
+      if (!videoId) return undefined;
+      const params = new URLSearchParams();
+      params.set("from", "briefing");
+      if (data.briefingId) {
+        params.set("briefingId", data.briefingId);
+      }
+      if (landingPath) {
+        params.set("fromPath", landingPath);
+      }
+      return `/detail/${videoId}?${params.toString()}`;
+    },
+    [data.briefingId, landingPath]
+  );
 
   const topBarRef = useRef<HTMLDivElement | null>(null);
   const keywordNavRef = useRef<HTMLDivElement | null>(null);
@@ -1333,6 +1541,9 @@ const BriefingLandingPageClient = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [showInitialLoading, setShowInitialLoading] = useState(true);
+  const [slotFeedbackBySection, setSlotFeedbackBySection] = useState<
+    Record<string, "good" | "meh" | "bad" | null>
+  >({});
   const stickyOffset = topbarH + keywordNavH + 16;
 
   const scrollOffset = 58;
@@ -1550,7 +1761,7 @@ const BriefingLandingPageClient = ({
         channel_name: video.channel,
         channel_thumbnail: video.channelThumbnail,
         summary: summaryText,
-        href: video.href ?? (video.id ? `/detail/${video.id}` : undefined),
+        href: buildBriefingDetailHref(video.id, video.href),
       } as InsightSource;
     });
   };
@@ -1668,6 +1879,7 @@ const BriefingLandingPageClient = ({
           <LandingCryptoInsightSection
             section={insightSection}
             slotLabel={slotLabel ?? undefined}
+            onVideoNavigate={triggerNavigationLoading}
           />
         );
       }
@@ -1676,6 +1888,7 @@ const BriefingLandingPageClient = ({
           <LandingStockMarketSection
             section={insightSection}
             slotLabel={slotLabel ?? undefined}
+            onVideoNavigate={triggerNavigationLoading}
           />
         );
       }
@@ -1683,6 +1896,7 @@ const BriefingLandingPageClient = ({
         <LandingDomesticStockInsightSection
           section={insightSection}
           slotLabel={slotLabel ?? undefined}
+          onVideoNavigate={triggerNavigationLoading}
         />
       );
     })();
@@ -1694,11 +1908,9 @@ const BriefingLandingPageClient = ({
     const now = new Date();
     const hasVideoData =
       (activeSlot?.tabs.videos && activeSlot.tabs.videos.length > 0) || false;
-    const isFutureSlot =
-      !insightSection &&
-      !hasVideoData &&
-      slotTime &&
-      slotTime.getTime() > now.getTime();
+    const isFutureSlot = Boolean(
+      slotTime && slotTime.getTime() > now.getTime()
+    );
     const isMissingSlot = !insightSection && !hasVideoData && !isFutureSlot;
 
     const summaryBriefing = section.summaryBriefing;
@@ -1706,61 +1918,105 @@ const BriefingLandingPageClient = ({
       ? activeSlot.tabs.market.commentary
       : section.summaryBullets;
     const summaryVideoLookup = buildVideoLookup(slotPool);
+    const sectionKey = resolveSectionKey(section);
+    const handleFeedback = async (rating: "good" | "meh" | "bad") => {
+      setSlotFeedbackBySection((prev) => ({ ...prev, [sectionKey]: rating }));
+      const primaryVideoId = activeSlot?.tabs.videos?.[0]?.id;
+      const videoIdentifier = primaryVideoId ?? `slot:${sectionKey}`;
+      const videoIdWithPhone = normalizedPhone
+        ? `${videoIdentifier}__phone:${normalizedPhone}`
+        : videoIdentifier;
+      try {
+        await fetch("https://youticle.shop/editor/first-impressions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video_id: videoIdWithPhone,
+            reaction: rating,
+          }),
+        });
+      } catch (error) {
+        console.warn("Failed to post slot feedback", error);
+      }
+      const message =
+        rating === "good"
+          ? "좋아요! 이런 구성을 더 추천드릴게요."
+          : rating === "meh"
+          ? "의견 고맙습니다. 더 나은 편성을 고민해볼게요."
+          : "피드백 감사합니다. 개선에 참고할게요.";
+      showToast(message);
+    };
     const renderVideoCard = (video: VideoCardData) => {
       const videoTitle = stripMarkTags(video.title);
       const meta = resolveVideoMetaInfo(video);
       const highlightedSlots = resolveDetectedSlotLabels(video.detectedSlots);
       const showNewBadge = video.isNew ?? !baseIds.has(video.id);
+      const detailHref =
+        buildBriefingDetailHref(video.id, video.href) ?? `/detail/${video.id}`;
+      const handleCardClick = () => {
+        logVideoInteraction(
+          "video_card_click",
+          video.id,
+          sectionKey,
+          activeSlot?.id ?? null
+        );
+        triggerNavigationLoading();
+      };
       return (
-        <VideoSourceCard
+        <VideoCardObserver
           key={video.id}
-          href={video.href ?? `/detail/${video.id}`}
+          ref={attachVideoObserver(
+            video.id,
+            sectionKey,
+            activeSlot?.id ?? null
+          )}
         >
-          <VideoSourceContainer>
-            <VideoThumbnailWrapper>
-              <VideoThumb src={video.thumbnail} alt={video.title} />
-            </VideoThumbnailWrapper>
-            <VideoSourceBody>
-              {/* {showNewBadge ? (
+          <VideoSourceCard href={detailHref} onClick={handleCardClick}>
+            <VideoSourceContainer>
+              <VideoThumbnailWrapper>
+                <VideoThumb src={video.thumbnail} alt={video.title} />
+              </VideoThumbnailWrapper>
+              <VideoSourceBody>
+                {/* {showNewBadge ? (
                 <VideoNewBadge aria-label="새 영상">NEW</VideoNewBadge>
               ) : null} */}
-              <VideoTitleRow>
-                <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
-              </VideoTitleRow>
-              {video.summary.length ? (
-                <VideoSummary>
-                  {video.summary.map((line, idx) => (
-                    <span
-                      key={safeKey(line, idx)}
-                      dangerouslySetInnerHTML={createMarkedHtml(line)}
-                    />
-                  ))}
-                </VideoSummary>
+                <VideoTitleRow>
+                  <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
+                </VideoTitleRow>
+                {video.summary.length ? (
+                  <VideoSummary>
+                    {video.summary.map((line, idx) => (
+                      <span
+                        key={safeKey(line, idx)}
+                        dangerouslySetInnerHTML={createMarkedHtml(line)}
+                      />
+                    ))}
+                  </VideoSummary>
+                ) : null}
+              </VideoSourceBody>
+            </VideoSourceContainer>
+            <VideoMetaRow>
+              {video.channelThumbnail ? (
+                <ChannelAvatarImage
+                  src={video.channelThumbnail}
+                  alt={video.channel || "채널"}
+                  width={40}
+                  height={40}
+                />
               ) : null}
-            </VideoSourceBody>
-          </VideoSourceContainer>
-          <VideoMetaRow>
-            {video.channelThumbnail ? (
-              <ChannelAvatarImage
-                src={video.channelThumbnail}
-                alt={video.channel || "채널"}
-                width={40}
-                height={40}
-              />
-            ) : null}
-            <VideoMetaRowContainer>
-              {video.channel ? <span>{video.channel}</span> : null}
-              {meta.subscriberLabel || meta.uploadLabel ? (
-                <VideoMetaRowSubContainer>
-                  {meta.subscriberLabel ?? ""}
-                  {meta.uploadLabel ? (
-                    <strong>{meta.uploadLabel}</strong>
-                  ) : null}
-                </VideoMetaRowSubContainer>
-              ) : null}
-            </VideoMetaRowContainer>
-          </VideoMetaRow>
-          {/* {highlightedSlots.length ? (
+              <VideoMetaRowContainer>
+                {video.channel ? <span>{video.channel}</span> : null}
+                {meta.subscriberLabel || meta.uploadLabel ? (
+                  <VideoMetaRowSubContainer>
+                    {meta.subscriberLabel ?? ""}
+                    {meta.uploadLabel ? (
+                      <strong>{meta.uploadLabel}</strong>
+                    ) : null}
+                  </VideoMetaRowSubContainer>
+                ) : null}
+              </VideoMetaRowContainer>
+            </VideoMetaRow>
+            {/* {highlightedSlots.length ? (
             <DetectedSlotBadges>
               {highlightedSlots.map((slotLabel, slotIdx) => (
                 <DetectedSlotBadge key={safeKey(slotLabel, slotIdx)}>
@@ -1769,7 +2025,8 @@ const BriefingLandingPageClient = ({
               ))}
             </DetectedSlotBadges>
           ) : null} */}
-        </VideoSourceCard>
+          </VideoSourceCard>
+        </VideoCardObserver>
       );
     };
     const isBaselineSlot =
@@ -1804,8 +2061,8 @@ const BriefingLandingPageClient = ({
       });
       return Object.values(groups).sort(
         (a, b) =>
-          (SLOT_DETECTED_PRIORITY[a.slotId] ?? Number.MAX_SAFE_INTEGER) -
-          (SLOT_DETECTED_PRIORITY[b.slotId] ?? Number.MAX_SAFE_INTEGER)
+          (SLOT_DETECTED_PRIORITY[b.slotId] ?? Number.MAX_SAFE_INTEGER) -
+          (SLOT_DETECTED_PRIORITY[a.slotId] ?? Number.MAX_SAFE_INTEGER)
       );
     })();
     const highlightedVideoIds = new Set(
@@ -1843,6 +2100,7 @@ const BriefingLandingPageClient = ({
         (video) => !fallbackIds.has(video.id)
       );
     }
+    const hasAnyVideos = activeSlot.tabs.videos.length > 0;
     const slotMetaText = (() => {
       if (isStaticSection || !slotPool.length) return null;
       if (isFutureSlot && pendingSlot?.displayTime) {
@@ -1854,6 +2112,31 @@ const BriefingLandingPageClient = ({
       }
       return null;
     })();
+    const renderVideoEmptyNotice = (variant: "future" | "empty") => {
+      if (!activeSlot) return null;
+      const slotTitleText =
+        slotLabel?.title?.trim() ||
+        activeSlot.label?.trim() ||
+        section.title.trim();
+      const slotDescriptionText =
+        slotLabel?.description?.trim() || activeSlot.description?.trim() || "";
+      const message =
+        variant === "future"
+          ? "해당 슬롯에서 선정된 TOP5 영상은 아직 준비 중이에요."
+          : "해당 슬롯에서 선정된 TOP5 영상은 오늘은 없습니다.";
+      return (
+        <VideoEmptyNotice>
+          <VideoEmptyNoticeTitle>{slotTitleText}</VideoEmptyNoticeTitle>
+          {slotDescriptionText ? (
+            <VideoEmptyNoticeDescription>
+              {slotDescriptionText}
+            </VideoEmptyNoticeDescription>
+          ) : null}
+          <VideoEmptyNoticeMessage>{message}</VideoEmptyNoticeMessage>
+        </VideoEmptyNotice>
+      );
+    };
+
     const slotSelectorBar =
       !isStaticSection && slotPool.length ? (
         <SectionSlotBar $withShadow>
@@ -1915,7 +2198,9 @@ const BriefingLandingPageClient = ({
     if (isFutureSlot || isMissingSlot) {
       return {
         slotBar: slotSelectorBar,
-        node: renderEmptySlotNotice(isFutureSlot ? "pending" : "error"),
+        node: isMissingSlot
+          ? renderVideoEmptyNotice("empty")
+          : renderEmptySlotNotice("pending"),
       };
     }
 
@@ -1942,7 +2227,9 @@ const BriefingLandingPageClient = ({
                 renderSummaryContent(
                   summaryBriefing,
                   summaryLines,
-                  summaryVideoLookup
+                  summaryVideoLookup,
+                  triggerNavigationLoading,
+                  buildBriefingDetailHref
                 )
               ) : (
                 <SummaryNotice>
@@ -1951,7 +2238,13 @@ const BriefingLandingPageClient = ({
                 </SummaryNotice>
               )
             ) : (
-              renderSummaryContent(undefined, summaryLines, summaryVideoLookup)
+              renderSummaryContent(
+                undefined,
+                summaryLines,
+                summaryVideoLookup,
+                triggerNavigationLoading,
+                buildBriefingDetailHref
+              )
             )}
           </SummaryCard>
 
@@ -2022,13 +2315,41 @@ const BriefingLandingPageClient = ({
                 <VideoList>
                   {regularVideos.map((video) => renderVideoCard(video))}
                 </VideoList>
-              ) : !highlightGroups.length && !fallbackRegularGroup ? (
+              ) : hasAnyVideos &&
+                !highlightGroups.length &&
+                !fallbackRegularGroup ? (
                 <VideoList>
                   {activeSlot.tabs.videos.map((video) =>
                     renderVideoCard(video)
                   )}
                 </VideoList>
               ) : null}
+              {!hasAnyVideos
+                ? renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
+                : null}
+              <FeedbackSection>
+                <FeedbackQuestion>
+                  오늘 브리핑 구성은 어땠나요?
+                </FeedbackQuestion>
+                <FeedbackActions>
+                  {[
+                    { key: "good" as const, label: "최고였어요", emoji: "😀" },
+                    { key: "meh" as const, label: "괜찮아요", emoji: "😐" },
+                    { key: "bad" as const, label: "별로였어요", emoji: "😞" },
+                  ].map((option) => (
+                    <FeedbackButton
+                      key={option.key}
+                      type="button"
+                      aria-label={option.label}
+                      $active={slotFeedbackBySection[sectionKey] === option.key}
+                      onClick={() => handleFeedback(option.key)}
+                    >
+                      <span aria-hidden>{option.emoji}</span>
+                      <small>{option.label}</small>
+                    </FeedbackButton>
+                  ))}
+                </FeedbackActions>
+              </FeedbackSection>
             </VideoBlock>
           ) : null}
         </SectionBlock>
@@ -2065,7 +2386,9 @@ const BriefingLandingPageClient = ({
           {renderSummaryContent(
             section.summaryBriefing,
             summaryLines,
-            rankingVideoLookup
+            rankingVideoLookup,
+            triggerNavigationLoading,
+            buildBriefingDetailHref
           )}
         </SummaryCard>
 
@@ -2218,7 +2541,7 @@ const BriefingLandingPageClient = ({
           <TopTime>{topTimeLabel}</TopTime>
           {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
           <TopTagline>{data.deliveryMeta.tagline}</TopTagline> */}
-          <TopDescription>구독 키워드 브리핑</TopDescription>
+          <TopDescription>구독 키워드 브리핑 통합 페이지</TopDescription>
         </TopMeta>
       </TopAppBar>
 
@@ -2345,8 +2668,9 @@ const TopTime = styled.span`
 `;
 
 const TopDescription = styled.span`
-  font-size: 13px;
+  font-size: 15px;
   color: #6b7280;
+  margin-top: 4px;
 `;
 
 const TopTagline = styled.span`
@@ -2923,6 +3247,83 @@ const InsightEmptyState = styled.div`
   font-size: 13px;
   color: #5a648a;
   background: #f9faff;
+`;
+
+const VideoEmptyNotice = styled(InsightEmptyState)`
+  margin-top: 16px;
+`;
+
+const VideoEmptyNoticeTitle = styled.strong`
+  display: block;
+  font-size: 14px;
+  color: #1f2937;
+`;
+
+const VideoEmptyNoticeDescription = styled.span`
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #475569;
+`;
+
+const VideoEmptyNoticeMessage = styled.p`
+  margin-top: 10px;
+  font-size: 13px;
+  color: #475569;
+`;
+
+const FeedbackSection = styled.div`
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const FeedbackQuestion = styled.span`
+  font-weight: 750;
+  color: #1f2a4a;
+`;
+
+const FeedbackActions = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const FeedbackButton = styled.button<{ $active: boolean }>`
+  flex: 1;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid
+    ${({ $active }) =>
+      $active ? "rgba(59,130,246,0.6)" : "rgba(15,23,42,0.12)"};
+  background: ${({ $active }) =>
+    $active ? "rgba(59,130,246,0.08)" : "rgba(255,255,255,0.9)"};
+  font-weight: 700;
+  font-size: 14px;
+  color: #1f2a4a;
+  cursor: pointer;
+  span {
+    font-size: 22px;
+  }
+  small {
+    font-size: 12px;
+    color: #475569;
+  }
+`;
+
+const VideoCardObserver = styled.div`
+  width: 100%;
+  display: block;
 `;
 
 const IndexGrid = styled.div`
