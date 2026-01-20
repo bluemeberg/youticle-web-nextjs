@@ -111,6 +111,7 @@ export interface MoneyRecapSection {
   summaryBullets: string[];
   summaryBriefing?: SummaryBriefingData;
   defaultSlotId?: string;
+  sourceKey?: string;
   slotPackages: SlotPackage[];
 }
 
@@ -146,7 +147,8 @@ export interface SlotPackage {
   displayTime: string; // "21:00"
   default?: boolean;
   description?: string;
-  tabs: {
+  isPrefetched?: boolean;
+  tabs?: {
     market: {
       indexes: Array<{
         id: string;
@@ -169,7 +171,7 @@ export interface SlotPackage {
     };
     videos: VideoCardData[];
     insightSection?: InsightSection;
-  };
+  } | null;
 }
 
 export interface VideoCardData {
@@ -284,92 +286,89 @@ const renderSummaryContent = (
                   ))}
                 </SummaryBriefingBody>
               ) : null}
-              {entry.videoIds?.length ? (
-                <SummaryVideoCardList>
-                  {entry.videoIds.map((videoId, videoIndex) => {
+              {(() => {
+                const referencedVideos = (entry.videoIds ?? [])
+                  .map((videoId) => {
                     const video = videoLookup?.get(videoId);
-                    if (!video) {
+                    return video ? { videoId, video } : null;
+                  })
+                  .filter(
+                    (item): item is { videoId: string; video: VideoCardData } =>
+                      Boolean(item)
+                  );
+                if (!referencedVideos.length) return null;
+                return (
+                  <SummaryVideoCardList>
+                    {referencedVideos.map(({ videoId, video }, videoIndex) => {
+                      const meta = resolveVideoMetaInfo(video);
                       return (
-                        <SummaryVideoPlaceholderCard
+                        <SummaryVideoCard
                           key={safeKey(videoId, videoIndex)}
                           href={
-                            buildDetailHref?.(videoId) || `/detail/${videoId}`
+                            buildDetailHref?.(video.id, video.href) ||
+                            video.href ||
+                            `/detail/${video.id}`
                           }
                           onClick={onVideoNavigate}
                         >
-                          <SummaryVideoPlaceholderText>
-                            근거영상 #{videoIndex + 1}
-                          </SummaryVideoPlaceholderText>
-                        </SummaryVideoPlaceholderCard>
-                      );
-                    }
-                    const meta = resolveVideoMetaInfo(video);
-                    return (
-                      <SummaryVideoCard
-                        key={safeKey(videoId, videoIndex)}
-                        href={
-                          buildDetailHref?.(video.id, video.href) ||
-                          video.href ||
-                          `/detail/${video.id}`
-                        }
-                        onClick={onVideoNavigate}
-                      >
-                        <VideoSourceContainer>
-                          <VideoThumbnailWrapper>
-                            <VideoThumbnailImage
-                              src={video.thumbnail}
-                              alt={video.title}
-                              width={120}
-                              height={68}
-                              style={{ width: "100%", height: "100%" }}
-                            />
-                          </VideoThumbnailWrapper>
-                          <VideoSourceBody>
-                            <VideoTitle>
-                              {stripMarkTags(video.title)}
-                            </VideoTitle>
-                            {video.summary.length ? (
-                              <VideoSummary>
-                                {stripMarkTags(video.summary[0])}
-                              </VideoSummary>
+                          <VideoSourceContainer>
+                            <VideoThumbnailWrapper>
+                              <VideoThumbnailImage
+                                src={video.thumbnail}
+                                alt={video.title}
+                                width={120}
+                                height={68}
+                                style={{ width: "100%", height: "100%" }}
+                              />
+                            </VideoThumbnailWrapper>
+                            <VideoSourceBody>
+                              <VideoTitle>
+                                {stripMarkTags(video.title)}
+                              </VideoTitle>
+                              {video.summary.length ? (
+                                <VideoSummary>
+                                  {stripMarkTags(video.summary[0])}
+                                </VideoSummary>
+                              ) : null}
+                            </VideoSourceBody>
+                          </VideoSourceContainer>
+                          <VideoMetaRow>
+                            {video.channelThumbnail ? (
+                              <ChannelAvatarImage
+                                src={video.channelThumbnail}
+                                alt={video.channel || "채널"}
+                                width={40}
+                                height={40}
+                                style={{ width: 40, height: 40 }}
+                              />
                             ) : null}
-                          </VideoSourceBody>
-                        </VideoSourceContainer>
-                        <VideoMetaRow>
-                          {video.channelThumbnail ? (
-                            <ChannelAvatarImage
-                              src={video.channelThumbnail}
-                              alt={video.channel || "채널"}
-                              width={40}
-                              height={40}
-                              style={{ width: 40, height: 40 }}
-                            />
-                          ) : null}
-                          <VideoMetaRowContainer>
-                            {video.channel ? (
-                              <span>{video.channel}</span>
-                            ) : null}
-                            {(() => {
-                              const meta = resolveVideoMetaInfo(video);
-                              if (!meta.subscriberLabel && !meta.uploadLabel) {
-                                return null;
-                              }
-                              return (
+                            <VideoMetaRowContainer>
+                              {video.channel ? (
+                                <span>{video.channel}</span>
+                              ) : null}
+                              {meta.subscriberLabel || meta.uploadLabel ? (
                                 <VideoMetaRowSubContainer>
                                   {meta.subscriberLabel ?? ""}
                                   {meta.uploadLabel ? (
                                     <strong>{meta.uploadLabel}</strong>
                                   ) : null}
                                 </VideoMetaRowSubContainer>
-                              );
-                            })()}
-                          </VideoMetaRowContainer>
-                        </VideoMetaRow>
-                      </SummaryVideoCard>
-                    );
-                  })}
-                </SummaryVideoCardList>
-              ) : null}
+                              ) : null}
+                            </VideoMetaRowContainer>
+                          </VideoMetaRow>
+                          {/* <BulletList>
+                            {video.summary.map((line, idx) => (
+                              <li key={safeKey(line, idx)}>
+                                {stripMarkTags(line)}
+                              </li>
+                            ))}
+                          </BulletList> */}
+                        </SummaryVideoCard>
+                      );
+                    })}
+                  </SummaryVideoCardList>
+                );
+              })()}
             </SummaryBriefingItem>
           ))}
         </SummaryBriefingList>
@@ -1109,6 +1108,44 @@ const isRankingSection = (
 const filterOutRankingSlots = (slots: SlotPackage[]) =>
   slots.filter((slot) => slot.id !== "ranking");
 
+type SlotDataCache = Record<string, SlotPackage["tabs"] | undefined>;
+
+const makeSlotCacheKey = (sectionId: string, slotId: string) =>
+  `${sectionId}::${slotId}`;
+
+const buildInitialSlotCache = (sections: RecapSection[]): SlotDataCache => {
+  const cache: SlotDataCache = {};
+  sections.filter(isMoneySection).forEach((section) => {
+    section.slotPackages.forEach((slot) => {
+      if (slot.tabs) {
+        cache[makeSlotCacheKey(section.id, slot.id)] = slot.tabs;
+      }
+    });
+  });
+  return cache;
+};
+
+const resolveCachedSlotTabs = (
+  cache: SlotDataCache,
+  sectionId: string,
+  slotId?: string | null
+) => {
+  if (!slotId) return undefined;
+  return cache[makeSlotCacheKey(sectionId, slotId)];
+};
+
+const normalizeDateForApiParam = (value?: string | null) => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  if (digits.length === 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  }
+  return trimmed;
+};
+
 function safeKey(text: string, idx: number) {
   return `${idx}-${text}`;
 }
@@ -1235,6 +1272,13 @@ const BriefingLandingPageClient = ({
     queryParams?.data ||
     data.deliveryMeta.displayLabel?.split("·")?.[0]?.trim() ||
     "today";
+  const normalizedDateForApi = useMemo(() => {
+    return normalizeDateForApiParam(queryParams?.date ?? queryParams?.data);
+  }, [queryParams]);
+  const normalizedDateForLogging = useMemo(() => {
+    if (!inferredDate) return null;
+    return inferredDate.replace(/\s+/g, "").trim() || null;
+  }, [inferredDate]);
   const anonIdRef = useRef<string | null>(null);
   const videoObserverRef = useRef<IntersectionObserver | null>(null);
   const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1276,22 +1320,22 @@ const BriefingLandingPageClient = ({
         section_key: sectionKeyParam,
       };
       if (slotId) context.slot_key = slotId;
-      console.log(normalizedPhone);
-      console.log(inferredDate);
-      const userEmailFallback =
-        normalizedPhone && inferredDate
-          ? `${inferredDate}_${normalizedPhone}`
-          : normalizedPhone || undefined;
-      console.log(userEmailFallback);
+      const userEmailFallback = (() => {
+        if (!normalizedPhone) return undefined;
+        if (normalizedDateForLogging && action.startsWith("video_card_view")) {
+          return `${normalizedDateForLogging}-${normalizedPhone}`;
+        }
+        return normalizedPhone;
+      })();
       logCtaClick(
         action,
         user?.id,
-        user?.email ?? userEmailFallback,
+        userEmailFallback + sectionKeyParam + slotId,
         anonId ?? undefined,
         context
       );
     },
-    [user?.id, user?.email, normalizedPhone, inferredDate]
+    [user?.id, user?.email, normalizedPhone, normalizedDateForLogging]
   );
 
   useEffect(() => {
@@ -1497,39 +1541,6 @@ const BriefingLandingPageClient = ({
     Record<string, string>
   >(buildInitialRankingWindows);
 
-  // “TOP5 갱신 기대감” 도트 표시용: base 대비 diffCount가 있으면 videos 탭에 dot
-  const baseVideoIdsByMoneySection = useMemo(() => {
-    const m: Record<string, Set<string>> = {};
-    data.sections.filter(isMoneySection).forEach((section) => {
-      const baseSlotId = getDefaultSlotId(section);
-      const visibleSlots = filterOutRankingSlots(section.slotPackages);
-      const baseSlot =
-        visibleSlots.find((s) => s.id === baseSlotId) || visibleSlots[0];
-      const ids = new Set<string>(
-        (baseSlot?.tabs.videos ?? []).map((v) => v.id)
-      );
-      m[section.id] = ids;
-    });
-    return m;
-  }, [data.sections]);
-
-  const diffBadgeByMoneySectionSlot = useMemo(() => {
-    const m: Record<
-      string,
-      Record<string, { diff: number; badge: string | null }>
-    > = {};
-    data.sections.filter(isMoneySection).forEach((section) => {
-      const baseIds =
-        baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
-      m[section.id] = {};
-      filterOutRankingSlots(section.slotPackages).forEach((slot) => {
-        const diff = diffCountFromBase(baseIds, slot.tabs.videos);
-        m[section.id][slot.id] = { diff, badge: badgeForDiff(diff) };
-      });
-    });
-    return m;
-  }, [data.sections, baseVideoIdsByMoneySection]);
-
   useEffect(() => {
     setActiveSlotBySection(buildInitialSlotState());
     setRankingTabBySection(buildInitialRankingTabs());
@@ -1544,6 +1555,40 @@ const BriefingLandingPageClient = ({
   const [slotFeedbackBySection, setSlotFeedbackBySection] = useState<
     Record<string, "good" | "meh" | "bad" | null>
   >({});
+  const [slotDataCache, setSlotDataCache] = useState<SlotDataCache>(() =>
+    buildInitialSlotCache(data.sections)
+  );
+  const [slotLoadingMap, setSlotLoadingMap] = useState<
+    Record<string, boolean>
+  >({});
+  const baseVideoIdsByMoneySection = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    data.sections.filter(isMoneySection).forEach((section) => {
+      const baseSlotId = getDefaultSlotId(section);
+      if (!baseSlotId) return;
+      const tabs = resolveCachedSlotTabs(slotDataCache, section.id, baseSlotId);
+      const ids = new Set<string>((tabs?.videos ?? []).map((video) => video.id));
+      map[section.id] = ids;
+    });
+    return map;
+  }, [data.sections, slotDataCache]);
+
+  const diffBadgeByMoneySectionSlot = useMemo(() => {
+    const map: Record<
+      string,
+      Record<string, { diff: number; badge: string | null }>
+    > = {};
+    data.sections.filter(isMoneySection).forEach((section) => {
+      const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
+      map[section.id] = {};
+      filterOutRankingSlots(section.slotPackages).forEach((slot) => {
+        const tabs = resolveCachedSlotTabs(slotDataCache, section.id, slot.id);
+        const diff = tabs ? diffCountFromBase(baseIds, tabs.videos) : 0;
+        map[section.id][slot.id] = { diff, badge: badgeForDiff(diff) };
+      });
+    });
+    return map;
+  }, [data.sections, baseVideoIdsByMoneySection, slotDataCache]);
   const stickyOffset = topbarH + keywordNavH + 16;
 
   const scrollOffset = 58;
@@ -1574,6 +1619,22 @@ const BriefingLandingPageClient = ({
     const timer = setTimeout(() => setShowInitialLoading(false), 600);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setSlotDataCache((prev) => {
+      const next = { ...prev } as SlotDataCache;
+      data.sections
+        .filter(isMoneySection)
+        .forEach((section) => {
+          section.slotPackages.forEach((slot) => {
+            if (slot.tabs) {
+              next[makeSlotCacheKey(section.id, slot.id)] = slot.tabs;
+            }
+          });
+        });
+      return next;
+    });
+  }, [data.sections]);
   const scrollToAnchor = useCallback(
     (anchor: string) => {
       if (typeof window === "undefined") return false;
@@ -1642,6 +1703,58 @@ const BriefingLandingPageClient = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2200);
   };
+
+  const ensureSlotData = useCallback(
+    async (section: MoneyRecapSection, slotId: string) => {
+      if (!section || !slotId) return;
+      const cacheKey = makeSlotCacheKey(section.id, slotId);
+      if (slotDataCache[cacheKey]) return;
+      if (!section.sourceKey) return;
+      setSlotLoadingMap((prev) => ({ ...prev, [cacheKey]: true }));
+      try {
+        const params = new URLSearchParams({
+          section: section.sourceKey,
+          slot: slotId,
+        });
+        if (normalizedDateForApi) {
+          params.set("date", normalizedDateForApi);
+        }
+        const response = await fetch(`/api/briefing/slot?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch slot ${slotId}`);
+        }
+        const payload = (await response.json()) as SlotPackage;
+        if (payload?.tabs) {
+          setSlotDataCache((prev) => ({
+            ...prev,
+            [cacheKey]: payload.tabs,
+          }));
+        }
+      } catch (error) {
+        console.warn("Failed to fetch slot data", error);
+        showToast("슬롯 데이터를 불러오지 못했어요");
+      } finally {
+        setSlotLoadingMap((prev) => {
+          const next = { ...prev };
+          delete next[cacheKey];
+          return next;
+        });
+      }
+    },
+    [slotDataCache, normalizedDateForApi]
+  );
+
+  useEffect(() => {
+    data.sections.filter(isMoneySection).forEach((section) => {
+      const defaultSlotId = getDefaultSlotId(section);
+      if (
+        defaultSlotId &&
+        !resolveCachedSlotTabs(slotDataCache, section.id, defaultSlotId)
+      ) {
+        ensureSlotData(section, defaultSlotId);
+      }
+    });
+  }, [data.sections, slotDataCache, ensureSlotData]);
 
   const triggerNavigationLoading = () => setIsNavigating(true);
 
@@ -1724,6 +1837,7 @@ const BriefingLandingPageClient = ({
    */
   const onSlotSelect = (section: MoneyRecapSection, slotId: string) => {
     setActiveSlotBySection((prev) => ({ ...prev, [section.id]: slotId }));
+    ensureSlotData(section, slotId);
 
     const slot = filterOutRankingSlots(section.slotPackages).find(
       (s) => s.id === slotId
@@ -1766,10 +1880,15 @@ const BriefingLandingPageClient = ({
     });
   };
 
-  const buildVideoLookup = (packages: SlotPackage[]) => {
+  const buildVideoLookup = (
+    sectionId: string,
+    packages: SlotPackage[],
+    cache: SlotDataCache
+  ) => {
     const map = new Map<string, VideoCardData>();
     packages.forEach((pkg) => {
-      pkg.tabs.videos.forEach((video) => {
+      const tabs = resolveCachedSlotTabs(cache, sectionId, pkg.id);
+      tabs?.videos.forEach((video) => {
         if (video?.id) {
           map.set(video.id, video);
         }
@@ -1864,13 +1983,21 @@ const BriefingLandingPageClient = ({
     const activeSlotId = activeSlotBySection[section.id];
     const activeSlot =
       slotPool.find((slot) => slot.id === activeSlotId) ?? slotPool[0];
-    const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
-    const activeDiff =
-      diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlotId]?.diff ?? 0;
+    const activeSlotTabs = resolveCachedSlotTabs(
+      slotDataCache,
+      section.id,
+      activeSlot?.id
+    );
+    const activeSlotCacheKey = activeSlot
+      ? makeSlotCacheKey(section.id, activeSlot.id)
+      : null;
+    const isSlotLoading = activeSlotCacheKey
+      ? Boolean(slotLoadingMap[activeSlotCacheKey])
+      : false;
     const slotLabel: SlotLabel | null = activeSlot
       ? buildSectionSlotLabel(section.title, activeSlot)
       : null;
-    const insightSection = activeSlot?.tabs.insightSection;
+    const insightSection = activeSlotTabs?.insightSection;
 
     const insightContent = (() => {
       if (!insightSection) return null;
@@ -1901,27 +2028,32 @@ const BriefingLandingPageClient = ({
       );
     })();
 
+    const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
     const isStaticSection =
       slotPool.length === 1 && slotPool[0]?.id === "general";
     const pendingSlot = activeSlot ?? slotPool[0];
     const slotTime = parseSlotTimeToDate(pendingSlot?.displayTime);
     const now = new Date();
-    const hasVideoData =
-      (activeSlot?.tabs.videos && activeSlot.tabs.videos.length > 0) || false;
+    const hasVideoData = Boolean(activeSlotTabs?.videos?.length);
     const isFutureSlot = Boolean(
       slotTime && slotTime.getTime() > now.getTime()
     );
-    const isMissingSlot = !insightSection && !hasVideoData && !isFutureSlot;
+    const isMissingSlot =
+      !insightSection && !hasVideoData && !isFutureSlot && !isSlotLoading;
 
     const summaryBriefing = section.summaryBriefing;
-    const summaryLines = activeSlot?.tabs.market.commentary?.length
-      ? activeSlot.tabs.market.commentary
+    const summaryLines = activeSlotTabs?.market.commentary?.length
+      ? activeSlotTabs.market.commentary
       : section.summaryBullets;
-    const summaryVideoLookup = buildVideoLookup(slotPool);
+    const summaryVideoLookup = buildVideoLookup(
+      section.id,
+      slotPool,
+      slotDataCache
+    );
     const sectionKey = resolveSectionKey(section);
     const handleFeedback = async (rating: "good" | "meh" | "bad") => {
       setSlotFeedbackBySection((prev) => ({ ...prev, [sectionKey]: rating }));
-      const primaryVideoId = activeSlot?.tabs.videos?.[0]?.id;
+      const primaryVideoId = activeSlotTabs?.videos?.[0]?.id;
       const videoIdentifier = primaryVideoId ?? `slot:${sectionKey}`;
       const videoIdWithPhone = normalizedPhone
         ? `${videoIdentifier}__phone:${normalizedPhone}`
@@ -1950,7 +2082,7 @@ const BriefingLandingPageClient = ({
       const videoTitle = stripMarkTags(video.title);
       const meta = resolveVideoMetaInfo(video);
       const highlightedSlots = resolveDetectedSlotLabels(video.detectedSlots);
-      const showNewBadge = video.isNew ?? !baseIds.has(video.id);
+      const showNewBadge = video.isNew ?? false;
       const detailHref =
         buildBriefingDetailHref(video.id, video.href) ?? `/detail/${video.id}`;
       const handleCardClick = () => {
@@ -2029,6 +2161,7 @@ const BriefingLandingPageClient = ({
         </VideoCardObserver>
       );
     };
+    const slotVideos = activeSlotTabs?.videos ?? [];
     const isBaselineSlot =
       isStaticSection ||
       !activeSlot ||
@@ -2043,12 +2176,12 @@ const BriefingLandingPageClient = ({
         string,
         { slotId: string; label: string; videos: VideoCardData[] }
       > = {};
-      activeSlot.tabs.videos.forEach((video) => {
+      slotVideos.forEach((video) => {
         const primarySlot = pickPrimaryDetectedSlot(video.detectedSlots);
         videoPrimarySlotMap.set(video.id, primarySlot);
         if (!primarySlot) return;
         const shouldHighlight =
-          video.isNew ?? (!baseIds.has(video.id) && Boolean(primarySlot));
+          video.isNew ?? Boolean(primarySlot && baseIds.has(video.id) === false);
         if (!shouldHighlight) return;
         if (!groups[primarySlot.slotId]) {
           groups[primarySlot.slotId] = {
@@ -2069,10 +2202,8 @@ const BriefingLandingPageClient = ({
       highlightGroups.flatMap((group) => group.videos.map((video) => video.id))
     );
     let regularVideos = highlightGroups.length
-      ? activeSlot.tabs.videos.filter(
-          (video) => !highlightedVideoIds.has(video.id)
-        )
-      : activeSlot.tabs.videos;
+      ? slotVideos.filter((video) => !highlightedVideoIds.has(video.id))
+      : slotVideos;
     const fallbackRegularGroup = (() => {
       if (HIGHLIGHT_SECTION_OPT_OUT_TITLES.has(section.title)) return null;
       const undetected = regularVideos.filter(
@@ -2100,7 +2231,7 @@ const BriefingLandingPageClient = ({
         (video) => !fallbackIds.has(video.id)
       );
     }
-    const hasAnyVideos = activeSlot.tabs.videos.length > 0;
+    const hasAnyVideos = slotVideos.length > 0;
     const slotMetaText = (() => {
       if (isStaticSection || !slotPool.length) return null;
       if (isFutureSlot && pendingSlot?.displayTime) {
@@ -2133,6 +2264,20 @@ const BriefingLandingPageClient = ({
             </VideoEmptyNoticeDescription>
           ) : null}
           <VideoEmptyNoticeMessage>{message}</VideoEmptyNoticeMessage>
+        </VideoEmptyNotice>
+      );
+    };
+    const renderVideoLoadingNotice = () => {
+      const slotTitleText =
+        slotLabel?.title?.trim() ||
+        activeSlot?.label?.trim() ||
+        section.title.trim();
+      return (
+        <VideoEmptyNotice>
+          <VideoEmptyNoticeTitle>{slotTitleText}</VideoEmptyNoticeTitle>
+          <VideoEmptyNoticeMessage>
+            슬롯 데이터를 불러오고 있어요...
+          </VideoEmptyNoticeMessage>
         </VideoEmptyNotice>
       );
     };
@@ -2267,11 +2412,17 @@ const BriefingLandingPageClient = ({
             <VideoBlock>
               <BlockHeader>
                 <BlockTitle>오늘 갱신된 TOP5 근거영상 모아보기</BlockTitle>
-                {activeDiff > 0 ? (
-                  <BlockBadge>
-                    새 근거영상 <strong>+{activeDiff}</strong>
-                  </BlockBadge>
-                ) : null}
+                {(() => {
+                  const diff =
+                    diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlot.id]
+                      ?.diff ?? 0;
+                  if (diff <= 0) return null;
+                  return (
+                    <BlockBadge>
+                      새 근거영상 <strong>+{diff}</strong>
+                    </BlockBadge>
+                  );
+                })()}
               </BlockHeader>
               {highlightGroups.length ? (
                 <>
@@ -2319,13 +2470,13 @@ const BriefingLandingPageClient = ({
                 !highlightGroups.length &&
                 !fallbackRegularGroup ? (
                 <VideoList>
-                  {activeSlot.tabs.videos.map((video) =>
-                    renderVideoCard(video)
-                  )}
+                  {slotVideos.map((video) => renderVideoCard(video))}
                 </VideoList>
               ) : null}
               {!hasAnyVideos
-                ? renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
+                ? isSlotLoading
+                  ? renderVideoLoadingNotice()
+                  : renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
                 : null}
               <FeedbackSection>
                 <FeedbackQuestion>
@@ -2452,13 +2603,13 @@ const BriefingLandingPageClient = ({
                           ) : null}
                         </VideoMetaRowContainer>
                       </VideoMetaRow>
-                      <BulletList>
+                      {/* <BulletList>
                         {video.summary.map((line, idx) => (
                           <li key={safeKey(line, idx)}>
                             {stripMarkTags(line)}
                           </li>
                         ))}
-                      </BulletList>
+                      </BulletList> */}
                     </VideoContent>
                   </VideoCard>
                 );
@@ -2925,18 +3076,6 @@ const SummaryVideoCardList = styled.div`
 const SummaryVideoCard = styled(VideoSourceCard)`
   background: #f8fafc;
   border-color: rgba(148, 163, 184, 0.4);
-`;
-
-const SummaryVideoPlaceholderCard = styled(SummaryVideoCard)`
-  align-items: center;
-  justify-content: center;
-  min-height: 72px;
-`;
-
-const SummaryVideoPlaceholderText = styled.span`
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
 `;
 
 const DetectedSlotBadges = styled.div`

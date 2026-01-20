@@ -95,7 +95,8 @@ export interface SlotPackage {
   displayTime: string;
   description?: string;
   default?: boolean;
-  tabs: SlotTabContent;
+  tabs?: SlotTabContent | null;
+  isPrefetched?: boolean;
 }
 
 
@@ -117,6 +118,7 @@ export interface MoneyRecapSection extends BaseRecapSection {
   type: MoneySectionType;
   slotPackages: SlotPackage[];
   defaultSlotId?: string;
+  sourceKey?: string;
 }
 
 export interface RealEstateRecapSection extends BaseRecapSection {

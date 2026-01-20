@@ -29,8 +29,14 @@ const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
 const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
-type SlotPhase = "baseline" | "slot2" | "slot3" | "slot4" | "slot5" | "ranking";
-type MoneySectionKey = keyof typeof MONEY_SECTION_CONFIGS;
+export type SlotPhase =
+  | "baseline"
+  | "slot2"
+  | "slot3"
+  | "slot4"
+  | "slot5"
+  | "ranking";
+export type MoneySectionKey = keyof typeof MONEY_SECTION_CONFIGS;
 type GeneralSectionKey = keyof typeof GENERAL_SECTION_CONFIGS;
 
 interface KakaoIntegratedBriefingItem {
@@ -354,6 +360,18 @@ const ALL_SLOT_PHASES: SlotPhase[] = [
   "slot5",
 ];
 
+const SLOT_PHASE_SET = new Set<SlotPhase>(ALL_SLOT_PHASES);
+const MONEY_SECTION_KEYS = Object.keys(
+  MONEY_SECTION_CONFIGS
+) as MoneySectionKey[];
+
+export const isSlotPhase = (value: string): value is SlotPhase =>
+  SLOT_PHASE_SET.has(value as SlotPhase);
+
+export const isMoneySectionKey = (
+  value: string
+): value is MoneySectionKey => MONEY_SECTION_KEYS.includes(value as MoneySectionKey);
+
 const SLOT_TIME_MAP: Record<SlotPhase, number> = {
   baseline: 1,
   slot2: 2,
@@ -370,7 +388,7 @@ const toDisplayDate = (value?: string) => {
   return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}`;
 };
 
-const toApiDate = (value?: string) => {
+export const toApiDate = (value?: string) => {
   if (!value) return undefined;
   if (value.includes("-")) return value;
   const digits = value.replace(/[^0-9]/g, "");
@@ -679,7 +697,19 @@ const buildSlotPackage = (
   };
 };
 
-const fetchMoneySlotPackage = async (
+const buildLazySlotPlaceholder = (slotPhase: SlotPhase): SlotPackage => {
+  const slotConfig = SLOT_LABELS[slotPhase] ?? SLOT_LABELS.slot4;
+  return {
+    id: slotPhase,
+    label: slotConfig.title,
+    displayTime: slotConfig.time,
+    description: slotConfig.description,
+    tabs: undefined,
+    isPrefetched: false,
+  };
+};
+
+export const fetchMoneySlotPackage = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
   date?: string
@@ -738,39 +768,53 @@ const fetchMoneySlotPackage = async (
 const buildMoneySection = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
-  date?: string
+  date?: string,
+  options?: { preloadAllSlots?: boolean }
 ): Promise<RecapSection> => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
+  const targetPhases = options?.preloadAllSlots
+    ? ALL_SLOT_PHASES
+    : [slotPhase];
   const slotResults = await Promise.all(
-    ALL_SLOT_PHASES.map((phase) =>
-      fetchMoneySlotPackage(sectionKey, phase, date).catch((error) => {
-        console.warn(
-          `fetchMoneySlotPackage failed (${sectionKey}/${phase})`,
-          error
-        );
-        return buildSlotPackage(phase, []);
-      })
+    targetPhases.map((phase) =>
+      fetchMoneySlotPackage(sectionKey, phase, date)
+        .then((pkg) => ({ phase, pkg }))
+        .catch((error) => {
+          console.warn(
+            `fetchMoneySlotPackage failed (${sectionKey}/${phase})`,
+            error
+          );
+          return { phase, pkg: buildSlotPackage(phase, []) };
+        })
     )
   );
-  const slotPackages = slotResults.filter((pkg): pkg is SlotPackage =>
-    Boolean(pkg)
-  );
-  if (slotPackages.length === 0) {
-    throw new Error(`No slot packages for ${sectionKey}`);
-  }
+
+  const fetchedMap = new Map<SlotPhase, SlotPackage>();
+  slotResults.forEach(({ phase, pkg }) => {
+    if (pkg) {
+      fetchedMap.set(phase, { ...pkg, isPrefetched: true });
+    }
+  });
+
+  const slotPackages = ALL_SLOT_PHASES.map((phase) => {
+    const fetched = fetchedMap.get(phase);
+    return fetched ?? buildLazySlotPlaceholder(phase);
+  });
+
   const preferredPackage =
-    slotPackages.find((pkg) => pkg.id === slotPhase) ??
-    slotPackages[slotPackages.length - 1];
+    fetchedMap.get(slotPhase) ?? slotPackages.find((pkg) => pkg.tabs) ?? slotPackages[0];
+
   const summaryBriefing = await fetchIntegratedBriefing(config.label);
   return {
     id: `section-${sectionKey}`,
     type: config.type,
     anchor: config.anchor,
     title: config.label,
-    summaryBullets: preferredPackage.tabs.market.commentary,
+    summaryBullets: preferredPackage?.tabs?.market.commentary ?? [],
     summaryBriefing,
-    defaultSlotId: preferredPackage.id,
+    defaultSlotId: preferredPackage?.id,
     slotPackages,
+    sourceKey: sectionKey,
   } as RecapSection;
 };
 
