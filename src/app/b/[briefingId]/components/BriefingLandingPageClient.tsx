@@ -1615,9 +1615,9 @@ const BriefingLandingPageClient = ({
   }, [isNavigating]);
 
   useEffect(() => {
-    setShowInitialLoading(true);
-    const timer = setTimeout(() => setShowInitialLoading(false), 600);
-    return () => clearTimeout(timer);
+    if (typeof window === "undefined") return;
+    const raf = requestAnimationFrame(() => setShowInitialLoading(false));
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
