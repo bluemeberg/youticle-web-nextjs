@@ -2275,9 +2275,12 @@ const BriefingLandingPageClient = ({
       return (
         <VideoEmptyNotice>
           <VideoEmptyNoticeTitle>{slotTitleText}</VideoEmptyNoticeTitle>
-          <VideoEmptyNoticeMessage>
-            슬롯 데이터를 불러오고 있어요...
-          </VideoEmptyNoticeMessage>
+          <VideoLoadingRow>
+            <InlineSpinner aria-hidden />
+            <VideoEmptyNoticeMessage>
+              슬롯 데이터를 불러오고 있어요...
+            </VideoEmptyNoticeMessage>
+          </VideoLoadingRow>
         </VideoEmptyNotice>
       );
     };
@@ -2404,7 +2407,10 @@ const BriefingLandingPageClient = ({
             </InsightBlock>
           ) : !isStaticSection ? (
             <InsightEmptyState>
-              슬롯 인사이트를 불러오는 중이에요.
+              <VideoLoadingRow>
+                <InlineSpinner aria-hidden />
+                <span>슬롯 인사이트를 불러오는 중이에요…</span>
+              </VideoLoadingRow>
             </InsightEmptyState>
           ) : null}
 
@@ -3396,6 +3402,28 @@ const VideoEmptyNoticeTitle = styled.strong`
   display: block;
   font-size: 14px;
   color: #1f2937;
+`;
+
+const VideoLoadingRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+`;
+
+const InlineSpinner = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(30, 64, 175, 0.2);
+  border-top-color: rgba(30, 64, 175, 0.8);
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 const VideoEmptyNoticeDescription = styled.span`
