@@ -40,12 +40,16 @@ export default async function BriefingLandingPage({
   if (!data) {
     notFound();
   }
+  const requireEmailConnect =
+    query?.requireEmailConnect?.toLowerCase() === "true" ||
+    query?.requireEmailConnect === "1";
 
   return (
     <BriefingLandingPageClient
       data={data}
       phoneNumber={query?.phone}
       queryParams={query}
+      requireEmailConnect={requireEmailConnect}
     />
   );
 }

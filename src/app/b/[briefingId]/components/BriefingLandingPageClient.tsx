@@ -1251,17 +1251,22 @@ interface BriefingLandingPageClientProps {
   data?: BriefingLandingData;
   phoneNumber?: string;
   queryParams?: Record<string, string>;
+  requireEmailConnect?: boolean;
 }
 
 const BriefingLandingPageClient = ({
   data: inputData,
   phoneNumber,
   queryParams,
+  requireEmailConnect = false,
 }: BriefingLandingPageClientProps) => {
   const data = inputData ?? MOCK_DATA;
   const router = useRouter();
   const user = useRecoilValue(userState);
   const routeSearchParams = useSearchParams();
+  const forcedEmailParam = routeSearchParams?.get("requireEmailConnect");
+  const requireEmailFallback =
+    forcedEmailParam?.toLowerCase() === "true" || forcedEmailParam === "1";
   const normalizedPhone = useMemo(() => {
     if (phoneNumber?.trim()) return phoneNumber.trim();
     const paramPhone = routeSearchParams?.get("phone")?.trim();
@@ -1558,16 +1563,18 @@ const BriefingLandingPageClient = ({
   const [slotDataCache, setSlotDataCache] = useState<SlotDataCache>(() =>
     buildInitialSlotCache(data.sections)
   );
-  const [slotLoadingMap, setSlotLoadingMap] = useState<
-    Record<string, boolean>
-  >({});
+  const [slotLoadingMap, setSlotLoadingMap] = useState<Record<string, boolean>>(
+    {}
+  );
   const baseVideoIdsByMoneySection = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     data.sections.filter(isMoneySection).forEach((section) => {
       const baseSlotId = getDefaultSlotId(section);
       if (!baseSlotId) return;
       const tabs = resolveCachedSlotTabs(slotDataCache, section.id, baseSlotId);
-      const ids = new Set<string>((tabs?.videos ?? []).map((video) => video.id));
+      const ids = new Set<string>(
+        (tabs?.videos ?? []).map((video) => video.id)
+      );
       map[section.id] = ids;
     });
     return map;
@@ -1579,7 +1586,8 @@ const BriefingLandingPageClient = ({
       Record<string, { diff: number; badge: string | null }>
     > = {};
     data.sections.filter(isMoneySection).forEach((section) => {
-      const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
+      const baseIds =
+        baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
       map[section.id] = {};
       filterOutRankingSlots(section.slotPackages).forEach((slot) => {
         const tabs = resolveCachedSlotTabs(slotDataCache, section.id, slot.id);
@@ -1623,15 +1631,13 @@ const BriefingLandingPageClient = ({
   useEffect(() => {
     setSlotDataCache((prev) => {
       const next = { ...prev } as SlotDataCache;
-      data.sections
-        .filter(isMoneySection)
-        .forEach((section) => {
-          section.slotPackages.forEach((slot) => {
-            if (slot.tabs) {
-              next[makeSlotCacheKey(section.id, slot.id)] = slot.tabs;
-            }
-          });
+      data.sections.filter(isMoneySection).forEach((section) => {
+        section.slotPackages.forEach((slot) => {
+          if (slot.tabs) {
+            next[makeSlotCacheKey(section.id, slot.id)] = slot.tabs;
+          }
         });
+      });
       return next;
     });
   }, [data.sections]);
@@ -1772,7 +1778,25 @@ const BriefingLandingPageClient = ({
     router.push("/");
   };
 
-  const handleNavClick = (anchor: string) => {
+  const handleNavClick = (anchor: string, label?: string) => {
+    const identityParts = [
+      normalizedDateForLogging?.replace(/\s+/g, ""),
+      (label ?? anchor)?.replace(/\s+/g, ""),
+      normalizedPhone?.replace(/\s+/g, ""),
+    ].filter((value): value is string => Boolean(value && value.length > 0));
+    const navIdentity = identityParts.join("-") || undefined;
+    logCtaClick(
+      "briefing_section_nav",
+      user?.id,
+      navIdentity ?? user?.email ?? normalizedPhone ?? undefined,
+      undefined,
+      {
+        anchor,
+        label: label ?? anchor,
+        phone: normalizedPhone ?? "",
+        date: normalizedDateForLogging ?? "",
+      }
+    );
     pendingNavAnchorRef.current = anchor;
     setActiveAnchor(anchor);
     if (anchor === activeAnchor) {
@@ -1836,12 +1860,35 @@ const BriefingLandingPageClient = ({
    * 슬롯 변경 시: "TOP5 갱신" 기대감 토스트 + TOP5 탭에 dot 유지
    */
   const onSlotSelect = (section: MoneyRecapSection, slotId: string) => {
-    setActiveSlotBySection((prev) => ({ ...prev, [section.id]: slotId }));
-    ensureSlotData(section, slotId);
-
     const slot = filterOutRankingSlots(section.slotPackages).find(
       (s) => s.id === slotId
     );
+    const slotLabelCopy = slot
+      ? buildSectionSlotLabel(section.title, slot)
+      : null;
+    const slotIdentityParts = [
+      normalizedDateForLogging?.replace(/\s+/g, ""),
+      section.title.replace(/\s+/g, ""),
+      slotLabelCopy?.title?.replace(/\s+/g, ""),
+      normalizedPhone?.replace(/\s+/g, ""),
+    ].filter((value): value is string => Boolean(value && value.length > 0));
+    const slotIdentity = slotIdentityParts.join("-") || undefined;
+    logCtaClick(
+      "briefing_slot_select",
+      user?.id,
+      slotIdentity ?? user?.email ?? normalizedPhone ?? undefined,
+      undefined,
+      {
+        section_key: section.id,
+        slot_id: slotId,
+        slot_label: slotLabelCopy?.title ?? slotId,
+        phone: normalizedPhone ?? "",
+        date: normalizedDateForLogging ?? "",
+      }
+    );
+    setActiveSlotBySection((prev) => ({ ...prev, [section.id]: slotId }));
+    ensureSlotData(section, slotId);
+
     const diff = diffBadgeByMoneySectionSlot?.[section.id]?.[slotId]?.diff ?? 0;
     if (slot) {
       const slotCopy = buildSectionSlotLabel(section.title, slot);
@@ -2029,6 +2076,7 @@ const BriefingLandingPageClient = ({
     })();
 
     const baseIds = baseVideoIdsByMoneySection[section.id] ?? new Set<string>();
+    const slotTabsMissing = !activeSlotTabs;
     const isStaticSection =
       slotPool.length === 1 && slotPool[0]?.id === "general";
     const pendingSlot = activeSlot ?? slotPool[0];
@@ -2039,7 +2087,11 @@ const BriefingLandingPageClient = ({
       slotTime && slotTime.getTime() > now.getTime()
     );
     const isMissingSlot =
-      !insightSection && !hasVideoData && !isFutureSlot && !isSlotLoading;
+      !insightSection &&
+      !hasVideoData &&
+      !isFutureSlot &&
+      !isSlotLoading &&
+      !slotTabsMissing;
 
     const summaryBriefing = section.summaryBriefing;
     const summaryLines = activeSlotTabs?.market.commentary?.length
@@ -2181,7 +2233,8 @@ const BriefingLandingPageClient = ({
         videoPrimarySlotMap.set(video.id, primarySlot);
         if (!primarySlot) return;
         const shouldHighlight =
-          video.isNew ?? Boolean(primarySlot && baseIds.has(video.id) === false);
+          video.isNew ??
+          Boolean(primarySlot && baseIds.has(video.id) === false);
         if (!shouldHighlight) return;
         if (!groups[primarySlot.slotId]) {
           groups[primarySlot.slotId] = {
@@ -2480,7 +2533,7 @@ const BriefingLandingPageClient = ({
                 </VideoList>
               ) : null}
               {!hasAnyVideos
-                ? isSlotLoading
+                ? isSlotLoading || slotTabsMissing
                   ? renderVideoLoadingNotice()
                   : renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
                 : null}
@@ -2711,7 +2764,7 @@ const BriefingLandingPageClient = ({
               role="tab"
               aria-selected={activeAnchor === item.anchor}
               $active={activeAnchor === item.anchor}
-              onClick={() => handleNavClick(item.anchor)}
+              onClick={() => handleNavClick(item.anchor, item.label)}
             >
               {item.label}
             </KeywordChip>
@@ -2722,6 +2775,52 @@ const BriefingLandingPageClient = ({
           <SlotBarDock>{activeSectionSlotBar}</SlotBarDock>
         ) : null}
       </StickyControlDock>
+      <EmailConnectBanner>
+        <EmailConnectBody>
+          <EmailConnectTitle>
+            🔔 이 브리핑을 이메일로 저장하세요
+          </EmailConnectTitle>
+          {/* <EmailConnectDescription>
+            지금 이 브리핑을 이메일로 저장해 드려요. 같은 계정으로 언제든 다시
+            들어와 이어볼 수 있고, 내일 나오는 브리핑도 같은 주소로 받아보실 수
+            있어요.
+          </EmailConnectDescription> */}
+          <EmailBenefitList>
+            <li>키워드 분석을 내 이메일함에 바로 저장</li>
+            <li>내일 브리핑도 같은 주소로 자동 전송</li>
+            <li>언제든 복귀해 이어보기</li>
+          </EmailBenefitList>
+          <EmailConnectAction
+            type="button"
+            onClick={handleSave}
+            aria-label="Google로 이 브리핑 저장하기"
+          >
+            Google로 이 브리핑 저장하기
+          </EmailConnectAction>
+        </EmailConnectBody>
+      </EmailConnectBanner>
+      {!user?.email && (requireEmailConnect || requireEmailFallback) ? (
+        <EmailConnectBanner>
+          <EmailConnectBadge aria-hidden>🔔</EmailConnectBadge>
+          <EmailConnectBody>
+            <EmailConnectTitle>
+              이 브리핑을 이메일로 저장하세요
+            </EmailConnectTitle>
+            <EmailConnectDescription>
+              지금 보고 있는 키워드 분석을 이메일로 보내드리고 계속 받아볼 수
+              있어요. 향후 오픈되는 기능과 구독자 전용 혜택도 이메일로 가장 먼저
+              안내해 드릴게요.
+            </EmailConnectDescription>
+            <EmailConnectAction
+              type="button"
+              onClick={handleSave}
+              aria-label="Google로 이메일 연결하기"
+            >
+              Google로 이메일 연결하기
+            </EmailConnectAction>
+          </EmailConnectBody>
+        </EmailConnectBanner>
+      ) : null}
 
       {(showInitialLoading || isNavigating) && (
         <LoadingCurtain aria-live="polite" role="status">
@@ -3437,6 +3536,92 @@ const VideoEmptyNoticeMessage = styled.p`
   margin-top: 10px;
   font-size: 13px;
   color: #475569;
+`;
+
+const EmailConnectBanner = styled.section`
+  margin: 16px;
+  padding: 20px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 70%, #e0f2fe 100%);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  max-width: 860px;
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
+const EmailConnectBadge = styled.span`
+  font-size: 32px;
+  line-height: 1;
+`;
+
+const EmailConnectBody = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+`;
+
+const EmailConnectTitle = styled.strong`
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const EmailConnectDescription = styled.p`
+  font-size: 14px;
+  color: #334155;
+  margin: 0;
+  line-height: 1.5;
+`;
+
+const EmailBenefitList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  li {
+    font-size: 13px;
+    color: #2563eb;
+    font-weight: 650;
+    background: rgba(37, 99, 235, 0.08);
+    padding: 6px 10px;
+    border-radius: 999px;
+  }
+`;
+
+const EmailConnectAction = styled.button`
+  /* align-self: flex-start; */
+  margin-top: 6px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  border: none;
+  background: radial-gradient(circle at top, #3b82f6, #1d4ed8);
+  color: #fff;
+  font-weight: 750;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.35);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 640px) {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
 `;
 
 const FeedbackSection = styled.div`
