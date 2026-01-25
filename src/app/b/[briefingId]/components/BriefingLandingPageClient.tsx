@@ -12,9 +12,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { logCtaClick } from "@/api/apiClient";
+import { getUserByEmail, logCtaClick } from "@/api/apiClient";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
 import LandingDomesticStockInsightSection, {
@@ -40,6 +40,9 @@ import {
   parseSubscribersCount,
   timeAgoUTC,
 } from "@/utils/formatter";
+import { auth } from "@/firebase";
+import type { FirebaseError } from "firebase/app";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import type {
   InsightMarketDeltaCard,
   InsightSection,
@@ -47,6 +50,7 @@ import type {
   InsightStock,
   InsightStockMetrics,
 } from "@/types/insight";
+import { GiConsoleController } from "react-icons/gi";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -1263,7 +1267,9 @@ const BriefingLandingPageClient = ({
   const data = inputData ?? MOCK_DATA;
   const router = useRouter();
   const user = useRecoilValue(userState);
+  const setUserState = useSetRecoilState(userState);
   const routeSearchParams = useSearchParams();
+  const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
   const forcedEmailParam = routeSearchParams?.get("requireEmailConnect");
   const requireEmailFallback =
     forcedEmailParam?.toLowerCase() === "true" || forcedEmailParam === "1";
@@ -1272,6 +1278,54 @@ const BriefingLandingPageClient = ({
     const paramPhone = routeSearchParams?.get("phone")?.trim();
     return paramPhone && paramPhone.length > 0 ? paramPhone : null;
   }, [phoneNumber, routeSearchParams]);
+  const normalizedSectionParam = useMemo(() => {
+    const sectionValue = routeSearchParams?.get("section")?.trim();
+    return sectionValue && sectionValue.length > 0 ? sectionValue : null;
+  }, [routeSearchParams]);
+  useEffect(() => {
+    if (!normalizedPhone) {
+      setPhoneLinkStatus("idle");
+      setPhoneLinkedEmail(null);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const checkPhoneLink = async () => {
+      try {
+        setPhoneLinkStatus("checking");
+        const response = await fetch(
+          `https://youticle.shop/users/phone-status?phone=${encodeURIComponent(
+            normalizedPhone
+          )}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch phone status");
+        }
+        const payload = await response.json();
+        if (cancelled) return;
+        if (payload?.linked) {
+          setPhoneLinkStatus("linked");
+          setPhoneLinkedEmail(payload?.user?.email ?? null);
+        } else {
+          setPhoneLinkStatus("unlinked");
+          setPhoneLinkedEmail(null);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("Failed to fetch phone link status", error);
+        setPhoneLinkStatus("error");
+        setPhoneLinkedEmail(null);
+      }
+    };
+
+    checkPhoneLink();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [normalizedPhone]);
   const inferredDate =
     queryParams?.date ||
     queryParams?.data ||
@@ -1557,6 +1611,16 @@ const BriefingLandingPageClient = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [showInitialLoading, setShowInitialLoading] = useState(true);
+  const [primaryEmailBannerDismissed, setPrimaryEmailBannerDismissed] =
+    useState(false);
+  const [fallbackEmailBannerDismissed, setFallbackEmailBannerDismissed] =
+    useState(false);
+  const [showArchiveNotice, setShowArchiveNotice] = useState(false);
+  const [phoneLinkStatus, setPhoneLinkStatus] = useState<
+    "idle" | "checking" | "linked" | "unlinked" | "error"
+  >("idle");
+  console.log(phoneLinkStatus);
+  const [phoneLinkedEmail, setPhoneLinkedEmail] = useState<string | null>(null);
   const [slotFeedbackBySection, setSlotFeedbackBySection] = useState<
     Record<string, "good" | "meh" | "bad" | null>
   >({});
@@ -1598,6 +1662,19 @@ const BriefingLandingPageClient = ({
     return map;
   }, [data.sections, baseVideoIdsByMoneySection, slotDataCache]);
   const stickyOffset = topbarH + keywordNavH + 16;
+
+  const shouldShowPrimaryEmailBanner = !primaryEmailBannerDismissed;
+  const shouldShowFallbackEmailBanner =
+    !fallbackEmailBannerDismissed &&
+    !user?.email &&
+    (requireEmailConnect ||
+      requireEmailFallback ||
+      (normalizedPhone && phoneLinkStatus === "unlinked"));
+
+  const resolvedLinkedEmail = user?.email || phoneLinkedEmail;
+
+  const archiveLoggingIdentity =
+    resolvedLinkedEmail ?? normalizedPhone ?? undefined;
 
   const scrollOffset = 58;
   const topTimeLabel = useMemo(() => {
@@ -1705,10 +1782,68 @@ const BriefingLandingPageClient = ({
     };
   }, [data.sections, navItems.length, stickyOffset, activeAnchor]);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2200);
-  };
+  }, []);
+
+  const linkPhoneToEmail = useCallback(
+    async (email: string, name: string | null) => {
+      if (!normalizedPhone) return;
+      try {
+        const response = await fetch("https://youticle.shop/users/phone-link", {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: normalizedPhone,
+            email,
+            name: name?.trim() ?? "",
+            section: normalizedSectionParam ?? "",
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to link phone to email");
+        }
+      } catch (error) {
+        console.warn("Failed to link phone", error);
+      }
+    },
+    [normalizedPhone, normalizedSectionParam]
+  );
+
+  const handleGoogleSignIn = useCallback(async () => {
+    try {
+      const credential = await signInWithPopup(auth, googleProvider);
+      const email = credential.user.email;
+      const name = credential.user.displayName ?? "";
+
+      if (!email) {
+        showToast("Google 계정 정보를 확인할 수 없어요");
+        return null;
+      }
+
+      const { id } = await getUserByEmail(email, name);
+      const normalizedUser = {
+        name,
+        email,
+        picture: credential.user.photoURL ?? "",
+        id,
+      };
+      setUserState(normalizedUser);
+      return normalizedUser;
+    } catch (error) {
+      const firebaseError = error as FirebaseError;
+      if (firebaseError?.code === "auth/popup-closed-by-user") {
+        return null;
+      }
+      console.error("Failed to sign in with Google", error);
+      showToast("Google 로그인에 실패했어요. 잠시 후 다시 시도해 주세요");
+      return null;
+    }
+  }, [googleProvider, setUserState, showToast]);
 
   const ensureSlotData = useCallback(
     async (section: MoneyRecapSection, slotId: string) => {
@@ -1807,21 +1942,24 @@ const BriefingLandingPageClient = ({
     }
   };
 
-  const handleSave = () => {
-    const nextUrl =
-      typeof window !== "undefined"
-        ? encodeURIComponent(
-            window.location.pathname +
-              window.location.search +
-              window.location.hash
-          )
-        : encodeURIComponent(`/b/${data.briefingId}`);
-
-    if (!user?.email) {
-      router.push(`/login?next=${nextUrl}&intent=save`);
-      return;
+  const handleSave = async () => {
+    let effectiveEmail = user?.email ?? null;
+    let effectiveName = user?.name ?? null;
+    console.log(effectiveEmail);
+    if (!effectiveEmail) {
+      const signedInUser = await handleGoogleSignIn();
+      console.log(signedInUser);
+      if (!signedInUser?.email) {
+        return;
+      }
+      effectiveEmail = signedInUser.email;
+      effectiveName = signedInUser.name ?? null;
     }
-    if (saved) return;
+    console.log(effectiveEmail);
+    if (effectiveEmail) {
+      await linkPhoneToEmail(effectiveEmail, effectiveName);
+    }
+
     setSaved(true);
     showToast("내 브리핑에 저장했어요");
   };
@@ -1844,6 +1982,27 @@ const BriefingLandingPageClient = ({
         .then(() => showToast("링크를 복사했어요"))
         .catch(() => undefined);
     }
+  };
+
+  const handleArchiveCTA = async (origin: string) => {
+    logCtaClick(
+      "archive_cta_click",
+      user?.id,
+      archiveLoggingIdentity,
+      undefined,
+      {
+        origin,
+        date: normalizedDateForLogging ?? "",
+        phone: normalizedPhone ?? "",
+      }
+    );
+    if (!user?.email) {
+      const signedInUser = await handleGoogleSignIn();
+      if (!signedInUser?.email) {
+        return;
+      }
+    }
+    setShowArchiveNotice(true);
   };
 
   const getActiveSlot = (
@@ -2775,32 +2934,76 @@ const BriefingLandingPageClient = ({
           <SlotBarDock>{activeSectionSlotBar}</SlotBarDock>
         ) : null}
       </StickyControlDock>
-      <EmailConnectBanner>
-        <EmailConnectBody>
-          <EmailConnectTitle>
-            🔔 이 브리핑을 이메일로 저장하세요
-          </EmailConnectTitle>
-          {/* <EmailConnectDescription>
-            지금 이 브리핑을 이메일로 저장해 드려요. 같은 계정으로 언제든 다시
-            들어와 이어볼 수 있고, 내일 나오는 브리핑도 같은 주소로 받아보실 수
-            있어요.
-          </EmailConnectDescription> */}
-          <EmailBenefitList>
-            <li>키워드 분석을 내 이메일함에 바로 저장</li>
-            <li>내일 브리핑도 같은 주소로 자동 전송</li>
-            <li>언제든 복귀해 이어보기</li>
-          </EmailBenefitList>
-          <EmailConnectAction
-            type="button"
-            onClick={handleSave}
-            aria-label="Google로 이 브리핑 저장하기"
-          >
-            Google로 이 브리핑 저장하기
-          </EmailConnectAction>
-        </EmailConnectBody>
-      </EmailConnectBanner>
-      {!user?.email && (requireEmailConnect || requireEmailFallback) ? (
+      {shouldShowPrimaryEmailBanner ? (
         <EmailConnectBanner>
+          <EmailConnectCloseButton
+            type="button"
+            onClick={() => setPrimaryEmailBannerDismissed(true)}
+            aria-label="이 배너 닫기"
+          >
+            {"\u00d7"}
+          </EmailConnectCloseButton>
+          <EmailConnectBody>
+            {resolvedLinkedEmail ? (
+              <>
+                <EmailConnectSavedEmail>
+                  📬 {resolvedLinkedEmail}
+                </EmailConnectSavedEmail>
+                <EmailConnectSavedDescription>
+                  이 주소로 이 브리핑이 저장되었습니다.
+                </EmailConnectSavedDescription>
+                <EmailConnectArchiveButton
+                  type="button"
+                  onClick={() => void handleArchiveCTA("primary_saved")}
+                >
+                  내 브리핑 아카이브 보기
+                </EmailConnectArchiveButton>
+              </>
+            ) : (
+              <>
+                <EmailConnectTitle>
+                  🔔 이 브리핑을 이메일로 저장하세요
+                </EmailConnectTitle>
+                {/* <EmailConnectDescription>
+              지금 이 브리핑을 이메일로 저장해 드려요. 같은 계정으로 언제든 다시
+              들어와 이어볼 수 있고, 내일 나오는 브리핑도 같은 주소로 받아보실 수
+              있어요.
+            </EmailConnectDescription> */}
+                <EmailBenefitList>
+                  <li>키워드 분석을 내 이메일함에 바로 저장</li>
+                  <li>내일 브리핑도 같은 주소로 자동 전송</li>
+                  <li>언제든 복귀해 이어보기</li>
+                </EmailBenefitList>
+                <EmailConnectAction
+                  type="button"
+                  onClick={handleSave}
+                  aria-label="Google로 이 브리핑 저장하기"
+                >
+                  Google로 이 브리핑 저장하기
+                </EmailConnectAction>
+                <EmailConnectSubtext>
+                  이미 이메일로 받고 계신가요?
+                  <EmailConnectSubLink
+                    type="button"
+                    onClick={() => void handleArchiveCTA("primary_sub")}
+                  >
+                    내 브리핑 아카이브 보기 →
+                  </EmailConnectSubLink>
+                </EmailConnectSubtext>
+              </>
+            )}
+          </EmailConnectBody>
+        </EmailConnectBanner>
+      ) : null}
+      {/* {shouldShowFallbackEmailBanner ? (
+        <EmailConnectBanner>
+          <EmailConnectCloseButton
+            type="button"
+            onClick={() => setFallbackEmailBannerDismissed(true)}
+            aria-label="이 배너 닫기"
+          >
+            {"\u00d7"}
+          </EmailConnectCloseButton>
           <EmailConnectBadge aria-hidden>🔔</EmailConnectBadge>
           <EmailConnectBody>
             <EmailConnectTitle>
@@ -2818,9 +3021,48 @@ const BriefingLandingPageClient = ({
             >
               Google로 이메일 연결하기
             </EmailConnectAction>
+            <EmailConnectSubtext>
+              이미 이메일로 받고 계신가요?
+              <EmailConnectSubLink
+                type="button"
+                onClick={() => void handleArchiveCTA("fallback_sub")}
+              >
+                내 브리핑 아카이브 보기 →
+              </EmailConnectSubLink>
+            </EmailConnectSubtext>
           </EmailConnectBody>
         </EmailConnectBanner>
-      ) : null}
+      ) : (
+        <EmailConnectBanner>
+          <EmailConnectCloseButton
+            type="button"
+            onClick={() => setFallbackEmailBannerDismissed(true)}
+            aria-label="이 배너 닫기"
+          >
+            {"\u00d7"}
+          </EmailConnectCloseButton>
+          <EmailConnectBody>
+            {resolvedLinkedEmail ? (
+              <>
+                <EmailConnectSavedEmail>
+                  📬 {resolvedLinkedEmail}
+                </EmailConnectSavedEmail>
+                <EmailConnectSavedDescription>
+                  이 주소로 이 브리핑이 저장되었습니다.
+                </EmailConnectSavedDescription>
+                <EmailConnectArchiveButton
+                  type="button"
+                  onClick={() => void handleArchiveCTA("fallback_saved")}
+                >
+                  내 브리핑 아카이브 보기
+                </EmailConnectArchiveButton>
+              </>
+            ) : (
+              <></>
+            )}
+          </EmailConnectBody>
+        </EmailConnectBanner>
+      )} */}
 
       {(showInitialLoading || isNavigating) && (
         <LoadingCurtain aria-live="polite" role="status">
@@ -2832,6 +3074,25 @@ const BriefingLandingPageClient = ({
       )}
 
       <SectionsContainer>{renderedSections}</SectionsContainer>
+
+      {showArchiveNotice ? (
+        <ArchiveNoticeOverlay role="dialog" aria-modal="true">
+          <ArchiveNoticeCard>
+            <ArchiveNoticeTitle>아직 준비 중이에요</ArchiveNoticeTitle>
+            <ArchiveNoticeMessage>
+              내 브리핑 아카이브 기능을 준비하고 있어요. 곧 안내드릴게요.
+            </ArchiveNoticeMessage>
+            <ArchiveNoticeActions>
+              <ArchiveNoticeButton
+                type="button"
+                onClick={() => setShowArchiveNotice(false)}
+              >
+                알겠어요
+              </ArchiveNoticeButton>
+            </ArchiveNoticeActions>
+          </ArchiveNoticeCard>
+        </ArchiveNoticeOverlay>
+      ) : null}
 
       {/* <FooterExplore>
         <FooterTitle>더 탐색하기</FooterTitle>
@@ -3539,8 +3800,10 @@ const VideoEmptyNoticeMessage = styled.p`
 `;
 
 const EmailConnectBanner = styled.section`
+  position: relative;
   margin: 16px;
   padding: 20px 24px;
+  padding-right: 60px;
   border-radius: 20px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 70%, #e0f2fe 100%);
@@ -3551,6 +3814,10 @@ const EmailConnectBanner = styled.section`
   max-width: 860px;
   flex-wrap: wrap;
   justify-content: center;
+
+  @media (max-width: 640px) {
+    padding-right: 48px;
+  }
 `;
 
 const EmailConnectBadge = styled.span`
@@ -3621,6 +3888,149 @@ const EmailConnectAction = styled.button`
     width: 100%;
     text-align: center;
     justify-content: center;
+  }
+`;
+
+const EmailConnectSubtext = styled.p`
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+`;
+
+const EmailConnectSubLink = styled.button`
+  margin-left: 4px;
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const EmailConnectSavedEmail = styled.p`
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const EmailConnectSavedDescription = styled.p`
+  margin: 6px 0 16px;
+  font-size: 13px;
+  color: #475569;
+`;
+
+const EmailConnectArchiveButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.12);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.2);
+    transform: translateY(-1px);
+  }
+`;
+
+const EmailConnectCloseButton = styled.button`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.12);
+    transform: scale(1.02);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 640px) {
+    top: 8px;
+    right: 8px;
+  }
+`;
+
+const ArchiveNoticeOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+`;
+
+const ArchiveNoticeCard = styled.div`
+  width: min(90%, 340px);
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+`;
+
+const ArchiveNoticeTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const ArchiveNoticeMessage = styled.p`
+  margin: 12px 0 20px;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.5;
+`;
+
+const ArchiveNoticeActions = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const ArchiveNoticeButton = styled.button`
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
   }
 `;
 

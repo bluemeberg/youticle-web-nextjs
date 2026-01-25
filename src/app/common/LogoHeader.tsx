@@ -42,6 +42,7 @@ const LogoHeader = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isClientDesktop, setIsClientDesktop] = useState(false);
   const [showPlayerOnboarding, setShowPlayerOnboarding] = useState(false);
+  const [archiveNoticeOpen, setArchiveNoticeOpen] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -231,24 +232,22 @@ const LogoHeader = ({
 
   const GoogleLogin = async () => {
     try {
-      // const { user } = await signInWithPopup(auth, provider);
       const result = await signInWithPopup(auth, provider);
-      // [4] Firebase가 발급한 credential에서 accessToken 추출
-      // const credential = GoogleAuthProvider.credentialFromResult(result);
-      // const accessToken = credential?.accessToken;
-      // console.log(accessToken);
       const data = await getUserByEmail(
         result.user.email,
         result.user.displayName
       );
-      setUser({
+      const normalizedUser = {
         name: result.user.displayName,
         email: result.user.email,
         picture: result.user.photoURL,
         id: data.id,
-      });
+      };
+      setUser(normalizedUser);
+      return normalizedUser;
     } catch (e) {
       console.error(e);
+      return null;
     }
   };
 
@@ -260,7 +259,7 @@ const LogoHeader = ({
         email: "",
         picture: "",
       });
-      setMenuOpen((prev) => !prev);
+      setMenuOpen(false);
     } catch (e) {
       console.error("Error logging out:", e);
     }
@@ -309,7 +308,11 @@ const LogoHeader = ({
   const [loadingPage, setLoadingPage] = useState(false);
   const [loadingText, setLoadingText] = useState(""); // 로딩 메시지 상태 추가
   const handleMenuNavigation = (url: string, loadingMessage?: string) => {
-    if (pathname === url) return router.push(url);
+    setMenuOpen(false);
+    if (pathname === url) {
+      router.push(url);
+      return;
+    }
 
     setLoadingText(loadingMessage || "로딩 중..."); // 로딩 메시지 설정
     setLoadingPage(true); // 로딩 상태 활성화
@@ -317,6 +320,32 @@ const LogoHeader = ({
       router.push(url);
       // setLoadingPage(false); // 페이지 이동 후 로딩 상태 해제
     }, 500); // UI 자연스럽게 변경을 위해 0.8초 딜레이
+  };
+
+  const handleArchiveShortcut = async () => {
+    logCtaClick(
+      "archive_cta_click",
+      user?.id ?? null,
+      user?.email ?? undefined,
+      getOrCreateAnonId(),
+      { origin: "header_profile" }
+    );
+    setMenuOpen(false);
+    if (!user.email) {
+      const loggedInUser = await GoogleLogin();
+      if (!loggedInUser?.email) {
+        return;
+      }
+    }
+    setArchiveNoticeOpen(true);
+  };
+
+  const handleLogoutShortcut = async () => {
+    await GoogleLogOut();
+  };
+
+  const handleProfileMenuNavigation = (item: (typeof MENU_ITEMS_ALL)[number]) => {
+    handleMenuNavigation(item.href, item.loadingMsg);
   };
 
   const MENU_ITEMS_ALL = [
@@ -361,6 +390,10 @@ const LogoHeader = ({
     ...(isPrivileged ? [MENU_ITEMS_ALL[0], MENU_ITEMS_ALL[2]] : []),
   ];
   const shouldRenderDefaultLogoSlot = !showLogo && title === "";
+  const canShowMenuSection =
+    !pathname.includes("/detail") &&
+    !pathname.startsWith("/editor/") &&
+    !pathname.startsWith("/studio/");
 
   return (
     <>
@@ -420,16 +453,10 @@ const LogoHeader = ({
             <ShareIcon onClick={copyUrlToClipboard} />
           </IconSection>
         )}
-        {shouldRenderDefaultLogoSlot && (
+        {canShowMenuSection && !user.email ? (
           <>
-            {!pathname.includes("/detail") &&
-              !pathname.startsWith("/editor/") &&
-              !pathname.startsWith("/studio/") &&
-              user.picture === "" && (
-                <MenuIcon onClick={handleMenuClick}></MenuIcon>
-              )}
-            {/* 드롭다운 */}
-            {menuOpen && (
+            <MenuIcon onClick={handleMenuClick}></MenuIcon>
+            {menuOpen ? (
               <Dropdown>
                 {VISIBLE_MENU_ITEMS.map((item) => (
                   <DropdownItem
@@ -448,33 +475,92 @@ const LogoHeader = ({
                   {user.email ? "로그아웃" : "로그인하기"}
                 </DropdownItem>
               </Dropdown>
-            )}
-            {/* 로딩 중일 때 화면 중앙에 표시되는 안내 메시지 */}
-            {loadingPage && (
-              <LoadingOverlay>
-                <LoadingSpinner />
-                <LoadingText>{loadingText}</LoadingText>
-              </LoadingOverlay>
-            )}
-            {user.picture !== "" && (
-              <ProfileImage
-                onClick={() => {
-                  logCtaClick(
-                    "menu_open",
-                    user?.id ?? null,
-                    user?.email ?? null,
-                    getOrCreateAnonId()
-                  );
-                  handleClickProfile();
-                }}
-              >
-                <img src={user.picture} alt="User profile" />
-              </ProfileImage>
-            )}
+            ) : null}
           </>
-        )}
+        ) : null}
+        {loadingPage ? (
+          <LoadingOverlay>
+            <LoadingSpinner />
+            <LoadingText>{loadingText}</LoadingText>
+          </LoadingOverlay>
+        ) : null}
+        {user.email ? (
+          <ProfileWrapper>
+            <ProfileImage
+              onClick={() => {
+                logCtaClick(
+                  "menu_open",
+                  user?.id ?? null,
+                  user?.email ?? null,
+                  getOrCreateAnonId()
+                );
+                handleClickProfile();
+              }}
+            >
+              {user.picture ? (
+                <img src={user.picture} alt="User profile" />
+              ) : (
+                <ProfileInitial aria-hidden>
+                  {(user.name || user.email || "").charAt(0).toUpperCase()}
+                </ProfileInitial>
+              )}
+            </ProfileImage>
+            {menuOpen ? (
+              <ProfileDropdown>
+                <ProfileEmailRow>
+                  <span aria-hidden>📬</span>
+                  <ProfileEmailText>{user.email}</ProfileEmailText>
+                </ProfileEmailRow>
+                <ProfileEmailDescription>
+                  이 주소로 브리핑이 저장되고 있습니다
+                </ProfileEmailDescription>
+                <ProfileDivider />
+                <ProfileActionList>
+                  <ProfileActionButton type="button" onClick={() => void handleArchiveShortcut()}>
+                    내 브리핑 아카이브
+                  </ProfileActionButton>
+                  <ProfileActionButton type="button" onClick={handleLogoutShortcut}>
+                    이 기기에서 로그아웃
+                  </ProfileActionButton>
+                </ProfileActionList>
+                {VISIBLE_MENU_ITEMS.length ? (
+                  <>
+                    <ProfileDivider />
+                    <ProfileMenuList>
+                      {VISIBLE_MENU_ITEMS.map((item) => (
+                        <ProfileMenuButton
+                          key={item.href}
+                          type="button"
+                          onClick={() => handleProfileMenuNavigation(item)}
+                        >
+                          <span className="icon">{item.icon}</span>
+                          <span className="label">{item.label}</span>
+                        </ProfileMenuButton>
+                      ))}
+                    </ProfileMenuList>
+                  </>
+                ) : null}
+              </ProfileDropdown>
+            ) : null}
+          </ProfileWrapper>
+        ) : null}
       </Container>
       <Toast message="링크가 복사되었습니다" visible={toastVisible} />
+      {archiveNoticeOpen ? (
+        <ArchiveOverlay role="dialog" aria-modal="true">
+          <ArchiveCard>
+            <ArchiveTitle>아직 준비 중이에요</ArchiveTitle>
+            <ArchiveMessage>
+              내 브리핑 아카이브 기능을 준비하고 있어요. 곧 안내드릴게요.
+            </ArchiveMessage>
+            <ArchiveActions>
+              <ArchiveButton type="button" onClick={() => setArchiveNoticeOpen(false)}>
+                알겠어요
+              </ArchiveButton>
+            </ArchiveActions>
+          </ArchiveCard>
+        </ArchiveOverlay>
+      ) : null}
     </>
   );
 };
@@ -568,6 +654,13 @@ const ProfileImage = styled.div`
   width: 32px;
   height: 32px;
   border-radius: 50%;
+  background: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 
   img {
     width: 100%;
@@ -575,6 +668,16 @@ const ProfileImage = styled.div`
     border-radius: 50%;
     overflow: hidden;
   }
+`;
+
+const ProfileInitial = styled.span`
+  font-size: 14px;
+`;
+
+const ProfileWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
 `;
 
 const IconSection = styled.div`
@@ -806,5 +909,161 @@ const DropdownItem = styled.div`
   }
   .icon {
     font-size: 16px;
+  }
+`;
+
+const ArchiveOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+`;
+
+const ArchiveCard = styled.div`
+  width: min(90%, 320px);
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+`;
+
+const ArchiveTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const ArchiveMessage = styled.p`
+  margin: 12px 0 20px;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.5;
+`;
+
+const ArchiveActions = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const ArchiveButton = styled.button`
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+`;
+
+const ProfileDropdown = styled.div`
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 280px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1001;
+`;
+
+const ProfileEmailRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const ProfileEmailText = styled.span`
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const ProfileEmailDescription = styled.p`
+  font-size: 13px;
+  color: #475569;
+  margin: 0;
+`;
+
+const ProfileDivider = styled.div`
+  height: 1px;
+  background: #e2e8f0;
+`;
+
+const ProfileActionList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const ProfileActionButton = styled.button`
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+
+  &:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const ProfileMenuList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const ProfileMenuButton = styled.button`
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  font-size: 14px;
+  color: #1e293b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(148, 163, 184, 0.2);
+  }
+
+  .icon {
+    font-size: 16px;
+  }
+
+  .label {
+    flex: 1;
+    text-align: left;
   }
 `;
