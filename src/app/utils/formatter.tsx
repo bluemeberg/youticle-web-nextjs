@@ -19,7 +19,15 @@ export const parseSubscribersCount = (count: number): string => {
 };
 
 // Converts "HH:MM:SS" or "MM:SS" → total seconds
-export function parseTimeStringToSeconds(ts: string): number {
+export function parseTimeStringToSeconds(
+  tsInput: string | number | null | undefined
+): number {
+  if (tsInput === null || tsInput === undefined) {
+    return 0;
+  }
+
+  const ts = typeof tsInput === "string" ? tsInput : String(tsInput);
+
   // 1) colon-delimited → HH:MM:SS or MM:SS
   if (ts.includes(":")) {
     const parts = ts.split(":").map((p) => Number(p) || 0);

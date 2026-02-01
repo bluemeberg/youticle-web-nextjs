@@ -51,6 +51,9 @@ import type {
   InsightStockMetrics,
 } from "@/types/insight";
 import { GiConsoleController } from "react-icons/gi";
+import EmailBriefingLanding from "./EmailBriefingLanding";
+import type { EmailBriefingKeywordData } from "@/types/emailBriefing";
+import type { DeliveryMeta } from "@/types/briefingLanding";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -105,7 +108,8 @@ interface SummaryBriefingData {
 export type RecapSection =
   | MoneyRecapSection
   | RankingRecapSection
-  | GeneralRecapSection;
+  | GeneralRecapSection
+  | EmailRecapSection;
 
 export interface MoneyRecapSection {
   id: string;
@@ -143,6 +147,15 @@ export interface GeneralRecapSection {
   summaryBriefing?: SummaryBriefingData;
   defaultSlotId?: string;
   slotPackages: SlotPackage[];
+}
+
+export interface EmailRecapSection {
+  id: string;
+  type: "email";
+  title: string;
+  anchor: string;
+  summaryBullets: string[];
+  emailBriefing: EmailBriefingKeywordData;
 }
 
 export interface SlotPackage {
@@ -1109,6 +1122,9 @@ const isRankingSection = (
   section: RecapSection
 ): section is RankingRecapSection => section.type === "realestate";
 
+const isEmailSection = (section: RecapSection): section is EmailRecapSection =>
+  section.type === "email";
+
 const filterOutRankingSlots = (slots: SlotPackage[]) =>
   slots.filter((slot) => slot.id !== "ranking");
 
@@ -1258,13 +1274,17 @@ interface BriefingLandingPageClientProps {
   requireEmailConnect?: boolean;
 }
 
-const BriefingLandingPageClient = ({
-  data: inputData,
+interface StandardBriefingLandingPageClientProps
+  extends Omit<BriefingLandingPageClientProps, "data"> {
+  data: BriefingLandingData;
+}
+
+const StandardBriefingLandingPageClient = ({
+  data,
   phoneNumber,
   queryParams,
   requireEmailConnect = false,
-}: BriefingLandingPageClientProps) => {
-  const data = inputData ?? MOCK_DATA;
+}: StandardBriefingLandingPageClientProps) => {
   const router = useRouter();
   const user = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
@@ -1663,8 +1683,11 @@ const BriefingLandingPageClient = ({
   }, [data.sections, baseVideoIdsByMoneySection, slotDataCache]);
   const stickyOffset = topbarH + keywordNavH + 16;
 
-  const shouldShowPrimaryEmailBanner = !primaryEmailBannerDismissed;
+  const isEmailSource = data.deliveryMeta.source === "email";
+  const shouldShowPrimaryEmailBanner =
+    !isEmailSource && !primaryEmailBannerDismissed;
   const shouldShowFallbackEmailBanner =
+    !isEmailSource &&
     !fallbackEmailBannerDismissed &&
     !user?.email &&
     (requireEmailConnect ||
@@ -2873,6 +2896,33 @@ const BriefingLandingPageClient = ({
     );
   };
 
+  const renderEmailSection = (section: EmailRecapSection) => {
+    const inlineMeta: DeliveryMeta = {
+      ...data.deliveryMeta,
+      deliveredAt:
+        data.deliveryMeta.deliveredAt || new Date().toISOString(),
+      displayLabel:
+        section.emailBriefing.dateBadge || data.deliveryMeta.displayLabel,
+      tagline:
+        section.emailBriefing.topicLabel || data.deliveryMeta.tagline,
+    };
+    return (
+      <SectionBlock key={section.id} id={section.anchor}>
+        <SectionAnchorMarker
+          data-anchor-id={section.anchor}
+          ref={(node) => {
+            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
+          }}
+        />
+        <EmailBriefingLanding
+          briefing={section.emailBriefing}
+          deliveryMeta={inlineMeta}
+          standalone={false}
+        />
+      </SectionBlock>
+    );
+  };
+
   let activeSectionSlotBar: ReactNode = null;
   const renderedSections = visibleSections.map((section) => {
     if (isMoneySection(section)) {
@@ -2881,6 +2931,7 @@ const BriefingLandingPageClient = ({
       return node;
     }
     if (isRankingSection(section)) return renderRankingSection(section);
+    if (isEmailSection(section)) return renderEmailSection(section);
     return null;
   });
 
@@ -3116,6 +3167,18 @@ const BriefingLandingPageClient = ({
 
       {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
     </PageContainer>
+  );
+};
+
+const BriefingLandingPageClient = (props: BriefingLandingPageClientProps) => {
+  const { data: inputData, ...rest } = props;
+  const data = inputData ?? MOCK_DATA;
+
+  return (
+    <StandardBriefingLandingPageClient
+      {...rest}
+      data={data}
+    />
   );
 };
 

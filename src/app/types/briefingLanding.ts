@@ -1,4 +1,5 @@
 import type { InsightSection } from "@/types/insight";
+import type { EmailBriefingKeywordData } from "./emailBriefing";
 
 export type RecapSectionType = "stocks" | "crypto" | "realestate" | "general";
 
@@ -131,7 +132,16 @@ export interface RealEstateRecapSection extends BaseRecapSection {
   defaultRankingWindow?: string;
 }
 
-export type RecapSection = MoneyRecapSection | RealEstateRecapSection | GeneralRecapSection;
+export interface EmailRecapSection extends BaseRecapSection {
+  type: "email";
+  emailBriefing: EmailBriefingKeywordData;
+}
+
+export type RecapSection =
+  | MoneyRecapSection
+  | RealEstateRecapSection
+  | GeneralRecapSection
+  | EmailRecapSection;
 
 export interface ExploreTabLink {
   id: string;

@@ -26,6 +26,38 @@ interface Editor {
   image: string;
   keywords: string[];
 }
+const DEFAULT_EDITORS: Editor[] = [
+  {
+    id: "1",
+    name: "유썸 투자",
+    image: "/images/유썸스톡.png",
+    keywords: ["주식", "부동산", "가상자산"],
+  },
+  {
+    id: "2",
+    name: "유썸 비즈",
+    image: "/images/유썸비즈.png",
+    keywords: ["비즈니스/사업", "여행"],
+  },
+  {
+    id: "3",
+    name: "유썸 메디컬",
+    image: "/images/유썸메디컬.png",
+    keywords: ["건강", "뷰티/메이크업", "육아"],
+  },
+  {
+    id: "4",
+    name: "유썸 로맨틱",
+    image: "/images/유썸로맨틱.png",
+    keywords: ["연애/결혼"],
+  },
+  {
+    id: "5",
+    name: "유썸 AI/테크",
+    image: "/images/유썸테크.png",
+    keywords: ["인공지능", "IT/테크"],
+  },
+];
 // const NEXT_PUBLIC_API_BASE_URL = "http://0.0.0.0:8001";
 const NEXT_PUBLIC_API_BASE_URL = "https://youticle.shop";
 
@@ -35,38 +67,7 @@ const AdminArticleBeforeLogin = () => {
   const user = useRecoilValue(userState); // 로그인 여부 확인
   const [data, setData] = useState<EditorDataProps[]>([]);
 
-  const editors: Editor[] = [
-    {
-      id: "1",
-      name: "유썸 투자",
-      image: "/images/유썸스톡.png",
-      keywords: ["주식", "부동산", "가상자산"],
-    },
-    {
-      id: "2",
-      name: "유썸 비즈",
-      image: "/images/유썸비즈.png",
-      keywords: ["비즈니스/사업", "여행"],
-    },
-    {
-      id: "3",
-      name: "유썸 메디컬",
-      image: "/images/유썸메디컬.png",
-      keywords: ["건강", "뷰티/메이크업", "육아"],
-    },
-    {
-      id: "4",
-      name: "유썸 로맨틱",
-      image: "/images/유썸로맨틱.png",
-      keywords: ["연애/결혼"],
-    },
-    {
-      id: "5",
-      name: "유썸 AI/테크",
-      image: "/images/유썸테크.png",
-      keywords: ["인공지능", "IT/테크"],
-    },
-  ];
+  const editors = DEFAULT_EDITORS;
   const [selectedEditor, setSelectedEditor] = useState<string | null>(null);
   const [archiveData, setArchiveData] = useState<EditorDataProps[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,7 +156,7 @@ const AdminArticleBeforeLogin = () => {
       const dateB = new Date(b.article_date).getTime();
       return dateB - dateA;
     });
-  }, [selectedEditor, data]);
+  }, [selectedEditor, data, editors]);
 
   // 최신순 정렬된 데이터
   const sortedFilteredData = useMemo(() => {

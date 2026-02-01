@@ -3,6 +3,7 @@ import type {
   SlotPackage,
   SlotTabContent,
 } from "@/types/briefingLanding";
+import { businessEmailBriefing } from "./mockEmailBriefings";
 
 type SlotPhase = "baseline" | "slot2" | "slot3" | "slot4" | "slot5";
 
@@ -562,6 +563,38 @@ export const mockBriefingLanding: BriefingLandingData = {
   ],
 };
 
+const mockBusinessEmailLanding: BriefingLandingData = {
+  briefingId: "email-business-20260131",
+  deliveryMeta: {
+    deliveredAt: "2026-01-31T09:00:00+09:00",
+    displayLabel: businessEmailBriefing.dateBadge,
+    description: "이메일 브리핑",
+    tagline: businessEmailBriefing.topicLabel,
+    backHref: "/briefing",
+    backLabel: "전체 브리핑",
+    source: "email",
+  },
+  keywordNav: [
+    {
+      id: "nav-email-business",
+      label: businessEmailBriefing.topicLabel,
+      anchor: "email-business",
+    },
+  ],
+  sections: [
+    {
+      id: "sec-email-business",
+      type: "email",
+      title: businessEmailBriefing.topicLabel,
+      anchor: "email-business",
+      summaryBullets: [],
+      emailBriefing: businessEmailBriefing,
+    },
+  ],
+  exploreTabs: [],
+};
+
 export const mockBriefingLandingById: Record<string, BriefingLandingData> = {
   [mockBriefingLanding.briefingId]: mockBriefingLanding,
+  [mockBusinessEmailLanding.briefingId]: mockBusinessEmailLanding,
 };

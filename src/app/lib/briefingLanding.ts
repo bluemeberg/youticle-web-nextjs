@@ -5,6 +5,7 @@ import {
 import type { DataProps } from "@/types/dataProps";
 import type {
   BriefingLandingData,
+  EmailRecapSection,
   MarketIndexCard,
   MoneyRecapSection,
   RecapSection,
@@ -12,6 +13,10 @@ import type {
   SectionBriefingData,
   SlotPackage,
 } from "@/types/briefingLanding";
+import type {
+  EmailBriefingKeywordData,
+  EmailBriefingVideoMeta,
+} from "@/types/emailBriefing";
 import type {
   InsightAsset,
   InsightSection,
@@ -22,11 +27,13 @@ import type {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://youticle.shop";
+const API_STAGE_BASE_URL = "http://0.0.0.0:8001";
 const LANDING_ENDPOINT = `${API_BASE_URL}/briefing/landing`;
 const TOP_VIDEOS_V2_ENDPOINT = `${API_BASE_URL}/briefing_v2/top_videos/v2`;
 const SECTION_VIDEOS_ENDPOINT = `${API_BASE_URL}/briefing/top_videos/section`;
 const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
 const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
+const EMAIL_DIGEST_ENDPOINT = `${API_BASE_URL}/emails/emails/digest/log`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
 export type SlotPhase =
@@ -56,6 +63,281 @@ interface KakaoIntegratedSectionPayload {
 
 interface KakaoIntegratedResponse {
   sections?: KakaoIntegratedSectionPayload[];
+}
+
+interface EmailDigestNarrative {
+  text?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestDriverNarrative {
+  text?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestMacroDriver {
+  name?: string;
+  indicator_focus?: string;
+  narratives?: EmailDigestDriverNarrative[];
+}
+
+interface EmailDigestVideoDetail {
+  title?: string;
+  section?: string;
+  thumbnail?: string;
+  channel_id?: string;
+  channel_title?: string;
+  channel_thumbnail?: string;
+  channel_sub_count?: number;
+  upload_date?: string;
+}
+
+interface EmailDigestModelWatchItem {
+  model_name?: string;
+  provider?: string;
+  focus_area?: string;
+  implication?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestUseCaseSpotlightItem {
+  industry?: string;
+  problem_solved?: string;
+  result?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestTheme {
+  name?: string;
+  narratives?: EmailDigestNarrative[];
+  what_happened?: string;
+  why_important?: string;
+}
+
+interface EmailDigestStrategicMove extends EmailDigestTheme {
+  whatHappened?: string;
+  whyImportant?: string;
+}
+
+interface EmailDigestRiskItem {
+  title?: string;
+  detail?: string | string[];
+  impact?: string;
+  owner?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestRiskSection {
+  title?: string;
+  items?: EmailDigestRiskItem[];
+}
+
+interface EmailDigestMarketPulse {
+  summary?: string;
+  price_trend?: string;
+  transaction_trend?: string;
+}
+
+interface EmailDigestActionItem {
+  title?: string;
+  detail?: string[];
+  owners?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestActionSection {
+  title?: string;
+  items?: EmailDigestActionItem[];
+}
+
+interface EmailDigestTechSnapshot {
+  summary?: string;
+  market_signal?: string;
+  policy_signal?: string;
+  innovation_signal?: string;
+}
+
+interface EmailDigestInfraPolicyWatchItem {
+  topic?: string;
+  detail?: string;
+  impact?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestRiskEthicItem {
+  title?: string;
+  detail?: string;
+  severity?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestNextStepItem {
+  title?: string;
+  detail?: string[];
+  related_entities?: string[];
+}
+
+interface EmailDigestNextStepsSection {
+  title?: string;
+  items?: EmailDigestNextStepItem[];
+}
+
+interface EmailDigestEcosystemWatchItem {
+  segment?: string;
+  signals?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestInnovationTrack {
+  name?: string;
+  provider?: string;
+  focus_area?: string;
+  narratives?: EmailDigestNarrative[];
+  impact_metrics?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestDemandSupplyItem {
+  driver?: string;
+  impact?: string[];
+  regions?: string[];
+  property_types?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestPolicyFinanceItem {
+  title?: string;
+  detail?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestPolicyWatchItem {
+  when?: string;
+  title?: string;
+  detail?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestPolicyWatchSection {
+  title?: string;
+  items?: EmailDigestPolicyWatchItem[];
+}
+
+interface EmailDigestRegionalSpotlightItem {
+  region?: string;
+  story?: string[];
+  metrics?: Record<string, string | number>;
+  video_ids?: string[];
+}
+
+interface EmailDigestSectorWatchItem {
+  segment?: string;
+  signals?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestMacroSnapshot {
+  summary?: string;
+  growth_signal?: string;
+  policy_signal?: string;
+  inflation_signal?: string;
+  liquidity_signal?: string;
+}
+
+interface EmailDigestRiskFlagItem {
+  title?: string;
+  detail?: string;
+  probability?: string;
+  video_ids?: string[];
+}
+
+interface EmailDigestShortTermWatchItem {
+  title?: string;
+  detail?: string[];
+}
+
+interface EmailDigestShortTermWatch {
+  title?: string;
+  items?: EmailDigestShortTermWatchItem[];
+}
+
+interface EmailDigestChecklistItem {
+  title?: string;
+  detail?: string[];
+}
+
+interface EmailDigestChecklistSection {
+  title?: string;
+  items?: EmailDigestChecklistItem[];
+}
+
+interface EmailDigestTickerProfile {
+  ticker?: string;
+  company_name?: string;
+  thesis?: string[];
+  signals?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestMarketMood {
+  summary?: string;
+  flow_signal?: string;
+  price_signal?: string;
+}
+
+interface EmailDigestInnovationPulse {
+  summary?: string;
+}
+
+interface EmailDigestResponse {
+  section?: string;
+  generated_date?: string;
+  llm_response?: {
+    tldr?: {
+      headline?: string;
+      bullets?: string[];
+    };
+    themes?: EmailDigestTheme[];
+    strategic_moves?: EmailDigestStrategicMove[];
+    risk_section?: EmailDigestRiskSection;
+    execution_risks?: EmailDigestRiskSection;
+    drivers?: EmailDigestMacroDriver[];
+    action_items?: EmailDigestActionSection;
+    tech_snapshot?: EmailDigestTechSnapshot;
+    ecosystem_watch?: EmailDigestEcosystemWatchItem[];
+    innovation_tracks?: EmailDigestInnovationTrack[];
+    market_pulse?: EmailDigestMarketPulse;
+    demand_supply?: EmailDigestDemandSupplyItem[];
+    policy_finance_watch?: {
+      title?: string;
+      items?: EmailDigestPolicyFinanceItem[];
+    };
+    model_watch?: EmailDigestModelWatchItem[];
+    use_case_spotlight?: EmailDigestUseCaseSpotlightItem[];
+    infra_policy_watch?: {
+      title?: string;
+      items?: EmailDigestInfraPolicyWatchItem[];
+    };
+    risk_ethics?: {
+      title?: string;
+      items?: EmailDigestRiskEthicItem[];
+    };
+    next_steps?: EmailDigestNextStepsSection;
+    regional_spotlight?: EmailDigestRegionalSpotlightItem[];
+    policy_watch?: EmailDigestPolicyWatchSection;
+    sector_watch?: EmailDigestSectorWatchItem[];
+    macro_snapshot?: EmailDigestMacroSnapshot;
+    risk_flags?: {
+      title?: string;
+      items?: EmailDigestRiskFlagItem[];
+    };
+    next_3day_watch?: EmailDigestShortTermWatch;
+    ticker_profiles?: EmailDigestTickerProfile[];
+    checklist_section?: EmailDigestChecklistSection;
+    market_mood?: EmailDigestMarketMood;
+    innovation_pulse?: EmailDigestInnovationPulse;
+  };
+  video_details?: Record<string, EmailDigestVideoDetail>;
 }
 
 const MONEY_SECTION_CONFIGS = {
@@ -277,15 +559,61 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
   "topic-history": "history",
 };
 
+const DEFAULT_EMAIL_OUTRO = {
+  title: "더 듣고 싶은 인사이트가 있나요?",
+  description:
+    "궁금한 산업/기업을 답장으로 남겨주시면 다음 브리핑에 반영해 드릴게요.",
+  ctaLabel: "유티클 인사이트 더 보기",
+  ctaHref: "https://youticle.ai",
+};
+
+const mapVideoDetailsToMeta = (
+  details: Record<string, EmailDigestVideoDetail> | undefined,
+  sectionLabel: string,
+): Record<string, EmailBriefingVideoMeta> => {
+  if (!details) return {};
+  const toSubscriberLabel = (value?: number | string) => {
+    if (value == null) return undefined;
+    const numeric =
+      typeof value === "number"
+        ? value
+        : Number(String(value).replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(numeric)) return undefined;
+    if (numeric >= 1_000_000) {
+      return `${(numeric / 1_000_000).toFixed(1).replace(/\.0$/, "")}M명`;
+    }
+    if (numeric >= 1_000) {
+      return `${(numeric / 1_000).toFixed(1).replace(/\.0$/, "")}K명`;
+    }
+    return `${numeric}명`;
+  };
+  const result: Record<string, EmailBriefingVideoMeta> = {};
+  Object.entries(details).forEach(([videoId, detail]) => {
+    if (!videoId) return;
+    const baseMeta = buildVideoMetaFromId(videoId, sectionLabel);
+    result[videoId] = {
+      ...baseMeta,
+      title: detail.title?.trim() ? detail.title : baseMeta.title,
+      thumbnail: detail.thumbnail ?? baseMeta.thumbnail,
+      channelName: detail.channel_title ?? baseMeta.channelName,
+      channelThumbnail: detail.channel_thumbnail ?? baseMeta.channelThumbnail,
+      subscriberText:
+        toSubscriberLabel(detail.channel_sub_count) ?? baseMeta.subscriberText,
+    };
+  });
+  return result;
+};
+
 const buildSectionBriefingEntry = (
   item: KakaoIntegratedBriefingItem,
-  index: number
+  index: number,
 ) => {
   const title = (item.title ?? `브리핑 ${index + 1}`).trim();
   const soWhat = (item.so_what ?? "").trim();
   const references = Array.isArray(item.references)
     ? item.references.filter(
-        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
+        (ref): ref is string =>
+          typeof ref === "string" && ref.trim().length > 0,
       )
     : [];
   const videoIds = references.filter((ref) => /[A-Za-z0-9_-]+/.test(ref));
@@ -293,7 +621,7 @@ const buildSectionBriefingEntry = (
 };
 
 const fetchIntegratedBriefing = async (
-  sectionLabel: string
+  sectionLabel: string,
 ): Promise<SectionBriefingData | undefined> => {
   try {
     const buildRequestUrl = (variant: string) => {
@@ -313,12 +641,12 @@ const fetchIntegratedBriefing = async (
         {};
     }
     const target = payload.sections?.find(
-      (entry) => entry.section === sectionLabel
+      (entry) => entry.section === sectionLabel,
     );
     if (!target?.data) return undefined;
     const keywords = (target.data.keywords ?? []).filter(
       (keyword): keyword is string =>
-        typeof keyword === "string" && keyword.trim().length > 0
+        typeof keyword === "string" && keyword.trim().length > 0,
     );
     const entries = (target.data.briefing ?? [])
       .map((item, idx) => buildSectionBriefingEntry(item, idx))
@@ -332,6 +660,485 @@ const fetchIntegratedBriefing = async (
   } catch (error) {
     console.warn("fetchIntegratedBriefing failed", error);
     return undefined;
+  }
+};
+
+const mapEmailDigestToBriefing = (
+  payload: EmailDigestResponse,
+  sectionLabel: string,
+  fallbackDate?: string | null,
+  sectionTopVideos?: EmailBriefingVideoMeta[],
+): EmailBriefingKeywordData | null => {
+  const llm = payload.llm_response;
+  if (!llm) return null;
+  const tldrHeadline = llm.tldr?.headline?.trim() || `${sectionLabel} 인사이트`;
+  const tldrBullets = llm.tldr?.bullets ?? [];
+  const normalizedTopVideos = (sectionTopVideos ?? [])
+    .filter((video): video is EmailBriefingVideoMeta => Boolean(video?.id))
+    .slice(0, 5);
+  const topVideoMeta: Record<string, EmailBriefingVideoMeta> = {};
+  normalizedTopVideos.forEach((video) => {
+    if (video.id) {
+      topVideoMeta[video.id] = video;
+    }
+  });
+  const detailVideoMeta = mapVideoDetailsToMeta(
+    payload.video_details,
+    sectionLabel,
+  );
+  const videos: Record<string, EmailBriefingVideoMeta> = {
+    ...detailVideoMeta,
+    ...topVideoMeta,
+  };
+  const ensureVideoMeta = (id?: string) => {
+    if (!id) return;
+    if (!videos[id]) {
+      videos[id] = buildVideoMetaFromId(id, sectionLabel);
+    }
+  };
+  const topVideoIds = normalizedTopVideos
+    .map((video) => video.id)
+    .filter((id): id is string => Boolean(id));
+  topVideoIds.forEach((id) => ensureVideoMeta(id));
+
+  const mapThemeEntries = (
+    entries: (EmailDigestTheme | EmailDigestStrategicMove)[],
+  ) =>
+    entries.map((theme) => {
+      const narratives = (theme.narratives ?? []).map((narrative) => ({
+        text: narrative.text ?? "",
+        videoIds: narrative.video_ids ?? [],
+      }));
+      const whatHappened =
+        theme.what_happened ??
+        (theme as EmailDigestStrategicMove).whatHappened ??
+        narratives[0]?.text ??
+        "";
+      const whyImportant =
+        theme.why_important ??
+        (theme as EmailDigestStrategicMove).whyImportant ??
+        narratives[1]?.text ??
+        whatHappened;
+      return {
+        name: theme.name ?? sectionLabel,
+        whatHappened,
+        whyImportant,
+        narratives,
+      };
+    });
+
+  const hasThemeData = (llm.themes?.length ?? 0) > 0;
+  const themes = hasThemeData ? mapThemeEntries(llm.themes ?? []) : [];
+  const strategicMoves = hasThemeData
+    ? []
+    : mapThemeEntries(llm.strategic_moves ?? []);
+
+  const riskSection = llm.risk_section ?? llm.execution_risks;
+  const riskItems = riskSection?.items ?? [];
+  const executionRisks = {
+    title: riskSection?.title ?? "실행 리스크",
+    items: riskItems.map((item) => {
+      const detailsArray = Array.isArray(item.detail)
+        ? item.detail
+        : item.detail
+          ? [item.detail]
+          : [];
+      return {
+        title: item.title ?? "",
+        detail: detailsArray.join(" "),
+        details: detailsArray,
+        owner:
+          item.owner ?? (item.impact ? item.impact.toUpperCase() : undefined),
+        videoIds: item.video_ids ?? [],
+      };
+    }),
+  };
+
+  const modelWatch = (llm.model_watch ?? []).map((item) => ({
+    modelName: item.model_name ?? "",
+    provider: item.provider ?? "",
+    focusArea: item.focus_area ?? "",
+    implication: item.implication ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
+  const useCaseSpotlight = (llm.use_case_spotlight ?? []).map((item) => ({
+    industry: item.industry ?? "",
+    problemSolved: item.problem_solved ?? "",
+    result: item.result ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
+  const infraPolicyWatch = {
+    title: llm.infra_policy_watch?.title,
+    items: (llm.infra_policy_watch?.items ?? []).map((item) => ({
+      topic: item.topic ?? "",
+      detail: item.detail ?? "",
+      impact: item.impact,
+      videoIds: item.video_ids ?? [],
+    })),
+  };
+  const riskEthics = {
+    title: llm.risk_ethics?.title,
+    items: (llm.risk_ethics?.items ?? []).map((item) => ({
+      title: item.title ?? "",
+      detail: item.detail ?? "",
+      severity: item.severity,
+      videoIds: item.video_ids ?? [],
+    })),
+  };
+  const nextSteps = {
+    title: llm.next_steps?.title,
+    items: (llm.next_steps?.items ?? []).map((item) => ({
+      title: item.title ?? "",
+      detail: item.detail ?? [],
+      relatedEntities: item.related_entities ?? [],
+    })),
+  };
+
+  const innovationTracks = (llm.innovation_tracks ?? []).map((track) => {
+    const narratives = (track.narratives ?? []).map((narrative) => ({
+      text: narrative.text ?? "",
+      videoIds: narrative.video_ids ?? [],
+    }));
+    return {
+      name: track.name ?? sectionLabel,
+      provider: track.provider ?? "",
+      focusArea: track.focus_area ?? "",
+      narratives,
+      impactMetrics: track.impact_metrics ?? [],
+      videoIds: track.video_ids ?? [],
+    };
+  });
+
+  const techSnapshot = llm.tech_snapshot
+    ? {
+        summary: llm.tech_snapshot.summary ?? "",
+        marketSignal: llm.tech_snapshot.market_signal,
+        policySignal: llm.tech_snapshot.policy_signal,
+        innovationSignal: llm.tech_snapshot.innovation_signal,
+      }
+    : undefined;
+
+  const ecosystemWatch = (llm.ecosystem_watch ?? []).map((item) => ({
+    segment: item.segment ?? "",
+    signals: item.signals ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
+
+  const actionItems = llm.action_items
+    ? {
+        title: llm.action_items.title,
+        items: (llm.action_items.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? [],
+          owners: item.owners ?? [],
+          videoIds: item.video_ids ?? [],
+        })),
+      }
+    : undefined;
+
+  const marketPulse = llm.market_pulse
+    ? {
+        summary: llm.market_pulse.summary ?? "",
+        priceTrend: llm.market_pulse.price_trend,
+        transactionTrend: llm.market_pulse.transaction_trend,
+      }
+    : undefined;
+
+  const demandSupply = (llm.demand_supply ?? []).map((item) => ({
+    driver: item.driver ?? "",
+    impact: item.impact ?? [],
+    regions: item.regions ?? [],
+    propertyTypes: item.property_types ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
+
+  const policyFinanceWatch = llm.policy_finance_watch
+    ? {
+        title: llm.policy_finance_watch.title,
+        items: (llm.policy_finance_watch.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? [],
+          videoIds: item.video_ids ?? [],
+        })),
+      }
+    : undefined;
+
+  const regionalSpotlight = (llm.regional_spotlight ?? []).map((spot) => ({
+    region: spot.region ?? sectionLabel,
+    story: spot.story ?? [],
+    videoIds: spot.video_ids ?? [],
+  }));
+
+  const riskFlags = llm.risk_flags
+    ? {
+        title: llm.risk_flags.title,
+        items: (llm.risk_flags.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? "",
+          probability: item.probability,
+          videoIds: item.video_ids ?? [],
+        })),
+      }
+    : undefined;
+
+  const shortTermWatch = llm.next_3day_watch
+    ? {
+        title: llm.next_3day_watch.title,
+        items: (llm.next_3day_watch.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? [],
+        })),
+      }
+    : undefined;
+
+  const macroDrivers = (llm.drivers ?? []).map((driver) => ({
+    name: driver.name ?? sectionLabel,
+    indicatorFocus: driver.indicator_focus,
+    narratives: (driver.narratives ?? []).map((narrative) => ({
+      text: narrative.text ?? "",
+      videoIds: narrative.video_ids ?? [],
+    })),
+  }));
+
+  const macroPolicyWatch = llm.policy_watch
+    ? {
+        title: llm.policy_watch.title,
+        items: (llm.policy_watch.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? [],
+          when: item.when,
+          videoIds: item.video_ids ?? [],
+        })),
+      }
+    : undefined;
+
+  const macroRiskSection = llm.risk_section
+    ? {
+        title: llm.risk_section.title,
+        items: (llm.risk_section.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: Array.isArray(item.detail)
+            ? item.detail
+            : item.detail
+              ? [item.detail]
+              : [],
+          impact: item.impact,
+          videoIds: item.video_ids ?? [],
+        })),
+      }
+    : undefined;
+
+  const macroSectorWatch = (llm.sector_watch ?? []).map((item) => ({
+    segment: item.segment ?? "",
+    signals: item.signals ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
+
+  const macroSnapshot = llm.macro_snapshot
+    ? {
+        summary: llm.macro_snapshot.summary,
+        growthSignal: llm.macro_snapshot.growth_signal,
+        policySignal: llm.macro_snapshot.policy_signal,
+        inflationSignal: llm.macro_snapshot.inflation_signal,
+        liquiditySignal: llm.macro_snapshot.liquidity_signal,
+      }
+    : undefined;
+
+  const macroChecklist = llm.checklist_section
+    ? {
+        title: llm.checklist_section.title,
+        items: (llm.checklist_section.items ?? []).map((item) => ({
+          title: item.title ?? "",
+          detail: item.detail ?? [],
+        })),
+      }
+    : undefined;
+
+  themes.forEach((move) => {
+    move.narratives.forEach((narrative) =>
+      (narrative.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+    );
+  });
+  executionRisks.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  (llm.ticker_profiles ?? []).forEach((profile) =>
+    (profile.video_ids ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  modelWatch.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  useCaseSpotlight.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  infraPolicyWatch.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  riskEthics.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  innovationTracks.forEach((track) => {
+    (track.videoIds ?? []).forEach((id) => ensureVideoMeta(id));
+    track.narratives.forEach((narrative) =>
+      (narrative.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+    );
+  });
+  ecosystemWatch.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  actionItems?.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  demandSupply.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  policyFinanceWatch?.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  regionalSpotlight.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  riskFlags?.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  macroDrivers.forEach((driver) =>
+    driver.narratives.forEach((narrative) =>
+      (narrative.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+    ),
+  );
+  macroPolicyWatch?.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  macroRiskSection?.items.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+  macroSectorWatch.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
+
+  const tickerProfiles = (llm.ticker_profiles ?? []).map((profile) => ({
+    ticker: profile.ticker,
+    companyName: profile.company_name,
+    thesis: profile.thesis ?? [],
+    signals: profile.signals ?? [],
+    videoIds: profile.video_ids ?? [],
+  }));
+  const checklist = (llm.checklist_section?.items ?? []).map((item) => ({
+    title: item.title ?? "",
+    detail: item.detail ?? [],
+  }));
+
+  return {
+    topicLabel: `Youticle 브리핑 · ${sectionLabel}`,
+    dateBadge:
+      formatEmailDateBadge(payload.generated_date) ||
+      formatEmailDateBadge(fallbackDate) ||
+      "",
+    preheader: tldrHeadline,
+    summaryBadge: "요약",
+    tldr: {
+      headline: tldrHeadline,
+      bullets: tldrBullets,
+    },
+    strategicMoves,
+    executionRisks,
+    videos,
+    topVideoIds,
+    outro: DEFAULT_EMAIL_OUTRO,
+    marketMood: llm.market_mood
+      ? {
+          summary: llm.market_mood.summary,
+          flowSignal: llm.market_mood.flow_signal,
+          priceSignal: llm.market_mood.price_signal,
+        }
+      : undefined,
+    themes,
+    tickerProfiles,
+    checklist,
+    modelWatch,
+    useCaseSpotlight,
+    infraPolicyWatch,
+    riskEthics,
+    nextSteps,
+    innovationTracks,
+    techSnapshot,
+    ecosystemWatch,
+    actionItems,
+    marketPulse,
+    demandSupply,
+    policyFinanceWatch,
+    regionalSpotlight,
+    riskFlags,
+    shortTermWatch,
+    innovationPulseSummary: llm.innovation_pulse?.summary,
+    macroDrivers,
+    macroPolicyWatch,
+    macroRiskSection,
+    macroSectorWatch,
+    macroSnapshot,
+    macroChecklist,
+  };
+};
+
+const fetchEmailDigestSection = async (
+  sectionLabel: string,
+  generatedDate?: string | null,
+  options?: {
+    sectionKey?: MoneySectionKey | GeneralSectionKey;
+    slotPhase?: SlotPhase;
+    date?: string | null;
+  },
+): Promise<EmailBriefingKeywordData | null> => {
+  try {
+    const url = new URL(EMAIL_DIGEST_ENDPOINT);
+    url.searchParams.set("section", sectionLabel);
+    if (generatedDate) {
+      url.searchParams.set("generated_date", generatedDate);
+    }
+
+    const topVideoPromise = (async () => {
+      try {
+        if (options?.sectionKey && isMoneySectionKey(options.sectionKey)) {
+          const pkg = await fetchMoneySlotPackage(
+            options.sectionKey,
+            options.slotPhase ?? "baseline",
+            options.date ?? generatedDate ?? undefined,
+          );
+          const recapVideos = pkg.tabs?.videos ?? [];
+          return recapVideos.map((video) =>
+            mapRecapSummaryToEmailMeta(video, sectionLabel),
+          );
+        }
+        const videos = await fetchSectionTopVideos(
+          sectionLabel,
+          options?.date ?? generatedDate ?? undefined,
+        );
+        return videos.map((video) =>
+          mapDataPropsToEmailMeta(video, sectionLabel),
+        );
+      } catch (error) {
+        console.warn(
+          `fetchSectionTopVideos failed (email/${sectionLabel})`,
+          error,
+        );
+        return [] as EmailBriefingVideoMeta[];
+      }
+    })();
+
+    const [payload, topVideoMetas] = await Promise.all([
+      fetchJson<EmailDigestResponse>(url.toString()),
+      topVideoPromise,
+    ]);
+    if (!payload) return null;
+    return mapEmailDigestToBriefing(
+      payload,
+      sectionLabel,
+      generatedDate,
+      topVideoMetas,
+    );
+  } catch (error) {
+    console.warn(`fetchEmailDigestSection failed (${sectionLabel})`, error);
+    return null;
   }
 };
 
@@ -362,15 +1169,14 @@ const ALL_SLOT_PHASES: SlotPhase[] = [
 
 const SLOT_PHASE_SET = new Set<SlotPhase>(ALL_SLOT_PHASES);
 const MONEY_SECTION_KEYS = Object.keys(
-  MONEY_SECTION_CONFIGS
+  MONEY_SECTION_CONFIGS,
 ) as MoneySectionKey[];
 
 export const isSlotPhase = (value: string): value is SlotPhase =>
   SLOT_PHASE_SET.has(value as SlotPhase);
 
-export const isMoneySectionKey = (
-  value: string
-): value is MoneySectionKey => MONEY_SECTION_KEYS.includes(value as MoneySectionKey);
+export const isMoneySectionKey = (value: string): value is MoneySectionKey =>
+  MONEY_SECTION_KEYS.includes(value as MoneySectionKey);
 
 const SLOT_TIME_MAP: Record<SlotPhase, number> = {
   baseline: 1,
@@ -415,9 +1221,114 @@ const decodeSectionEntries = (raw?: string) => {
 const normalizeSectionText = (value?: string | null) =>
   value ? value.replace(/[\s/_-]+/g, "").toLowerCase() : "";
 
+const buildEmailAnchorId = (label: string, index: number) => {
+  const base = label
+    .trim()
+    .replace(/[^\w가-힣]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+  const suffix = base || `section-${index + 1}`;
+  return `email-${suffix}-${index + 1}`;
+};
+
+const formatEmailDateBadge = (value?: string | null) => {
+  if (!value) return null;
+  const digits = value.replace(/[^0-9]/g, "");
+  if (digits.length === 8) {
+    return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}`;
+  }
+  return value;
+};
+
+const toNumericSubscribers = (value: unknown): number | undefined => {
+  if (value == null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const numeric = Number(value.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }
+  return undefined;
+};
+
+const formatSubscriberLabel = (value: unknown): string | undefined => {
+  const numeric = toNumericSubscribers(value);
+  if (numeric == null) return undefined;
+  if (numeric >= 1_000_000) {
+    return `${(numeric / 1_000_000).toFixed(1).replace(/\.0$/, "")}M명`;
+  }
+  if (numeric >= 1_000) {
+    return `${(numeric / 1_000).toFixed(1).replace(/\.0$/, "")}K명`;
+  }
+  return `${numeric}명`;
+};
+
+const mapDataPropsToEmailMeta = (
+  video: DataProps,
+  sectionLabel: string,
+): EmailBriefingVideoMeta => {
+  const fallbackId = video.video_id ?? video.id ?? "";
+  const safeHref = fallbackId
+    ? `https://youticle.io/detail/${fallbackId}`
+    : "https://youticle.io";
+  return {
+    id: video.video_id,
+    title:
+      video.summary_data?.headline_title?.trim() ||
+      video.summary_data?.headline_sub_title?.trim() ||
+      video.title ||
+      video.video_id,
+    thumbnail: video.thumbnail,
+    channelName: video.channel_details?.channel_name || sectionLabel,
+    channelThumbnail: video.channel_details?.channel_thumbnail,
+    subscriberText: formatSubscriberLabel(
+      video.channel_details?.channel_subscribers,
+    ),
+    href: safeHref,
+  };
+};
+
+const mapRecapSummaryToEmailMeta = (
+  video: RecapVideoSummary,
+  fallbackLabel: string,
+): EmailBriefingVideoMeta => ({
+  id: video.id,
+  title: video.title,
+  thumbnail: video.thumbnail,
+  channelName: video.channel || fallbackLabel,
+  channelThumbnail: video.channelThumbnail,
+  subscriberText: video.subscriberText,
+  href:
+    video.href || (video.id ? `/detail/${video.id}` : "https://youticle.io"),
+});
+
+const buildEmailVideoMetaLookup = (
+  videos: DataProps[],
+  sectionLabel: string,
+) => {
+  const lookup: Record<string, EmailBriefingVideoMeta> = {};
+  videos.forEach((video) => {
+    const videoId = video?.video_id;
+    if (!videoId) return;
+    lookup[videoId] = mapDataPropsToEmailMeta(video, sectionLabel);
+  });
+  return lookup;
+};
+
+const buildVideoMetaFromId = (
+  videoId: string,
+  sectionLabel: string,
+): EmailBriefingVideoMeta => ({
+  id: videoId,
+  title: videoId,
+  thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+  channelName: sectionLabel || "YouTube",
+  href: `https://youticle.io/detail/${videoId}`,
+});
+
 const filterVideosByMoneySection = (
   videos: DataProps[],
-  sectionKey: MoneySectionKey
+  sectionKey: MoneySectionKey,
 ) => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
   const normalizedTargets = [
@@ -428,7 +1339,7 @@ const filterVideosByMoneySection = (
   if (normalizedTargets.length === 0) return videos;
   const targetSet = new Set(normalizedTargets);
   return videos.filter((video) =>
-    targetSet.has(normalizeSectionText(video.section))
+    targetSet.has(normalizeSectionText(video.section)),
   );
 };
 
@@ -444,7 +1355,7 @@ const extractSummaryLines = (section?: InsightSection) => {
 
 const buildMarketIndexes = (section?: InsightSection): MarketIndexCard[] => {
   const entries = Object.entries(
-    section?.data?.market_insights?.by_market ?? {}
+    section?.data?.market_insights?.by_market ?? {},
   );
   return entries.slice(0, 3).map(([market, payload], index) => ({
     id: `${section?.key ?? "market"}-${index}`,
@@ -454,14 +1365,14 @@ const buildMarketIndexes = (section?: InsightSection): MarketIndexCard[] => {
       typeof payload?.chg_point_str === "string"
         ? payload.chg_point_str
         : typeof payload?.chg_point === "string"
-        ? payload.chg_point
-        : "-",
+          ? payload.chg_point
+          : "-",
     changeRate:
       typeof payload?.chg_pct_str === "string"
         ? payload.chg_pct_str
         : typeof payload?.chg_pct === "string"
-        ? payload.chg_pct
-        : "-",
+          ? payload.chg_pct
+          : "-",
     sentiment:
       typeof payload?.chg_pct_str === "string" &&
       payload.chg_pct_str.includes("-")
@@ -486,7 +1397,7 @@ const buildInsightItems = (section?: InsightSection) => {
       name: stock.stock_name,
       ticker: stock.ticker ?? "",
       changeText: toPercentText(
-        stock.metrics?.chg_pct ?? stock.metrics?.price_info?.change_pct
+        stock.metrics?.chg_pct ?? stock.metrics?.price_info?.change_pct,
       ),
       detailHref: stock.ticker ? `/detail/${stock.ticker}` : "#",
     }));
@@ -513,16 +1424,6 @@ const buildInsightItems = (section?: InsightSection) => {
   return [];
 };
 
-const toNumericSubscribers = (value: unknown): number | undefined => {
-  if (value == null) return undefined;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const numeric = Number(value.replace(/[^0-9.]/g, ""));
-    return Number.isFinite(numeric) ? numeric : undefined;
-  }
-  return undefined;
-};
-
 const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
   videos.map((video) => {
     const headline =
@@ -536,7 +1437,7 @@ const extractVideoSummaries = (videos: DataProps[]): RecapVideoSummary[] =>
       if (Array.isArray(keyPoints) && keyPoints.length > 0) {
         return keyPoints
           .map((point: any) =>
-            typeof point === "string" ? point : point?.point ?? ""
+            typeof point === "string" ? point : (point?.point ?? ""),
           )
           .filter((line) => line.length > 0);
       }
@@ -577,7 +1478,7 @@ const buildVideoMetaMap = (videos: DataProps[]) => {
 
 const enrichSourcesWithVideoMeta = (
   sources: InsightSource[] | undefined,
-  metaMap: Map<string, DataProps>
+  metaMap: Map<string, DataProps>,
 ): InsightSource[] | undefined => {
   if (!Array.isArray(sources) || metaMap.size === 0) return sources;
   let mutated = false;
@@ -609,7 +1510,7 @@ const enrichSourcesWithVideoMeta = (
 
 const enrichStockWithVideoMeta = (
   stock: InsightStock,
-  metaMap: Map<string, DataProps>
+  metaMap: Map<string, DataProps>,
 ): InsightStock => {
   const mergedSources = enrichSourcesWithVideoMeta(stock.sources, metaMap);
   if (!mergedSources || mergedSources === stock.sources) return stock;
@@ -621,7 +1522,7 @@ const enrichStockWithVideoMeta = (
 
 const enrichAssetWithVideoMeta = (
   asset: InsightAsset,
-  metaMap: Map<string, DataProps>
+  metaMap: Map<string, DataProps>,
 ): InsightAsset => {
   const mergedSources = enrichSourcesWithVideoMeta(asset.sources, metaMap);
   if (!mergedSources || mergedSources === asset.sources) return asset;
@@ -633,7 +1534,7 @@ const enrichAssetWithVideoMeta = (
 
 const enrichInsightSectionWithVideoMeta = (
   section: InsightSection | undefined,
-  videos: DataProps[]
+  videos: DataProps[],
 ): InsightSection | undefined => {
   if (!section || videos.length === 0) return section;
   const metaMap = buildVideoMetaMap(videos);
@@ -674,7 +1575,7 @@ const fetchJson = async <T>(url: string) => {
 const buildSlotPackage = (
   slotPhase: SlotPhase,
   videos: DataProps[],
-  insightSection?: InsightSection
+  insightSection?: InsightSection,
 ): SlotPackage => {
   const slotConfig = SLOT_LABELS[slotPhase] ?? SLOT_LABELS.slot4;
   return {
@@ -712,7 +1613,7 @@ const buildLazySlotPlaceholder = (slotPhase: SlotPhase): SlotPackage => {
 export const fetchMoneySlotPackage = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
-  date?: string
+  date?: string,
 ) => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
 
@@ -726,14 +1627,11 @@ export const fetchMoneySlotPackage = async (
     const slotNumber =
       slotPhase === "ranking"
         ? SLOT_TIME_MAP.slot4
-        : SLOT_TIME_MAP[slotPhase] ?? SLOT_TIME_MAP.slot5;
+        : (SLOT_TIME_MAP[slotPhase] ?? SLOT_TIME_MAP.slot5);
     const videoUrl = new URL(TOP_VIDEOS_V2_ENDPOINT);
     videoUrl.searchParams.set("time_slot", String(slotNumber));
     if (date) videoUrl.searchParams.set("date", date);
     const allVideos = await fetchJson<DataProps[]>(videoUrl.toString());
-    console.log("check");
-    console.log(allVideos);
-    console.log(sectionKey);
     let filteredVideos = filterVideosByMoneySection(allVideos, sectionKey);
     if (slotPhase === "ranking") {
       filteredVideos = filteredVideos.filter((video) => video.is_new);
@@ -750,16 +1648,16 @@ export const fetchMoneySlotPackage = async (
   }
   if (date) insightsUrl.searchParams.set("date", date);
   const insightPayload = await fetchJson<InsightSectionsResponse>(
-    insightsUrl.toString()
+    insightsUrl.toString(),
   );
   const insightSection = insightPayload.sections?.find(
     (section) =>
-      section.key === config.insightKey || section.label === config.label
+      section.key === config.insightKey || section.label === config.label,
   );
 
   const enrichedSection = enrichInsightSectionWithVideoMeta(
     insightSection,
-    videos
+    videos,
   );
 
   return buildSlotPackage(slotPhase, videos, enrichedSection);
@@ -769,12 +1667,10 @@ const buildMoneySection = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
   date?: string,
-  options?: { preloadAllSlots?: boolean }
+  options?: { preloadAllSlots?: boolean },
 ): Promise<RecapSection> => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
-  const targetPhases = options?.preloadAllSlots
-    ? ALL_SLOT_PHASES
-    : [slotPhase];
+  const targetPhases = options?.preloadAllSlots ? ALL_SLOT_PHASES : [slotPhase];
   const slotResults = await Promise.all(
     targetPhases.map((phase) =>
       fetchMoneySlotPackage(sectionKey, phase, date)
@@ -782,11 +1678,11 @@ const buildMoneySection = async (
         .catch((error) => {
           console.warn(
             `fetchMoneySlotPackage failed (${sectionKey}/${phase})`,
-            error
+            error,
           );
           return { phase, pkg: buildSlotPackage(phase, []) };
-        })
-    )
+        }),
+    ),
   );
 
   const fetchedMap = new Map<SlotPhase, SlotPackage>();
@@ -802,7 +1698,9 @@ const buildMoneySection = async (
   });
 
   const preferredPackage =
-    fetchedMap.get(slotPhase) ?? slotPackages.find((pkg) => pkg.tabs) ?? slotPackages[0];
+    fetchedMap.get(slotPhase) ??
+    slotPackages.find((pkg) => pkg.tabs) ??
+    slotPackages[0];
 
   const summaryBriefing = await fetchIntegratedBriefing(config.label);
   return {
@@ -818,24 +1716,31 @@ const buildMoneySection = async (
   } as RecapSection;
 };
 
-const fetchGeneralSection = async (
-  generalKey: GeneralSectionKey,
-  rawParam: string,
-  date?: string
-): Promise<RecapSection> => {
-  const config = GENERAL_SECTION_CONFIGS[generalKey];
-  const sectionQuery = decodeURIComponent(rawParam);
+async function fetchSectionTopVideos(
+  sectionQuery: string,
+  date?: string,
+): Promise<DataProps[]> {
   const videoUrl = new URL(SECTION_VIDEOS_ENDPOINT);
   videoUrl.searchParams.set("section", sectionQuery);
   if (date) videoUrl.searchParams.set("date", date);
-  const videos = await fetchJson<DataProps[]>(videoUrl.toString());
+  return fetchJson<DataProps[]>(videoUrl.toString());
+}
+
+const fetchGeneralSection = async (
+  generalKey: GeneralSectionKey,
+  rawParam: string,
+  date?: string,
+): Promise<RecapSection> => {
+  const config = GENERAL_SECTION_CONFIGS[generalKey];
+  const sectionQuery = decodeURIComponent(rawParam);
+  const videos = await fetchSectionTopVideos(sectionQuery, date);
   const summaryBriefing = await fetchIntegratedBriefing(sectionQuery);
   const summaryBullets = summaryBriefing?.entries.length
     ? summaryBriefing.entries
         .map((entry) => entry.soWhat || entry.title)
         .filter(
           (line): line is string =>
-            typeof line === "string" && line.trim().length > 0
+            typeof line === "string" && line.trim().length > 0,
         )
     : ["시간 순으로 TOP 영상을 모았어요"];
   const slotPackage: SlotPackage = {
@@ -867,15 +1772,71 @@ const fetchGeneralSection = async (
 
 export async function fetchBriefingLanding(
   briefingId: string | null,
-  query?: BriefingLandingQuery
+  query?: BriefingLandingQuery,
 ): Promise<BriefingLandingData | null> {
   const entries = decodeSectionEntries(query?.section);
   const slotQuery = query?.slot?.toLowerCase() as SlotPhase | undefined;
   const slotPhase: SlotPhase =
     slotQuery && SLOT_LABELS[slotQuery] ? slotQuery : "baseline";
   const dateParam = query?.date ?? query?.data;
+  const generatedDateParam = query?.generated_date ?? dateParam;
   const apiDate = toApiDate(dateParam);
   const displayDate = toDisplayDate(dateParam);
+  const emailGeneratedDate = toApiDate(generatedDateParam);
+  const sourceParam = query?.source?.toLowerCase();
+
+  if (sourceParam === "email" && entries.length > 0) {
+    const emailSections = (
+      await Promise.all(
+        entries.map(async (entry, index) => {
+          const briefing = await fetchEmailDigestSection(
+            entry.raw,
+            emailGeneratedDate,
+            { sectionKey: entry.key, slotPhase, date: apiDate },
+          );
+          console.log(briefing);
+          if (!briefing) return null;
+          const anchor = buildEmailAnchorId(entry.raw, index);
+          return {
+            id: anchor,
+            type: "email" as const,
+            title: entry.raw,
+            anchor,
+            summaryBullets: briefing.tldr.bullets.slice(0, 3),
+            emailBriefing: briefing,
+          } satisfies EmailRecapSection;
+        }),
+      )
+    ).filter((section): section is EmailRecapSection => section !== null);
+
+    if (emailSections.length > 0) {
+      const displayLabel =
+        emailSections[0].emailBriefing.dateBadge ||
+        formatEmailDateBadge(emailGeneratedDate) ||
+        displayDate ||
+        "이메일 브리핑";
+      return {
+        briefingId:
+          briefingId ?? `email-landing-${emailGeneratedDate ?? "today"}`,
+        deliveryMeta: {
+          deliveredAt: new Date().toISOString(),
+          displayLabel,
+          description: "이메일 브리핑",
+          tagline: "이메일 브리핑",
+          backHref: "/briefing",
+          backLabel: "전체 브리핑",
+          source: "email",
+        },
+        keywordNav: emailSections.map((section) => ({
+          id: section.id,
+          label: section.title,
+          anchor: section.anchor,
+        })),
+        sections: emailSections,
+        exploreTabs: [],
+      } satisfies BriefingLandingData;
+    }
+  }
 
   if (entries.length > 0) {
     const sections: RecapSection[] = [];
@@ -886,16 +1847,16 @@ export async function fetchBriefingLanding(
             await buildMoneySection(
               entry.key as MoneySectionKey,
               slotPhase,
-              apiDate
-            )
+              apiDate,
+            ),
           );
         } else if (entry.key in GENERAL_SECTION_CONFIGS) {
           sections.push(
             await fetchGeneralSection(
               entry.key as GeneralSectionKey,
               entry.raw,
-              apiDate
-            )
+              apiDate,
+            ),
           );
         }
       } catch (error) {
@@ -935,12 +1896,12 @@ export async function fetchBriefingLanding(
       `${LANDING_ENDPOINT}/${encodeURIComponent(briefingId ?? "")}`,
       {
         cache: "no-store",
-      }
+      },
     );
     if (!response.ok) {
       if (response.status === 404) {
         return briefingId
-          ? mockBriefingLandingById[briefingId] ?? mockBriefingLanding
+          ? (mockBriefingLandingById[briefingId] ?? mockBriefingLanding)
           : mockBriefingLanding;
       }
       throw new Error(`Failed to load briefing landing: ${response.status}`);
@@ -950,7 +1911,7 @@ export async function fetchBriefingLanding(
   } catch (error) {
     console.warn("fetchBriefingLanding fallback", error);
     return briefingId
-      ? mockBriefingLandingById[briefingId] ?? mockBriefingLanding
+      ? (mockBriefingLandingById[briefingId] ?? mockBriefingLanding)
       : mockBriefingLanding;
   }
 }

@@ -9,7 +9,7 @@ interface BriefingQueryPageProps {
 export const revalidate = 0;
 
 const normalizeSearchParams = (
-  raw?: Record<string, string | string[] | undefined>
+  raw?: Record<string, string | string[] | undefined>,
 ) => {
   if (!raw) return undefined;
 
@@ -30,7 +30,8 @@ const normalizeSearchParams = (
 
 const BriefingQueryPage = async ({ searchParams }: BriefingQueryPageProps) => {
   const query = normalizeSearchParams(searchParams);
-  const data = await fetchBriefingLanding(null, query);
+  const requestedBriefingId = query?.briefingId || query?.id || null;
+  const data = await fetchBriefingLanding(requestedBriefingId, query);
   if (!data) {
     notFound();
   }
