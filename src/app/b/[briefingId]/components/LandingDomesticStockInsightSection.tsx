@@ -58,7 +58,7 @@ const isPlaceholderText = (value?: string | null) => {
 };
 
 const hasMeaningfulSectionContent = (
-  section?: { summary?: string | null; highlights?: string | null } | null
+  section?: { summary?: string | null; highlights?: string | null } | null,
 ): boolean => {
   if (!section) return false;
   const summary = section.summary ?? null;
@@ -266,7 +266,7 @@ const LandingDomesticStockInsightSection = ({
   const overview = data?.overview;
   const marketInsights = useMemo(
     () => data?.market_insights?.by_market || {},
-    [data?.market_insights?.by_market]
+    [data?.market_insights?.by_market],
   );
   const rawStocks = data?.stocks ?? [];
   // 해외 주식은 티커 기반 수치가 비어 있으면 카드 자체를 숨긴다.
@@ -299,7 +299,7 @@ const LandingDomesticStockInsightSection = ({
   })();
   const hasMarketDetailToggle = label === "국내 주식" || label === "해외 주식";
   const [showMarketDetails, setShowMarketDetails] = useState(
-    !hasMarketDetailToggle
+    !hasMarketDetailToggle,
   );
   const marketCardsAvailable =
     !hideMarketCards && Object.keys(marketInsights).length > 0;
@@ -330,7 +330,7 @@ const LandingDomesticStockInsightSection = ({
     const targetKeys = summaryTargets[label ?? ""];
     if (!targetKeys || targetKeys.length === 0) return null;
     const representativeKeys = new Set(
-      targetKeys.map((key) => key.toUpperCase())
+      targetKeys.map((key) => key.toUpperCase()),
     );
     const bullets: string[] = [];
     let title: string | null = null;
@@ -389,7 +389,7 @@ const LandingDomesticStockInsightSection = ({
                   card={value}
                   showCommentPreview={shouldShowSummaryCardPreview}
                 />
-              ) : null
+              ) : null,
             )}
           </MarketGrid>
           {shouldShowSummaryCardPreview && representativeMarketComment ? (
@@ -441,7 +441,7 @@ const LandingDomesticStockInsightSection = ({
                 {marketCardsAvailable ? (
                   <MarketGrid>
                     {Object.entries(marketInsights).map(([key, value]) =>
-                      value ? <MarketCard key={key} card={value} /> : null
+                      value ? <MarketCard key={key} card={value} /> : null,
                     )}
                   </MarketGrid>
                 ) : null}
@@ -458,7 +458,7 @@ const LandingDomesticStockInsightSection = ({
             {marketCardsAvailable ? (
               <MarketGrid>
                 {Object.entries(marketInsights).map(([key, value]) =>
-                  value ? <MarketCard key={key} card={value} /> : null
+                  value ? <MarketCard key={key} card={value} /> : null,
                 )}
               </MarketGrid>
             ) : null}
@@ -490,19 +490,19 @@ const LandingDomesticStockInsightSection = ({
           <SubSectionIntro>{stockIntroText}</SubSectionIntro>
           <StockList>
             {displayedStocks.map((stock, index) => (
-          <StockCard
-            key={`${stock.ticker}-${stock.stock_name}`}
-            stock={stock}
-            hideInsightSectionList={hideInsightSectionList}
-            showCommentPreview={
-              shouldShowStockPreview && (!isCollapsed || index < 3)
-            }
-            sectionLabel={label}
-            slotPhase={slotPhase}
-            onVideoNavigate={onVideoNavigate}
-          />
-        ))}
-      </StockList>
+              <StockCard
+                key={`${stock.ticker}-${stock.stock_name}`}
+                stock={stock}
+                hideInsightSectionList={hideInsightSectionList}
+                showCommentPreview={
+                  shouldShowStockPreview && (!isCollapsed || index < 3)
+                }
+                sectionLabel={label}
+                slotPhase={slotPhase}
+                onVideoNavigate={onVideoNavigate}
+              />
+            ))}
+          </StockList>
           {hasMoreStocks ? (
             <StockListToggleRow>
               <StockDetailToggleButton
@@ -556,7 +556,7 @@ export function DomesticPriceSectionVisual({
   const derivedPositionPct = deriveRangePosition(
     rangeLow,
     rangeHigh,
-    derivedRangePrice
+    derivedRangePrice,
   );
   const positionPct =
     typeof rangePositionRaw === "number" && Number.isFinite(rangePositionRaw)
@@ -588,7 +588,7 @@ export function DomesticPriceSectionVisual({
                       left: `${intradayRange.lowPct}%`,
                       width: `${Math.max(
                         intradayRange.highPct - intradayRange.lowPct,
-                        1
+                        1,
                       )}%`,
                     }}
                   />
@@ -770,8 +770,8 @@ export function DomesticFlowSectionVisual({ stock }: { stock: InsightStock }) {
               segment.direction === "sell"
                 ? "매도"
                 : segment.direction === "buy"
-                ? "매수"
-                : "";
+                  ? "매수"
+                  : "";
             return (
               <FlowDistributionSegment
                 key={segment.key}
@@ -877,7 +877,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
                     left: `${intradayDetail.lowPct}%`,
                     width: `${Math.max(
                       intradayDetail.highPct - intradayDetail.lowPct,
-                      1
+                      1,
                     )}%`,
                   }}
                 />
@@ -930,7 +930,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
                   breadthDetail.text ||
-                    `상승 종목 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 종목 ${breadthDetail.down.toLocaleString()}`
+                    `상승 종목 ${breadthDetail.up.toLocaleString()} · 보합 ${breadthDetail.flat.toLocaleString()} · 하락 종목 ${breadthDetail.down.toLocaleString()}`,
                 ),
               }}
             />
@@ -1021,7 +1021,7 @@ const MarketCard = ({ card }: { card: InsightMarketCard }) => {
               dangerouslySetInnerHTML={{
                 __html: emphasizeNumbers(
                   flowDetail.text ||
-                    `${flowDetail.direction} ${flowDetail.netText}`
+                    `${flowDetail.direction} ${flowDetail.netText}`,
                 ),
               }}
             />
@@ -1091,7 +1091,7 @@ const StockCard = ({
   }, [onVideoNavigate]);
   const [showDetails, setShowDetails] = useState(false);
   const [outlineVideoIds, setOutlineVideoIds] = useState<Set<string> | null>(
-    null
+    null,
   );
   const router = useRouter();
   const metrics = stock.metrics;
@@ -1122,7 +1122,7 @@ const StockCard = ({
     try {
       window.sessionStorage.setItem(
         "evidence:payload",
-        JSON.stringify(payload)
+        JSON.stringify(payload),
       );
     } catch {
       // ignore storage errors
@@ -1139,7 +1139,7 @@ const StockCard = ({
       "evidence_button_click",
       user?.id,
       stock.stock_name,
-      getOrCreateAnonId()
+      getOrCreateAnonId(),
     ).catch(() => {});
     router.push(`/evidence?${params.toString()}`);
   };
@@ -1160,7 +1160,7 @@ const StockCard = ({
   const deltaText =
     changePct != null && typeof changePct === "number"
       ? `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`
-      : changePct ?? "—";
+      : (changePct ?? "—");
   const amountText =
     changeAmount != null && typeof changeAmount === "number"
       ? formatCurrencyWithUnit(changeAmount, currency, { sign: true })
@@ -1204,10 +1204,10 @@ const StockCard = ({
   const comment =
     rawComment && !isPlaceholderText(rawComment) ? rawComment : null;
   const commentBullets = normalizeCommentBullets(
-    stock.metric_insight?.comment_bullets
+    stock.metric_insight?.comment_bullets,
   );
   const meaningfulCommentBullets = commentBullets.filter(
-    (bullet) => !isPlaceholderText(bullet)
+    (bullet) => !isPlaceholderText(bullet),
   );
   const rawCommentTitle = stock.metric_insight?.comment_title || "";
   // const commentTitle = /오늘\s*TOP5/.test(rawCommentTitle)
@@ -1219,7 +1219,7 @@ const StockCard = ({
     : [];
   const insightSections = stock.metric_insight?.insight_sections || [];
   const meaningfulInsightSections = insightSections.filter((section) =>
-    hasMeaningfulSectionContent(section || undefined)
+    hasMeaningfulSectionContent(section || undefined),
   );
   const intradayRange = buildStockIntradayDetail(metrics);
   const hasPriceSection = insightSections.some(
@@ -1229,7 +1229,7 @@ const StockCard = ({
         section.category.toLowerCase() === "price_position") ||
         (section.title &&
           (section.title.includes("가격") ||
-            section.title.toLowerCase().includes("price"))))
+            section.title.toLowerCase().includes("price")))),
   );
   const valuationDetail = buildValuationDetail(metrics);
   const hasValuationSection = insightSections.some(
@@ -1238,7 +1238,7 @@ const StockCard = ({
       ((section.category && section.category.toLowerCase() === "valuation") ||
         (section.title &&
           (section.title.includes("밸류") ||
-            section.title.toLowerCase().includes("valuation"))))
+            section.title.toLowerCase().includes("valuation")))),
   );
   const flowDetail = buildFlowDetail(metrics);
   const hasFlowSection = insightSections.some((section) => {
@@ -1263,7 +1263,7 @@ const StockCard = ({
   const levelsDetail = buildLevelsDetail(
     metrics,
     priceInfo?.current_price || metrics?.price,
-    metrics?.currency
+    metrics?.currency,
   );
   const hasLevelsSection = insightSections.some(
     (section) =>
@@ -1271,10 +1271,10 @@ const StockCard = ({
       ((section.category && section.category.toLowerCase() === "levels") ||
         (section.title &&
           (section.title.includes("레벨") ||
-            section.title.toLowerCase().includes("level"))))
+            section.title.toLowerCase().includes("level")))),
   );
   const firstPriceSection = meaningfulInsightSections.find((section) =>
-    isDomesticPriceSection(section)
+    isDomesticPriceSection(section),
   );
   const priceSectionSummaryText =
     firstPriceSection?.summary || firstPriceSection?.highlights || null;
@@ -1308,7 +1308,7 @@ const StockCard = ({
                     style={{
                       width: `${Math.min(
                         100,
-                        Math.max(8, Math.abs(stat.changePct))
+                        Math.max(8, Math.abs(stat.changePct)),
                       )}%`,
                     }}
                   />
@@ -1359,7 +1359,7 @@ const StockCard = ({
         "stock_detail_toggle",
         user?.id,
         stock.stock_name,
-        getOrCreateAnonId()
+        getOrCreateAnonId(),
       ).catch(() => {});
       return next;
     });
@@ -1379,7 +1379,7 @@ const StockCard = ({
     let canceled = false;
     const load = async () => {
       const ids = await fetchOutlineVideoIds(stock.ticker, slotPhase).catch(
-        () => new Set<string>()
+        () => new Set<string>(),
       );
       if (!canceled) setOutlineVideoIds(ids);
     };
@@ -1751,7 +1751,7 @@ export const StockVisualSummaryBlocks = ({
                       left: `${intradayRange.lowPct}%`,
                       width: `${Math.max(
                         intradayRange.highPct - intradayRange.lowPct,
-                        1
+                        1,
                       )}%`,
                     }}
                   />
@@ -1840,8 +1840,8 @@ export const StockVisualSummaryBlocks = ({
                   segment.direction === "sell"
                     ? "매도"
                     : segment.direction === "buy"
-                    ? "매수"
-                    : "";
+                      ? "매수"
+                      : "";
                 return (
                   <FlowDistributionSegment
                     key={segment.key}
@@ -1879,12 +1879,12 @@ const resolveSourceVideoId = (source?: InsightSource | null) =>
 
 export const filterSourcesWithOutline = (
   sources?: InsightStock["sources"],
-  allowedVideoIds?: Set<string>
+  allowedVideoIds?: Set<string>,
 ): InsightSource[] => {
   if (!Array.isArray(sources)) return [];
 
   const sanitizedSources = sources.filter((source): source is InsightSource =>
-    Boolean(resolveSourceVideoId(source))
+    Boolean(resolveSourceVideoId(source)),
   );
 
   if (!allowedVideoIds || allowedVideoIds.size === 0) {
@@ -1932,7 +1932,7 @@ const extractOutlineEntries = (item?: OutlineResponseItem): OutlineEntry[] => {
 };
 
 const collectOutlineVideoIds = (
-  payload: OutlineResponsePayload | null
+  payload: OutlineResponsePayload | null,
 ): Set<string> => {
   const set = new Set<string>();
   if (!payload?.outlines) return set;
@@ -1942,7 +1942,7 @@ const collectOutlineVideoIds = (
     if (!videoId) return;
     const entries = extractOutlineEntries(item);
     const hasSegments = entries?.some((entry) =>
-      (entry?.segments ?? []).some((segment) => segment && segment.key_point)
+      (entry?.segments ?? []).some((segment) => segment && segment.key_point),
     );
     if (hasSegments) {
       set.add(videoId);
@@ -1958,7 +1958,7 @@ interface OutlineFetchOptions {
 
 export const buildOutlineFetchUrl = (
   ticker: string,
-  options?: OutlineFetchOptions
+  options?: OutlineFetchOptions,
 ) => {
   const params = new URLSearchParams();
   const slotParam = options?.slot ?? getBriefingSlot(new Date());
@@ -1973,7 +1973,7 @@ export const buildOutlineFetchUrl = (
 
 export const fetchOutlineVideoIds = async (
   ticker?: string | null,
-  slot?: BriefingSlot | null
+  slot?: BriefingSlot | null,
 ): Promise<Set<string>> => {
   const normalized = ticker?.trim();
   if (!normalized) return new Set();
@@ -1983,7 +1983,7 @@ export const fetchOutlineVideoIds = async (
       {
         method: "GET",
         cache: "no-store",
-      }
+      },
     );
     if (!res.ok) return new Set();
     const payload = (await res.json()) as OutlineResponsePayload;
@@ -2016,7 +2016,7 @@ export const StockVideoSources = ({
   const normalizedSources = eligibleSources
     .map((source) => ({ source, videoId: resolveSourceVideoId(source) }))
     .filter((entry): entry is { source: InsightSource; videoId: string } =>
-      Boolean(entry.videoId)
+      Boolean(entry.videoId),
     );
   if (normalizedSources.length === 0) return null;
   const MAX_DISPLAY_COUNT = 1;
@@ -2036,10 +2036,10 @@ export const StockVideoSources = ({
           const headlineTitle = removeMarkTags(
             summaryData?.headline_title ??
               source.title ??
-              `${stockName} 관련 영상`
+              `${stockName} 관련 영상`,
           );
           const summaryText = removeMarkTags(
-            summaryData?.short_summary ?? source.summary ?? ""
+            summaryData?.short_summary ?? source.summary ?? "",
           );
           const href = {
             pathname: `/detail/${videoId}`,
@@ -2055,7 +2055,7 @@ export const StockVideoSources = ({
               "metion_button_click",
               user?.id,
               videoId,
-              getOrCreateAnonId()
+              getOrCreateAnonId(),
             ).catch(() => {});
           };
 
@@ -2084,7 +2084,9 @@ export const StockVideoSources = ({
                 <VideoSourceBody>
                   <VideoTitle>{headlineTitle}</VideoTitle>
                   {summaryText ? (
-                    <VideoSummary>{summaryText}</VideoSummary>
+                    <VideoSummary>
+                      <VideoSummaryText>{summaryText}</VideoSummaryText>
+                    </VideoSummary>
                   ) : null}
                 </VideoSourceBody>
               </VideoSourceContainer>
@@ -2143,7 +2145,7 @@ const StrategyCard = ({ strategy }: { strategy: InsightStrategy }) => (
 
 function buildIntradayDetail(card: InsightMarketCard) {
   const rangeMatch = card.range_str?.match(
-    /시가\s([\d.,]+) · 고가\s([\d.,]+) · 저가\s([\d.,]+)/
+    /시가\s([\d.,]+) · 고가\s([\d.,]+) · 저가\s([\d.,]+)/,
   );
   if (!rangeMatch) return null;
   const [, open, high, low] = rangeMatch;
@@ -2171,7 +2173,7 @@ function buildIntradayDetail(card: InsightMarketCard) {
 
 function buildBreadthDetail(card: InsightMarketCard) {
   const match = card.breadth_str?.match(
-    /상승\s([\d,]+) · 보합\s([\d,]+) · 하락\s([\d,]+)/
+    /상승\s([\d,]+) · 보합\s([\d,]+) · 하락\s([\d,]+)/,
   );
   if (!match) return null;
   const [, up, flat, down] = match;
@@ -2208,16 +2210,16 @@ function buildLiquidityDetail(card: InsightMarketCard) {
     .trim();
 
   const volumeMatch = normalized.match(
-    /거래량(?:은)?[^0-9가-힣-]*([\d,.]+(?:\s*[가-힣]+)?)\s*\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i
+    /거래량(?:은)?[^0-9가-힣-]*([\d,.]+(?:\s*[가-힣]+)?)\s*\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i,
   );
   const valueMatch = normalized.match(
-    /거래대금(?:은)?[^0-9가-힣-]*([\d,.\s가-힣]+?)\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i
+    /거래대금(?:은)?[^0-9가-힣-]*([\d,.\s가-힣]+?)\(전일\s*([^)]+?)(?:,\s*(?:약\s*)?([\d.]+)x)?\)/i,
   );
   const volumeSummaryMatch = normalized.match(
-    /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+    /거래량은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/,
   );
   const valueSummaryMatch = normalized.match(
-    /거래대금은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/
+    /거래대금은[^,]*?([가-힣A-Za-z\s]+?)\s*\(/,
   );
 
   if (!volumeMatch || !valueMatch) {
@@ -2403,7 +2405,7 @@ function parseKoreanAmount(value?: string | null) {
   normalized.replace(/([+-]?\d+(?:\.\d+)?)(조|억|만)?/g, (_, numStr, unit) => {
     if (!numStr) return "";
     matched = true;
-    const multiplier = unit ? unitMap[unit] ?? 1 : 1;
+    const multiplier = unit ? (unitMap[unit] ?? 1) : 1;
     const numeric = Number(numStr);
     if (Number.isFinite(numeric)) {
       total += numeric * multiplier;
@@ -2423,7 +2425,7 @@ function stripRatioText(value?: string | null) {
 
 function buildOrderFlowDetail(card: InsightMarketCard) {
   const match = card.order_imbalance_str?.match(
-    /매도잔량\s([\d,.]+(?:\s*[가-힣]+)?) · 매수잔량\s([\d,.]+(?:\s*[가-힣]+)?) \(매도\s([\d.]+)% · 매수\s([\d.]+)% · 순매수\s(?:약\s*)?([\d,.]+(?:\s*[가-힣]+)?)\)/
+    /매도잔량\s([\d,.]+(?:\s*[가-힣]+)?) · 매수잔량\s([\d,.]+(?:\s*[가-힣]+)?) \(매도\s([\d.]+)% · 매수\s([\d.]+)% · 순매수\s(?:약\s*)?([\d,.]+(?:\s*[가-힣]+)?)\)/,
   );
   if (!match) return null;
   const [, sell, buy, sellPct, buyPct, net] = match;
@@ -2440,8 +2442,8 @@ function buildOrderFlowDetail(card: InsightMarketCard) {
       netDirection === "buy"
         ? "매수"
         : netDirection === "sell"
-        ? "매도"
-        : "중립"
+          ? "매도"
+          : "중립"
     } ${netText}`;
   const text = compactLargeNumbersInText(rawText);
   return {
@@ -2466,8 +2468,8 @@ function buildStockIntradayDetail(metrics?: InsightStockMetrics) {
     open != null
       ? "시가"
       : prev_close != null
-      ? "전일 종가 기준"
-      : "시가 데이터 없음";
+        ? "전일 종가 기준"
+        : "시가 데이터 없음";
 
   const spread = high - low || 1;
   const clamp = (value: number) => Math.max(0, Math.min(100, value));
@@ -2490,7 +2492,7 @@ function buildStockIntradayDetail(metrics?: InsightStockMetrics) {
 }
 
 function buildValuationDetail(
-  metrics?: InsightStockMetrics
+  metrics?: InsightStockMetrics,
 ): ValuationDetail | null {
   if (!metrics) return null;
 
@@ -2529,12 +2531,12 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
 
   const foreignShareRaw = toFiniteNumber(flows.foreign_netbuy_share_pct);
   const institutionShareRaw = toFiniteNumber(
-    flows.institution_netbuy_share_pct
+    flows.institution_netbuy_share_pct,
   );
 
   const computeShare = (
     raw: number | null | undefined,
-    fallbackAmount: number
+    fallbackAmount: number,
   ) => {
     if (raw != null && Number.isFinite(raw)) return raw;
     return percent(fallbackAmount);
@@ -2543,7 +2545,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
   const foreignPercentRaw = computeShare(foreignShareRaw, foreignNet);
   const institutionPercentRaw = computeShare(
     institutionShareRaw,
-    institutionNet
+    institutionNet,
   );
 
   const segments: FlowSegment[] = [];
@@ -2552,7 +2554,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
     key: "foreign" | "institution" | "others",
     label: string,
     value: number,
-    direction: "buy" | "sell" | "neutral"
+    direction: "buy" | "sell" | "neutral",
   ) => {
     if (!Number.isFinite(value) || Math.abs(value) < 0.05) return;
     const clamped = Math.max(-100, Math.min(100, value));
@@ -2570,7 +2572,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
       "foreign",
       "외국인",
       foreignPercentRaw,
-      foreignPercentRaw >= 0 ? "buy" : "sell"
+      foreignPercentRaw >= 0 ? "buy" : "sell",
     );
   }
   if (institutionPercentRaw) {
@@ -2578,7 +2580,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
       "institution",
       "기관",
       institutionPercentRaw,
-      institutionPercentRaw >= 0 ? "buy" : "sell"
+      institutionPercentRaw >= 0 ? "buy" : "sell",
     );
   }
 
@@ -2586,7 +2588,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
   if (totalPercent > 100) {
     segments.forEach((segment) => {
       segment.percent = Number(
-        ((segment.percent / totalPercent) * 100).toFixed(1)
+        ((segment.percent / totalPercent) * 100).toFixed(1),
       );
     });
     totalPercent = segments.reduce((acc, item) => acc + item.percent, 0);
@@ -2611,7 +2613,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
           netSum > 0 ? "외국인·기관 순매수" : "외국인·기관 순매도"
         } ${formatNumberWithUnit(netSum, { sign: false }).replace(
           /^[-+]/,
-          ""
+          "",
         )}주`
       : "외국인·기관 순매수/순매도 중립";
 
@@ -2663,7 +2665,7 @@ function buildFlowDetail(metrics?: InsightStockMetrics): FlowDetail | null {
 }
 
 function buildStockLiquidityDetail(
-  metrics?: InsightStockMetrics
+  metrics?: InsightStockMetrics,
 ): LiquidityDetail | null {
   const liquidity = metrics?.liquidity;
   if (!liquidity) return null;
@@ -2741,7 +2743,7 @@ function buildStockLiquidityDetail(
 function buildLevelsDetail(
   metrics?: InsightStockMetrics,
   currentPrice?: number | null,
-  currency?: string | null
+  currency?: string | null,
 ): LevelsDetail | null {
   const levels = metrics?.levels;
   if (!levels) return null;
@@ -2799,7 +2801,7 @@ function buildLevelsDetail(
   };
 
   supports.forEach((item) =>
-    addMarker(item.label.toLowerCase(), item.label, item.value)
+    addMarker(item.label.toLowerCase(), item.label, item.value),
   );
   if (pivot != null) {
     addMarker("pivot", "Pivot", pivot);
@@ -2808,7 +2810,7 @@ function buildLevelsDetail(
     addMarker("current", "현재가", numericCurrent);
   }
   resistances.forEach((item) =>
-    addMarker(item.label.toLowerCase(), item.label, item.value)
+    addMarker(item.label.toLowerCase(), item.label, item.value),
   );
 
   const markerValues = markerSources
@@ -2859,7 +2861,7 @@ function buildLevelsDetail(
     if (numericCurrent == null) return sortedResistances[0];
     return (
       sortedResistances.find(
-        (item) => (item.value as number) >= numericCurrent
+        (item) => (item.value as number) >= numericCurrent,
       ) ?? sortedResistances[sortedResistances.length - 1]
     );
   };
@@ -2906,7 +2908,7 @@ function buildLevelsDetail(
   }
 
   const formatLevelDistance = (
-    level?: { value?: number; distance?: string } | null
+    level?: { value?: number; distance?: string } | null,
   ) => {
     if (!level) return "—";
     if (level.distance) return level.distance;
@@ -2971,7 +2973,7 @@ function resolveRangeCurrentPrice(metrics?: InsightStockMetrics | null) {
   ];
   for (const candidate of candidates) {
     const value = toFiniteNumber(
-      typeof candidate === "number" ? candidate : (candidate as number | null)
+      typeof candidate === "number" ? candidate : (candidate as number | null),
     );
     if (value != null) return value;
   }
@@ -2991,7 +2993,7 @@ function derivePriceFromHigh(high?: number, fromHighPct?: number | null) {
 function deriveRangePosition(
   low?: number | null,
   high?: number | null,
-  current?: number | null
+  current?: number | null,
 ) {
   if (
     low == null ||
@@ -3055,7 +3057,7 @@ function normalizeCurrency(currency?: string | null): string {
 function formatCurrencyWithUnit(
   value?: number | null,
   currency?: string | null,
-  options: { compact?: boolean; sign?: boolean } = {}
+  options: { compact?: boolean; sign?: boolean } = {},
 ): string {
   if (value == null || Number.isNaN(value)) return "—";
 
@@ -3140,7 +3142,7 @@ function formatKrwFromHundredMillion(value?: number | null) {
 
 function formatNumberWithUnit(
   value?: number | null,
-  options?: { sign?: boolean }
+  options?: { sign?: boolean },
 ) {
   if (value == null || Number.isNaN(value)) return "—";
 
@@ -3208,8 +3210,8 @@ function emphasizeNumbers(text?: string | null) {
   return toStrong(
     text.replace(
       /([0-9]+(?:[.,][0-9]+)*\s?(?:억|만|p|%|원|만주|만|조|x)?)/g,
-      "<strong>$1</strong>"
-    )
+      "<strong>$1</strong>",
+    ),
   );
 }
 
@@ -3624,8 +3626,8 @@ const StackedFill = styled.div<{ $tone: "up" | "flat" | "down" }>`
     $tone === "up"
       ? COLOR_POSITIVE
       : $tone === "down"
-      ? COLOR_NEGATIVE
-      : COLOR_NEUTRAL};
+        ? COLOR_NEGATIVE
+        : COLOR_NEUTRAL};
 `;
 
 const StatDescriptor = styled.div`
@@ -3688,8 +3690,8 @@ const LiquidityFill = styled.div<{ $tone: "up" | "down" | "flat" }>`
     $tone === "up"
       ? COLOR_POSITIVE
       : $tone === "down"
-      ? COLOR_NEGATIVE
-      : COLOR_NEUTRAL};
+        ? COLOR_NEGATIVE
+        : COLOR_NEUTRAL};
 `;
 
 const LiquidityMeta = styled.div`
@@ -3713,8 +3715,8 @@ const LiquidityPointer = styled.span<{ $tone: "up" | "down" | "flat" }>`
     $tone === "up"
       ? COLOR_POSITIVE
       : $tone === "down"
-      ? COLOR_NEGATIVE
-      : COLOR_NEUTRAL};
+        ? COLOR_NEGATIVE
+        : COLOR_NEUTRAL};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3733,8 +3735,8 @@ const ChangeValue = styled.span<{ $tone: "up" | "down" | "flat" }>`
     $tone === "up"
       ? COLOR_POSITIVE
       : $tone === "down"
-      ? COLOR_NEGATIVE
-      : COLOR_NEUTRAL};
+        ? COLOR_NEGATIVE
+        : COLOR_NEUTRAL};
 `;
 
 const MarketComment = styled.div<{ $withBorder?: boolean }>`
@@ -3912,7 +3914,10 @@ const StockDetailCollapse = styled.div<{ $expanded: boolean }>`
   opacity: ${({ $expanded }) => ($expanded ? 1 : 0)};
   transform: ${({ $expanded }) =>
     $expanded ? "translateY(0)" : "translateY(-6px)"};
-  transition: max-height 0.45s ease, opacity 0.3s ease, transform 0.4s ease,
+  transition:
+    max-height 0.45s ease,
+    opacity 0.3s ease,
+    transform 0.4s ease,
     padding-top 0.4s ease;
   padding-top: ${({ $expanded }) => ($expanded ? "12px" : "0")};
   pointer-events: ${({ $expanded }) => ($expanded ? "auto" : "none")};
@@ -4090,8 +4095,8 @@ const ValuationMetricValue = styled.span<{
     $tone === "positive"
       ? COLOR_POSITIVE
       : $tone === "negative"
-      ? COLOR_NEGATIVE
-      : "#0f172a"};
+        ? COLOR_NEGATIVE
+        : "#0f172a"};
 `;
 
 const FlowVisualWrapper = styled.div`
@@ -4111,8 +4116,8 @@ const FlowSummary = styled.div<{ $tone: TonePositiveNeutralNegative }>`
     $tone === "positive"
       ? COLOR_POSITIVE
       : $tone === "negative"
-      ? COLOR_NEGATIVE
-      : "#475569"};
+        ? COLOR_NEGATIVE
+        : "#475569"};
 `;
 
 const FlowDistributionBar = styled.div`
@@ -4170,8 +4175,8 @@ const FlowStatCard = styled.div<{ $tone?: TonePositiveNeutralNegative }>`
       $tone === "positive"
         ? COLOR_POSITIVE
         : $tone === "negative"
-        ? COLOR_NEGATIVE
-        : "#0f172a"};
+          ? COLOR_NEGATIVE
+          : "#0f172a"};
   }
   small {
     font-size: 11px;
@@ -4238,8 +4243,8 @@ const LiquidityChange = styled.span<{ $tone: "up" | "down" | "flat" }>`
     $tone === "up"
       ? COLOR_POSITIVE
       : $tone === "down"
-      ? COLOR_NEGATIVE
-      : "#94a3b8"};
+        ? COLOR_NEGATIVE
+        : "#94a3b8"};
 `;
 
 const LiquidityGaugeTrack = styled.div`
@@ -4261,8 +4266,8 @@ const LiquidityGaugeFill = styled.div<{ $tone: "up" | "down" | "flat" }>`
     $tone === "up"
       ? "linear-gradient(90deg, rgba(255,107,107,0.2), rgba(255,107,107,0.8))"
       : $tone === "down"
-      ? "linear-gradient(90deg, rgba(11,99,246,0.2), rgba(11,99,246,0.8))"
-      : "linear-gradient(90deg, rgba(148,163,184,0.2), rgba(148,163,184,0.6))"};
+        ? "linear-gradient(90deg, rgba(11,99,246,0.2), rgba(11,99,246,0.8))"
+        : "linear-gradient(90deg, rgba(148,163,184,0.2), rgba(148,163,184,0.6))"};
 `;
 
 const LevelsVisualWrapper = styled.div`
@@ -4539,7 +4544,9 @@ const EvidenceButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   flex: 1;
 
   &:hover,
@@ -4736,7 +4743,9 @@ export const VideoSourceCard = styled(Link)`
   border: 1px solid rgba(148, 163, 184, 0.25);
   text-decoration: none;
   color: inherit;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 
   &:hover,
   &:focus-visible {
@@ -4801,7 +4810,13 @@ const VideoTitle = styled.span`
   overflow: hidden;
 `;
 
-export const VideoSummary = styled.p`
+export const VideoSummary = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+export const VideoSummaryText = styled.p`
   margin: 0;
   font-size: 13px;
   color: #475569;

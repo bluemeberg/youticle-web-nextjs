@@ -43,6 +43,13 @@ export interface EmailBriefingUseCaseItem {
   videoIds?: string[];
 }
 
+export interface EmailBriefingCompetitionWatchItem {
+  name: string;
+  detail?: string;
+  signals?: string[];
+  videoIds?: string[];
+}
+
 export interface EmailBriefingInnovationTrack {
   name: string;
   provider?: string;
@@ -263,6 +270,7 @@ export interface EmailBriefingKeywordData {
   techSnapshot?: EmailBriefingTechSnapshot;
   ecosystemWatch?: EmailBriefingEcosystemWatchItem[];
   actionItems?: EmailBriefingActionItems;
+  competitionWatch?: EmailBriefingCompetitionWatchItem[];
   marketPulse?: EmailBriefingMarketPulse;
   demandSupply?: EmailBriefingDemandSupplyItem[];
   policyFinanceWatch?: {

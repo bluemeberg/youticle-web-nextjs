@@ -17,6 +17,8 @@ import type {
   EmailBriefingKeywordData,
   EmailBriefingVideoMeta,
 } from "@/types/emailBriefing";
+import { removeMarkTags } from "@/utils/formatter";
+
 import type {
   InsightAsset,
   InsightSection,
@@ -90,6 +92,7 @@ interface EmailDigestVideoDetail {
   channel_thumbnail?: string;
   channel_sub_count?: number;
   upload_date?: string;
+  short_summary?: string;
 }
 
 interface EmailDigestModelWatchItem {
@@ -104,6 +107,13 @@ interface EmailDigestUseCaseSpotlightItem {
   industry?: string;
   problem_solved?: string;
   result?: string[];
+  video_ids?: string[];
+}
+
+interface EmailDigestCompetitionWatchItem {
+  name?: string;
+  detail?: string;
+  signals?: string[];
   video_ids?: string[];
 }
 
@@ -323,6 +333,7 @@ interface EmailDigestResponse {
       items?: EmailDigestRiskEthicItem[];
     };
     next_steps?: EmailDigestNextStepsSection;
+    competition_watch?: EmailDigestCompetitionWatchItem[];
     regional_spotlight?: EmailDigestRegionalSpotlightItem[];
     policy_watch?: EmailDigestPolicyWatchSection;
     sector_watch?: EmailDigestSectorWatchItem[];
@@ -591,6 +602,7 @@ const mapVideoDetailsToMeta = (
   Object.entries(details).forEach(([videoId, detail]) => {
     if (!videoId) return;
     const baseMeta = buildVideoMetaFromId(videoId, sectionLabel);
+    const summaryText = detail.short_summary?.trim();
     result[videoId] = {
       ...baseMeta,
       title: detail.title?.trim() ? detail.title : baseMeta.title,
@@ -599,6 +611,7 @@ const mapVideoDetailsToMeta = (
       channelThumbnail: detail.channel_thumbnail ?? baseMeta.channelThumbnail,
       subscriberText:
         toSubscriberLabel(detail.channel_sub_count) ?? baseMeta.subscriberText,
+      summary: summaryText ? [summaryText] : baseMeta.summary,
     };
   });
   return result;
@@ -829,7 +842,11 @@ const mapEmailDigestToBriefing = (
         title: llm.action_items.title,
         items: (llm.action_items.items ?? []).map((item) => ({
           title: item.title ?? "",
-          detail: item.detail ?? [],
+          detail: Array.isArray(item.detail)
+            ? item.detail
+            : item.detail
+              ? [item.detail]
+              : [],
           owners: item.owners ?? [],
           videoIds: item.video_ids ?? [],
         })),
@@ -857,11 +874,22 @@ const mapEmailDigestToBriefing = (
         title: llm.policy_finance_watch.title,
         items: (llm.policy_finance_watch.items ?? []).map((item) => ({
           title: item.title ?? "",
-          detail: item.detail ?? [],
+          detail: Array.isArray(item.detail)
+            ? item.detail
+            : item.detail
+              ? [item.detail]
+              : [],
           videoIds: item.video_ids ?? [],
         })),
       }
     : undefined;
+
+  const competitionWatch = (llm.competition_watch ?? []).map((item) => ({
+    name: item.name ?? sectionLabel,
+    detail: item.detail ?? "",
+    signals: item.signals ?? [],
+    videoIds: item.video_ids ?? [],
+  }));
 
   const regionalSpotlight = (llm.regional_spotlight ?? []).map((spot) => ({
     region: spot.region ?? sectionLabel,
@@ -995,6 +1023,9 @@ const mapEmailDigestToBriefing = (
   policyFinanceWatch?.items.forEach((item) =>
     (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
   );
+  competitionWatch.forEach((item) =>
+    (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
+  );
   regionalSpotlight.forEach((item) =>
     (item.videoIds ?? []).forEach((id) => ensureVideoMeta(id)),
   );
@@ -1064,6 +1095,7 @@ const mapEmailDigestToBriefing = (
     techSnapshot,
     ecosystemWatch,
     actionItems,
+    competitionWatch,
     marketPulse,
     demandSupply,
     policyFinanceWatch,
@@ -1271,6 +1303,22 @@ const mapDataPropsToEmailMeta = (
   const safeHref = fallbackId
     ? `https://youticle.io/detail/${fallbackId}`
     : "https://youticle.io";
+  const summaryList = (() => {
+    const shortSummary = video.summary_data?.short_summary?.trim();
+    if (shortSummary) {
+      return [removeMarkTags(shortSummary)];
+    }
+    const keyPoints = video.summary_data?.key_points;
+    if (Array.isArray(keyPoints) && keyPoints.length > 0) {
+      return keyPoints
+        .map((point: any) =>
+          typeof point === "string" ? point : (point?.point ?? ""),
+        )
+        .filter((line) => line.length > 0)
+        .map((line) => removeMarkTags(line));
+    }
+    return [];
+  })();
   return {
     id: video.video_id,
     title:
@@ -1285,6 +1333,7 @@ const mapDataPropsToEmailMeta = (
       video.channel_details?.channel_subscribers,
     ),
     href: safeHref,
+    summary: summaryList,
   };
 };
 

@@ -26,6 +26,7 @@ import LandingDomesticStockInsightSection, {
   VideoThumbnailImage,
   VideoSourceBody,
   VideoSummary,
+  VideoSummaryText,
   VideoMetaRow,
   VideoMetaRowContainer,
   VideoMetaRowSubContainer,
@@ -268,8 +269,8 @@ const renderSummaryContent = (
   onVideoNavigate?: () => void,
   buildDetailHref?: (
     videoId: string,
-    customHref?: string | null
-  ) => string | undefined
+    customHref?: string | null,
+  ) => string | undefined,
 ) => {
   if (briefing && briefing.entries.length > 0) {
     return (
@@ -311,7 +312,7 @@ const renderSummaryContent = (
                   })
                   .filter(
                     (item): item is { videoId: string; video: VideoCardData } =>
-                      Boolean(item)
+                      Boolean(item),
                   );
                 if (!referencedVideos.length) return null;
                 return (
@@ -342,37 +343,50 @@ const renderSummaryContent = (
                               <VideoTitle>
                                 {stripMarkTags(video.title)}
                               </VideoTitle>
-                              {video.summary.length ? (
+                              {(video.summary.length ||
+                                video.channel ||
+                                video.channelThumbnail ||
+                                meta.subscriberLabel ||
+                                meta.uploadLabel) && (
                                 <VideoSummary>
-                                  {stripMarkTags(video.summary[0])}
+                                  {video.summary.length ? (
+                                    <VideoSummaryText>
+                                      {stripMarkTags(video.summary[0])}
+                                    </VideoSummaryText>
+                                  ) : null}
                                 </VideoSummary>
-                              ) : null}
+                              )}
                             </VideoSourceBody>
                           </VideoSourceContainer>
-                          <VideoMetaRow>
-                            {video.channelThumbnail ? (
-                              <ChannelAvatarImage
-                                src={video.channelThumbnail}
-                                alt={video.channel || "채널"}
-                                width={40}
-                                height={40}
-                                style={{ width: 40, height: 40 }}
-                              />
-                            ) : null}
-                            <VideoMetaRowContainer>
-                              {video.channel ? (
-                                <span>{video.channel}</span>
+                          {(video.channel ||
+                            video.channelThumbnail ||
+                            meta.subscriberLabel ||
+                            meta.uploadLabel) && (
+                            <VideoMetaRow>
+                              {video.channelThumbnail ? (
+                                <ChannelAvatarImage
+                                  src={video.channelThumbnail}
+                                  alt={video.channel || "채널"}
+                                  width={40}
+                                  height={40}
+                                  style={{ width: 40, height: 40 }}
+                                />
                               ) : null}
-                              {meta.subscriberLabel || meta.uploadLabel ? (
-                                <VideoMetaRowSubContainer>
-                                  {meta.subscriberLabel ?? ""}
-                                  {meta.uploadLabel ? (
-                                    <strong>{meta.uploadLabel}</strong>
-                                  ) : null}
-                                </VideoMetaRowSubContainer>
-                              ) : null}
-                            </VideoMetaRowContainer>
-                          </VideoMetaRow>
+                              <VideoMetaRowContainer>
+                                {video.channel ? (
+                                  <span>{video.channel}</span>
+                                ) : null}
+                                {meta.subscriberLabel || meta.uploadLabel ? (
+                                  <VideoMetaRowSubContainer>
+                                    {meta.subscriberLabel ?? ""}
+                                    {meta.uploadLabel ? (
+                                      <strong>{meta.uploadLabel}</strong>
+                                    ) : null}
+                                  </VideoMetaRowSubContainer>
+                                ) : null}
+                              </VideoMetaRowContainer>
+                            </VideoMetaRow>
+                          )}
                           {/* <BulletList>
                             {video.summary.map((line, idx) => (
                               <li key={safeKey(line, idx)}>
@@ -1119,7 +1133,7 @@ const isMoneySection = (section: RecapSection): section is MoneyRecapSection =>
   section.type === "stocks" || section.type === "crypto";
 
 const isRankingSection = (
-  section: RecapSection
+  section: RecapSection,
 ): section is RankingRecapSection => section.type === "realestate";
 
 const isEmailSection = (section: RecapSection): section is EmailRecapSection =>
@@ -1148,7 +1162,7 @@ const buildInitialSlotCache = (sections: RecapSection[]): SlotDataCache => {
 const resolveCachedSlotTabs = (
   cache: SlotDataCache,
   sectionId: string,
-  slotId?: string | null
+  slotId?: string | null,
 ) => {
   if (!slotId) return undefined;
   return cache[makeSlotCacheKey(sectionId, slotId)];
@@ -1174,7 +1188,7 @@ function getDefaultSlotId(section: MoneyRecapSection) {
   const slots = filterOutRankingSlots(section.slotPackages);
   if (!slots.length) return "";
   const explicitDefault = slots.find(
-    (slot) => slot.id === section.defaultSlotId
+    (slot) => slot.id === section.defaultSlotId,
   );
   return (
     explicitDefault?.id ||
@@ -1186,7 +1200,7 @@ function getDefaultSlotId(section: MoneyRecapSection) {
 
 function diffCountFromBase(
   baseIds: Set<string>,
-  targetVideos: VideoCardData[]
+  targetVideos: VideoCardData[],
 ) {
   let c = 0;
   for (const v of targetVideos) if (!baseIds.has(v.id)) c += 1;
@@ -1233,7 +1247,7 @@ const resolveSectionKey = (section: RecapSection) => {
 
 const buildSectionSlotLabel = (
   sectionTitle: string,
-  slot: SlotPackage
+  slot: SlotPackage,
 ): SlotLabel => {
   const phase = resolveSlotPhase(slot.id) || "slot5";
   const baseLabel: SlotLabel = {
@@ -1274,8 +1288,10 @@ interface BriefingLandingPageClientProps {
   requireEmailConnect?: boolean;
 }
 
-interface StandardBriefingLandingPageClientProps
-  extends Omit<BriefingLandingPageClientProps, "data"> {
+interface StandardBriefingLandingPageClientProps extends Omit<
+  BriefingLandingPageClientProps,
+  "data"
+> {
   data: BriefingLandingData;
 }
 
@@ -1316,9 +1332,9 @@ const StandardBriefingLandingPageClient = ({
         setPhoneLinkStatus("checking");
         const response = await fetch(
           `https://youticle.shop/users/phone-status?phone=${encodeURIComponent(
-            normalizedPhone
+            normalizedPhone,
           )}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
         if (!response.ok) {
           throw new Error("Failed to fetch phone status");
@@ -1383,7 +1399,7 @@ const StandardBriefingLandingPageClient = ({
       action: VideoInteractionAction,
       videoId: string,
       sectionKeyParam: string,
-      slotId?: string | null
+      slotId?: string | null,
     ) => {
       let anonId = anonIdRef.current;
       if (!anonId && typeof window !== "undefined") {
@@ -1411,10 +1427,10 @@ const StandardBriefingLandingPageClient = ({
         user?.id,
         userEmailFallback + sectionKeyParam + slotId,
         anonId ?? undefined,
-        context
+        context,
       );
     },
-    [user?.id, user?.email, normalizedPhone, normalizedDateForLogging]
+    [user?.id, user?.email, normalizedPhone, normalizedDateForLogging],
   );
 
   useEffect(() => {
@@ -1434,7 +1450,7 @@ const StandardBriefingLandingPageClient = ({
               "video_card_view_100",
               videoId,
               sectionKeyParam,
-              slotId
+              slotId,
             );
           }
           const loggedSet =
@@ -1448,13 +1464,13 @@ const StandardBriefingLandingPageClient = ({
                 `video_card_view_${label}` as any,
                 videoId,
                 sectionKeyParam,
-                slotId
+                slotId,
               );
             }
           });
         });
       },
-      { threshold: VIDEO_VIEW_THRESHOLDS }
+      { threshold: VIDEO_VIEW_THRESHOLDS },
     );
     videoObserverRef.current = observer;
     Object.values(videoRefs.current).forEach((node) => {
@@ -1486,7 +1502,7 @@ const StandardBriefingLandingPageClient = ({
           delete videoRefs.current[videoId];
         }
       },
-    []
+    [],
   );
   const [landingPath, setLandingPath] = useState<string | null>(null);
   useEffect(() => {
@@ -1522,7 +1538,7 @@ const StandardBriefingLandingPageClient = ({
       }
       return `/detail/${videoId}?${params.toString()}`;
     },
-    [data.briefingId, landingPath]
+    [data.briefingId, landingPath],
   );
 
   const topBarRef = useRef<HTMLDivElement | null>(null);
@@ -1544,7 +1560,7 @@ const StandardBriefingLandingPageClient = ({
   const visibleSections = useMemo(() => {
     if (!activeAnchor) return data.sections.slice(0, 1);
     const filtered = data.sections.filter(
-      (section) => section.anchor === activeAnchor
+      (section) => section.anchor === activeAnchor,
     );
     if (filtered.length > 0) return filtered;
     return data.sections.slice(0, 1);
@@ -1645,10 +1661,10 @@ const StandardBriefingLandingPageClient = ({
     Record<string, "good" | "meh" | "bad" | null>
   >({});
   const [slotDataCache, setSlotDataCache] = useState<SlotDataCache>(() =>
-    buildInitialSlotCache(data.sections)
+    buildInitialSlotCache(data.sections),
   );
   const [slotLoadingMap, setSlotLoadingMap] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
   const baseVideoIdsByMoneySection = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -1657,7 +1673,7 @@ const StandardBriefingLandingPageClient = ({
       if (!baseSlotId) return;
       const tabs = resolveCachedSlotTabs(slotDataCache, section.id, baseSlotId);
       const ids = new Set<string>(
-        (tabs?.videos ?? []).map((video) => video.id)
+        (tabs?.videos ?? []).map((video) => video.id),
       );
       map[section.id] = ids;
     });
@@ -1751,7 +1767,7 @@ const StandardBriefingLandingPageClient = ({
       window.scrollTo({ top, behavior: "smooth" });
       return true;
     },
-    [scrollOffset]
+    [scrollOffset],
   );
 
   useLayoutEffect(() => {
@@ -1769,7 +1785,7 @@ const StandardBriefingLandingPageClient = ({
    */
   useEffect(() => {
     const nodes = Object.values(sectionRefs.current).filter(
-      Boolean
+      Boolean,
     ) as Element[];
     if (!nodes.length) return;
 
@@ -1780,7 +1796,7 @@ const StandardBriefingLandingPageClient = ({
           .filter((e) => e.isIntersecting)
           .sort(
             (a, b) =>
-              (a.boundingClientRect.top ?? 0) - (b.boundingClientRect.top ?? 0)
+              (a.boundingClientRect.top ?? 0) - (b.boundingClientRect.top ?? 0),
           );
         const top = visible[0];
         if (top) {
@@ -1791,7 +1807,7 @@ const StandardBriefingLandingPageClient = ({
       {
         threshold: 0.2,
         rootMargin: `-${stickyOffset}px 0px -55%`,
-      }
+      },
     );
 
     // DOM이 안정된 다음 observe
@@ -1834,7 +1850,7 @@ const StandardBriefingLandingPageClient = ({
         console.warn("Failed to link phone", error);
       }
     },
-    [normalizedPhone, normalizedSectionParam]
+    [normalizedPhone, normalizedSectionParam],
   );
 
   const handleGoogleSignIn = useCallback(async () => {
@@ -1905,7 +1921,7 @@ const StandardBriefingLandingPageClient = ({
         });
       }
     },
-    [slotDataCache, normalizedDateForApi]
+    [slotDataCache, normalizedDateForApi],
   );
 
   useEffect(() => {
@@ -1953,7 +1969,7 @@ const StandardBriefingLandingPageClient = ({
         label: label ?? anchor,
         phone: normalizedPhone ?? "",
         date: normalizedDateForLogging ?? "",
-      }
+      },
     );
     pendingNavAnchorRef.current = anchor;
     setActiveAnchor(anchor);
@@ -2017,7 +2033,7 @@ const StandardBriefingLandingPageClient = ({
         origin,
         date: normalizedDateForLogging ?? "",
         phone: normalizedPhone ?? "",
-      }
+      },
     );
     if (!user?.email) {
       const signedInUser = await handleGoogleSignIn();
@@ -2029,7 +2045,7 @@ const StandardBriefingLandingPageClient = ({
   };
 
   const getActiveSlot = (
-    section: MoneyRecapSection
+    section: MoneyRecapSection,
   ): SlotPackage | undefined => {
     const activeSlotId = activeSlotBySection[section.id];
     const visibleSlots = filterOutRankingSlots(section.slotPackages);
@@ -2043,7 +2059,7 @@ const StandardBriefingLandingPageClient = ({
    */
   const onSlotSelect = (section: MoneyRecapSection, slotId: string) => {
     const slot = filterOutRankingSlots(section.slotPackages).find(
-      (s) => s.id === slotId
+      (s) => s.id === slotId,
     );
     const slotLabelCopy = slot
       ? buildSectionSlotLabel(section.title, slot)
@@ -2066,7 +2082,7 @@ const StandardBriefingLandingPageClient = ({
         slot_label: slotLabelCopy?.title ?? slotId,
         phone: normalizedPhone ?? "",
         date: normalizedDateForLogging ?? "",
-      }
+      },
     );
     setActiveSlotBySection((prev) => ({ ...prev, [section.id]: slotId }));
     ensureSlotData(section, slotId);
@@ -2076,7 +2092,7 @@ const StandardBriefingLandingPageClient = ({
       const slotCopy = buildSectionSlotLabel(section.title, slot);
       if (diff > 0) {
         showToast(
-          `${slotCopy.title} TOP5로 갱신됐어요 · 새 근거영상 ${diff}개`
+          `${slotCopy.title} TOP5로 갱신됐어요 · 새 근거영상 ${diff}개`,
         );
       } else {
         showToast(`${slotCopy.title} 슬롯으로 이동했어요`);
@@ -2092,7 +2108,7 @@ const StandardBriefingLandingPageClient = ({
   };
 
   const adaptSlotVideosToSources = (
-    videos: VideoCardData[]
+    videos: VideoCardData[],
   ): InsightSource[] => {
     return videos.map((video) => {
       const summaryText =
@@ -2112,7 +2128,7 @@ const StandardBriefingLandingPageClient = ({
   const buildVideoLookup = (
     sectionId: string,
     packages: SlotPackage[],
-    cache: SlotDataCache
+    cache: SlotDataCache,
   ) => {
     const map = new Map<string, VideoCardData>();
     packages.forEach((pkg) => {
@@ -2157,7 +2173,7 @@ const StandardBriefingLandingPageClient = ({
   };
 
   const resolveDetectedSlotLabels = (
-    detectedSlots?: Record<string, boolean> | null
+    detectedSlots?: Record<string, boolean> | null,
   ) => {
     if (!detectedSlots) return [] as string[];
     return Object.entries(detectedSlots)
@@ -2166,7 +2182,7 @@ const StandardBriefingLandingPageClient = ({
   };
 
   const pickPrimaryDetectedSlot = (
-    detectedSlots?: Record<string, boolean> | null
+    detectedSlots?: Record<string, boolean> | null,
   ) => {
     if (!detectedSlots) return null;
     const entries = Object.entries(detectedSlots)
@@ -2195,7 +2211,7 @@ const StandardBriefingLandingPageClient = ({
   };
 
   const renderMoneySection = (
-    section: MoneyRecapSection
+    section: MoneyRecapSection,
   ): { slotBar: ReactNode; node: ReactNode } => {
     const slotPool = filterOutRankingSlots(section.slotPackages)
       .slice()
@@ -2215,7 +2231,7 @@ const StandardBriefingLandingPageClient = ({
     const activeSlotTabs = resolveCachedSlotTabs(
       slotDataCache,
       section.id,
-      activeSlot?.id
+      activeSlot?.id,
     );
     const activeSlotCacheKey = activeSlot
       ? makeSlotCacheKey(section.id, activeSlot.id)
@@ -2266,7 +2282,7 @@ const StandardBriefingLandingPageClient = ({
     const now = new Date();
     const hasVideoData = Boolean(activeSlotTabs?.videos?.length);
     const isFutureSlot = Boolean(
-      slotTime && slotTime.getTime() > now.getTime()
+      slotTime && slotTime.getTime() > now.getTime(),
     );
     const isMissingSlot =
       !insightSection &&
@@ -2282,7 +2298,7 @@ const StandardBriefingLandingPageClient = ({
     const summaryVideoLookup = buildVideoLookup(
       section.id,
       slotPool,
-      slotDataCache
+      slotDataCache,
     );
     const sectionKey = resolveSectionKey(section);
     const handleFeedback = async (rating: "good" | "meh" | "bad") => {
@@ -2308,8 +2324,8 @@ const StandardBriefingLandingPageClient = ({
         rating === "good"
           ? "좋아요! 이런 구성을 더 추천드릴게요."
           : rating === "meh"
-          ? "의견 고맙습니다. 더 나은 편성을 고민해볼게요."
-          : "피드백 감사합니다. 개선에 참고할게요.";
+            ? "의견 고맙습니다. 더 나은 편성을 고민해볼게요."
+            : "피드백 감사합니다. 개선에 참고할게요.";
       showToast(message);
     };
     const renderVideoCard = (video: VideoCardData) => {
@@ -2324,7 +2340,7 @@ const StandardBriefingLandingPageClient = ({
           "video_card_click",
           video.id,
           sectionKey,
-          activeSlot?.id ?? null
+          activeSlot?.id ?? null,
         );
         triggerNavigationLoading();
       };
@@ -2334,7 +2350,7 @@ const StandardBriefingLandingPageClient = ({
           ref={attachVideoObserver(
             video.id,
             sectionKey,
-            activeSlot?.id ?? null
+            activeSlot?.id ?? null,
           )}
         >
           <VideoSourceCard href={detailHref} onClick={handleCardClick}>
@@ -2349,39 +2365,48 @@ const StandardBriefingLandingPageClient = ({
                 <VideoTitleRow>
                   <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
                 </VideoTitleRow>
-                {video.summary.length ? (
+                {(video.summary.length ||
+                  video.channel ||
+                  video.channelThumbnail ||
+                  meta.subscriberLabel ||
+                  meta.uploadLabel) && (
                   <VideoSummary>
                     {video.summary.map((line, idx) => (
-                      <span
+                      <VideoSummaryText
                         key={safeKey(line, idx)}
                         dangerouslySetInnerHTML={createMarkedHtml(line)}
                       />
                     ))}
                   </VideoSummary>
-                ) : null}
+                )}
               </VideoSourceBody>
             </VideoSourceContainer>
-            <VideoMetaRow>
-              {video.channelThumbnail ? (
-                <ChannelAvatarImage
-                  src={video.channelThumbnail}
-                  alt={video.channel || "채널"}
-                  width={40}
-                  height={40}
-                />
-              ) : null}
-              <VideoMetaRowContainer>
-                {video.channel ? <span>{video.channel}</span> : null}
-                {meta.subscriberLabel || meta.uploadLabel ? (
-                  <VideoMetaRowSubContainer>
-                    {meta.subscriberLabel ?? ""}
-                    {meta.uploadLabel ? (
-                      <strong>{meta.uploadLabel}</strong>
-                    ) : null}
-                  </VideoMetaRowSubContainer>
+            {(video.channel ||
+              video.channelThumbnail ||
+              meta.subscriberLabel ||
+              meta.uploadLabel) && (
+              <VideoMetaRow>
+                {video.channelThumbnail ? (
+                  <ChannelAvatarImage
+                    src={video.channelThumbnail}
+                    alt={video.channel || "채널"}
+                    width={40}
+                    height={40}
+                  />
                 ) : null}
-              </VideoMetaRowContainer>
-            </VideoMetaRow>
+                <VideoMetaRowContainer>
+                  {video.channel ? <span>{video.channel}</span> : null}
+                  {meta.subscriberLabel || meta.uploadLabel ? (
+                    <VideoMetaRowSubContainer>
+                      {meta.subscriberLabel ?? ""}
+                      {meta.uploadLabel ? (
+                        <strong>{meta.uploadLabel}</strong>
+                      ) : null}
+                    </VideoMetaRowSubContainer>
+                  ) : null}
+                </VideoMetaRowContainer>
+              </VideoMetaRow>
+            )}
             {/* {highlightedSlots.length ? (
             <DetectedSlotBadges>
               {highlightedSlots.map((slotLabel, slotIdx) => (
@@ -2430,11 +2455,11 @@ const StandardBriefingLandingPageClient = ({
       return Object.values(groups).sort(
         (a, b) =>
           (SLOT_DETECTED_PRIORITY[b.slotId] ?? Number.MAX_SAFE_INTEGER) -
-          (SLOT_DETECTED_PRIORITY[a.slotId] ?? Number.MAX_SAFE_INTEGER)
+          (SLOT_DETECTED_PRIORITY[a.slotId] ?? Number.MAX_SAFE_INTEGER),
       );
     })();
     const highlightedVideoIds = new Set(
-      highlightGroups.flatMap((group) => group.videos.map((video) => video.id))
+      highlightGroups.flatMap((group) => group.videos.map((video) => video.id)),
     );
     let regularVideos = highlightGroups.length
       ? slotVideos.filter((video) => !highlightedVideoIds.has(video.id))
@@ -2442,7 +2467,7 @@ const StandardBriefingLandingPageClient = ({
     const fallbackRegularGroup = (() => {
       if (HIGHLIGHT_SECTION_OPT_OUT_TITLES.has(section.title)) return null;
       const undetected = regularVideos.filter(
-        (video) => !videoPrimarySlotMap.get(video.id)
+        (video) => !videoPrimarySlotMap.get(video.id),
       );
       if (!undetected.length) return null;
       const slotTitleText =
@@ -2460,10 +2485,10 @@ const StandardBriefingLandingPageClient = ({
     })();
     if (fallbackRegularGroup) {
       const fallbackIds = new Set(
-        fallbackRegularGroup.videos.map((video) => video.id)
+        fallbackRegularGroup.videos.map((video) => video.id),
       );
       regularVideos = regularVideos.filter(
-        (video) => !fallbackIds.has(video.id)
+        (video) => !fallbackIds.has(video.id),
       );
     }
     const hasAnyVideos = slotVideos.length > 0;
@@ -2612,7 +2637,7 @@ const StandardBriefingLandingPageClient = ({
                   summaryLines,
                   summaryVideoLookup,
                   triggerNavigationLoading,
-                  buildBriefingDetailHref
+                  buildBriefingDetailHref,
                 )
               ) : (
                 <SummaryNotice>
@@ -2626,7 +2651,7 @@ const StandardBriefingLandingPageClient = ({
                 summaryLines,
                 summaryVideoLookup,
                 triggerNavigationLoading,
-                buildBriefingDetailHref
+                buildBriefingDetailHref,
               )
             )}
           </SummaryCard>
@@ -2698,7 +2723,7 @@ const StandardBriefingLandingPageClient = ({
                   ) : null}
                   <VideoList>
                     {fallbackRegularGroup.videos.map((video) =>
-                      renderVideoCard(video)
+                      renderVideoCard(video),
                     )}
                   </VideoList>
                 </HighlightSection>
@@ -2780,7 +2805,7 @@ const StandardBriefingLandingPageClient = ({
             summaryLines,
             rankingVideoLookup,
             triggerNavigationLoading,
-            buildBriefingDetailHref
+            buildBriefingDetailHref,
           )}
         </SummaryCard>
 
@@ -2872,7 +2897,7 @@ const StandardBriefingLandingPageClient = ({
                         [section.id]: windowLabel,
                       }));
                       showToast(
-                        `${section.title} · ${windowLabel} 갱신으로 전환했어요`
+                        `${section.title} · ${windowLabel} 갱신으로 전환했어요`,
                       );
                     }}
                   >
@@ -2899,12 +2924,10 @@ const StandardBriefingLandingPageClient = ({
   const renderEmailSection = (section: EmailRecapSection) => {
     const inlineMeta: DeliveryMeta = {
       ...data.deliveryMeta,
-      deliveredAt:
-        data.deliveryMeta.deliveredAt || new Date().toISOString(),
+      deliveredAt: data.deliveryMeta.deliveredAt || new Date().toISOString(),
       displayLabel:
         section.emailBriefing.dateBadge || data.deliveryMeta.displayLabel,
-      tagline:
-        section.emailBriefing.topicLabel || data.deliveryMeta.tagline,
+      tagline: section.emailBriefing.topicLabel || data.deliveryMeta.tagline,
     };
     return (
       <SectionBlock key={section.id} id={section.anchor}>
@@ -3174,12 +3197,7 @@ const BriefingLandingPageClient = (props: BriefingLandingPageClientProps) => {
   const { data: inputData, ...rest } = props;
   const data = inputData ?? MOCK_DATA;
 
-  return (
-    <StandardBriefingLandingPageClient
-      {...rest}
-      data={data}
-    />
-  );
+  return <StandardBriefingLandingPageClient {...rest} data={data} />;
 };
 
 export default BriefingLandingPageClient;
@@ -3741,7 +3759,9 @@ const SlotChip = styled.button<{ $active: boolean }>`
       : "linear-gradient(135deg, #f8f9ff, #eef2ff)"};
   color: ${({ $active }) => ($active ? "#fff" : "#1f2a4a")};
   scroll-snap-align: start;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   /* box-shadow: ${({ $active }) =>
     $active ? "0 6px 15px rgba(31, 42, 74, 0.4)" : "none"}; */
 `;
@@ -4001,7 +4021,9 @@ const EmailConnectArchiveButton = styled.button`
   background: rgba(37, 99, 235, 0.12);
   border: none;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 
   &:hover {
     background: rgba(37, 99, 235, 0.2);
@@ -4025,7 +4047,9 @@ const EmailConnectCloseButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 
   &:hover {
     background: rgba(15, 23, 42, 0.12);
@@ -4184,8 +4208,8 @@ const IndexChange = styled.span<{ $sentiment: Sentiment }>`
     $sentiment === "up"
       ? "#1fb56a"
       : $sentiment === "down"
-      ? "#e05268"
-      : "#5b6180"};
+        ? "#e05268"
+        : "#5b6180"};
 `;
 
 const VideoList = styled.div`

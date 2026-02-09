@@ -17,10 +17,11 @@ import {
   VideoSourceCard,
   VideoSourceContainer,
   VideoSourceList,
-  VideoSummary,
+  VideoSummaryText,
   VideoThumbnailImage,
   VideoThumbnailWrapper,
 } from "./LandingDomesticStockInsightSection";
+import { removeMarkTags } from "@/utils/formatter";
 
 const ECONOMY_BRIEFING_INTRO =
   "최근 100일 동안 업로드된 국내·글로벌 경제 영상만으로 성장/물가/정책, 산업별 수요를 정리했습니다.";
@@ -37,7 +38,7 @@ const InlineVideoList = styled.div`
 
 const InlineVideoTitle = styled.p`
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.4;
   color: #0f172a;
@@ -84,7 +85,9 @@ const EmailBriefingLanding = ({
     return segments.map((segment, idx) => {
       if (segment.startsWith("<mark>") && segment.endsWith("</mark>")) {
         const content = segment.replace(/<\/?mark>/g, "");
-        return <Mark key={`mark-${content}-${idx}`}>{splitSentences(content)}</Mark>;
+        return (
+          <Mark key={`mark-${content}-${idx}`}>{splitSentences(content)}</Mark>
+        );
       }
       return <span key={`text-${idx}`}>{splitSentences(segment)}</span>;
     });
@@ -155,11 +158,15 @@ const EmailBriefingLanding = ({
         </VideoThumbnailWrapper>
         <VideoSourceBody>
           <InlineVideoTitle>{video.title}</InlineVideoTitle>
-          {video.summary?.length ? (
-            <VideoSummary>{video.summary[0]}</VideoSummary>
-          ) : video.subscriberText ? (
-            <VideoSummary>{video.subscriberText}</VideoSummary>
-          ) : null}
+          {(() => {
+            const summaryText = video.summary?.length
+              ? removeMarkTags(video.summary[0]).trim()
+              : "";
+            const fallbackText = summaryText || video.subscriberText || "";
+            return fallbackText ? (
+              <VideoSummaryText>{fallbackText}</VideoSummaryText>
+            ) : null;
+          })()}
         </VideoSourceBody>
       </VideoSourceContainer>
       {video.channelThumbnail || video.channelName || video.subscriberText ? (
@@ -190,6 +197,7 @@ const EmailBriefingLanding = ({
     const list = getVideos(ids);
     if (!list.length) return null;
     const limitedList = list.slice(0, 2);
+    console.log(limitedList);
     if (isLandingEmbed) {
       return (
         <InlineVideoList>
@@ -200,6 +208,118 @@ const EmailBriefingLanding = ({
       );
     }
     return <VideoGrid>{limitedList.map(renderVideoCard)}</VideoGrid>;
+  };
+
+  const renderStrategicMovesSection = () => {
+    if (!briefing.strategicMoves?.length) return null;
+    return (
+      <ContentCard>
+        <SectionLabel>🧭 전략적 움직임</SectionLabel>
+        <SectionHeading>핵심 전략</SectionHeading>
+        <DemandGrid>
+          {briefing.strategicMoves.map((move, idx) => {
+            const moveVideoIds = Array.from(
+              new Set(
+                move.narratives.flatMap(
+                  (narrative) => narrative.videoIds || [],
+                ),
+              ),
+            );
+            return (
+              <DemandCard key={`${move.name}-${idx}`}>
+                <MacroInfoTitle>{move.name}</MacroInfoTitle>
+                <SectionSubheading>무슨 일?</SectionSubheading>
+                <BusinessSectionParagraph>
+                  {renderMarked(move.whatHappened)}
+                </BusinessSectionParagraph>
+                <SectionSubheading>왜 중요한가?</SectionSubheading>
+                <BusinessSectionParagraph>
+                  {renderMarked(move.whyImportant)}
+                </BusinessSectionParagraph>
+                {move.narratives.length ? (
+                  <BulletList>
+                    {move.narratives.map((narrative, narrativeIdx) => (
+                      <li key={`${move.name}-narrative-${narrativeIdx}`}>
+                        {renderMarked(narrative.text)}
+                      </li>
+                    ))}
+                  </BulletList>
+                ) : null}
+                {renderVideoGrid(moveVideoIds)}
+              </DemandCard>
+            );
+          })}
+        </DemandGrid>
+      </ContentCard>
+    );
+  };
+
+  const renderExecutionRisksSection = () => {
+    const section = briefing.executionRisks;
+    if (!section?.items?.length) return null;
+    return (
+      <ContentCard>
+        <SectionLabel>⚠️ 실행 리스크</SectionLabel>
+        <SectionHeading>{section.title || "핵심 위험 요인"}</SectionHeading>
+        <MacroInfoGrid>
+          {section.items.map((item, idx) => {
+            const details = Array.isArray(item.detail)
+              ? item.detail
+              : item.detail
+                ? [item.detail]
+                : (item.details ?? []);
+            return (
+              <MacroRiskCard key={`${item.title}-${idx}`}>
+                <MacroInfoTitle>{item.title}</MacroInfoTitle>
+                {item.owner ? (
+                  <MacroImpactBadge>{item.owner}</MacroImpactBadge>
+                ) : null}
+                <MacroList>
+                  {details.map((line, lineIdx) => (
+                    <li key={`${item.title}-exec-${lineIdx}`}>
+                      {renderMarked(line)}
+                    </li>
+                  ))}
+                </MacroList>
+                {renderVideoGrid(item.videoIds)}
+              </MacroRiskCard>
+            );
+          })}
+        </MacroInfoGrid>
+      </ContentCard>
+    );
+  };
+
+  const renderCompetitionWatchSection = () => {
+    if (!briefing.competitionWatch?.length) return null;
+    return (
+      <ContentCard>
+        <SectionLabel>⚔️ 경쟁 구도</SectionLabel>
+        <SectionHeading>핵심 경쟁 이슈</SectionHeading>
+        <PolicyGrid>
+          {briefing.competitionWatch.map((item, idx) => (
+            <PolicyCard key={`${item.name}-${idx}`}>
+              <MacroInfoTitle>{item.name}</MacroInfoTitle>
+              {item.detail ? (
+                <BusinessSectionParagraph>
+                  {renderMarked(item.detail)}
+                </BusinessSectionParagraph>
+              ) : null}
+              {item.signals?.length ? (
+                <BulletList>
+                  {item.signals.map((signal, signalIdx) => (
+                    <li key={`${item.name}-signal-${signalIdx}`}>
+                      {renderMarked(signal)}
+                    </li>
+                  ))}
+                </BulletList>
+              ) : null}
+              {renderVideoGrid(item.videoIds)}
+            </PolicyCard>
+          ))}
+        </PolicyGrid>
+      </ContentCard>
+    );
   };
 
   const renderEvidenceGallery = (
@@ -273,7 +393,7 @@ const EmailBriefingLanding = ({
     return briefing.executionRisks.items.map((item, idx) => (
       <RiskCard key={`${item.title}-${idx}`}>
         <RiskHeader>
-          <SectionHeading>{item.title}</SectionHeading>
+          <MacroInfoTitle>{item.title}</MacroInfoTitle>
           {item.owner ? <RiskBadge>{item.owner}</RiskBadge> : null}
         </RiskHeader>
         <RiskList>
@@ -350,65 +470,72 @@ const EmailBriefingLanding = ({
 
   const renderInnovationTracksSection = () => {
     if (!briefing.innovationTracks?.length) return null;
-    return briefing.innovationTracks.map((track, idx) => {
-      const videoIds = Array.from(
-        new Set([
-          ...(track.videoIds ?? []),
-          ...track.narratives.flatMap((narrative) => narrative.videoIds ?? []),
-        ]),
-      );
-      return (
-        <ContentCard key={`${track.name}-${idx}`}>
-          <SectionHeading>
-            {`🚀 Innovation Track ${idx + 1} · ${track.name}`}
-          </SectionHeading>
-          {track.provider || track.focusArea ? (
-            <TrackMeta>
-              {track.provider ? <span>{track.provider}</span> : null}
-              {track.focusArea ? (
-                <TrackFocus>{renderMarked(track.focusArea)}</TrackFocus>
-              ) : null}
-            </TrackMeta>
-          ) : null}
-          {track.narratives.length ? (
-            <>
-              <SectionSubheading>핵심 내러티브</SectionSubheading>
-              <NarrativeList>
-                {track.narratives.map((narrative, narrativeIdx) => (
-                  <li key={`${track.name}-story-${narrativeIdx}`}>
-                    {renderMarked(narrative.text)}
-                  </li>
-                ))}
-              </NarrativeList>
-            </>
-          ) : null}
-          {track.impactMetrics?.length ? (
-            <>
-              <SectionSubheading>주요 지표</SectionSubheading>
-              <BulletList>
-                {track.impactMetrics.map((metric, metricIdx) => (
-                  <li key={`${track.name}-metric-${metricIdx}`}>
-                    {renderMarked(metric)}
-                  </li>
-                ))}
-              </BulletList>
-            </>
-          ) : null}
-          {renderVideoGrid(videoIds)}
-        </ContentCard>
-      );
-    });
+    return (
+      <ContentCard>
+        <SectionLabel>🚀 Innovation Track</SectionLabel>
+        <SectionHeading>핵심 혁신 루트</SectionHeading>
+        <PolicyGrid>
+          {briefing.innovationTracks.map((track, idx) => {
+            const videoIds = Array.from(
+              new Set(
+                [...(track.videoIds ?? []),
+                ...track.narratives.flatMap((narrative) => narrative.videoIds ?? [])],
+              ),
+            );
+            return (
+              <PolicyCard key={`${track.name}-${idx}`}>
+                <MacroInfoTitle>{track.name}</MacroInfoTitle>
+                {track.provider || track.focusArea ? (
+                  <TrackMeta>
+                    {track.provider ? <span>{track.provider}</span> : null}
+                    {track.focusArea ? (
+                      <TrackFocus>{renderMarked(track.focusArea)}</TrackFocus>
+                    ) : null}
+                  </TrackMeta>
+                ) : null}
+                {track.narratives.length ? (
+                  <>
+                    <SectionSubheading>핵심 내러티브</SectionSubheading>
+                    <NarrativeList>
+                      {track.narratives.map((narrative, narrativeIdx) => (
+                        <li key={`${track.name}-story-${narrativeIdx}`}>
+                          {renderMarked(narrative.text)}
+                        </li>
+                      ))}
+                    </NarrativeList>
+                  </>
+                ) : null}
+                {track.impactMetrics?.length ? (
+                  <>
+                    <SectionSubheading>주요 지표</SectionSubheading>
+                    <BulletList>
+                      {track.impactMetrics.map((metric, metricIdx) => (
+                        <li key={`${track.name}-metric-${metricIdx}`}>
+                          {renderMarked(metric)}
+                        </li>
+                      ))}
+                    </BulletList>
+                  </>
+                ) : null}
+                {renderVideoGrid(videoIds)}
+              </PolicyCard>
+            );
+          })}
+        </PolicyGrid>
+      </ContentCard>
+    );
   };
 
   const renderEcosystemWatchSection = () => {
     if (!briefing.ecosystemWatch?.length) return null;
     return (
       <ContentCard>
-        <SectionHeading>🤝 생태계/파트너십</SectionHeading>
+        <SectionLabel>🤝 생태계/파트너십</SectionLabel>
+        <SectionHeading>핵심 협력 시그널</SectionHeading>
         <EcosystemGrid>
           {briefing.ecosystemWatch.map((item, idx) => (
             <EcosystemCard key={`${item.segment}-${idx}`}>
-              <EcosystemTitle>{item.segment}</EcosystemTitle>
+              <MacroInfoTitle>{item.segment}</MacroInfoTitle>
               <BulletList>
                 {item.signals.map((signal, signalIdx) => (
                   <li key={`${item.segment}-signal-${signalIdx}`}>
@@ -440,7 +567,12 @@ const EmailBriefingLanding = ({
                 ) : null}
               </ActionTitleRow>
               <ChecklistList>
-                {(item.detail ?? []).map((line, detailIdx) => (
+                {(Array.isArray(item.detail)
+                  ? item.detail
+                  : item.detail
+                    ? [item.detail]
+                    : []
+                ).map((line, detailIdx) => (
                   <li key={`${item.title}-action-${detailIdx}`}>
                     {renderMarked(line)}
                   </li>
@@ -459,14 +591,14 @@ const EmailBriefingLanding = ({
       <HeroCard>
         <HeroMeta>
           <span>{briefing.topicLabel}</span>
-          <HeroBadge>
+          {/* <HeroBadge>
             {briefing.dateBadge || deliveryMeta.displayLabel}
-          </HeroBadge>
+          </HeroBadge> */}
         </HeroMeta>
         {briefing.summaryBadge ? (
           <SummaryBadge>{briefing.summaryBadge}</SummaryBadge>
         ) : null}
-        <HeroHeadline>{briefing.tldr.headline}</HeroHeadline>
+        <HeroHeadline>{removeMarkTags(briefing.tldr.headline)}</HeroHeadline>
         <HeroList>
           {briefing.tldr.bullets.map((bullet, idx) => (
             <li key={`legacy-tldr-${idx}`}>{renderMarked(bullet)}</li>
@@ -474,49 +606,48 @@ const EmailBriefingLanding = ({
         </HeroList>
       </HeroCard>
 
-      {briefing.strategicMoves.map((move) => {
-        const moveVideoIds = Array.from(
-          new Set(
-            move.narratives.flatMap((narrative) => narrative.videoIds || []),
-          ),
-        );
-        return (
-          <ContentCard key={move.name}>
-            <SectionLabel>🧭 전략적 움직임</SectionLabel>
-            <SectionHeading>{move.name}</SectionHeading>
-            <SectionSubheading>무슨 일?</SectionSubheading>
-            <SectionParagraph>
-              {renderMarked(move.whatHappened)}
-            </SectionParagraph>
-            <SectionSubheading>왜 중요한가?</SectionSubheading>
-            <SectionParagraph>
-              {renderMarked(move.whyImportant)}
-            </SectionParagraph>
-            <NarrativeList>
-              {move.narratives.map((narrative, idx) => (
-                <li key={`${move.name}-narrative-${idx}`}>
-                  {renderMarked(narrative.text)}
-                </li>
-              ))}
-            </NarrativeList>
-            {renderVideoGrid(moveVideoIds)}
-          </ContentCard>
-        );
-      })}
+      {renderStrategicMovesSection()}
 
-      <SectionLabel as="h2">⚠️ {briefing.executionRisks.title}</SectionLabel>
-      {briefing.executionRisks.items.map((item) => (
-        <ContentCard key={item.title}>
-          <RiskHeader>
-            <SectionHeading>{item.title}</SectionHeading>
-            {item.owner ? <RiskBadge>{item.owner}</RiskBadge> : null}
-          </RiskHeader>
-          <SectionParagraph>
-            {renderMarked(item.detail || (item.details ?? []).join(" "))}
-          </SectionParagraph>
-          {renderVideoGrid(item.videoIds)}
-        </ContentCard>
-      ))}
+      {renderExecutionRisksSection()}
+
+      {renderEvidenceGallery(referencedVideos)}
+
+      <OutroCard>
+        <SectionHeading>{briefing.outro.title}</SectionHeading>
+        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
+        <CtaButton
+          href={briefing.outro.ctaHref}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {briefing.outro.ctaLabel}
+        </CtaButton>
+      </OutroCard>
+    </>
+  );
+
+  const renderBusinessLayout = () => (
+    <>
+      <HeroCard>
+        <HeroMeta>
+          <span>{briefing.topicLabel}</span>
+          <HeroBadge>
+            {briefing.dateBadge || deliveryMeta.displayLabel}
+          </HeroBadge>
+        </HeroMeta>
+        <SummaryBadge>{briefing.summaryBadge || "요약"}</SummaryBadge>
+        <HeroHeadline>{removeMarkTags(briefing.tldr.headline)}</HeroHeadline>
+        <HeroList>
+          {briefing.tldr.bullets.map((bullet, idx) => (
+            <li key={`business-tldr-${idx}`}>{renderMarked(bullet)}</li>
+          ))}
+        </HeroList>
+      </HeroCard>
+
+      {renderStrategicMovesSection()}
+      {renderCompetitionWatchSection()}
+      {renderExecutionRisksSection()}
+      {renderActionItemsSection()}
 
       {renderEvidenceGallery(referencedVideos)}
 
@@ -539,9 +670,9 @@ const EmailBriefingLanding = ({
       <HeroCard>
         <HeroMeta>
           <span>{briefing.topicLabel}</span>
-          <HeroBadge>
+          {/* <HeroBadge>
             {briefing.dateBadge || deliveryMeta.displayLabel}
-          </HeroBadge>
+          </HeroBadge> */}
         </HeroMeta>
         <SummaryBadge>{briefing.summaryBadge || "요약"}</SummaryBadge>
         <HeroHeadline>{briefing.tldr.headline}</HeroHeadline>
@@ -583,7 +714,8 @@ const EmailBriefingLanding = ({
         );
         return (
           <ThemeCard key={`${theme.name}-${idx}`}>
-            <SectionHeading>🧩 {theme.name}</SectionHeading>
+            <SectionLabel>🧩 전략 스포트라이트</SectionLabel>
+            <SectionHeading>{theme.name}</SectionHeading>
             <SectionSubheading>핵심 내러티브</SectionSubheading>
             <NarrativeList>
               {theme.narratives.map((narrative, nIdx) => (
@@ -660,9 +792,9 @@ const EmailBriefingLanding = ({
         <HeroCard>
           <HeroMeta>
             <span>{briefing.topicLabel}</span>
-            <HeroBadge>
+            {/* <HeroBadge>
               {briefing.dateBadge || deliveryMeta.displayLabel}
-            </HeroBadge>
+            </HeroBadge> */}
           </HeroMeta>
           <SummaryBadge>{briefing.summaryBadge || "요약"}</SummaryBadge>
           <HeroHeadline>{briefing.tldr.headline}</HeroHeadline>
@@ -673,14 +805,15 @@ const EmailBriefingLanding = ({
           </HeroList>
         </HeroCard>
 
-        <ContentCard>
+        {/* <ContentCard>
           <SectionHeading>브리핑 안내</SectionHeading>
           <SectionParagraph>{ECONOMY_BRIEFING_INTRO}</SectionParagraph>
-        </ContentCard>
+        </ContentCard> */}
 
         {briefing.macroSnapshot ? (
           <ContentCard>
-            <SectionHeading>🌍 거시 스냅샷</SectionHeading>
+            <SectionLabel>🌍 거시 스냅샷</SectionLabel>
+            <SectionHeading>핵심 거시 시그널</SectionHeading>
             {briefing.macroSnapshot.summary ? (
               <SectionParagraph>
                 {renderMarked(briefing.macroSnapshot.summary)}
@@ -729,8 +862,9 @@ const EmailBriefingLanding = ({
           );
           return (
             <ContentCard key={`${driver.name}-${idx}`}>
+              <SectionLabel>📊 거시 드라이버</SectionLabel>
               <SectionHeading>
-                {`📊 거시 드라이버 ${idx + 1} · ${driver.name}`}
+                {`#${idx + 1} · ${driver.name ?? "드라이버"}`}
               </SectionHeading>
               {driver.indicatorFocus ? (
                 <SectionParagraph>
@@ -752,7 +886,8 @@ const EmailBriefingLanding = ({
 
         {sectorWatch.length ? (
           <ContentCard>
-            <SectionHeading>🏭 산업/지역 시그널</SectionHeading>
+            <SectionLabel>🏭 산업/지역 시그널</SectionLabel>
+            <SectionHeading>핵심 산업 뷰</SectionHeading>
             <MacroInfoGrid>
               {sectorWatch.map((sector, idx) => (
                 <MacroInfoCard key={`${sector.segment}-${idx}`}>
@@ -773,7 +908,8 @@ const EmailBriefingLanding = ({
 
         {policyItems.length ? (
           <ContentCard>
-            <SectionHeading>🗓️ 정책·이벤트 캘린더</SectionHeading>
+            <SectionLabel>🗓️ 정책·이벤트 캘린더</SectionLabel>
+            <SectionHeading>주요 일정</SectionHeading>
             <MacroInfoGrid>
               {policyItems.map((item, idx) => (
                 <MacroInfoCard key={`${item.title}-${idx}`}>
@@ -797,7 +933,8 @@ const EmailBriefingLanding = ({
 
         {riskItems.length ? (
           <ContentCard>
-            <SectionHeading>⚠️ 리스크</SectionHeading>
+            <SectionLabel>⚠️ 리스크</SectionLabel>
+            <SectionHeading>핵심 위험 요인</SectionHeading>
             <MacroInfoGrid>
               {riskItems.map((item, idx) => (
                 <MacroRiskCard key={`${item.title}-${idx}`}>
@@ -821,7 +958,8 @@ const EmailBriefingLanding = ({
 
         {checklistItems.length ? (
           <ContentCard>
-            <SectionHeading>📌 향후 체크포인트</SectionHeading>
+            <SectionLabel>📌 향후 체크포인트</SectionLabel>
+            <SectionHeading>체크 리스트</SectionHeading>
             <ChecklistGrid>
               {checklistItems.map((item, idx) => (
                 <ChecklistCard key={`${item.title}-${idx}`}>
@@ -862,7 +1000,8 @@ const EmailBriefingLanding = ({
     const hasSignals = pulse.priceTrend || pulse.transactionTrend;
     return (
       <ContentCard>
-        <SectionHeading>📌 시장 펄스</SectionHeading>
+        <SectionLabel>📌 시장 펄스</SectionLabel>
+        <SectionHeading>핵심 흐름</SectionHeading>
         {pulse.summary ? (
           <PulseSummaryCard>{renderMarked(pulse.summary)}</PulseSummaryCard>
         ) : null}
@@ -890,11 +1029,12 @@ const EmailBriefingLanding = ({
     if (!briefing.demandSupply?.length) return null;
     return (
       <ContentCard>
-        <SectionHeading>⚖️ 수요·공급 포인트</SectionHeading>
+        <SectionLabel>⚖️ 수요·공급 포인트</SectionLabel>
+        <SectionHeading>핵심 드라이버</SectionHeading>
         <DemandGrid>
           {briefing.demandSupply.map((item, idx) => (
             <DemandCard key={`${item.driver}-${idx}`}>
-              <SectionHeading>{item.driver}</SectionHeading>
+              <MacroInfoTitle>{item.driver}</MacroInfoTitle>
               {(item.regions?.length ?? 0) > 0 ||
               (item.propertyTypes?.length ?? 0) > 0 ? (
                 <DemandMeta>
@@ -925,13 +1065,14 @@ const EmailBriefingLanding = ({
     if (!briefing.policyFinanceWatch?.items?.length) return null;
     return (
       <ContentCard>
+        <SectionLabel>🏛️ 정책·자금 환경</SectionLabel>
         <SectionHeading>
-          🏛️ {briefing.policyFinanceWatch.title || "정책·자금 환경"}
+          {briefing.policyFinanceWatch.title || "핵심 정책 포인트"}
         </SectionHeading>
         <PolicyGrid>
           {briefing.policyFinanceWatch.items.map((item, idx) => (
             <PolicyCard key={`${item.title}-${idx}`}>
-              <PolicyTitle>{item.title}</PolicyTitle>
+              <MacroInfoTitle>{item.title}</MacroInfoTitle>
               <BulletList>
                 {item.detail.map((line, detailIdx) => (
                   <li key={`${item.title}-policy-${detailIdx}`}>
@@ -951,11 +1092,12 @@ const EmailBriefingLanding = ({
     if (!briefing.regionalSpotlight?.length) return null;
     return (
       <ContentCard>
-        <SectionHeading>📍 지역 스포트라이트</SectionHeading>
+        <SectionLabel>📍 지역 스포트라이트</SectionLabel>
+        <SectionHeading>핵심 지역 동향</SectionHeading>
         <EcosystemGrid>
           {briefing.regionalSpotlight.map((region, idx) => (
             <EcosystemCard key={`${region.region}-${idx}`}>
-              <EcosystemTitle>{region.region}</EcosystemTitle>
+              <MacroInfoTitle>{region.region}</MacroInfoTitle>
               <BulletList>
                 {region.story.map((line, storyIdx) => (
                   <li key={`${region.region}-story-${storyIdx}`}>
@@ -982,7 +1124,7 @@ const EmailBriefingLanding = ({
           {briefing.riskFlags.items.map((flag, idx) => (
             <RiskCard key={`${flag.title}-${idx}`}>
               <RiskHeader>
-                <SectionHeading>{flag.title}</SectionHeading>
+                <MacroInfoTitle>{flag.title}</MacroInfoTitle>
                 {flag.probability ? (
                   <RiskBadge>{flag.probability}</RiskBadge>
                 ) : null}
@@ -1029,9 +1171,9 @@ const EmailBriefingLanding = ({
       <HeroCard>
         <HeroMeta>
           <span>{briefing.topicLabel}</span>
-          <HeroBadge>
+          {/* <HeroBadge>
             {briefing.dateBadge || deliveryMeta.displayLabel}
-          </HeroBadge>
+          </HeroBadge> */}
         </HeroMeta>
         <SummaryBadge>{briefing.summaryBadge || "요약"}</SummaryBadge>
         <HeroHeadline>{briefing.tldr.headline}</HeroHeadline>
@@ -1109,13 +1251,14 @@ const EmailBriefingLanding = ({
 
       {(briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ? (
         <ContentCard>
+          <SectionLabel>🏛️ 인프라·정책 체크</SectionLabel>
           <SectionHeading>
-            🏛️ {briefing.infraPolicyWatch?.title || "인프라·정책 체크"}
+            {briefing.infraPolicyWatch?.title || "핵심 인프라 이슈"}
           </SectionHeading>
           <PolicyGrid>
             {briefing.infraPolicyWatch?.items.map((policy, idx) => (
               <PolicyCard key={`${policy.topic}-${idx}`}>
-                <PolicyTitle>{policy.topic}</PolicyTitle>
+                <MacroInfoTitle>{policy.topic}</MacroInfoTitle>
                 <SectionParagraph>
                   {renderMarked(policy.detail)}
                 </SectionParagraph>
@@ -1141,7 +1284,7 @@ const EmailBriefingLanding = ({
             {briefing.riskEthics?.items.map((item, idx) => (
               <RiskCard key={`${item.title}-${idx}`}>
                 <RiskHeader>
-                  <SectionHeading>{item.title}</SectionHeading>
+                  <MacroInfoTitle>{item.title}</MacroInfoTitle>
                   {item.severity ? (
                     <RiskBadge>{item.severity}</RiskBadge>
                   ) : null}
@@ -1206,9 +1349,9 @@ const EmailBriefingLanding = ({
       <HeroCard>
         <HeroMeta>
           <span>{briefing.topicLabel}</span>
-          <HeroBadge>
+          {/* <HeroBadge>
             {briefing.dateBadge || deliveryMeta.displayLabel}
-          </HeroBadge>
+          </HeroBadge> */}
         </HeroMeta>
         <SummaryBadge>{briefing.summaryBadge || "요약"}</SummaryBadge>
         <HeroHeadline>{briefing.tldr.headline}</HeroHeadline>
@@ -1269,10 +1412,16 @@ const EmailBriefingLanding = ({
     (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
     (briefing.innovationTracks?.length ?? 0) > 0 ||
     (briefing.ecosystemWatch?.length ?? 0) > 0 ||
-    (briefing.actionItems?.items?.length ?? 0) > 0 ||
     (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
     (briefing.riskEthics?.items?.length ?? 0) > 0 ||
     (briefing.nextSteps?.items?.length ?? 0) > 0,
+  );
+
+  const hasBusinessLayout = Boolean(
+    (briefing.strategicMoves?.length ?? 0) > 0 ||
+    (briefing.competitionWatch?.length ?? 0) > 0 ||
+    (briefing.executionRisks?.items?.length ?? 0) > 0 ||
+    (briefing.actionItems?.items?.length ?? 0) > 0,
   );
 
   const renderedLayout = hasMacroLayout
@@ -1281,9 +1430,11 @@ const EmailBriefingLanding = ({
       ? renderRealEstateLayout()
       : hasInnovationLayout
         ? renderInnovationLayout()
-        : hasMoneyLayout
-          ? renderMoneyLayout()
-          : renderLegacyLayout();
+        : hasBusinessLayout
+          ? renderBusinessLayout()
+          : hasMoneyLayout
+            ? renderMoneyLayout()
+            : renderLegacyLayout();
 
   const body = (
     <>
@@ -1349,7 +1500,7 @@ const HeroCard = styled.section`
   background: #fff;
   border-radius: 24px;
   border: 1px solid #e5e7eb;
-  padding: 32px 28px;
+  padding: 20px;
   box-shadow: 0 12px 25px rgba(15, 23, 42, 0.08);
 `;
 
@@ -1405,7 +1556,7 @@ const ContentCard = styled.section`
   background: #fff;
   border-radius: 18px;
   border: 1px solid #e5e7eb;
-  padding: 24px;
+  padding: 20px;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
 `;
 
@@ -1421,11 +1572,12 @@ const SectionHeading = styled.h2`
   font-size: 20px;
   line-height: 1.3;
   font-weight: 900;
+  margin-bottom: 8px;
   color: #0f172a;
 `;
 
 const SectionSubheading = styled.p`
-  margin: 16px 0 6px;
+  margin: 16px 0 0px;
   font-size: 14px;
   font-weight: 700;
   color: #64748b;
@@ -1433,10 +1585,14 @@ const SectionSubheading = styled.p`
 
 const SectionParagraph = styled.p`
   margin: 0;
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: 15px;
   line-height: 1.75;
   color: #374151;
+`;
+
+const BusinessSectionParagraph = styled(SectionParagraph)`
+  margin-top: 0;
 `;
 
 const NarrativeList = styled.ul`
@@ -1500,6 +1656,8 @@ const MacroList = styled.ul`
   font-size: 14px;
   line-height: 1.7;
   color: #374151;
+  list-style-type: disc;
+  list-style-position: outside;
 `;
 
 const MacroInfoGrid = styled.div`
@@ -1779,6 +1937,7 @@ const BulletList = styled.ul`
   font-size: 14px;
   line-height: 1.7;
   color: #374151;
+  list-style-type: disc;
 `;
 
 const RiskGrid = styled.div`
@@ -1810,6 +1969,7 @@ const RiskList = styled.ul`
   font-size: 14px;
   line-height: 1.7;
   color: #374151;
+  list-style-type: disc;
 `;
 
 const ChecklistGrid = styled.div`
@@ -1868,6 +2028,7 @@ const ChecklistList = styled.ul`
   font-size: 14px;
   line-height: 1.7;
   color: #374151;
+  list-style-type: disc;
 `;
 
 const SnapshotSignalGrid = styled.div`
@@ -2062,13 +2223,6 @@ const PolicyCard = styled.div`
   background: #ffffff;
 `;
 
-const PolicyTitle = styled.p`
-  margin: 0 0 8px;
-  font-size: 15px;
-  font-weight: 900;
-  color: #0f172a;
-`;
-
 const EcosystemGrid = styled.div`
   display: flex;
   flex-direction: column;
@@ -2080,13 +2234,6 @@ const EcosystemCard = styled.div`
   border-radius: 14px;
   padding: 18px;
   background: #ffffff;
-`;
-
-const EcosystemTitle = styled.p`
-  margin: 0 0 8px;
-  font-size: 15px;
-  font-weight: 900;
-  color: #0f172a;
 `;
 
 const PolicyImpact = styled.div`
