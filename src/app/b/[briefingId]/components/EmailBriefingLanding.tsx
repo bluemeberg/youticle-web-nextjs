@@ -254,6 +254,47 @@ const EmailBriefingLanding = ({
     );
   };
 
+  const renderMoneyStrategySection = () => {
+    const themes = briefing.themes ?? [];
+    if (!themes.length) return null;
+    return (
+      <ContentCard>
+        <SectionLabel>🧭 전략적 움직임</SectionLabel>
+        <SectionHeading>전략 스포트라이트</SectionHeading>
+        <DemandGrid>
+          {themes.map((theme, idx) => {
+            const narratives = theme.narratives ?? [];
+            const videoIds = Array.from(
+              new Set(
+                narratives.flatMap((narrative) => narrative.videoIds || []),
+              ),
+            );
+            return (
+              <DemandCard key={`${theme.name}-${idx}`}>
+                <MacroInfoTitle>{theme.name}</MacroInfoTitle>
+                {narratives.length ? (
+                  <>
+                    <SectionSubheading>핵심 내러티브</SectionSubheading>
+                    <NarrativeList>
+                      {narratives.map((narrative, narrativeIdx) => (
+                        <li
+                          key={`${theme.name}-narrative-${narrativeIdx}`}
+                        >
+                          {renderMarked(narrative.text)}
+                        </li>
+                      ))}
+                    </NarrativeList>
+                  </>
+                ) : null}
+                {renderVideoGrid(videoIds)}
+              </DemandCard>
+            );
+          })}
+        </DemandGrid>
+      </ContentCard>
+    );
+  };
+
   const renderExecutionRisksSection = () => {
     const section = briefing.executionRisks;
     if (!section?.items?.length) return null;
@@ -706,28 +747,7 @@ const EmailBriefingLanding = ({
         </ContentCard>
       ) : null}
 
-      {(briefing.themes ?? []).map((theme, idx) => {
-        const videoIds = Array.from(
-          new Set(
-            theme.narratives.flatMap((narrative) => narrative.videoIds || []),
-          ),
-        );
-        return (
-          <ThemeCard key={`${theme.name}-${idx}`}>
-            <SectionLabel>🧩 전략 스포트라이트</SectionLabel>
-            <SectionHeading>{theme.name}</SectionHeading>
-            <SectionSubheading>핵심 내러티브</SectionSubheading>
-            <NarrativeList>
-              {theme.narratives.map((narrative, nIdx) => (
-                <li key={`${theme.name}-narrative-${nIdx}`}>
-                  {renderMarked(narrative.text)}
-                </li>
-              ))}
-            </NarrativeList>
-            {renderVideoGrid(videoIds)}
-          </ThemeCard>
-        );
-      })}
+      {renderMoneyStrategySection()}
 
       {briefing.tickerProfiles?.length ? (
         <ContentCard>
@@ -1386,7 +1406,10 @@ const EmailBriefingLanding = ({
   );
 
   const hasMoneyLayout = Boolean(
-    briefing.marketMood || (briefing.tickerProfiles?.length ?? 0) > 0,
+    briefing.marketMood ||
+      (briefing.themes?.length ?? 0) > 0 ||
+      (briefing.tickerProfiles?.length ?? 0) > 0 ||
+      (briefing.checklist?.length ?? 0) > 0,
   );
 
   const hasMacroLayout = Boolean(
@@ -1430,10 +1453,10 @@ const EmailBriefingLanding = ({
       ? renderRealEstateLayout()
       : hasInnovationLayout
         ? renderInnovationLayout()
-        : hasBusinessLayout
-          ? renderBusinessLayout()
-          : hasMoneyLayout
-            ? renderMoneyLayout()
+        : hasMoneyLayout
+          ? renderMoneyLayout()
+          : hasBusinessLayout
+            ? renderBusinessLayout()
             : renderLegacyLayout();
 
   const body = (
@@ -1881,10 +1904,6 @@ const MoodSignalCard = styled.div<{ $variant: "warning" | "info" }>`
     line-height: 1.6;
     color: #0f172a;
   }
-`;
-
-const ThemeCard = styled(ContentCard)`
-  background: #fff;
 `;
 
 const TickerGrid = styled.div`

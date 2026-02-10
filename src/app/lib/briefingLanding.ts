@@ -700,9 +700,25 @@ const mapEmailDigestToBriefing = (
     sectionLabel,
   );
   const videos: Record<string, EmailBriefingVideoMeta> = {
-    ...detailVideoMeta,
     ...topVideoMeta,
   };
+  Object.entries(detailVideoMeta).forEach(([videoId, meta]) => {
+    if (!videoId) return;
+    const existing = videos[videoId];
+    const summary =
+      meta.summary && meta.summary.length > 0
+        ? meta.summary
+        : existing?.summary;
+    const href = existing?.href ?? meta.href;
+    videos[videoId] = {
+      ...existing,
+      ...meta,
+      href,
+    };
+    if (summary?.length) {
+      videos[videoId].summary = summary;
+    }
+  });
   const ensureVideoMeta = (id?: string) => {
     if (!id) return;
     if (!videos[id]) {
