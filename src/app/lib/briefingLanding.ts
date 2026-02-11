@@ -571,11 +571,12 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
 };
 
 const DEFAULT_EMAIL_OUTRO = {
-  title: "더 듣고 싶은 인사이트가 있나요?",
+  title: "개선된 브리핑 템플릿, 어떻게 느끼셨나요?",
   description:
-    "궁금한 산업/기업을 답장으로 남겨주시면 다음 브리핑에 반영해 드릴게요.",
-  ctaLabel: "유티클 인사이트 더 보기",
-  ctaHref: "https://youticle.ai",
+    "필요한 모듈을 더 보고 싶거나 빼고 싶은 영역이 있으면 지금 바로 알려주세요. 다음 브리핑 구성에 바로 반영해 드릴게요.",
+  ctaLabel: "내 브리핑 의견 남기기",
+  ctaHref: "https://tally.so/r/NpW6vj",
+  footnote: "",
 };
 
 const mapVideoDetailsToMeta = (

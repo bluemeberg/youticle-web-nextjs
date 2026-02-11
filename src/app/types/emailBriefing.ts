@@ -222,6 +222,7 @@ export interface EmailBriefingOutro {
   description: string;
   ctaLabel: string;
   ctaHref: string;
+  footnote?: string;
 }
 
 export interface EmailBriefingKeywordData {

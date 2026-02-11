@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import styled from "styled-components";
+import { useRecoilValue } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
+import { logCtaClick } from "@/api/apiClient";
+import { userState } from "@/store/user";
+import { getOrCreateAnonId, removeMarkTags } from "@/utils/formatter";
 import type { DeliveryMeta } from "@/types/briefingLanding";
 import type {
   EmailBriefingKeywordData,
@@ -21,7 +25,6 @@ import {
   VideoThumbnailImage,
   VideoThumbnailWrapper,
 } from "./LandingDomesticStockInsightSection";
-import { removeMarkTags } from "@/utils/formatter";
 
 const ECONOMY_BRIEFING_INTRO =
   "최근 100일 동안 업로드된 국내·글로벌 경제 영상만으로 성장/물가/정책, 산업별 수요를 정리했습니다.";
@@ -79,6 +82,7 @@ const EmailBriefingLanding = ({
   standalone = true,
 }: EmailBriefingLandingProps) => {
   const isLandingEmbed = !standalone;
+  const user = useRecoilValue(userState);
   const renderMarked = (text?: string | number | null) => {
     const safeText = text == null ? "" : String(text);
     const segments = safeText.split(/(<mark>.*?<\/mark>)/g).filter(Boolean);
@@ -468,6 +472,40 @@ const EmailBriefingLanding = ({
     ));
   };
 
+  const renderOutroSection = () => {
+    if (!briefing.outro) return null;
+    const { title, description, ctaHref, ctaLabel, footnote } = briefing.outro;
+    const handleCtaClick = () => {
+      void logCtaClick(
+        "briefing_feedback_click",
+        user?.id,
+        user?.email,
+        getOrCreateAnonId(),
+        { topic: briefing.topicLabel },
+      ).catch(() => {});
+    };
+    return (
+      <OutroCard>
+        <OutroTitle>{title}</OutroTitle>
+        <OutroDescription>{renderMarked(description)}</OutroDescription>
+        {ctaHref && ctaLabel ? (
+          <CtaButton
+            href={ctaHref}
+            target="_blank"
+            rel="noreferrer"
+            prefetch={false}
+            onClick={handleCtaClick}
+          >
+            {ctaLabel}
+          </CtaButton>
+        ) : null}
+        {footnote ? (
+          <OutroFootnote>{renderMarked(footnote)}</OutroFootnote>
+        ) : null}
+      </OutroCard>
+    );
+  };
+
   const renderTechSnapshot = () => {
     const snapshot = briefing.techSnapshot;
     if (!snapshot) return null;
@@ -653,17 +691,7 @@ const EmailBriefingLanding = ({
 
       {renderEvidenceGallery(referencedVideos)}
 
-      <OutroCard>
-        <SectionHeading>{briefing.outro.title}</SectionHeading>
-        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-        <CtaButton
-          href={briefing.outro.ctaHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {briefing.outro.ctaLabel}
-        </CtaButton>
-      </OutroCard>
+      {renderOutroSection()}
     </>
   );
 
@@ -692,17 +720,7 @@ const EmailBriefingLanding = ({
 
       {renderEvidenceGallery(referencedVideos)}
 
-      <OutroCard>
-        <SectionHeading>{briefing.outro.title}</SectionHeading>
-        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-        <CtaButton
-          href={briefing.outro.ctaHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {briefing.outro.ctaLabel}
-        </CtaButton>
-      </OutroCard>
+      {renderOutroSection()}
     </>
   );
 
@@ -772,17 +790,7 @@ const EmailBriefingLanding = ({
 
       {renderEvidenceGallery(referencedVideos)}
 
-      <OutroCard>
-        <SectionHeading>{briefing.outro.title}</SectionHeading>
-        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-        <CtaButton
-          href={briefing.outro.ctaHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {briefing.outro.ctaLabel}
-        </CtaButton>
-      </OutroCard>
+      {renderOutroSection()}
     </>
   );
 
@@ -999,17 +1007,7 @@ const EmailBriefingLanding = ({
 
         {renderEvidenceGallery(macroVideoIds)}
 
-        <OutroCard>
-          <SectionHeading>{briefing.outro.title}</SectionHeading>
-          <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-          <CtaButton
-            href={briefing.outro.ctaHref}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {briefing.outro.ctaLabel}
-          </CtaButton>
-        </OutroCard>
+        {renderOutroSection()}
       </>
     );
   };
@@ -1350,17 +1348,7 @@ const EmailBriefingLanding = ({
 
       {renderEvidenceGallery(referencedVideos)}
 
-      <OutroCard>
-        <SectionHeading>{briefing.outro.title}</SectionHeading>
-        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-        <CtaButton
-          href={briefing.outro.ctaHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {briefing.outro.ctaLabel}
-        </CtaButton>
-      </OutroCard>
+      {renderOutroSection()}
     </>
   );
 
@@ -1391,17 +1379,7 @@ const EmailBriefingLanding = ({
 
       {renderEvidenceGallery(referencedVideos, { title: "🎬 근거 영상" })}
 
-      <OutroCard>
-        <SectionHeading>{briefing.outro.title}</SectionHeading>
-        <SectionParagraph>{briefing.outro.description}</SectionParagraph>
-        <CtaButton
-          href={briefing.outro.ctaHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {briefing.outro.ctaLabel}
-        </CtaButton>
-      </OutroCard>
+      {renderOutroSection()}
     </>
   );
 
@@ -1846,17 +1824,45 @@ const OwnerBadge = styled.span`
 
 const OutroCard = styled(ContentCard)`
   text-align: center;
+  background: #111827;
+  color: #ffffff;
+  border: none;
+  box-shadow: none;
+  border-radius: 18px;
+  padding: 26px 24px;
+`;
+
+const OutroTitle = styled.p`
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 900;
+`;
+
+const OutroDescription = styled.p`
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.92);
+`;
+
+const OutroFootnote = styled.p`
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
 `;
 
 const CtaButton = styled(Link)`
-  display: inline-block;
-  margin-top: 16px;
-  padding: 12px 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 12px 26px;
   border-radius: 999px;
-  background: #111827;
-  color: #fff;
+  background: #ffffff;
+  color: #111827;
   font-size: 14px;
   font-weight: 900;
+  text-decoration: none;
 `;
 
 const Mark = styled.span`
