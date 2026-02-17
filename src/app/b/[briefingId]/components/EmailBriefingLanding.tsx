@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
@@ -83,6 +84,10 @@ const EmailBriefingLanding = ({
 }: EmailBriefingLandingProps) => {
   const isLandingEmbed = !standalone;
   const user = useRecoilValue(userState);
+  const routeSearchParams = useSearchParams();
+  const userEmailFromQuery =
+    routeSearchParams?.get("user_email")?.trim() || undefined;
+  const userEmailForLogging = userEmailFromQuery ?? user?.email ?? undefined;
   const renderMarked = (text?: string | number | null) => {
     const safeText = text == null ? "" : String(text);
     const segments = safeText.split(/(<mark>.*?<\/mark>)/g).filter(Boolean);
@@ -281,9 +286,7 @@ const EmailBriefingLanding = ({
                     <SectionSubheading>핵심 내러티브</SectionSubheading>
                     <NarrativeList>
                       {narratives.map((narrative, narrativeIdx) => (
-                        <li
-                          key={`${theme.name}-narrative-${narrativeIdx}`}
-                        >
+                        <li key={`${theme.name}-narrative-${narrativeIdx}`}>
                           {renderMarked(narrative.text)}
                         </li>
                       ))}
@@ -479,30 +482,33 @@ const EmailBriefingLanding = ({
       void logCtaClick(
         "briefing_feedback_click",
         user?.id,
-        user?.email,
+        userEmailForLogging,
         getOrCreateAnonId(),
         { topic: briefing.topicLabel },
       ).catch(() => {});
     };
     return (
-      <OutroCard>
-        <OutroTitle>{title}</OutroTitle>
-        <OutroDescription>{renderMarked(description)}</OutroDescription>
-        {ctaHref && ctaLabel ? (
-          <CtaButton
-            href={ctaHref}
-            target="_blank"
-            rel="noreferrer"
-            prefetch={false}
-            onClick={handleCtaClick}
-          >
-            {ctaLabel}
-          </CtaButton>
-        ) : null}
-        {footnote ? (
-          <OutroFootnote>{renderMarked(footnote)}</OutroFootnote>
-        ) : null}
-      </OutroCard>
+      <OutroSection>
+        <OutroCard>
+          <OutroBadge>FEEDBACK</OutroBadge>
+          <OutroTitle>{title}</OutroTitle>
+          <OutroDescription>{renderMarked(description)}</OutroDescription>
+          {ctaHref && ctaLabel ? (
+            <OutroButton
+              href={ctaHref}
+              target="_blank"
+              rel="noreferrer"
+              prefetch={false}
+              onClick={handleCtaClick}
+            >
+              {ctaLabel}
+            </OutroButton>
+          ) : null}
+          {footnote ? (
+            <OutroFootnote>{renderMarked(footnote)}</OutroFootnote>
+          ) : null}
+        </OutroCard>
+      </OutroSection>
     );
   };
 
@@ -556,10 +562,12 @@ const EmailBriefingLanding = ({
         <PolicyGrid>
           {briefing.innovationTracks.map((track, idx) => {
             const videoIds = Array.from(
-              new Set(
-                [...(track.videoIds ?? []),
-                ...track.narratives.flatMap((narrative) => narrative.videoIds ?? [])],
-              ),
+              new Set([
+                ...(track.videoIds ?? []),
+                ...track.narratives.flatMap(
+                  (narrative) => narrative.videoIds ?? [],
+                ),
+              ]),
             );
             return (
               <PolicyCard key={`${track.name}-${idx}`}>
@@ -1385,9 +1393,9 @@ const EmailBriefingLanding = ({
 
   const hasMoneyLayout = Boolean(
     briefing.marketMood ||
-      (briefing.themes?.length ?? 0) > 0 ||
-      (briefing.tickerProfiles?.length ?? 0) > 0 ||
-      (briefing.checklist?.length ?? 0) > 0,
+    (briefing.themes?.length ?? 0) > 0 ||
+    (briefing.tickerProfiles?.length ?? 0) > 0 ||
+    (briefing.checklist?.length ?? 0) > 0,
   );
 
   const hasMacroLayout = Boolean(
@@ -1593,11 +1601,11 @@ const SectionParagraph = styled.p`
 `;
 
 const BusinessSectionParagraph = styled(SectionParagraph)`
-  margin-top: 0;
+  margin-top: 8px;
 `;
 
 const NarrativeList = styled.ul`
-  margin: 18px 0 0;
+  /* margin: 18px 0 0; */
   padding-left: 18px;
   display: flex;
   flex-direction: column;
@@ -1822,47 +1830,71 @@ const OwnerBadge = styled.span`
   font-weight: 700;
 `;
 
-const OutroCard = styled(ContentCard)`
+const OutroSection = styled.section`
+  width: 100%;
+  margin: 40px 0 0;
+`;
+
+const OutroCard = styled.div`
+  width: 100%;
+  border-radius: 24px;
+  padding: 28px 24px 32px;
   text-align: center;
-  background: #111827;
-  color: #ffffff;
-  border: none;
-  box-shadow: none;
-  border-radius: 18px;
-  padding: 26px 24px;
+  background: linear-gradient(135deg, #0f172a, #312e81);
+  color: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
 `;
 
-const OutroTitle = styled.p`
-  margin: 0 0 12px;
-  font-size: 18px;
-  font-weight: 900;
-`;
-
-const OutroDescription = styled.p`
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.92);
-`;
-
-const OutroFootnote = styled.p`
-  margin: 18px 0 0;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.82);
-`;
-
-const CtaButton = styled(Link)`
+const OutroBadge = styled.span`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 18px;
-  padding: 12px 26px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+`;
+
+const OutroTitle = styled.p`
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.4;
+`;
+
+const OutroDescription = styled.p`
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.9);
+`;
+
+const OutroButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 22px;
+  padding: 13px 28px;
   border-radius: 999px;
   background: #ffffff;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 900;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
   text-decoration: none;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+`;
+
+const OutroFootnote = styled.p`
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
 `;
 
 const Mark = styled.span`
@@ -2269,6 +2301,7 @@ const PolicyImpact = styled.div`
   border: 1px solid #fef3c7;
   font-size: 14px;
   color: #92400e;
+  line-height: 148%;
   strong {
     display: block;
     font-size: 12px;

@@ -12,6 +12,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Footer from "@/components/Footer";
 import { getUserByEmail, logCtaClick } from "@/api/apiClient";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -57,6 +58,15 @@ import type { EmailBriefingKeywordData } from "@/types/emailBriefing";
 import type { DeliveryMeta } from "@/types/briefingLanding";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+const LANDING_FEEDBACK_SURVEY = {
+  title: "브리핑에 대한 의견을 남겨주세요!",
+  description:
+    "어떤 모듈을 더 강화하고 싶은지, 필요 없는 영역은 무엇인지 남겨주시면 다음 브리핑부터 바로 반영해 드릴게요.",
+  ctaLabel: "내 브리핑 의견 남기기",
+  ctaHref: "https://tally.so/r/NpW6vj",
+  footnote: "* 구독자 피드백을 우선 반영해 템플릿을 다듬고 있어요",
+};
 
 /**
  * =========================================================
@@ -1129,6 +1139,37 @@ const hasMarketDeltaData = (section?: InsightSection) =>
   !!section &&
   Object.keys(section.data?.market_delta_insights?.by_market ?? {}).length > 0;
 
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DOT_DATE_PATTERN = /^\d{4}\.\d{2}\.\d{2}$/;
+
+const normalizeDateToken = (value?: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (ISO_DATE_PATTERN.test(trimmed)) return trimmed;
+  if (DOT_DATE_PATTERN.test(trimmed)) {
+    return trimmed.replace(/\./g, "-");
+  }
+  return null;
+};
+
+const formatDateToKstString = (date: Date) => {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const shifted = new Date(date.getTime() + KST_OFFSET_MS);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const buildKstDateFromToken = (token?: string | null) => {
+  const normalized = normalizeDateToken(token);
+  if (!normalized) return null;
+  const candidate = new Date(`${normalized}T00:00:00+09:00`);
+  if (Number.isNaN(candidate.getTime())) return null;
+  return candidate;
+};
+
 const isMoneySection = (section: RecapSection): section is MoneyRecapSection =>
   section.type === "stocks" || section.type === "crypto";
 
@@ -1374,6 +1415,29 @@ const StandardBriefingLandingPageClient = ({
     if (!inferredDate) return null;
     return inferredDate.replace(/\s+/g, "").trim() || null;
   }, [inferredDate]);
+  const displayLabelDateToken = useMemo(() => {
+    const labelDate = data.deliveryMeta.displayLabel?.split("·")?.[0]?.trim();
+    return normalizeDateToken(labelDate);
+  }, [data.deliveryMeta.displayLabel]);
+  const deliveredAtDateToken = useMemo(() => {
+    if (!data.deliveryMeta.deliveredAt) return null;
+    const delivered = new Date(data.deliveryMeta.deliveredAt);
+    if (Number.isNaN(delivered.getTime())) return null;
+    return formatDateToKstString(delivered);
+  }, [data.deliveryMeta.deliveredAt]);
+  const briefingDateToken = useMemo(() => {
+    return (
+      normalizeDateToken(normalizedDateForApi) ||
+      deliveredAtDateToken ||
+      displayLabelDateToken ||
+      null
+    );
+  }, [normalizedDateForApi, deliveredAtDateToken, displayLabelDateToken]);
+  const isPastBriefingDate = useMemo(() => {
+    if (!briefingDateToken) return false;
+    const todayKst = formatDateToKstString(new Date());
+    return briefingDateToken < todayKst;
+  }, [briefingDateToken]);
   const anonIdRef = useRef<string | null>(null);
   const videoObserverRef = useRef<IntersectionObserver | null>(null);
   const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -2044,6 +2108,30 @@ const StandardBriefingLandingPageClient = ({
     setShowArchiveNotice(true);
   };
 
+  const handleFeedbackSurveyClick = () => {
+    let anonId = anonIdRef.current;
+    if (!anonId && typeof window !== "undefined") {
+      try {
+        anonId = getOrCreateAnonId();
+        anonIdRef.current = anonId;
+      } catch {
+        anonId = null;
+      }
+    }
+    logCtaClick(
+      "briefing_feedback_click",
+      user?.id,
+      archiveLoggingIdentity ?? user?.email ?? normalizedPhone ?? undefined,
+      anonId ?? undefined,
+      {
+        origin: "landing_feedback_card",
+        date: normalizedDateForLogging ?? "",
+        phone: normalizedPhone ?? "",
+        topic: data.deliveryMeta.tagline ?? data.deliveryMeta.description ?? "",
+      },
+    );
+  };
+
   const getActiveSlot = (
     section: MoneyRecapSection,
   ): SlotPackage | undefined => {
@@ -2198,14 +2286,17 @@ const StandardBriefingLandingPageClient = ({
     return { slotId: top.slotId, label: top.label };
   };
 
-  const parseSlotTimeToDate = (displayTime?: string | null) => {
+  const parseSlotTimeToDate = (
+    displayTime?: string | null,
+    baseDateToken?: string | null,
+  ) => {
     if (!displayTime) return null;
     const [hours, minutes] = displayTime
       .split(":")
       .map((token) => Number(token));
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-    const now = new Date();
-    const target = new Date(now);
+    const baseDate = buildKstDateFromToken(baseDateToken) ?? new Date();
+    const target = new Date(baseDate);
     target.setHours(hours, minutes, 0, 0);
     return target;
   };
@@ -2278,12 +2369,15 @@ const StandardBriefingLandingPageClient = ({
     const isStaticSection =
       slotPool.length === 1 && slotPool[0]?.id === "general";
     const pendingSlot = activeSlot ?? slotPool[0];
-    const slotTime = parseSlotTimeToDate(pendingSlot?.displayTime);
+    const slotTime = parseSlotTimeToDate(
+      pendingSlot?.displayTime,
+      briefingDateToken,
+    );
     const now = new Date();
     const hasVideoData = Boolean(activeSlotTabs?.videos?.length);
-    const isFutureSlot = Boolean(
-      slotTime && slotTime.getTime() > now.getTime(),
-    );
+    const isFutureSlot = isPastBriefingDate
+      ? false
+      : Boolean(slotTime && slotTime.getTime() > now.getTime());
     const isMissingSlot =
       !insightSection &&
       !hasVideoData &&
@@ -2544,6 +2638,15 @@ const StandardBriefingLandingPageClient = ({
         </VideoEmptyNotice>
       );
     };
+    const feedbackQuestionLabel = (() => {
+      if (!isStaticSection) {
+        const slotTitle = slotLabel?.title?.trim() || activeSlot?.label?.trim();
+        if (slotTitle) {
+          return `${section.title} · ${slotTitle} 구성은 어땠나요?`;
+        }
+      }
+      return `오늘 ${section.title} 브리핑 구성은 어땠나요?`;
+    })();
 
     const slotSelectorBar =
       !isStaticSection && slotPool.length ? (
@@ -2675,79 +2778,9 @@ const StandardBriefingLandingPageClient = ({
           ) : null}
 
           {activeSlot ? (
-            <VideoBlock>
-              <BlockHeader>
-                <BlockTitle>오늘 갱신된 TOP5 근거영상 모아보기</BlockTitle>
-                {(() => {
-                  const diff =
-                    diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlot.id]
-                      ?.diff ?? 0;
-                  if (diff <= 0) return null;
-                  return (
-                    <BlockBadge>
-                      새 근거영상 <strong>+{diff}</strong>
-                    </BlockBadge>
-                  );
-                })()}
-              </BlockHeader>
-              {highlightGroups.length ? (
-                <>
-                  {highlightGroups.map((group) => (
-                    <HighlightSection key={group.slotId}>
-                      <HighlightHeader>
-                        <HighlightTitle>{group.label} 신규 진입</HighlightTitle>
-                        <HighlightChip>NEW</HighlightChip>
-                      </HighlightHeader>
-                      <HighlightSubtitle>
-                        {group.videos.length}개 근거영상이 {group.label}에서
-                        감지됐어요.
-                      </HighlightSubtitle>
-                      <VideoList>
-                        {group.videos.map((video) => renderVideoCard(video))}
-                      </VideoList>
-                    </HighlightSection>
-                  ))}
-                </>
-              ) : null}
-              {fallbackRegularGroup ? (
-                <HighlightSection>
-                  <HighlightHeader>
-                    <HighlightTitle>
-                      {fallbackRegularGroup.label}
-                    </HighlightTitle>
-                  </HighlightHeader>
-                  {fallbackRegularGroup.subtitle ? (
-                    <HighlightSubtitle>
-                      {fallbackRegularGroup.subtitle}
-                    </HighlightSubtitle>
-                  ) : null}
-                  <VideoList>
-                    {fallbackRegularGroup.videos.map((video) =>
-                      renderVideoCard(video),
-                    )}
-                  </VideoList>
-                </HighlightSection>
-              ) : null}
-              {regularVideos.length ? (
-                <VideoList>
-                  {regularVideos.map((video) => renderVideoCard(video))}
-                </VideoList>
-              ) : hasAnyVideos &&
-                !highlightGroups.length &&
-                !fallbackRegularGroup ? (
-                <VideoList>
-                  {slotVideos.map((video) => renderVideoCard(video))}
-                </VideoList>
-              ) : null}
-              {!hasAnyVideos
-                ? isSlotLoading || slotTabsMissing
-                  ? renderVideoLoadingNotice()
-                  : renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
-                : null}
+            <>
               <FeedbackSection>
-                <FeedbackQuestion>
-                  오늘 브리핑 구성은 어땠나요?
-                </FeedbackQuestion>
+                <FeedbackQuestion>{feedbackQuestionLabel}</FeedbackQuestion>
                 <FeedbackActions>
                   {[
                     { key: "good" as const, label: "최고였어요", emoji: "😀" },
@@ -2767,7 +2800,79 @@ const StandardBriefingLandingPageClient = ({
                   ))}
                 </FeedbackActions>
               </FeedbackSection>
-            </VideoBlock>
+              <VideoBlock>
+                <BlockHeader>
+                  <BlockTitle>오늘 갱신된 TOP5 근거영상 모아보기</BlockTitle>
+                  {(() => {
+                    const diff =
+                      diffBadgeByMoneySectionSlot?.[section.id]?.[activeSlot.id]
+                        ?.diff ?? 0;
+                    if (diff <= 0) return null;
+                    return (
+                      <BlockBadge>
+                        새 근거영상 <strong>+{diff}</strong>
+                      </BlockBadge>
+                    );
+                  })()}
+                </BlockHeader>
+                {highlightGroups.length ? (
+                  <>
+                    {highlightGroups.map((group) => (
+                      <HighlightSection key={group.slotId}>
+                        <HighlightHeader>
+                          <HighlightTitle>
+                            {group.label} 신규 진입
+                          </HighlightTitle>
+                          <HighlightChip>NEW</HighlightChip>
+                        </HighlightHeader>
+                        <HighlightSubtitle>
+                          {group.videos.length}개 근거영상이 {group.label}에서
+                          감지됐어요.
+                        </HighlightSubtitle>
+                        <VideoList>
+                          {group.videos.map((video) => renderVideoCard(video))}
+                        </VideoList>
+                      </HighlightSection>
+                    ))}
+                  </>
+                ) : null}
+                {fallbackRegularGroup ? (
+                  <HighlightSection>
+                    <HighlightHeader>
+                      <HighlightTitle>
+                        {fallbackRegularGroup.label}
+                      </HighlightTitle>
+                    </HighlightHeader>
+                    {fallbackRegularGroup.subtitle ? (
+                      <HighlightSubtitle>
+                        {fallbackRegularGroup.subtitle}
+                      </HighlightSubtitle>
+                    ) : null}
+                    <VideoList>
+                      {fallbackRegularGroup.videos.map((video) =>
+                        renderVideoCard(video),
+                      )}
+                    </VideoList>
+                  </HighlightSection>
+                ) : null}
+                {regularVideos.length ? (
+                  <VideoList>
+                    {regularVideos.map((video) => renderVideoCard(video))}
+                  </VideoList>
+                ) : hasAnyVideos &&
+                  !highlightGroups.length &&
+                  !fallbackRegularGroup ? (
+                  <VideoList>
+                    {slotVideos.map((video) => renderVideoCard(video))}
+                  </VideoList>
+                ) : null}
+                {!hasAnyVideos
+                  ? isSlotLoading || slotTabsMissing
+                    ? renderVideoLoadingNotice()
+                    : renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
+                  : null}
+              </VideoBlock>
+            </>
           ) : null}
         </SectionBlock>
       ),
@@ -3149,6 +3254,30 @@ const StandardBriefingLandingPageClient = ({
 
       <SectionsContainer>{renderedSections}</SectionsContainer>
 
+      {!isEmailSource ? (
+        <SurveyCtaSection>
+          <SurveyCtaCard>
+            <SurveyCtaBadge>FEEDBACK</SurveyCtaBadge>
+            <SurveyCtaTitle>{LANDING_FEEDBACK_SURVEY.title}</SurveyCtaTitle>
+            <SurveyCtaDescription>
+              {LANDING_FEEDBACK_SURVEY.description}
+            </SurveyCtaDescription>
+            <SurveyCtaButton
+              href={LANDING_FEEDBACK_SURVEY.ctaHref}
+              target="_blank"
+              rel="noreferrer"
+              prefetch={false}
+              onClick={handleFeedbackSurveyClick}
+            >
+              {LANDING_FEEDBACK_SURVEY.ctaLabel}
+            </SurveyCtaButton>
+            <SurveyCtaFootnote>
+              {LANDING_FEEDBACK_SURVEY.footnote}
+            </SurveyCtaFootnote>
+          </SurveyCtaCard>
+        </SurveyCtaSection>
+      ) : null}
+
       {showArchiveNotice ? (
         <ArchiveNoticeOverlay role="dialog" aria-modal="true">
           <ArchiveNoticeCard>
@@ -3189,6 +3318,7 @@ const StandardBriefingLandingPageClient = ({
       </FooterExplore> */}
 
       {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
+      <Footer />
     </PageContainer>
   );
 };
@@ -3332,6 +3462,74 @@ const SectionsContainer = styled.main`
   max-width: 720px;
   padding: 32px 16px 40px;
   font-family: inherit;
+`;
+
+const SurveyCtaSection = styled.section`
+  width: 100%;
+  max-width: 720px;
+  padding: 0 16px 40px;
+  box-sizing: border-box;
+`;
+
+const SurveyCtaCard = styled.div`
+  background: linear-gradient(135deg, #0f172a, #312e81);
+  color: #fff;
+  border-radius: 24px;
+  padding: 28px 24px 32px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+`;
+
+const SurveyCtaBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+`;
+
+const SurveyCtaTitle = styled.h3`
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 900;
+`;
+
+const SurveyCtaDescription = styled.p`
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.9);
+`;
+
+const SurveyCtaButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 22px;
+  padding: 13px 28px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+`;
+
+const SurveyCtaFootnote = styled.p`
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
 `;
 const SectionAnchorMarker = styled.div`
   width: 100%;
