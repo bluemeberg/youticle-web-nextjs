@@ -2042,11 +2042,7 @@ const StandardBriefingLandingPageClient = ({
 
   const handleLogoBack = () => {
     triggerNavigationLoading();
-    if (data.deliveryMeta.backHref) {
-      router.push(data.deliveryMeta.backHref);
-    } else {
-      router.back();
-    }
+    router.push("/");
   };
 
   const handleLogoHome = () => {
@@ -3108,6 +3104,7 @@ const StandardBriefingLandingPageClient = ({
           briefing={section.emailBriefing}
           deliveryMeta={inlineMeta}
           standalone={false}
+          keywords={data.keywordNav?.map((item) => item.label) ?? []}
         />
       </SectionBlock>
     );
@@ -3144,7 +3141,7 @@ const StandardBriefingLandingPageClient = ({
         />
       </LogoHeaderDock>
       <TopAppBar>
-        <BackButton href={data.deliveryMeta.backHref}>
+        <BackButton href="/">
           {`< ${data.deliveryMeta.backLabel}`}
         </BackButton>
         <TopMeta ref={topBarRef}>

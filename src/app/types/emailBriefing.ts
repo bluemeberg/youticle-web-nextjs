@@ -230,6 +230,7 @@ export interface EmailBriefingKeywordData {
   dateBadge: string;
   preheader: string;
   summaryBadge?: string;
+  keywords?: string[];
   tldr: EmailBriefingTldr;
   strategicMoves: EmailBriefingStrategicMove[];
   executionRisks: EmailBriefingExecutionRisks;

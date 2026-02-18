@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import CountdownTimer from "./CountdownTimerCenter";
+import { formatDateKST } from "@/utils/briefingSlot";
 // 🔽 추가: 구글 로그인용
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/firebase";
@@ -18,6 +19,17 @@ import { getOrCreateAnonId } from "@/utils/formatter";
 interface ServiceIntroduceProps {
   subjects: string[]; // 추가된 subjects prop
 }
+
+const KEYWORD_EXPANSION_MAP: Record<string, string[]> = {
+  가상자산: ["국내 가상자산", "해외 가상자산"],
+  국내가상자산: ["국내 가상자산", "해외 가상자산"],
+  해외가상자산: ["국내 가상자산", "해외 가상자산"],
+  crypto: ["국내 가상자산", "해외 가상자산"],
+  주식: ["국내 주식", "해외 주식"],
+  국내주식: ["국내 주식", "해외 주식"],
+  해외주식: ["국내 주식", "해외 주식"],
+  stocks: ["국내 주식", "해외 주식"],
+};
 const getCurrentDateWithDay = () => {
   const today = new Date();
   const year = today.getFullYear().toString().slice(-2); // 뒤 두 자리만 추출
@@ -41,8 +53,6 @@ const FREE_BENEFITS_DESC = `
     <li>3️⃣ 오늘 놓친 이전 아티클 무제한 조회하기.</li>
   </ul>`;
 
-const BRIEFING_DEMO_ID = "demo-20240101";
-
 const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   const router = useRouter();
   console.log(subjects.length);
@@ -51,13 +61,14 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   // 🔽 추가: 로그인 상태 제어
   const setUser = useSetRecoilState(userState);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isNavigatingToBriefing, setIsNavigatingToBriefing] = useState(false);
   const user = useRecoilValue(userState);
 
   // 🔽 추가: 구글 로그인 핸들러
   const handleGoogleLogin = async () => {
     if (/KAKAOTALK/i.test(navigator.userAgent)) {
       alert(
-        "카카오톡 인앱 브라우저에서는 Google 로그인이 동작하지 않을 수 있어요.\nSafari/Chrome 등 외부 브라우저에서 다시 시도해 주세요."
+        "카카오톡 인앱 브라우저에서는 Google 로그인이 동작하지 않을 수 있어요.\nSafari/Chrome 등 외부 브라우저에서 다시 시도해 주세요.",
       );
       return;
     }
@@ -71,7 +82,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
       // 백엔드에 유저 존재 확인(없으면 생성) 후 id 획득
       const data = await getUserByEmail(
         result.user.email!,
-        result.user.displayName || "User"
+        result.user.displayName || "User",
       );
 
       // 전역 상태 저장
@@ -82,17 +93,63 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
         id: data.id,
       });
 
-      // next 파라미터 지원 (있으면 거기로, 없으면 홈)
-      const next =
-        new URLSearchParams(window.location.search).get("next") || "/";
-      router.push(next);
+      return normalizedUser;
     } catch (e) {
       console.error(e);
       alert(
-        "로그인에 실패했어요. Safari/Chrome 등 외부 브라우저에서 다시 시도해 주세요."
+        "로그인에 실패했어요. Safari/Chrome 등 외부 브라우저에서 다시 시도해 주세요.",
       );
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoToMyBriefing = async () => {
+    if (isNavigatingToBriefing) return;
+    setIsNavigatingToBriefing(true);
+    const keywordList = subjects.length
+      ? subjects
+      : ["비즈니스/사업", "국내 주식", "부동산"];
+    const params = new URLSearchParams();
+    const generatedDate = formatDateKST(new Date()).replace(/-/g, "");
+    if (generatedDate) {
+      params.set("generated_date", generatedDate);
+    }
+    params.set("source", "email");
+    const expandedSet = new Set<string>();
+    keywordList.forEach((keyword) => {
+      const trimmed = keyword.trim();
+      if (!trimmed) return;
+      const normalized = trimmed.replace(/\s+/g, "");
+      const expansion = KEYWORD_EXPANSION_MAP[normalized] ?? [trimmed];
+      expansion.forEach((entry) => {
+        if (entry && entry.trim().length > 0) {
+          expandedSet.add(entry.trim());
+        }
+      });
+    });
+    if (expandedSet.size) {
+      params.set("section", Array.from(expandedSet).join(", "));
+    }
+    const targetPath = `/briefing/landing?${params.toString()}`;
+    logCtaClick(
+      "home_go_to_briefing",
+      user?.id ?? null,
+      user?.email ?? null,
+      getOrCreateAnonId(),
+      { origin: "home_service_intro" },
+    );
+    try {
+      if (user?.email) {
+        router.push(targetPath);
+        return;
+      }
+      const loggedIn = await handleGoogleLogin();
+      if (loggedIn?.email) {
+        router.push(targetPath);
+      }
+    } finally {
+      setIsNavigatingToBriefing(false);
     }
   };
 
@@ -125,13 +182,16 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
                     "subscribe_keyword", // 액션 이름
                     user?.id ?? null, // 유저 ID
                     user?.email ?? null, // 유저 이메일
-                    getOrCreateAnonId() // 익명 ID
+                    getOrCreateAnonId(), // 익명 ID
                   );
-                  goToPage("briefing"); // 페이지 이동
+                  goToPage("/subject"); // 키워드 구독으로 이동
                 }}
               >
                 관심 키워드 무료 구독하기
               </ServiceButton>
+              <SecondaryCTAButton onClick={handleGoToMyBriefing} disabled={isNavigatingToBriefing}>
+                {isNavigatingToBriefing ? "브리핑 이동 중..." : "내 키워드 브리핑 보러가기"}
+              </SecondaryCTAButton>
             </ButtonContainer>
             {/* 🔽 추가: 로그인 유도 행 */}
             <LoginRow>
@@ -142,7 +202,7 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
                     "login_button_click", // 액션 이름
                     user?.id ?? null, // 유저 ID
                     user?.email ?? null, // 유저 이메일
-                    getOrCreateAnonId() // 익명 ID
+                    getOrCreateAnonId(), // 익명 ID
                   );
                   handleGoogleLogin(); // 기존 로그인 로직
                 }}
@@ -162,13 +222,19 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
                   "modify_subscribe_keyword", // CTA 액션명
                   user?.id ?? null, // 유저 ID
                   user?.email ?? null, // 유저 이메일
-                  getOrCreateAnonId() // 익명 ID
+                  getOrCreateAnonId(), // 익명 ID
                 );
                 goToPage("/subject/modify");
               }}
             >
               구독 키워드 변경하기
             </ServiceButton>
+            <SecondaryCTAButton
+              onClick={handleGoToMyBriefing}
+              disabled={isNavigatingToBriefing}
+            >
+              {isNavigatingToBriefing ? "브리핑 이동 중..." : "내 키워드 브리핑 보러가기"}
+            </SecondaryCTAButton>
           </ButtonContainer>
         )}
         {/* <SecondaryEntryCard>
@@ -309,7 +375,9 @@ const ServiceButton = styled.button<{ change?: boolean }>`
 const ButtonContainer = styled.div`
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 20px;
 `;
 const Announcement = styled.div`
@@ -347,6 +415,19 @@ const SecondaryButton = styled.button`
   background: #1f2b6c;
   color: #fff;
   font-weight: 700;
+`;
+
+const SecondaryCTAButton = styled.button`
+  width: 100%;
+  /* max-width: 320px; */
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #1f2b6c;
+  background: #fff;
+  color: #1f2b6c;
+  font-weight: 800;
+  font-size: 15px;
+  text-align: center;
 `;
 
 const Title = styled.h2`

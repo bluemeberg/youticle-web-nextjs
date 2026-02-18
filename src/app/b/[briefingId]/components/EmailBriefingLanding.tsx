@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import styled from "styled-components";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
@@ -40,10 +40,14 @@ const EMAIL_FEEDBACK_SURVEY = {
   footnote: "* 구독자 피드백을 우선 반영해 템플릿을 다듬고 있어요",
 };
 
+const SUBSCRIPTION_SUMMARY_COPY =
+  "유티클은 구독 키워드별로 매일 핵심 영상만 골라 요약해 드리는 AI 브리핑 서비스예요.\n현재 20개의 키워드를 운영 중이며, 관심사가 바뀌면 구독 키워드를 조정해 최신 브리핑을 받아보세요.";
+
 interface EmailBriefingLandingProps {
   briefing: EmailBriefingKeywordData;
   deliveryMeta: DeliveryMeta;
   standalone?: boolean;
+  keywords?: string[];
 }
 
 const InlineVideoList = styled.div`
@@ -91,9 +95,11 @@ const EmailBriefingLanding = ({
   briefing,
   deliveryMeta,
   standalone = true,
+  keywords: providedKeywords,
 }: EmailBriefingLandingProps) => {
   const isLandingEmbed = !standalone;
   const user = useRecoilValue(userState);
+  const router = useRouter();
   const routeSearchParams = useSearchParams();
   const userEmailFromQuery =
     routeSearchParams?.get("user_email")?.trim() || undefined;
@@ -117,40 +123,40 @@ const EmailBriefingLanding = ({
   const layoutNavKey = useMemo(() => {
     const hasMoneyLayout = Boolean(
       briefing.marketMood ||
-        (briefing.themes?.length ?? 0) > 0 ||
-        (briefing.tickerProfiles?.length ?? 0) > 0 ||
-        (briefing.checklist?.length ?? 0) > 0,
+      (briefing.themes?.length ?? 0) > 0 ||
+      (briefing.tickerProfiles?.length ?? 0) > 0 ||
+      (briefing.checklist?.length ?? 0) > 0,
     );
     const hasMacroLayout = Boolean(
       (briefing.macroDrivers?.length ?? 0) > 0 ||
-        (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
-        (briefing.macroSectorWatch?.length ?? 0) > 0 ||
-        briefing.macroSnapshot,
+      (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
+      (briefing.macroSectorWatch?.length ?? 0) > 0 ||
+      briefing.macroSnapshot,
     );
     const hasRealEstateLayout = Boolean(
       briefing.marketPulse ||
-        (briefing.demandSupply?.length ?? 0) > 0 ||
-        (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
-        (briefing.regionalSpotlight?.length ?? 0) > 0 ||
-        (briefing.riskFlags?.items?.length ?? 0) > 0 ||
-        (briefing.shortTermWatch?.items?.length ?? 0) > 0,
+      (briefing.demandSupply?.length ?? 0) > 0 ||
+      (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
+      (briefing.regionalSpotlight?.length ?? 0) > 0 ||
+      (briefing.riskFlags?.items?.length ?? 0) > 0 ||
+      (briefing.shortTermWatch?.items?.length ?? 0) > 0,
     );
     const hasInnovationLayout = Boolean(
       briefing.techSnapshot ||
-        briefing.innovationPulseSummary ||
-        (briefing.modelWatch?.length ?? 0) > 0 ||
-        (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
-        (briefing.innovationTracks?.length ?? 0) > 0 ||
-        (briefing.ecosystemWatch?.length ?? 0) > 0 ||
-        (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
-        (briefing.riskEthics?.items?.length ?? 0) > 0 ||
-        (briefing.nextSteps?.items?.length ?? 0) > 0,
+      briefing.innovationPulseSummary ||
+      (briefing.modelWatch?.length ?? 0) > 0 ||
+      (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
+      (briefing.innovationTracks?.length ?? 0) > 0 ||
+      (briefing.ecosystemWatch?.length ?? 0) > 0 ||
+      (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
+      (briefing.riskEthics?.items?.length ?? 0) > 0 ||
+      (briefing.nextSteps?.items?.length ?? 0) > 0,
     );
     const hasBusinessLayout = Boolean(
       (briefing.strategicMoves?.length ?? 0) > 0 ||
-        (briefing.competitionWatch?.length ?? 0) > 0 ||
-        (briefing.executionRisks?.items?.length ?? 0) > 0 ||
-        (briefing.actionItems?.items?.length ?? 0) > 0,
+      (briefing.competitionWatch?.length ?? 0) > 0 ||
+      (briefing.executionRisks?.items?.length ?? 0) > 0 ||
+      (briefing.actionItems?.items?.length ?? 0) > 0,
     );
 
     if (hasMacroLayout) return "macro";
@@ -185,11 +191,14 @@ const EmailBriefingLanding = ({
     (action: VideoInteractionAction, videoId: string, section?: string) => {
       const anonId = ensureAnonId();
       const dateSuffix =
-        (generatedDateFromQuery || deliveryMeta.displayLabel || "")
-          ?.replace(/[^0-9]/g, "") || "";
-      const baseAction = action.startsWith("video_card_view") && layoutNavKey
-        ? `${layoutNavKey}_${action}`
-        : action;
+        (generatedDateFromQuery || deliveryMeta.displayLabel || "")?.replace(
+          /[^0-9]/g,
+          "",
+        ) || "";
+      const baseAction =
+        action.startsWith("video_card_view") && layoutNavKey
+          ? `${layoutNavKey}_${action}`
+          : action;
       const actionWithSuffix =
         dateSuffix && action === "video_card_click"
           ? `${baseAction}_${videoId}_${dateSuffix}`
@@ -243,7 +252,8 @@ const EmailBriefingLanding = ({
               document.body?.scrollHeight ||
               1;
             const viewportBottom = window.scrollY + window.innerHeight;
-            const elementBottom = window.scrollY + entry.boundingClientRect.bottom;
+            const elementBottom =
+              window.scrollY + entry.boundingClientRect.bottom;
             const pageProgress = Math.min(1, viewportBottom / docHeight);
             const elementProgress = Math.min(1, elementBottom / docHeight);
             if (
@@ -502,8 +512,10 @@ const EmailBriefingLanding = ({
   const logFeedbackClick = (origin: string) => {
     const anonId = ensureAnonId();
     const actionSuffix =
-      (generatedDateFromQuery || deliveryMeta.displayLabel || "")
-        ?.replace(/[^0-9]/g, "") || "";
+      (generatedDateFromQuery || deliveryMeta.displayLabel || "")?.replace(
+        /[^0-9]/g,
+        "",
+      ) || "";
     const actionName = actionSuffix
       ? `briefing_feedback_click_${actionSuffix}`
       : "briefing_feedback_click";
@@ -541,7 +553,12 @@ const EmailBriefingLanding = ({
         console.warn("Failed to post email inline feedback", error);
       });
     },
-    [layoutNavKey, userEmailForLogging, generatedDateFromQuery, deliveryMeta.displayLabel],
+    [
+      layoutNavKey,
+      userEmailForLogging,
+      generatedDateFromQuery,
+      deliveryMeta.displayLabel,
+    ],
   );
 
   const handleInlineFeedback = (rating: "good" | "meh" | "bad") => {
@@ -586,6 +603,50 @@ const EmailBriefingLanding = ({
           ))}
         </FeedbackActions>
       </FeedbackSection>
+    );
+  };
+
+  const renderSubscriptionSummary = () => {
+    const keywordsParam = routeSearchParams?.get("keywords")?.trim();
+    const keywords =
+      keywordsParam
+        ?.split(",")
+        .map((keyword) => keyword.trim())
+        .filter(Boolean) ??
+      (providedKeywords?.length
+        ? providedKeywords
+        : briefing.keywords?.length
+          ? briefing.keywords
+          : briefing.topicLabel
+            ? [briefing.topicLabel]
+            : []);
+    const manageHref =
+      routeSearchParams?.get("manage_href")?.trim() || "/subject/modify";
+    const subscriptionCopy = SUBSCRIPTION_SUMMARY_COPY;
+    if (!keywords.length && !subscriptionCopy) return null;
+    return (
+      <ContentCard>
+        <SectionLabel>📥 내 구독 정보</SectionLabel>
+        {/* <SectionHeading>현재 구독한 키워드</SectionHeading> */}
+        {keywords.length ? (
+          <SubscriptionList>
+            {keywords.map((keyword) => (
+              <SubscriptionChip key={keyword}>{keyword}</SubscriptionChip>
+            ))}
+          </SubscriptionList>
+        ) : null}
+        {subscriptionCopy ? (
+          <SubscriptionDescription>{subscriptionCopy}</SubscriptionDescription>
+        ) : null}
+        <SubscriptionButton
+          href={manageHref}
+          target="_blank"
+          rel="noreferrer"
+          prefetch={false}
+        >
+          구독 키워드 변경하기
+        </SubscriptionButton>
+      </ContentCard>
     );
   };
 
@@ -1726,7 +1787,11 @@ const EmailBriefingLanding = ({
         </ContentCard>
       ) : null}
 
-      {renderEvidenceGallery(referencedVideos, undefined, "innovation_evidence")}
+      {renderEvidenceGallery(
+        referencedVideos,
+        undefined,
+        "innovation_evidence",
+      )}
 
       {renderOutroSection()}
     </>
@@ -1767,26 +1832,30 @@ const EmailBriefingLanding = ({
     </>
   );
 
-  const renderedLayout = layoutNavKey === "macro"
-    ? renderMacroLayout()
-    : layoutNavKey === "realestate"
-      ? renderRealEstateLayout()
-      : layoutNavKey === "innovation"
-        ? renderInnovationLayout()
-        : layoutNavKey === "money"
-          ? renderMoneyLayout()
-          : layoutNavKey === "business"
-            ? renderBusinessLayout()
-            : renderLegacyLayout();
+  const renderedLayout =
+    layoutNavKey === "macro"
+      ? renderMacroLayout()
+      : layoutNavKey === "realestate"
+        ? renderRealEstateLayout()
+        : layoutNavKey === "innovation"
+          ? renderInnovationLayout()
+          : layoutNavKey === "money"
+            ? renderMoneyLayout()
+            : layoutNavKey === "business"
+              ? renderBusinessLayout()
+              : renderLegacyLayout();
 
   const body = (
     <>
       {standalone ? (
         <HeaderWrapper>
-          <LogoHeader />
+          <LogoHeader onBack={() => router.push("/")} />
         </HeaderWrapper>
       ) : null}
-      <EmailContent>{renderedLayout}</EmailContent>
+      <EmailContent>
+        {renderedLayout}
+        {renderSubscriptionSummary()}
+      </EmailContent>
     </>
   );
 
@@ -2178,7 +2247,7 @@ const OutroCard = styled.div`
   width: 100%;
   border-radius: 24px;
   padding: 28px 24px 32px;
-  text-align: center;
+  /* text-align: center; */
   background: linear-gradient(135deg, #0f172a, #312e81);
   color: #fff;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
@@ -2764,4 +2833,45 @@ const RelatedEntities = styled.p`
   margin: 12px 0 0;
   font-size: 13px;
   color: #64748b;
+`;
+
+const SubscriptionList = styled.ul`
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+`;
+
+const SubscriptionChip = styled.li`
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #312e81;
+  font-size: 13px;
+  font-weight: 700;
+`;
+
+const SubscriptionDescription = styled.p`
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: #000;
+  line-height: 1.6;
+  white-space: pre-line;
+`;
+
+const SubscriptionButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 15px;
+  width: 100%;
 `;

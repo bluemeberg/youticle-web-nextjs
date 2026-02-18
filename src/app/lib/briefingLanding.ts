@@ -571,7 +571,7 @@ const SECTION_ALIAS_MAP: Record<string, MoneySectionKey | GeneralSectionKey> = {
 };
 
 const DEFAULT_EMAIL_OUTRO = {
-  title: "개선된 브리핑 템플릿,\n어떻게 느끼셨나요?",
+  title: "개선된 브리핑 템플릿, 어떻게 느끼셨나요?",
   description:
     "필요한 모듈을 더 보고 싶거나, 빼고 싶은 영역이 있으면 지금 바로 알려주세요. 다음 브리핑 구성에 바로 반영해 드릴게요.",
   ctaLabel: "내 브리핑 의견 남기기",
