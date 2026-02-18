@@ -85,13 +85,13 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
         result.user.displayName || "User",
       );
 
-      // 전역 상태 저장
-      setUser({
+      const normalizedUser = {
         name: result.user.displayName || "",
         email: result.user.email || "",
         picture: result.user.photoURL || "",
         id: data.id,
-      });
+      };
+      setUser(normalizedUser);
 
       return normalizedUser;
     } catch (e) {

@@ -1129,7 +1129,7 @@ const mapEmailDigestToBriefing = (
   };
 };
 
-const fetchEmailDigestSection = async (
+export const fetchEmailDigestSection = async (
   sectionLabel: string,
   generatedDate?: string | null,
   options?: {
@@ -1870,10 +1870,11 @@ export async function fetchBriefingLanding(
             anchor,
             summaryBullets: briefing.tldr.bullets.slice(0, 3),
             emailBriefing: briefing,
+            sourceKey: entry.key,
           } satisfies EmailRecapSection;
         }),
       )
-    ).filter((section): section is EmailRecapSection => section !== null);
+    ).filter(Boolean) as EmailRecapSection[];
 
     if (emailSections.length > 0) {
       const displayLabel =

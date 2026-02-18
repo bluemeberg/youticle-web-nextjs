@@ -91,6 +91,63 @@ const splitSentences = (text: string) => {
   return nodes;
 };
 
+export type EmailBriefingLayoutKey =
+  | "macro"
+  | "realestate"
+  | "innovation"
+  | "money"
+  | "business"
+  | "legacy";
+
+export const resolveEmailBriefingLayout = (
+  briefing: EmailBriefingKeywordData,
+): EmailBriefingLayoutKey => {
+  const hasMoneyLayout = Boolean(
+    briefing.marketMood ||
+      (briefing.themes?.length ?? 0) > 0 ||
+      (briefing.tickerProfiles?.length ?? 0) > 0 ||
+      (briefing.checklist?.length ?? 0) > 0,
+  );
+  const hasMacroLayout = Boolean(
+    (briefing.macroDrivers?.length ?? 0) > 0 ||
+      (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
+      (briefing.macroSectorWatch?.length ?? 0) > 0 ||
+      briefing.macroSnapshot,
+  );
+  const hasRealEstateLayout = Boolean(
+    briefing.marketPulse ||
+      (briefing.demandSupply?.length ?? 0) > 0 ||
+      (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
+      (briefing.regionalSpotlight?.length ?? 0) > 0 ||
+      (briefing.riskFlags?.items?.length ?? 0) > 0 ||
+      (briefing.shortTermWatch?.items?.length ?? 0) > 0,
+  );
+  const hasInnovationLayout = Boolean(
+    briefing.techSnapshot ||
+      briefing.innovationPulseSummary ||
+      (briefing.modelWatch?.length ?? 0) > 0 ||
+      (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
+      (briefing.innovationTracks?.length ?? 0) > 0 ||
+      (briefing.ecosystemWatch?.length ?? 0) > 0 ||
+      (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
+      (briefing.riskEthics?.items?.length ?? 0) > 0 ||
+      (briefing.nextSteps?.items?.length ?? 0) > 0,
+  );
+  const hasBusinessLayout = Boolean(
+    (briefing.strategicMoves?.length ?? 0) > 0 ||
+      (briefing.competitionWatch?.length ?? 0) > 0 ||
+      (briefing.executionRisks?.items?.length ?? 0) > 0 ||
+      (briefing.actionItems?.items?.length ?? 0) > 0,
+  );
+
+  if (hasMacroLayout) return "macro";
+  if (hasRealEstateLayout) return "realestate";
+  if (hasInnovationLayout) return "innovation";
+  if (hasMoneyLayout) return "money";
+  if (hasBusinessLayout) return "business";
+  return "legacy";
+};
+
 const EmailBriefingLanding = ({
   briefing,
   deliveryMeta,
@@ -120,52 +177,10 @@ const EmailBriefingLanding = ({
   const loggedViewThresholdsRef = useRef<Record<string, Set<number>>>({});
   const VIDEO_VIEW_THRESHOLDS = [0.3, 0.5, 0.8];
 
-  const layoutNavKey = useMemo(() => {
-    const hasMoneyLayout = Boolean(
-      briefing.marketMood ||
-      (briefing.themes?.length ?? 0) > 0 ||
-      (briefing.tickerProfiles?.length ?? 0) > 0 ||
-      (briefing.checklist?.length ?? 0) > 0,
-    );
-    const hasMacroLayout = Boolean(
-      (briefing.macroDrivers?.length ?? 0) > 0 ||
-      (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
-      (briefing.macroSectorWatch?.length ?? 0) > 0 ||
-      briefing.macroSnapshot,
-    );
-    const hasRealEstateLayout = Boolean(
-      briefing.marketPulse ||
-      (briefing.demandSupply?.length ?? 0) > 0 ||
-      (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
-      (briefing.regionalSpotlight?.length ?? 0) > 0 ||
-      (briefing.riskFlags?.items?.length ?? 0) > 0 ||
-      (briefing.shortTermWatch?.items?.length ?? 0) > 0,
-    );
-    const hasInnovationLayout = Boolean(
-      briefing.techSnapshot ||
-      briefing.innovationPulseSummary ||
-      (briefing.modelWatch?.length ?? 0) > 0 ||
-      (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
-      (briefing.innovationTracks?.length ?? 0) > 0 ||
-      (briefing.ecosystemWatch?.length ?? 0) > 0 ||
-      (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
-      (briefing.riskEthics?.items?.length ?? 0) > 0 ||
-      (briefing.nextSteps?.items?.length ?? 0) > 0,
-    );
-    const hasBusinessLayout = Boolean(
-      (briefing.strategicMoves?.length ?? 0) > 0 ||
-      (briefing.competitionWatch?.length ?? 0) > 0 ||
-      (briefing.executionRisks?.items?.length ?? 0) > 0 ||
-      (briefing.actionItems?.items?.length ?? 0) > 0,
-    );
-
-    if (hasMacroLayout) return "macro";
-    if (hasRealEstateLayout) return "realestate";
-    if (hasInnovationLayout) return "innovation";
-    if (hasMoneyLayout) return "money";
-    if (hasBusinessLayout) return "business";
-    return "legacy";
-  }, [briefing]);
+  const layoutNavKey = useMemo(
+    () => resolveEmailBriefingLayout(briefing),
+    [briefing],
+  );
 
   const ensureAnonId = useCallback(() => {
     if (anonIdRef.current) return anonIdRef.current;

@@ -14,7 +14,7 @@ import React, {
 } from "react";
 import Footer from "@/components/Footer";
 import { getUserByEmail, logCtaClick } from "@/api/apiClient";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
@@ -53,7 +53,9 @@ import type {
   InsightStockMetrics,
 } from "@/types/insight";
 import { GiConsoleController } from "react-icons/gi";
-import EmailBriefingLanding from "./EmailBriefingLanding";
+import EmailBriefingLanding, {
+  resolveEmailBriefingLayout,
+} from "./EmailBriefingLanding";
 import type { EmailBriefingKeywordData } from "@/types/emailBriefing";
 import type { DeliveryMeta } from "@/types/briefingLanding";
 
@@ -194,6 +196,7 @@ export interface EmailRecapSection {
   anchor: string;
   summaryBullets: string[];
   emailBriefing: EmailBriefingKeywordData;
+  sourceKey?: string;
 }
 
 export interface SlotPackage {
@@ -1298,6 +1301,43 @@ const SLOT_DISPLAY_ORDER = [
   "slot5",
 ] as const;
 
+const EMAIL_MONEY_SLOT_LABELS: Record<
+  Exclude<BriefingSlot, "ranking">,
+  SlotLabel
+> = {
+  baseline: {
+    phase: "baseline",
+    title: "프리 마켓 1차",
+    description: "07:30 장 시작 전",
+  },
+  slot2: {
+    phase: "slot2",
+    title: "오전 1차",
+    description: "11:00 장 중",
+  },
+  slot3: {
+    phase: "slot3",
+    title: "오후 2차",
+    description: "14:30 점검",
+  },
+  slot4: {
+    phase: "slot4",
+    title: "장 마감 전",
+    description: "17:00 체크",
+  },
+  slot5: {
+    phase: "slot5",
+    title: "저녁 리뷰",
+    description: "21:00 리뷰",
+  },
+};
+
+const resolveEmailSlotCopy = (sectionTitle: string, slotId: BriefingSlot) => {
+  if (slotId === "ranking") return null;
+  const base = EMAIL_MONEY_SLOT_LABELS[slotId];
+  return resolveInsightSlotCopy(sectionTitle, base) ?? base;
+};
+
 const resolveSlotPhase = (slotId?: string | null): BriefingSlot | null => {
   if (!slotId) return null;
   return BRIEFING_SLOT_PHASES.includes(slotId as BriefingSlot)
@@ -1370,6 +1410,7 @@ const StandardBriefingLandingPageClient = ({
   requireEmailConnect = false,
 }: StandardBriefingLandingPageClientProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const user = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
   const routeSearchParams = useSearchParams();
@@ -1444,10 +1485,18 @@ const StandardBriefingLandingPageClient = ({
   const normalizedDateForApi = useMemo(() => {
     return normalizeDateForApiParam(queryParams?.date ?? queryParams?.data);
   }, [queryParams]);
+  const normalizedGeneratedDateForApi = useMemo(() => {
+    return normalizeDateForApiParam(queryParams?.generated_date);
+  }, [queryParams]);
   const normalizedDateForLogging = useMemo(() => {
     if (!inferredDate) return null;
     return inferredDate.replace(/\s+/g, "").trim() || null;
   }, [inferredDate]);
+  const resolvedGeneratedDateParam = useMemo(() => {
+    return routeSearchParams?.get("generated_date") ?? queryParams?.generated_date ?? null;
+  }, [queryParams, routeSearchParams]);
+  const rawSlotParam = routeSearchParams?.get("slot") ?? queryParams?.slot;
+  const activeEmailSlot = resolveSlotPhase(rawSlotParam) ?? "baseline";
   const displayLabelDateToken = useMemo(() => {
     const labelDate = data.deliveryMeta.displayLabel?.split("·")?.[0]?.trim();
     return normalizeDateToken(labelDate);
@@ -1768,6 +1817,12 @@ const StandardBriefingLandingPageClient = ({
   const [slotLoadingMap, setSlotLoadingMap] = useState<Record<string, boolean>>(
     {},
   );
+  const [emailSlotBriefings, setEmailSlotBriefings] = useState<
+    Record<string, Record<string, EmailBriefingKeywordData>>
+  >({});
+  const [emailSlotLoadingMap, setEmailSlotLoadingMap] = useState<
+    Record<string, boolean>
+  >({});
   const baseVideoIdsByMoneySection = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     data.sections.filter(isMoneySection).forEach((section) => {
@@ -2023,7 +2078,59 @@ const StandardBriefingLandingPageClient = ({
         });
       }
     },
-    [slotDataCache, normalizedDateForApi],
+    [slotDataCache, normalizedDateForApi, showToast],
+  );
+
+  const ensureEmailSlotBriefing = useCallback(
+    async (section: EmailRecapSection, slotId: BriefingSlot) => {
+      if (slotId === "baseline") return;
+      if (!section.sourceKey) return;
+      const cacheKey = `${section.id}::${slotId}`;
+      if (emailSlotBriefings[section.id]?.[slotId]) return;
+      if (emailSlotLoadingMap[cacheKey]) return;
+      setEmailSlotLoadingMap((prev) => ({ ...prev, [cacheKey]: true }));
+      try {
+        const params = new URLSearchParams({
+          section: section.title,
+          slot: slotId,
+          source: section.sourceKey,
+        });
+        if (normalizedDateForApi) {
+          params.set("date", normalizedDateForApi);
+        }
+        if (resolvedGeneratedDateParam) {
+          params.set("generated_date", resolvedGeneratedDateParam);
+        }
+        const response = await fetch(`/api/email-briefing?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch email slot ${slotId}`);
+        }
+        const payload = (await response.json()) as EmailBriefingKeywordData;
+        setEmailSlotBriefings((prev) => ({
+          ...prev,
+          [section.id]: {
+            ...(prev[section.id] ?? {}),
+            [slotId]: payload,
+          },
+        }));
+      } catch (error) {
+        console.warn("Failed to fetch email slot briefing", error);
+        showToast("슬롯 데이터를 불러오지 못했어요");
+      } finally {
+        setEmailSlotLoadingMap((prev) => {
+          const next = { ...prev };
+          delete next[cacheKey];
+          return next;
+        });
+      }
+    },
+    [
+      emailSlotBriefings,
+      emailSlotLoadingMap,
+      normalizedDateForApi,
+      resolvedGeneratedDateParam,
+      showToast,
+    ],
   );
 
   useEffect(() => {
@@ -2038,7 +2145,78 @@ const StandardBriefingLandingPageClient = ({
     });
   }, [data.sections, slotDataCache, ensureSlotData]);
 
+  useEffect(() => {
+    if (activeEmailSlot === "baseline") return;
+    data.sections.filter(isEmailSection).forEach((section) => {
+      if (resolveEmailBriefingLayout(section.emailBriefing) === "money") {
+        void ensureEmailSlotBriefing(section, activeEmailSlot);
+      }
+    });
+  }, [activeEmailSlot, data.sections, ensureEmailSlotBriefing]);
+
   const triggerNavigationLoading = () => setIsNavigating(true);
+
+  const handleEmailSlotSelect = useCallback(
+    (section: EmailRecapSection, slotId: BriefingSlot) => {
+      if (slotId === activeEmailSlot) return;
+      const slotCopy = resolveEmailSlotCopy(section.title, slotId);
+      const slotIdentityParts = [
+        normalizedDateForLogging?.replace(/\s+/g, ""),
+        section.title.replace(/\s+/g, ""),
+        slotCopy?.title?.replace(/\s+/g, ""),
+        normalizedPhone?.replace(/\s+/g, ""),
+      ].filter((value): value is string => Boolean(value && value.length > 0));
+      const slotIdentity = slotIdentityParts.join("-") || undefined;
+      logCtaClick(
+        "briefing_slot_select",
+        user?.id,
+        slotIdentity ?? user?.email ?? normalizedPhone ?? undefined,
+        undefined,
+        {
+          section_key: section.id,
+          slot_id: slotId,
+          slot_label: slotCopy?.title ?? slotId,
+          phone: normalizedPhone ?? "",
+          date: normalizedDateForLogging ?? "",
+        },
+      );
+      if (slotCopy) {
+        showToast(`${slotCopy.title} 슬롯으로 이동했어요`);
+      }
+      if (slotId !== "baseline") {
+        void ensureEmailSlotBriefing(section, slotId);
+      }
+      triggerNavigationLoading();
+      const params = new URLSearchParams(routeSearchParams?.toString() ?? "");
+      if (slotId === "baseline") {
+        params.delete("slot");
+      } else {
+        params.set("slot", slotId);
+      }
+      const query = params.toString();
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      router.push(nextUrl);
+      if (typeof window !== "undefined") {
+        const scrollToTop = () =>
+          window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        scrollToTop();
+        window.requestAnimationFrame(scrollToTop);
+      }
+    },
+    [
+      activeEmailSlot,
+      normalizedDateForLogging,
+      normalizedPhone,
+      pathname,
+      routeSearchParams,
+      router,
+      showToast,
+      triggerNavigationLoading,
+      ensureEmailSlotBriefing,
+      user?.email,
+      user?.id,
+    ],
+  );
 
   const handleLogoBack = () => {
     triggerNavigationLoading();
@@ -3084,7 +3262,9 @@ const StandardBriefingLandingPageClient = ({
     );
   };
 
-  const renderEmailSection = (section: EmailRecapSection) => {
+  const renderEmailSection = (
+    section: EmailRecapSection,
+  ): { slotBar: ReactNode; node: ReactNode } => {
     const inlineMeta: DeliveryMeta = {
       ...data.deliveryMeta,
       deliveredAt: data.deliveryMeta.deliveredAt || new Date().toISOString(),
@@ -3092,7 +3272,43 @@ const StandardBriefingLandingPageClient = ({
         section.emailBriefing.dateBadge || data.deliveryMeta.displayLabel,
       tagline: section.emailBriefing.topicLabel || data.deliveryMeta.tagline,
     };
-    return (
+    const layoutKey = resolveEmailBriefingLayout(section.emailBriefing);
+    const activeSlot = activeEmailSlot;
+    const overrideBriefing = emailSlotBriefings[section.id]?.[activeSlot];
+    const hasOverride = Boolean(overrideBriefing);
+    const resolvedBriefing =
+      layoutKey === "money" && activeSlot !== "baseline" && hasOverride
+        ? overrideBriefing!
+        : section.emailBriefing;
+    const activeMeta = resolveEmailSlotCopy(section.title, activeSlot);
+    const emailSlotCacheKey = `${section.id}::${activeSlot}`;
+    const isEmailSlotLoading =
+      activeSlot !== "baseline" && Boolean(emailSlotLoadingMap[emailSlotCacheKey]);
+    const slotBar = null;
+    const shouldShowSlotFallback =
+      layoutKey === "money" && activeSlot !== "baseline" && !hasOverride;
+    const emailBody = shouldShowSlotFallback ? (
+      <EmailSlotLoadingCard>
+        <VideoLoadingRow>
+          {isEmailSlotLoading ? (
+            <>
+              <InlineSpinner aria-hidden />
+              <span>슬롯 데이터를 불러오고 있어요…</span>
+            </>
+          ) : (
+            <span>해당 슬롯 데이터를 불러오지 못했어요.</span>
+          )}
+        </VideoLoadingRow>
+      </EmailSlotLoadingCard>
+    ) : (
+      <EmailBriefingLanding
+        briefing={resolvedBriefing}
+        deliveryMeta={inlineMeta}
+        standalone={false}
+        keywords={data.keywordNav?.map((item) => item.label) ?? []}
+      />
+    );
+    const node = (
       <SectionBlock key={section.id} id={section.anchor}>
         <SectionAnchorMarker
           data-anchor-id={section.anchor}
@@ -3100,14 +3316,10 @@ const StandardBriefingLandingPageClient = ({
             sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
           }}
         />
-        <EmailBriefingLanding
-          briefing={section.emailBriefing}
-          deliveryMeta={inlineMeta}
-          standalone={false}
-          keywords={data.keywordNav?.map((item) => item.label) ?? []}
-        />
+        {emailBody}
       </SectionBlock>
     );
+    return { slotBar, node };
   };
 
   let activeSectionSlotBar: ReactNode = null;
@@ -3118,7 +3330,13 @@ const StandardBriefingLandingPageClient = ({
       return node;
     }
     if (isRankingSection(section)) return renderRankingSection(section);
-    if (isEmailSection(section)) return renderEmailSection(section);
+    if (isEmailSection(section)) {
+      const { slotBar, node } = renderEmailSection(section);
+      if (slotBar) {
+        activeSectionSlotBar = slotBar;
+      }
+      return node;
+    }
     return null;
   });
 
@@ -4001,6 +4219,20 @@ const SectionSlotBar = styled.div.attrs({
     padding: 10px 10px 6px;
     border-radius: 12px;
   }
+`;
+
+const EmailSlotLoadingCard = styled.div`
+  margin-top: 16px;
+  padding: 28px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #334155;
+  font-weight: 700;
 `;
 
 const InsightBlock = styled.section`

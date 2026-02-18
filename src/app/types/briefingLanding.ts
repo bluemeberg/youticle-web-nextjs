@@ -135,6 +135,7 @@ export interface RealEstateRecapSection extends BaseRecapSection {
 export interface EmailRecapSection extends BaseRecapSection {
   type: "email";
   emailBriefing: EmailBriefingKeywordData;
+  sourceKey?: string;
 }
 
 export type RecapSection =
