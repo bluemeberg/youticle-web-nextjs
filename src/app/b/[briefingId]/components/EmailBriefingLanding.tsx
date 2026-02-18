@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import LogoHeader from "@/common/LogoHeader";
 import { logCtaClick } from "@/api/apiClient";
@@ -29,6 +30,15 @@ import {
 
 const ECONOMY_BRIEFING_INTRO =
   "최근 100일 동안 업로드된 국내·글로벌 경제 영상만으로 성장/물가/정책, 산업별 수요를 정리했습니다.";
+
+const EMAIL_FEEDBACK_SURVEY = {
+  title: "브리핑에 대한 의견을 남겨주세요!",
+  description:
+    "어떤 모듈을 더 강화하고 싶은지, 필요 없는 영역은 무엇인지 남겨주시면 다음 브리핑부터 바로 반영해 드릴게요.",
+  ctaLabel: "내 브리핑 의견 남기기",
+  ctaHref: "https://tally.so/r/NpW6vj",
+  footnote: "* 구독자 피드백을 우선 반영해 템플릿을 다듬고 있어요",
+};
 
 interface EmailBriefingLandingProps {
   briefing: EmailBriefingKeywordData;
@@ -88,6 +98,213 @@ const EmailBriefingLanding = ({
   const userEmailFromQuery =
     routeSearchParams?.get("user_email")?.trim() || undefined;
   const userEmailForLogging = userEmailFromQuery ?? user?.email ?? undefined;
+  const generatedDateFromQuery =
+    routeSearchParams?.get("generated_date")?.trim() || undefined;
+  const userIdFromQuery = routeSearchParams?.get("user_id") ?? undefined;
+  const parsedUserId = userIdFromQuery ? Number(userIdFromQuery) : NaN;
+  const userIdForLogging =
+    user?.id ?? (Number.isFinite(parsedUserId) ? parsedUserId : undefined);
+  const [feedbackChoice, setFeedbackChoice] = useState<
+    "good" | "meh" | "bad" | null
+  >(null);
+  const anonIdRef = useRef<string | null>(null);
+  const videoObserverRef = useRef<IntersectionObserver | null>(null);
+  const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const loggedVideoViewsRef = useRef(new Set<string>());
+  const loggedViewThresholdsRef = useRef<Record<string, Set<number>>>({});
+  const VIDEO_VIEW_THRESHOLDS = [0.3, 0.5, 0.8];
+
+  const layoutNavKey = useMemo(() => {
+    const hasMoneyLayout = Boolean(
+      briefing.marketMood ||
+        (briefing.themes?.length ?? 0) > 0 ||
+        (briefing.tickerProfiles?.length ?? 0) > 0 ||
+        (briefing.checklist?.length ?? 0) > 0,
+    );
+    const hasMacroLayout = Boolean(
+      (briefing.macroDrivers?.length ?? 0) > 0 ||
+        (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
+        (briefing.macroSectorWatch?.length ?? 0) > 0 ||
+        briefing.macroSnapshot,
+    );
+    const hasRealEstateLayout = Boolean(
+      briefing.marketPulse ||
+        (briefing.demandSupply?.length ?? 0) > 0 ||
+        (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
+        (briefing.regionalSpotlight?.length ?? 0) > 0 ||
+        (briefing.riskFlags?.items?.length ?? 0) > 0 ||
+        (briefing.shortTermWatch?.items?.length ?? 0) > 0,
+    );
+    const hasInnovationLayout = Boolean(
+      briefing.techSnapshot ||
+        briefing.innovationPulseSummary ||
+        (briefing.modelWatch?.length ?? 0) > 0 ||
+        (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
+        (briefing.innovationTracks?.length ?? 0) > 0 ||
+        (briefing.ecosystemWatch?.length ?? 0) > 0 ||
+        (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
+        (briefing.riskEthics?.items?.length ?? 0) > 0 ||
+        (briefing.nextSteps?.items?.length ?? 0) > 0,
+    );
+    const hasBusinessLayout = Boolean(
+      (briefing.strategicMoves?.length ?? 0) > 0 ||
+        (briefing.competitionWatch?.length ?? 0) > 0 ||
+        (briefing.executionRisks?.items?.length ?? 0) > 0 ||
+        (briefing.actionItems?.items?.length ?? 0) > 0,
+    );
+
+    if (hasMacroLayout) return "macro";
+    if (hasRealEstateLayout) return "realestate";
+    if (hasInnovationLayout) return "innovation";
+    if (hasMoneyLayout) return "money";
+    if (hasBusinessLayout) return "business";
+    return "legacy";
+  }, [briefing]);
+
+  const ensureAnonId = useCallback(() => {
+    if (anonIdRef.current) return anonIdRef.current;
+    if (typeof window === "undefined") return null;
+    try {
+      const id = getOrCreateAnonId();
+      anonIdRef.current = id;
+      return id;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    ensureAnonId();
+  }, [ensureAnonId]);
+
+  type VideoInteractionAction =
+    | "video_card_click"
+    | `video_card_view_${number}`;
+
+  const logVideoInteraction = useCallback(
+    (action: VideoInteractionAction, videoId: string, section?: string) => {
+      const anonId = ensureAnonId();
+      const dateSuffix =
+        (generatedDateFromQuery || deliveryMeta.displayLabel || "")
+          ?.replace(/[^0-9]/g, "") || "";
+      const baseAction = action.startsWith("video_card_view") && layoutNavKey
+        ? `${layoutNavKey}_${action}`
+        : action;
+      const actionWithSuffix =
+        dateSuffix && action === "video_card_click"
+          ? `${baseAction}_${videoId}_${dateSuffix}`
+          : baseAction;
+      const context: Record<string, string> = {
+        video_id: videoId,
+        topic: briefing.topicLabel || "",
+        layout: isLandingEmbed ? "landing_embed" : "email_full",
+      };
+      if (section) context.section = section;
+      if (layoutNavKey) context.nav_key = layoutNavKey;
+      if (generatedDateFromQuery || deliveryMeta.displayLabel) {
+        context.generated_date =
+          generatedDateFromQuery || deliveryMeta.displayLabel || "";
+      }
+      void logCtaClick(
+        actionWithSuffix,
+        userIdForLogging,
+        userEmailForLogging,
+        anonId ?? undefined,
+        context,
+      ).catch(() => {});
+    },
+    [
+      briefing.topicLabel,
+      ensureAnonId,
+      isLandingEmbed,
+      layoutNavKey,
+      userEmailForLogging,
+      userIdForLogging,
+      generatedDateFromQuery,
+      deliveryMeta.displayLabel,
+    ],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const target = entry.target as HTMLElement;
+          const videoId = target.dataset.videoId;
+          if (!videoId) return;
+          const sectionKey = target.dataset.videoContext || undefined;
+          const observerKey = target.dataset.observerKey || videoId;
+          const ratio = entry.intersectionRatio;
+          if (typeof window !== "undefined") {
+            const docHeight =
+              document.documentElement?.scrollHeight ||
+              document.body?.scrollHeight ||
+              1;
+            const viewportBottom = window.scrollY + window.innerHeight;
+            const elementBottom = window.scrollY + entry.boundingClientRect.bottom;
+            const pageProgress = Math.min(1, viewportBottom / docHeight);
+            const elementProgress = Math.min(1, elementBottom / docHeight);
+            if (
+              pageProgress >= elementProgress &&
+              !loggedVideoViewsRef.current.has(observerKey)
+            ) {
+              loggedVideoViewsRef.current.add(observerKey);
+              logVideoInteraction("video_card_view_100", videoId, sectionKey);
+            }
+          }
+          const loggedSet =
+            loggedViewThresholdsRef.current[observerKey] ?? new Set<number>();
+          VIDEO_VIEW_THRESHOLDS.forEach((threshold) => {
+            if (ratio >= threshold && !loggedSet.has(threshold)) {
+              loggedSet.add(threshold);
+              loggedViewThresholdsRef.current[observerKey] = loggedSet;
+              const label = Math.round(threshold * 100);
+              logVideoInteraction(
+                `video_card_view_${label}` as const,
+                videoId,
+                sectionKey,
+              );
+            }
+          });
+        });
+      },
+      { threshold: VIDEO_VIEW_THRESHOLDS },
+    );
+    videoObserverRef.current = observer;
+    Object.values(videoRefs.current).forEach((node) => {
+      if (node) observer.observe(node);
+    });
+    return () => {
+      observer.disconnect();
+      videoObserverRef.current = null;
+    };
+  }, [logVideoInteraction]);
+
+  const attachVideoObserver = useCallback(
+    (videoId: string, section?: string, observerKeyOverride?: string) => {
+      const observerKey =
+        observerKeyOverride || (section ? `${section}-${videoId}` : videoId);
+      return (node: HTMLDivElement | null) => {
+        const prev = videoRefs.current[observerKey];
+        if (prev && videoObserverRef.current) {
+          videoObserverRef.current.unobserve(prev);
+        }
+        if (node) {
+          node.dataset.videoId = videoId;
+          node.dataset.videoContext = section || "";
+          node.dataset.observerKey = observerKey;
+          videoRefs.current[observerKey] = node;
+          videoObserverRef.current?.observe(node);
+        } else if (videoRefs.current[observerKey]) {
+          videoObserverRef.current?.unobserve(videoRefs.current[observerKey]!);
+          delete videoRefs.current[observerKey];
+        }
+      };
+    },
+    [],
+  );
   const renderMarked = (text?: string | number | null) => {
     const safeText = text == null ? "" : String(text);
     const segments = safeText.split(/(<mark>.*?<\/mark>)/g).filter(Boolean);
@@ -107,116 +324,269 @@ const EmailBriefingLanding = ({
       .map((id) => briefing.videos[id])
       .filter((video): video is EmailBriefingVideoMeta => Boolean(video));
 
-  const renderVideoCard = (video: EmailBriefingVideoMeta) => (
-    <VideoCard
-      key={video.id}
-      href={video.href}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <VideoThumb>
-        <img src={video.thumbnail} alt={video.title} loading="lazy" />
-      </VideoThumb>
-      <VideoBody>
-        <VideoTitle>{video.title}</VideoTitle>
-        <VideoMeta>
-          {video.channelThumbnail ? (
-            <VideoAvatar>
-              <img
-                src={video.channelThumbnail}
-                alt={video.channelName}
-                loading="lazy"
-              />
-            </VideoAvatar>
-          ) : null}
-          <VideoChannelText>
-            <strong>{video.channelName}</strong>
-            {video.subscriberText ? <span>{video.subscriberText}</span> : null}
-          </VideoChannelText>
-        </VideoMeta>
-      </VideoBody>
-    </VideoCard>
-  );
+  const renderVideoCard = (
+    video: EmailBriefingVideoMeta,
+    sectionContext?: string,
+  ) => {
+    const observerKey = sectionContext
+      ? `${sectionContext}-${video.id}`
+      : video.id;
+    const handleClick = () => {
+      logVideoInteraction("video_card_click", video.id, sectionContext);
+    };
+    return (
+      <VideoCardObserver
+        key={observerKey}
+        ref={attachVideoObserver(video.id, sectionContext, observerKey)}
+      >
+        <VideoCard
+          href={video.href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={handleClick}
+        >
+          <VideoThumb>
+            <img src={video.thumbnail} alt={video.title} loading="lazy" />
+          </VideoThumb>
+          <VideoBody>
+            <VideoTitle>{video.title}</VideoTitle>
+            <VideoMeta>
+              {video.channelThumbnail ? (
+                <VideoAvatar>
+                  <img
+                    src={video.channelThumbnail}
+                    alt={video.channelName}
+                    loading="lazy"
+                  />
+                </VideoAvatar>
+              ) : null}
+              <VideoChannelText>
+                <strong>{video.channelName}</strong>
+                {video.subscriberText ? (
+                  <span>{video.subscriberText}</span>
+                ) : null}
+              </VideoChannelText>
+            </VideoMeta>
+          </VideoBody>
+        </VideoCard>
+      </VideoCardObserver>
+    );
+  };
 
   const renderInlineVideoCard = (
     video: EmailBriefingVideoMeta,
     idx: number,
-  ) => (
-    <VideoSourceCard
-      key={`${video.id}-${idx}`}
-      href={video.href}
-      target="_blank"
-      rel="noreferrer"
-      prefetch={false}
-    >
-      <VideoSourceContainer>
-        <VideoThumbnailWrapper>
-          {video.thumbnail ? (
-            <VideoThumbnailImage
-              src={video.thumbnail}
-              alt={video.title}
-              width={120}
-              height={68}
-              style={{ width: "100%", height: "100%" }}
-            />
-          ) : (
-            <InlineVideoThumbnailFallback>
-              <span>근거 영상</span>
-            </InlineVideoThumbnailFallback>
-          )}
-        </VideoThumbnailWrapper>
-        <VideoSourceBody>
-          <InlineVideoTitle>{video.title}</InlineVideoTitle>
-          {(() => {
-            const summaryText = video.summary?.length
-              ? removeMarkTags(video.summary[0]).trim()
-              : "";
-            const fallbackText = summaryText || video.subscriberText || "";
-            return fallbackText ? (
-              <VideoSummaryText>{fallbackText}</VideoSummaryText>
-            ) : null;
-          })()}
-        </VideoSourceBody>
-      </VideoSourceContainer>
-      {video.channelThumbnail || video.channelName || video.subscriberText ? (
-        <VideoMetaRow>
-          {video.channelThumbnail ? (
-            <ChannelAvatarImage
-              src={video.channelThumbnail}
-              alt={video.channelName || "채널"}
-              width={40}
-              height={40}
-              style={{ width: 40, height: 40 }}
-            />
+    sectionContext?: string,
+  ) => {
+    const observerKey = sectionContext
+      ? `${sectionContext}-${video.id}-${idx}`
+      : `${video.id}-${idx}`;
+    const handleClick = () => {
+      logVideoInteraction("video_card_click", video.id, sectionContext);
+    };
+    return (
+      <VideoCardObserver
+        key={observerKey}
+        ref={attachVideoObserver(video.id, sectionContext, observerKey)}
+      >
+        <VideoSourceCard
+          href={video.href}
+          target="_blank"
+          rel="noreferrer"
+          prefetch={false}
+          onClick={handleClick}
+        >
+          <VideoSourceContainer>
+            <VideoThumbnailWrapper>
+              {video.thumbnail ? (
+                <VideoThumbnailImage
+                  src={video.thumbnail}
+                  alt={video.title}
+                  width={120}
+                  height={68}
+                  style={{ width: "100%", height: "100%" }}
+                />
+              ) : (
+                <InlineVideoThumbnailFallback>
+                  <span>근거 영상</span>
+                </InlineVideoThumbnailFallback>
+              )}
+            </VideoThumbnailWrapper>
+            <VideoSourceBody>
+              <InlineVideoTitle>{video.title}</InlineVideoTitle>
+              {(() => {
+                const summaryText = video.summary?.length
+                  ? removeMarkTags(video.summary[0]).trim()
+                  : "";
+                const fallbackText = summaryText || video.subscriberText || "";
+                return fallbackText ? (
+                  <VideoSummaryText>{fallbackText}</VideoSummaryText>
+                ) : null;
+              })()}
+            </VideoSourceBody>
+          </VideoSourceContainer>
+          {video.channelThumbnail ||
+          video.channelName ||
+          video.subscriberText ? (
+            <VideoMetaRow>
+              {video.channelThumbnail ? (
+                <ChannelAvatarImage
+                  src={video.channelThumbnail}
+                  alt={video.channelName || "채널"}
+                  width={40}
+                  height={40}
+                  style={{ width: 40, height: 40 }}
+                />
+              ) : null}
+              <VideoMetaRowContainer>
+                {video.channelName ? <span>{video.channelName}</span> : null}
+                {video.subscriberText ? (
+                  <VideoMetaRowSubContainer>
+                    {video.subscriberText}
+                  </VideoMetaRowSubContainer>
+                ) : null}
+              </VideoMetaRowContainer>
+            </VideoMetaRow>
           ) : null}
-          <VideoMetaRowContainer>
-            {video.channelName ? <span>{video.channelName}</span> : null}
-            {video.subscriberText ? (
-              <VideoMetaRowSubContainer>
-                {video.subscriberText}
-              </VideoMetaRowSubContainer>
-            ) : null}
-          </VideoMetaRowContainer>
-        </VideoMetaRow>
-      ) : null}
-    </VideoSourceCard>
-  );
+        </VideoSourceCard>
+      </VideoCardObserver>
+    );
+  };
 
-  const renderVideoGrid = (ids?: string[]) => {
+  const renderVideoGrid = (ids?: string[], sectionContext?: string) => {
     const list = getVideos(ids);
     if (!list.length) return null;
     const limitedList = list.slice(0, 2);
-    console.log(limitedList);
     if (isLandingEmbed) {
       return (
         <InlineVideoList>
           <VideoSourceList>
-            {limitedList.map((video, idx) => renderInlineVideoCard(video, idx))}
+            {limitedList.map((video, idx) =>
+              renderInlineVideoCard(video, idx, sectionContext),
+            )}
           </VideoSourceList>
         </InlineVideoList>
       );
     }
-    return <VideoGrid>{limitedList.map(renderVideoCard)}</VideoGrid>;
+    return (
+      <VideoGrid>
+        {limitedList.map((video) => renderVideoCard(video, sectionContext))}
+      </VideoGrid>
+    );
+  };
+
+  const renderSurveyFeedbackCard = () => {
+    const { title, description, ctaHref, ctaLabel, footnote } =
+      EMAIL_FEEDBACK_SURVEY;
+    return (
+      <SurveyCtaSection>
+        <SurveyCtaCard>
+          <SurveyCtaBadge>FEEDBACK</SurveyCtaBadge>
+          <SurveyCtaTitle>{title}</SurveyCtaTitle>
+          <SurveyCtaDescription>{description}</SurveyCtaDescription>
+          <SurveyCtaButton
+            href={ctaHref}
+            target="_blank"
+            rel="noreferrer"
+            prefetch={false}
+            onClick={() => logFeedbackClick("email_survey_card")}
+          >
+            {ctaLabel}
+          </SurveyCtaButton>
+          <SurveyCtaFootnote>{footnote}</SurveyCtaFootnote>
+        </SurveyCtaCard>
+      </SurveyCtaSection>
+    );
+  };
+
+  const logFeedbackClick = (origin: string) => {
+    const anonId = ensureAnonId();
+    const actionSuffix =
+      (generatedDateFromQuery || deliveryMeta.displayLabel || "")
+        ?.replace(/[^0-9]/g, "") || "";
+    const actionName = actionSuffix
+      ? `briefing_feedback_click_${actionSuffix}`
+      : "briefing_feedback_click";
+    const context: Record<string, string> = {
+      topic: briefing.topicLabel,
+      origin,
+    };
+    if (generatedDateFromQuery || deliveryMeta.displayLabel) {
+      context.generated_date =
+        generatedDateFromQuery || deliveryMeta.displayLabel || "";
+    }
+    void logCtaClick(
+      actionName,
+      userIdForLogging,
+      userEmailForLogging,
+      anonId ?? undefined,
+      context,
+    ).catch(() => {});
+  };
+
+  const logFirstImpression = useCallback(
+    (rating: "good" | "meh" | "bad") => {
+      const sectionKey = layoutNavKey || "legacy";
+      const emailKey = userEmailForLogging || "anonymous";
+      const dateKey = generatedDateFromQuery || deliveryMeta.displayLabel || "";
+      const videoIdentifier = `${sectionKey}:${emailKey}:${dateKey}`;
+      void fetch("https://youticle.shop/editor/first-impressions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          video_id: videoIdentifier,
+          reaction: rating,
+        }),
+      }).catch((error) => {
+        console.warn("Failed to post email inline feedback", error);
+      });
+    },
+    [layoutNavKey, userEmailForLogging, generatedDateFromQuery, deliveryMeta.displayLabel],
+  );
+
+  const handleInlineFeedback = (rating: "good" | "meh" | "bad") => {
+    setFeedbackChoice(rating);
+    logFeedbackClick(`email_inline_${rating}`);
+    logFirstImpression(rating);
+  };
+
+  const renderInlineFeedback = () => {
+    const keywordLabel = (() => {
+      const rawLabel = briefing.topicLabel?.trim();
+      if (!rawLabel) return "오늘";
+      const segments = rawLabel
+        .split("·")
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+      const preferred = segments[segments.length - 1] || rawLabel;
+      const sanitized = preferred.replace(/브리핑/g, "").trim();
+      return sanitized || "오늘";
+    })();
+    return (
+      <FeedbackSection>
+        <FeedbackQuestion>
+          {`오늘 ${keywordLabel} 브리핑 구성은 어땠나요?`}
+        </FeedbackQuestion>
+        <FeedbackActions>
+          {[
+            { key: "good" as const, label: "최고였어요", emoji: "😀" },
+            { key: "meh" as const, label: "괜찮아요", emoji: "😐" },
+            { key: "bad" as const, label: "별로였어요", emoji: "😞" },
+          ].map((option) => (
+            <FeedbackButton
+              key={option.key}
+              type="button"
+              aria-label={option.label}
+              $active={feedbackChoice === option.key}
+              onClick={() => handleInlineFeedback(option.key)}
+            >
+              <span aria-hidden>{option.emoji}</span>
+              <small>{option.label}</small>
+            </FeedbackButton>
+          ))}
+        </FeedbackActions>
+      </FeedbackSection>
+    );
   };
 
   const renderStrategicMovesSection = () => {
@@ -254,7 +624,7 @@ const EmailBriefingLanding = ({
                     ))}
                   </BulletList>
                 ) : null}
-                {renderVideoGrid(moveVideoIds)}
+                {renderVideoGrid(moveVideoIds, "strategic_moves")}
               </DemandCard>
             );
           })}
@@ -293,7 +663,7 @@ const EmailBriefingLanding = ({
                     </NarrativeList>
                   </>
                 ) : null}
-                {renderVideoGrid(videoIds)}
+                {renderVideoGrid(videoIds, "money_strategy")}
               </DemandCard>
             );
           })}
@@ -329,7 +699,7 @@ const EmailBriefingLanding = ({
                     </li>
                   ))}
                 </MacroList>
-                {renderVideoGrid(item.videoIds)}
+                {renderVideoGrid(item.videoIds, "execution_risks")}
               </MacroRiskCard>
             );
           })}
@@ -362,7 +732,7 @@ const EmailBriefingLanding = ({
                   ))}
                 </BulletList>
               ) : null}
-              {renderVideoGrid(item.videoIds)}
+              {renderVideoGrid(item.videoIds, "competition_watch")}
             </PolicyCard>
           ))}
         </PolicyGrid>
@@ -373,27 +743,36 @@ const EmailBriefingLanding = ({
   const renderEvidenceGallery = (
     ids?: string[],
     options?: { title?: string; landingTitle?: string },
+    sectionContext = "evidence_gallery",
   ) => {
     const list = getVideos(ids);
     if (!list.length) return null;
     if (isLandingEmbed) {
       return (
-        <LandingEvidenceSection>
-          <LandingEvidenceHeader>
-            <LandingEvidenceTitle>
-              {options?.landingTitle || "오늘 갱신된 TOP5 근거영상 모아보기"}
-            </LandingEvidenceTitle>
-          </LandingEvidenceHeader>
-          <LandingEvidenceList>
-            {list.map((video, idx) => renderInlineVideoCard(video, idx))}
-          </LandingEvidenceList>
-        </LandingEvidenceSection>
+        <>
+          {renderInlineFeedback()}
+          <LandingEvidenceSection>
+            <LandingEvidenceHeader>
+              <LandingEvidenceTitle>
+                {options?.landingTitle || "오늘 갱신된 TOP5 근거영상 모아보기"}
+              </LandingEvidenceTitle>
+            </LandingEvidenceHeader>
+            <LandingEvidenceList>
+              {list.map((video, idx) =>
+                renderInlineVideoCard(video, idx, sectionContext),
+              )}
+            </LandingEvidenceList>
+          </LandingEvidenceSection>
+        </>
       );
     }
     return (
       <ContentCard>
         <SectionHeading>{options?.title || "근거 영상"}</SectionHeading>
-        <VideoGrid>{list.map(renderVideoCard)}</VideoGrid>
+        <VideoGrid>
+          {list.map((video) => renderVideoCard(video, sectionContext))}
+        </VideoGrid>
+        {renderInlineFeedback()}
       </ContentCard>
     );
   };
@@ -431,7 +810,7 @@ const EmailBriefingLanding = ({
             ))}
           </BulletList>
         ) : null}
-        {renderVideoGrid(profile.videoIds)}
+        {renderVideoGrid(profile.videoIds, "ticker_profiles")}
       </TickerCard>
     ));
   };
@@ -456,7 +835,7 @@ const EmailBriefingLanding = ({
             </li>
           ))}
         </RiskList>
-        {renderVideoGrid(item.videoIds)}
+        {renderVideoGrid(item.videoIds, "risk_items")}
       </RiskCard>
     ));
   };
@@ -479,13 +858,7 @@ const EmailBriefingLanding = ({
     if (!briefing.outro) return null;
     const { title, description, ctaHref, ctaLabel, footnote } = briefing.outro;
     const handleCtaClick = () => {
-      void logCtaClick(
-        "briefing_feedback_click",
-        user?.id,
-        userEmailForLogging,
-        getOrCreateAnonId(),
-        { topic: briefing.topicLabel },
-      ).catch(() => {});
+      logFeedbackClick("email_outro");
     };
     return (
       <OutroSection>
@@ -604,7 +977,7 @@ const EmailBriefingLanding = ({
                     </BulletList>
                   </>
                 ) : null}
-                {renderVideoGrid(videoIds)}
+                {renderVideoGrid(videoIds, "innovation_tracks")}
               </PolicyCard>
             );
           })}
@@ -630,7 +1003,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </BulletList>
-              {renderVideoGrid(item.videoIds)}
+              {renderVideoGrid(item.videoIds, "ecosystem_watch")}
             </EcosystemCard>
           ))}
         </EcosystemGrid>
@@ -665,7 +1038,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </ChecklistList>
-              {renderVideoGrid(item.videoIds)}
+              {renderVideoGrid(item.videoIds, "action_items")}
             </ActionCard>
           ))}
         </ActionGrid>
@@ -696,8 +1069,7 @@ const EmailBriefingLanding = ({
       {renderStrategicMovesSection()}
 
       {renderExecutionRisksSection()}
-
-      {renderEvidenceGallery(referencedVideos)}
+      {renderEvidenceGallery(referencedVideos, undefined, "legacy_evidence")}
 
       {renderOutroSection()}
     </>
@@ -726,7 +1098,7 @@ const EmailBriefingLanding = ({
       {renderExecutionRisksSection()}
       {renderActionItemsSection()}
 
-      {renderEvidenceGallery(referencedVideos)}
+      {renderEvidenceGallery(referencedVideos, undefined, "business_evidence")}
 
       {renderOutroSection()}
     </>
@@ -796,7 +1168,7 @@ const EmailBriefingLanding = ({
         </ContentCard>
       ) : null}
 
-      {renderEvidenceGallery(referencedVideos)}
+      {renderEvidenceGallery(referencedVideos, undefined, "money_evidence")}
 
       {renderOutroSection()}
     </>
@@ -915,7 +1287,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </MacroList>
-              {renderVideoGrid(narrativeVideoIds)}
+              {renderVideoGrid(narrativeVideoIds, "macro_drivers")}
             </ContentCard>
           );
         })}
@@ -935,7 +1307,7 @@ const EmailBriefingLanding = ({
                       </li>
                     ))}
                   </MacroList>
-                  {renderVideoGrid(sector.videoIds)}
+                  {renderVideoGrid(sector.videoIds, "macro_sector_watch")}
                 </MacroInfoCard>
               ))}
             </MacroInfoGrid>
@@ -960,7 +1332,7 @@ const EmailBriefingLanding = ({
                       </li>
                     ))}
                   </MacroList>
-                  {renderVideoGrid(item.videoIds)}
+                  {renderVideoGrid(item.videoIds, "macro_policy_watch")}
                 </MacroInfoCard>
               ))}
             </MacroInfoGrid>
@@ -985,7 +1357,7 @@ const EmailBriefingLanding = ({
                       </li>
                     ))}
                   </MacroList>
-                  {renderVideoGrid(item.videoIds)}
+                  {renderVideoGrid(item.videoIds, "macro_risks")}
                 </MacroRiskCard>
               ))}
             </MacroInfoGrid>
@@ -1013,7 +1385,7 @@ const EmailBriefingLanding = ({
           </ContentCard>
         ) : null}
 
-        {renderEvidenceGallery(macroVideoIds)}
+        {renderEvidenceGallery(macroVideoIds, undefined, "macro_evidence")}
 
         {renderOutroSection()}
       </>
@@ -1079,7 +1451,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </BulletList>
-              {renderVideoGrid(item.videoIds)}
+              {renderVideoGrid(item.videoIds, "demand_supply")}
             </DemandCard>
           ))}
         </DemandGrid>
@@ -1106,7 +1478,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </BulletList>
-              {renderVideoGrid(item.videoIds)}
+              {renderVideoGrid(item.videoIds, "policy_finance_watch")}
             </PolicyCard>
           ))}
         </PolicyGrid>
@@ -1131,7 +1503,7 @@ const EmailBriefingLanding = ({
                   </li>
                 ))}
               </BulletList>
-              {renderVideoGrid(region.videoIds)}
+              {renderVideoGrid(region.videoIds, "regional_spotlight")}
             </EcosystemCard>
           ))}
         </EcosystemGrid>
@@ -1158,7 +1530,7 @@ const EmailBriefingLanding = ({
               <RiskList>
                 <li>{renderMarked(flag.detail)}</li>
               </RiskList>
-              {renderVideoGrid(flag.videoIds)}
+              {renderVideoGrid(flag.videoIds, "risk_flags")}
             </RiskCard>
           ))}
         </RiskGrid>
@@ -1241,7 +1613,7 @@ const EmailBriefingLanding = ({
                     </li>
                   ))}
                 </BulletList>
-                {renderVideoGrid(item.videoIds)}
+                {renderVideoGrid(item.videoIds, "model_watch")}
               </ModelCard>
             ))}
           </ModelGrid>
@@ -1265,7 +1637,7 @@ const EmailBriefingLanding = ({
                     </li>
                   ))}
                 </BulletList>
-                {renderVideoGrid(useCase.videoIds)}
+                {renderVideoGrid(useCase.videoIds, "use_case_spotlight")}
               </UseCaseCard>
             ))}
           </UseCaseGrid>
@@ -1294,7 +1666,7 @@ const EmailBriefingLanding = ({
                     <span>{renderMarked(policy.impact)}</span>
                   </PolicyImpact>
                 ) : null}
-                {renderVideoGrid(policy.videoIds)}
+                {renderVideoGrid(policy.videoIds, "infra_policy_watch")}
               </PolicyCard>
             ))}
           </PolicyGrid>
@@ -1318,7 +1690,7 @@ const EmailBriefingLanding = ({
                 <RiskList>
                   <li>{renderMarked(item.detail)}</li>
                 </RiskList>
-                {renderVideoGrid(item.videoIds)}
+                {renderVideoGrid(item.videoIds, "risk_ethics")}
               </RiskCard>
             ))}
           </RiskGrid>
@@ -1354,7 +1726,7 @@ const EmailBriefingLanding = ({
         </ContentCard>
       ) : null}
 
-      {renderEvidenceGallery(referencedVideos)}
+      {renderEvidenceGallery(referencedVideos, undefined, "innovation_evidence")}
 
       {renderOutroSection()}
     </>
@@ -1385,63 +1757,25 @@ const EmailBriefingLanding = ({
       {renderRiskFlagsSection()}
       {renderShortTermWatchSection()}
 
-      {renderEvidenceGallery(referencedVideos, { title: "🎬 근거 영상" })}
+      {renderEvidenceGallery(
+        referencedVideos,
+        { title: "🎬 근거 영상" },
+        "realestate_evidence",
+      )}
 
       {renderOutroSection()}
     </>
   );
 
-  const hasMoneyLayout = Boolean(
-    briefing.marketMood ||
-    (briefing.themes?.length ?? 0) > 0 ||
-    (briefing.tickerProfiles?.length ?? 0) > 0 ||
-    (briefing.checklist?.length ?? 0) > 0,
-  );
-
-  const hasMacroLayout = Boolean(
-    (briefing.macroDrivers?.length ?? 0) > 0 ||
-    (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
-    (briefing.macroSectorWatch?.length ?? 0) > 0 ||
-    briefing.macroSnapshot,
-  );
-
-  const hasRealEstateLayout = Boolean(
-    briefing.marketPulse ||
-    (briefing.demandSupply?.length ?? 0) > 0 ||
-    (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
-    (briefing.regionalSpotlight?.length ?? 0) > 0 ||
-    (briefing.riskFlags?.items?.length ?? 0) > 0 ||
-    (briefing.shortTermWatch?.items?.length ?? 0) > 0,
-  );
-
-  const hasInnovationLayout = Boolean(
-    briefing.techSnapshot ||
-    briefing.innovationPulseSummary ||
-    (briefing.modelWatch?.length ?? 0) > 0 ||
-    (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
-    (briefing.innovationTracks?.length ?? 0) > 0 ||
-    (briefing.ecosystemWatch?.length ?? 0) > 0 ||
-    (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
-    (briefing.riskEthics?.items?.length ?? 0) > 0 ||
-    (briefing.nextSteps?.items?.length ?? 0) > 0,
-  );
-
-  const hasBusinessLayout = Boolean(
-    (briefing.strategicMoves?.length ?? 0) > 0 ||
-    (briefing.competitionWatch?.length ?? 0) > 0 ||
-    (briefing.executionRisks?.items?.length ?? 0) > 0 ||
-    (briefing.actionItems?.items?.length ?? 0) > 0,
-  );
-
-  const renderedLayout = hasMacroLayout
+  const renderedLayout = layoutNavKey === "macro"
     ? renderMacroLayout()
-    : hasRealEstateLayout
+    : layoutNavKey === "realestate"
       ? renderRealEstateLayout()
-      : hasInnovationLayout
+      : layoutNavKey === "innovation"
         ? renderInnovationLayout()
-        : hasMoneyLayout
+        : layoutNavKey === "money"
           ? renderMoneyLayout()
-          : hasBusinessLayout
+          : layoutNavKey === "business"
             ? renderBusinessLayout()
             : renderLegacyLayout();
 
@@ -1724,7 +2058,7 @@ const LandingEvidenceSection = styled.section`
   border-radius: 18px;
   background: #fff;
   padding: 20px;
-  margin-top: 18px;
+  /* margin-top: 18px; */
 `;
 
 const LandingEvidenceHeader = styled.div`
@@ -1735,13 +2069,18 @@ const LandingEvidenceHeader = styled.div`
 
 const LandingEvidenceTitle = styled.h3`
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
   color: #0f172a;
 `;
 
 const LandingEvidenceList = styled(VideoSourceList)`
   margin-top: 4px;
+`;
+
+const VideoCardObserver = styled.div`
+  display: block;
+  width: 100%;
 `;
 
 const VideoCard = styled.a`
@@ -1832,7 +2171,7 @@ const OwnerBadge = styled.span`
 
 const OutroSection = styled.section`
   width: 100%;
-  margin: 40px 0 0;
+  margin: 20px 0 0;
 `;
 
 const OutroCard = styled.div`
@@ -1863,6 +2202,7 @@ const OutroTitle = styled.p`
   font-size: 20px;
   font-weight: 900;
   line-height: 1.4;
+  white-space: pre-line;
 `;
 
 const OutroDescription = styled.p`
@@ -1895,6 +2235,115 @@ const OutroFootnote = styled.p`
   margin: 16px 0 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.75);
+`;
+
+const SurveyCtaSection = styled.section`
+  width: 100%;
+  margin: 32px 0 0;
+`;
+
+const SurveyCtaCard = styled.div`
+  width: 100%;
+  border-radius: 24px;
+  padding: 28px 24px 32px;
+  text-align: center;
+  background: linear-gradient(135deg, #0f172a, #312e81);
+  color: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+`;
+
+const SurveyCtaBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+`;
+
+const SurveyCtaTitle = styled.h3`
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 900;
+`;
+
+const SurveyCtaDescription = styled.p`
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.9);
+`;
+
+const SurveyCtaButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+  margin: 22px auto 0;
+  padding: 13px 28px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+`;
+
+const SurveyCtaFootnote = styled.p`
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+`;
+
+const FeedbackSection = styled.section`
+  /* margin: 32px 0 0; */
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const FeedbackQuestion = styled.span`
+  font-weight: 750;
+  color: #1f2a4a;
+`;
+
+const FeedbackActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
+const FeedbackButton = styled.button<{ $active: boolean }>`
+  flex: 1;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid
+    ${({ $active }) => ($active ? "#0f172a" : "rgba(15, 23, 42, 0.15)")};
+  background: ${({ $active }) =>
+    $active ? "#0f172a" : "linear-gradient(135deg, #fff, #eef2ff)"};
+  color: ${({ $active }) => ($active ? "#fff" : "#0f172a")};
+  font-weight: 700;
+  cursor: pointer;
+
+  small {
+    font-size: 13px;
+  }
 `;
 
 const Mark = styled.span`

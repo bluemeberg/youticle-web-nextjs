@@ -68,6 +68,33 @@ const LANDING_FEEDBACK_SURVEY = {
   footnote: "* 구독자 피드백을 우선 반영해 템플릿을 다듬고 있어요",
 };
 
+const LANDING_INFO_PROMOS = [
+  {
+    id: "keyword_guide",
+    badge: "GUIDE",
+    title: "구독 키워드 안내",
+    description: "현재 구독 중인 키워드를 다시 확인하고 필요한 주제를 새로 담아보세요.",
+    ctaLabel: "내 구독 키워드 확인하기",
+    href: "/subject",
+  },
+  {
+    id: "service_intro",
+    badge: "SERVICE",
+    title: "유티클 서비스 안내",
+    description: "유튜브 TOP5 브리핑이 어떻게 만들어지는지와 무료 구독 혜택을 확인해 보세요.",
+    ctaLabel: "서비스 소개 보기",
+    href: "/about",
+  },
+  {
+    id: "keyword_modify",
+    badge: "ACTION",
+    title: "키워드 변경 안내",
+    description: "관심사가 바뀌었다면 지금 바로 구독 키워드를 변경해 맞춤 브리핑을 받아보세요.",
+    ctaLabel: "구독 키워드 변경하기",
+    href: "/subject/modify",
+  },
+] as const;
+
 /**
  * =========================================================
  * Mock Types (최소 실사용 형태)
@@ -1359,6 +1386,12 @@ const StandardBriefingLandingPageClient = ({
     const sectionValue = routeSearchParams?.get("section")?.trim();
     return sectionValue && sectionValue.length > 0 ? sectionValue : null;
   }, [routeSearchParams]);
+  const rawUserIdParam = routeSearchParams?.get("user_id") ?? queryParams?.user_id;
+  const parsedUserId = rawUserIdParam ? Number(rawUserIdParam) : NaN;
+  const userIdForLogging = useMemo(() => {
+    if (user?.id) return user.id;
+    return Number.isFinite(parsedUserId) ? parsedUserId : undefined;
+  }, [parsedUserId, user?.id]);
   useEffect(() => {
     if (!normalizedPhone) {
       setPhoneLinkStatus("idle");
@@ -1488,13 +1521,18 @@ const StandardBriefingLandingPageClient = ({
       })();
       logCtaClick(
         action,
-        user?.id,
+        userIdForLogging,
         userEmailFallback + sectionKeyParam + slotId,
         anonId ?? undefined,
         context,
       );
     },
-    [user?.id, user?.email, normalizedPhone, normalizedDateForLogging],
+    [
+      user?.email,
+      normalizedPhone,
+      normalizedDateForLogging,
+      userIdForLogging,
+    ],
   );
 
   useEffect(() => {
@@ -2025,7 +2063,7 @@ const StandardBriefingLandingPageClient = ({
     const navIdentity = identityParts.join("-") || undefined;
     logCtaClick(
       "briefing_section_nav",
-      user?.id,
+      userIdForLogging,
       navIdentity ?? user?.email ?? normalizedPhone ?? undefined,
       undefined,
       {
@@ -2033,6 +2071,7 @@ const StandardBriefingLandingPageClient = ({
         label: label ?? anchor,
         phone: normalizedPhone ?? "",
         date: normalizedDateForLogging ?? "",
+        generated_date: normalizedDateForLogging ?? "",
       },
     );
     pendingNavAnchorRef.current = anchor;
@@ -2128,6 +2167,29 @@ const StandardBriefingLandingPageClient = ({
         date: normalizedDateForLogging ?? "",
         phone: normalizedPhone ?? "",
         topic: data.deliveryMeta.tagline ?? data.deliveryMeta.description ?? "",
+      },
+    );
+  };
+
+  const handleInfoPromoClick = (cardId: string) => {
+    let anonId = anonIdRef.current;
+    if (!anonId && typeof window !== "undefined") {
+      try {
+        anonId = getOrCreateAnonId();
+        anonIdRef.current = anonId;
+      } catch {
+        anonId = null;
+      }
+    }
+    logCtaClick(
+      "landing_info_card_click",
+      user?.id,
+      archiveLoggingIdentity ?? user?.email ?? normalizedPhone ?? undefined,
+      anonId ?? undefined,
+      {
+        card_id: cardId,
+        date: normalizedDateForLogging ?? "",
+        phone: normalizedPhone ?? "",
       },
     );
   };
@@ -3255,6 +3317,27 @@ const StandardBriefingLandingPageClient = ({
       <SectionsContainer>{renderedSections}</SectionsContainer>
 
       {!isEmailSource ? (
+        <InfoPromoSection>
+          <InfoPromoGrid>
+            {LANDING_INFO_PROMOS.map((card) => (
+              <InfoPromoCard key={card.id}>
+                <InfoPromoBadge>{card.badge}</InfoPromoBadge>
+                <InfoPromoTitle>{card.title}</InfoPromoTitle>
+                <InfoPromoDescription>{card.description}</InfoPromoDescription>
+                <InfoPromoButton
+                  href={card.href}
+                  prefetch={false}
+                  onClick={() => handleInfoPromoClick(card.id)}
+                >
+                  {card.ctaLabel}
+                </InfoPromoButton>
+              </InfoPromoCard>
+            ))}
+          </InfoPromoGrid>
+        </InfoPromoSection>
+      ) : null}
+
+      {!isEmailSource ? (
         <SurveyCtaSection>
           <SurveyCtaCard>
             <SurveyCtaBadge>FEEDBACK</SurveyCtaBadge>
@@ -3462,6 +3545,69 @@ const SectionsContainer = styled.main`
   max-width: 720px;
   padding: 32px 16px 40px;
   font-family: inherit;
+`;
+
+const InfoPromoSection = styled.section`
+  width: 100%;
+  max-width: 720px;
+  padding: 0 16px 48px;
+  box-sizing: border-box;
+`;
+
+const InfoPromoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+`;
+
+const InfoPromoCard = styled.div`
+  border-radius: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffffff, #f8fbff);
+  border: 1px solid rgba(50, 71, 255, 0.1);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const InfoPromoBadge = styled.span`
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(49, 46, 129, 0.12);
+  font-size: 11px;
+  font-weight: 700;
+  color: #312e81;
+  letter-spacing: 0.08em;
+`;
+
+const InfoPromoTitle = styled.h3`
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+`;
+
+const InfoPromoDescription = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #475569;
+  flex: 1;
+`;
+
+const InfoPromoButton = styled(Link)`
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
 `;
 
 const SurveyCtaSection = styled.section`
