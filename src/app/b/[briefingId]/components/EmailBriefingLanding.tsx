@@ -44,6 +44,7 @@ const SUBSCRIPTION_SUMMARY_COPY =
   "유티클은 구독 키워드별로 매일 핵심 영상만 골라 요약해 드리는 AI 브리핑 서비스예요.\n현재 20개의 키워드를 운영 중이며, 관심사가 바뀌면 구독 키워드를 조정해 최신 브리핑을 받아보세요.";
 
 interface EmailBriefingLandingProps {
+  hideSummary?: boolean;
   briefing: EmailBriefingKeywordData;
   deliveryMeta: DeliveryMeta;
   standalone?: boolean;
@@ -153,6 +154,7 @@ const EmailBriefingLanding = ({
   deliveryMeta,
   standalone = true,
   keywords: providedKeywords,
+  hideSummary = false,
 }: EmailBriefingLandingProps) => {
   const isLandingEmbed = !standalone;
   const user = useRecoilValue(userState);
@@ -622,6 +624,7 @@ const EmailBriefingLanding = ({
   };
 
   const renderSubscriptionSummary = () => {
+    if (hideSummary) return null;
     const keywordsParam = routeSearchParams?.get("keywords")?.trim();
     const keywords =
       keywordsParam

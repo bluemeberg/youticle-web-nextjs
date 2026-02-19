@@ -56,7 +56,10 @@ import { GiConsoleController } from "react-icons/gi";
 import EmailBriefingLanding, {
   resolveEmailBriefingLayout,
 } from "./EmailBriefingLanding";
-import type { EmailBriefingKeywordData } from "@/types/emailBriefing";
+import type {
+  EmailBriefingKeywordData,
+  EmailBriefingVideoMeta,
+} from "@/types/emailBriefing";
 import type { DeliveryMeta } from "@/types/briefingLanding";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -1301,6 +1304,13 @@ const SLOT_DISPLAY_ORDER = [
   "slot5",
 ] as const;
 
+type MoneySectionRenderOptions = {
+  overrideSlotTabs?: SlotPackage["tabs"] | null;
+  overrideActiveSlotId?: string;
+  hideSlotSelector?: boolean;
+  hideSummaryCard?: boolean;
+};
+
 const EMAIL_MONEY_SLOT_LABELS: Record<
   Exclude<BriefingSlot, "ranking">,
   SlotLabel
@@ -1483,18 +1493,14 @@ const StandardBriefingLandingPageClient = ({
     data.deliveryMeta.displayLabel?.split("·")?.[0]?.trim() ||
     "today";
   const normalizedDateForApi = useMemo(() => {
-    return normalizeDateForApiParam(queryParams?.date ?? queryParams?.data);
-  }, [queryParams]);
-  const normalizedGeneratedDateForApi = useMemo(() => {
-    return normalizeDateForApiParam(queryParams?.generated_date);
+    return normalizeDateForApiParam(
+      queryParams?.date ?? queryParams?.data ?? queryParams?.generated_date,
+    );
   }, [queryParams]);
   const normalizedDateForLogging = useMemo(() => {
     if (!inferredDate) return null;
     return inferredDate.replace(/\s+/g, "").trim() || null;
   }, [inferredDate]);
-  const resolvedGeneratedDateParam = useMemo(() => {
-    return routeSearchParams?.get("generated_date") ?? queryParams?.generated_date ?? null;
-  }, [queryParams, routeSearchParams]);
   const rawSlotParam = routeSearchParams?.get("slot") ?? queryParams?.slot;
   const activeEmailSlot = resolveSlotPhase(rawSlotParam) ?? "baseline";
   const displayLabelDateToken = useMemo(() => {
@@ -1817,8 +1823,12 @@ const StandardBriefingLandingPageClient = ({
   const [slotLoadingMap, setSlotLoadingMap] = useState<Record<string, boolean>>(
     {},
   );
-  const [emailSlotBriefings, setEmailSlotBriefings] = useState<
-    Record<string, Record<string, EmailBriefingKeywordData>>
+  type EmailSlotOverride = {
+    briefing: EmailBriefingKeywordData;
+    slotTabs: SlotPackage["tabs"] | null;
+  };
+  const [emailSlotOverrides, setEmailSlotOverrides] = useState<
+    Record<string, Record<string, EmailSlotOverride>>
   >({});
   const [emailSlotLoadingMap, setEmailSlotLoadingMap] = useState<
     Record<string, boolean>
@@ -2041,6 +2051,31 @@ const StandardBriefingLandingPageClient = ({
     }
   }, [googleProvider, setUserState, showToast]);
 
+  const mapSlotVideoToEmailMeta = useCallback(
+    (video: VideoCardData, sectionTitle: string): EmailBriefingVideoMeta | null => {
+      if (!video.id) return null;
+      const meta = resolveVideoMetaInfo(video);
+      const summary = (video.summary ?? []).filter(
+        (line): line is string => Boolean(line && line.trim().length > 0),
+      );
+      const href =
+        buildBriefingDetailHref(video.id, video.href) ??
+        video.href ??
+        `/detail/${video.id}`;
+      return {
+        id: video.id,
+        title: video.title || sectionTitle,
+        thumbnail: video.thumbnail,
+        channelName: video.channel || sectionTitle,
+        channelThumbnail: video.channelThumbnail,
+        subscriberText: meta.subscriberLabel || undefined,
+        summary: summary.length ? summary : undefined,
+        href,
+      };
+    },
+    [buildBriefingDetailHref],
+  );
+
   const ensureSlotData = useCallback(
     async (section: MoneyRecapSection, slotId: string) => {
       if (!section || !slotId) return;
@@ -2086,31 +2121,51 @@ const StandardBriefingLandingPageClient = ({
       if (slotId === "baseline") return;
       if (!section.sourceKey) return;
       const cacheKey = `${section.id}::${slotId}`;
-      if (emailSlotBriefings[section.id]?.[slotId]) return;
+      if (emailSlotOverrides[section.id]?.[slotId]) return;
       if (emailSlotLoadingMap[cacheKey]) return;
       setEmailSlotLoadingMap((prev) => ({ ...prev, [cacheKey]: true }));
       try {
         const params = new URLSearchParams({
-          section: section.title,
+          section: section.sourceKey,
           slot: slotId,
-          source: section.sourceKey,
         });
         if (normalizedDateForApi) {
           params.set("date", normalizedDateForApi);
         }
-        if (resolvedGeneratedDateParam) {
-          params.set("generated_date", resolvedGeneratedDateParam);
-        }
-        const response = await fetch(`/api/email-briefing?${params.toString()}`);
+        const response = await fetch(`/api/briefing/slot?${params.toString()}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch email slot ${slotId}`);
         }
-        const payload = (await response.json()) as EmailBriefingKeywordData;
-        setEmailSlotBriefings((prev) => ({
+        const payload = (await response.json()) as SlotPackage;
+        const slotVideos = payload.tabs?.videos ?? [];
+        const emailMetas = slotVideos
+          .map((video) => mapSlotVideoToEmailMeta(video, section.title))
+          .filter((meta): meta is EmailBriefingVideoMeta => Boolean(meta));
+        if (!emailMetas.length) {
+          showToast("해당 슬롯에서 표시할 영상이 없어요");
+          setEmailSlotOverrides((prev) => ({
+            ...prev,
+            [section.id]: {
+              ...(prev[section.id] ?? {}),
+              [slotId]: { briefing: section.emailBriefing, slotTabs: payload.tabs ?? null },
+            },
+          }));
+          return;
+        }
+        const videosMap: Record<string, EmailBriefingVideoMeta> = {};
+        emailMetas.forEach((meta) => {
+          videosMap[meta.id] = meta;
+        });
+        const overrideBriefing: EmailBriefingKeywordData = {
+          ...section.emailBriefing,
+          videos: videosMap,
+          topVideoIds: emailMetas.map((meta) => meta.id),
+        };
+        setEmailSlotOverrides((prev) => ({
           ...prev,
           [section.id]: {
             ...(prev[section.id] ?? {}),
-            [slotId]: payload,
+            [slotId]: { briefing: overrideBriefing, slotTabs: payload.tabs ?? null },
           },
         }));
       } catch (error) {
@@ -2125,10 +2180,10 @@ const StandardBriefingLandingPageClient = ({
       }
     },
     [
-      emailSlotBriefings,
+      emailSlotOverrides,
       emailSlotLoadingMap,
+      mapSlotVideoToEmailMeta,
       normalizedDateForApi,
-      resolvedGeneratedDateParam,
       showToast,
     ],
   );
@@ -2466,6 +2521,7 @@ const StandardBriefingLandingPageClient = ({
     return map;
   };
 
+
   const SLOT_DETECTED_LABELS: Record<string, string> = {
     slot_0730: "07:30 선정",
     slot_0830: "08:30 갱신",
@@ -2539,6 +2595,7 @@ const StandardBriefingLandingPageClient = ({
 
   const renderMoneySection = (
     section: MoneyRecapSection,
+    options?: MoneySectionRenderOptions,
   ): { slotBar: ReactNode; node: ReactNode } => {
     const slotPool = filterOutRankingSlots(section.slotPackages)
       .slice()
@@ -2552,14 +2609,13 @@ const StandardBriefingLandingPageClient = ({
     if (slotPool.length === 0) {
       return { slotBar: null, node: null };
     }
-    const activeSlotId = activeSlotBySection[section.id];
+    const injectedActiveSlotId = options?.overrideActiveSlotId;
+    const activeSlotId = injectedActiveSlotId ?? activeSlotBySection[section.id];
     const activeSlot =
       slotPool.find((slot) => slot.id === activeSlotId) ?? slotPool[0];
-    const activeSlotTabs = resolveCachedSlotTabs(
-      slotDataCache,
-      section.id,
-      activeSlot?.id,
-    );
+    let activeSlotTabs = options?.overrideSlotTabs
+      ? options.overrideSlotTabs
+      : resolveCachedSlotTabs(slotDataCache, section.id, activeSlot?.id);
     const activeSlotCacheKey = activeSlot
       ? makeSlotCacheKey(section.id, activeSlot.id)
       : null;
@@ -2823,6 +2879,14 @@ const StandardBriefingLandingPageClient = ({
     }
     const hasAnyVideos = slotVideos.length > 0;
     const slotMetaText = (() => {
+      if (options?.overrideSlotTabs && injectedActiveSlotId) {
+        return (
+          options.overrideSlotTabs.market?.commentary?.[0] ||
+          slotLabel?.description ||
+          activeSlot?.displayTime ||
+          null
+        );
+      }
       if (isStaticSection || !slotPool.length) return null;
       if (isFutureSlot && pendingSlot?.displayTime) {
         return `예정: ${pendingSlot.displayTime}`;
@@ -2885,7 +2949,7 @@ const StandardBriefingLandingPageClient = ({
     })();
 
     const slotSelectorBar =
-      !isStaticSection && slotPool.length ? (
+      !options?.hideSlotSelector && !isStaticSection && slotPool.length ? (
         <SectionSlotBar $withShadow>
           <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
             {slotPool.map((slot) => {
@@ -2967,33 +3031,35 @@ const StandardBriefingLandingPageClient = ({
             {/* <SectionMiniHint>슬롯 변경 시 TOP5가 갱신돼요</SectionMiniHint> */}
           </SectionTitleRow>
 
-          <SummaryCard>
-            <BlockTitle $variant="summary">카카오톡 브리핑 요약</BlockTitle>
-            {summaryBriefing ? (
-              isBaselineSlot ? (
+          {options?.hideSummaryCard ? null : (
+            <SummaryCard>
+              <BlockTitle $variant="summary">카카오톡 브리핑 요약</BlockTitle>
+              {summaryBriefing ? (
+                isBaselineSlot ? (
+                  renderSummaryContent(
+                    summaryBriefing,
+                    summaryLines,
+                    summaryVideoLookup,
+                    triggerNavigationLoading,
+                    buildBriefingDetailHref,
+                  )
+                ) : (
+                  <SummaryNotice>
+                    카카오톡 브리핑은 해당 슬롯에서는 아직 준비 중이에요. 오픈되면
+                    바로 신청 안내 드릴게요!
+                  </SummaryNotice>
+                )
+              ) : (
                 renderSummaryContent(
-                  summaryBriefing,
+                  undefined,
                   summaryLines,
                   summaryVideoLookup,
                   triggerNavigationLoading,
                   buildBriefingDetailHref,
                 )
-              ) : (
-                <SummaryNotice>
-                  카카오톡 브리핑은 해당 슬롯에서는 아직 준비 중이에요. 오픈되면
-                  바로 신청 안내 드릴게요!
-                </SummaryNotice>
-              )
-            ) : (
-              renderSummaryContent(
-                undefined,
-                summaryLines,
-                summaryVideoLookup,
-                triggerNavigationLoading,
-                buildBriefingDetailHref,
-              )
-            )}
-          </SummaryCard>
+              )}
+            </SummaryCard>
+          )}
 
           {!isStaticSection && insightContent ? (
             <InsightBlock>
@@ -3274,51 +3340,111 @@ const StandardBriefingLandingPageClient = ({
     };
     const layoutKey = resolveEmailBriefingLayout(section.emailBriefing);
     const activeSlot = activeEmailSlot;
-    const overrideBriefing = emailSlotBriefings[section.id]?.[activeSlot];
-    const hasOverride = Boolean(overrideBriefing);
+    const overrideData = emailSlotOverrides[section.id]?.[activeSlot];
+    const overrideBriefing = overrideData?.briefing;
+    const overrideTabs = overrideData?.slotTabs ?? null;
+    const hasOverride = Boolean(overrideBriefing && overrideTabs);
     const resolvedBriefing =
-      layoutKey === "money" && activeSlot !== "baseline" && hasOverride
-        ? overrideBriefing!
+      layoutKey === "money" && activeSlot !== "baseline" && overrideBriefing
+        ? overrideBriefing
         : section.emailBriefing;
     const activeMeta = resolveEmailSlotCopy(section.title, activeSlot);
     const emailSlotCacheKey = `${section.id}::${activeSlot}`;
     const isEmailSlotLoading =
       activeSlot !== "baseline" && Boolean(emailSlotLoadingMap[emailSlotCacheKey]);
-    const slotBar = null;
+    const slotBar =
+      layoutKey === "money" ? (
+        <SectionSlotBar $withShadow>
+          <SlotSelector aria-label={`${section.title} 슬롯 선택`}>
+            {SLOT_DISPLAY_ORDER.map((slotId) => {
+              const slotCopy = resolveEmailSlotCopy(section.title, slotId);
+              if (!slotCopy) return null;
+              const isActive = slotId === activeSlot;
+              return (
+                <SlotChip
+                  key={slotId}
+                  type="button"
+                  $active={isActive}
+                  onClick={() => handleEmailSlotSelect(section, slotId)}
+                >
+                  <span>{slotCopy.title}</span>
+                </SlotChip>
+              );
+            })}
+          </SlotSelector>
+          {activeMeta ? <SlotMeta>{activeMeta.description}</SlotMeta> : null}
+        </SectionSlotBar>
+      ) : null;
     const shouldShowSlotFallback =
       layoutKey === "money" && activeSlot !== "baseline" && !hasOverride;
-    const emailBody = shouldShowSlotFallback ? (
-      <EmailSlotLoadingCard>
-        <VideoLoadingRow>
-          {isEmailSlotLoading ? (
-            <>
-              <InlineSpinner aria-hidden />
-              <span>슬롯 데이터를 불러오고 있어요…</span>
-            </>
-          ) : (
-            <span>해당 슬롯 데이터를 불러오지 못했어요.</span>
-          )}
-        </VideoLoadingRow>
-      </EmailSlotLoadingCard>
-    ) : (
-      <EmailBriefingLanding
-        briefing={resolvedBriefing}
-        deliveryMeta={inlineMeta}
-        standalone={false}
-        keywords={data.keywordNav?.map((item) => item.label) ?? []}
-      />
-    );
-    const node = (
-      <SectionBlock key={section.id} id={section.anchor}>
-        <SectionAnchorMarker
-          data-anchor-id={section.anchor}
-          ref={(node) => {
-            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
-          }}
-        />
-        {emailBody}
-      </SectionBlock>
-    );
+
+    const emailBody = hasOverride
+      ? (() => {
+          const isCrypto =
+            section.sourceKey?.includes("crypto") ||
+            section.title.includes("가상자산");
+          const syntheticSection: MoneyRecapSection = {
+            id: section.id,
+            type: isCrypto ? "crypto" : "stocks",
+            title: section.title,
+            anchor: section.anchor,
+            summaryBullets: section.summaryBullets,
+            summaryBriefing: undefined,
+            slotPackages: [
+              {
+                id: activeSlot,
+                label: activeMeta?.title ?? section.title,
+                displayTime: activeMeta?.description ?? "",
+                description: activeMeta?.description ?? "",
+                tabs: overrideTabs,
+              },
+            ],
+            defaultSlotId: activeSlot,
+            sourceKey: section.sourceKey,
+          };
+          const { node } = renderMoneySection(syntheticSection, {
+            overrideActiveSlotId: activeSlot,
+            overrideSlotTabs: overrideTabs,
+            hideSlotSelector: true,
+            hideSummaryCard: true,
+          });
+          return node;
+        })()
+      : shouldShowSlotFallback ? (
+          <EmailSlotLoadingCard>
+            <VideoLoadingRow>
+              {isEmailSlotLoading ? (
+                <>
+                  <InlineSpinner aria-hidden />
+                  <span>슬롯 데이터를 불러오고 있어요…</span>
+                </>
+              ) : (
+                <span>해당 슬롯 데이터를 불러오지 못했어요.</span>
+              )}
+            </VideoLoadingRow>
+          </EmailSlotLoadingCard>
+        ) : (
+          <EmailBriefingLanding
+            briefing={resolvedBriefing}
+            deliveryMeta={inlineMeta}
+            standalone={false}
+            keywords={data.keywordNav?.map((item) => item.label) ?? []}
+            hideSummary={layoutKey === "money" && activeSlot !== "baseline"}
+          />
+        );
+    const node = hasOverride
+      ? emailBody
+      : (
+          <SectionBlock key={section.id} id={section.anchor}>
+            <SectionAnchorMarker
+              data-anchor-id={section.anchor}
+              ref={(node) => {
+                sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
+              }}
+            />
+            {emailBody}
+          </SectionBlock>
+        );
     return { slotBar, node };
   };
 

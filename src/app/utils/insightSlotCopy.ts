@@ -109,7 +109,7 @@ const resolveCategory = (label?: string) => {
 
 export const resolveInsightSlotCopy = (
   sectionLabel: string,
-  slotLabel?: SlotLabel
+  slotLabel?: SlotLabel,
 ): SlotLabel | undefined => {
   if (!slotLabel) return undefined;
   const category = resolveCategory(sectionLabel);
