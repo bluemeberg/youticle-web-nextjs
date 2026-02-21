@@ -14,7 +14,7 @@ import React, {
 } from "react";
 import Footer from "@/components/Footer";
 import { getUserByEmail, logCtaClick } from "@/api/apiClient";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
 import LogoHeader from "@/common/LogoHeader";
@@ -73,32 +73,23 @@ const LANDING_FEEDBACK_SURVEY = {
   footnote: "* 구독자 피드백을 우선 반영해 템플릿을 다듬고 있어요",
 };
 
-const LANDING_INFO_PROMOS = [
-  {
-    id: "keyword_guide",
-    badge: "GUIDE",
-    title: "구독 키워드 안내",
-    description: "현재 구독 중인 키워드를 다시 확인하고 필요한 주제를 새로 담아보세요.",
-    ctaLabel: "내 구독 키워드 확인하기",
-    href: "/subject",
-  },
-  {
-    id: "service_intro",
-    badge: "SERVICE",
-    title: "유티클 서비스 안내",
-    description: "유튜브 TOP5 브리핑이 어떻게 만들어지는지와 무료 구독 혜택을 확인해 보세요.",
-    ctaLabel: "서비스 소개 보기",
-    href: "/about",
-  },
-  {
-    id: "keyword_modify",
-    badge: "ACTION",
-    title: "키워드 변경 안내",
-    description: "관심사가 바뀌었다면 지금 바로 구독 키워드를 변경해 맞춤 브리핑을 받아보세요.",
-    ctaLabel: "구독 키워드 변경하기",
-    href: "/subject/modify",
-  },
-] as const;
+const INFO_PROMO_COPY = {
+  label: "📥 내 구독 정보",
+  keywords: [
+    "국내 가상자산",
+    "해외 가상자산",
+    "부동산",
+    "국내 주식",
+    "해외 주식",
+  ],
+  description:
+    "유티클은 구독 키워드별로 매일 핵심 영상만 골라 요약해 드리는 AI 브리핑 서비스예요.",
+  helper:
+    "현재 20개의 키워드를 운영 중이며, 관심사가 바뀌면 구독 키워드를 조정해 최신 브리핑을 받아보세요.",
+  ctaId: "keyword_modify",
+  ctaLabel: "구독 키워드 변경하기",
+  ctaHref: "/subject/modify",
+} as const;
 
 /**
  * =========================================================
@@ -1420,7 +1411,6 @@ const StandardBriefingLandingPageClient = ({
   requireEmailConnect = false,
 }: StandardBriefingLandingPageClientProps) => {
   const router = useRouter();
-  const pathname = usePathname();
   const user = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
   const routeSearchParams = useSearchParams();
@@ -1437,7 +1427,8 @@ const StandardBriefingLandingPageClient = ({
     const sectionValue = routeSearchParams?.get("section")?.trim();
     return sectionValue && sectionValue.length > 0 ? sectionValue : null;
   }, [routeSearchParams]);
-  const rawUserIdParam = routeSearchParams?.get("user_id") ?? queryParams?.user_id;
+  const rawUserIdParam =
+    routeSearchParams?.get("user_id") ?? queryParams?.user_id;
   const parsedUserId = rawUserIdParam ? Number(rawUserIdParam) : NaN;
   const userIdForLogging = useMemo(() => {
     if (user?.id) return user.id;
@@ -1582,12 +1573,7 @@ const StandardBriefingLandingPageClient = ({
         context,
       );
     },
-    [
-      user?.email,
-      normalizedPhone,
-      normalizedDateForLogging,
-      userIdForLogging,
-    ],
+    [user?.email, normalizedPhone, normalizedDateForLogging, userIdForLogging],
   );
 
   useEffect(() => {
@@ -2052,11 +2038,14 @@ const StandardBriefingLandingPageClient = ({
   }, [googleProvider, setUserState, showToast]);
 
   const mapSlotVideoToEmailMeta = useCallback(
-    (video: VideoCardData, sectionTitle: string): EmailBriefingVideoMeta | null => {
+    (
+      video: VideoCardData,
+      sectionTitle: string,
+    ): EmailBriefingVideoMeta | null => {
       if (!video.id) return null;
       const meta = resolveVideoMetaInfo(video);
-      const summary = (video.summary ?? []).filter(
-        (line): line is string => Boolean(line && line.trim().length > 0),
+      const summary = (video.summary ?? []).filter((line): line is string =>
+        Boolean(line && line.trim().length > 0),
       );
       const href =
         buildBriefingDetailHref(video.id, video.href) ??
@@ -2147,7 +2136,10 @@ const StandardBriefingLandingPageClient = ({
             ...prev,
             [section.id]: {
               ...(prev[section.id] ?? {}),
-              [slotId]: { briefing: section.emailBriefing, slotTabs: payload.tabs ?? null },
+              [slotId]: {
+                briefing: section.emailBriefing,
+                slotTabs: payload.tabs ?? null,
+              },
             },
           }));
           return;
@@ -2165,7 +2157,10 @@ const StandardBriefingLandingPageClient = ({
           ...prev,
           [section.id]: {
             ...(prev[section.id] ?? {}),
-            [slotId]: { briefing: overrideBriefing, slotTabs: payload.tabs ?? null },
+            [slotId]: {
+              briefing: overrideBriefing,
+              slotTabs: payload.tabs ?? null,
+            },
           },
         }));
       } catch (error) {
@@ -2249,7 +2244,11 @@ const StandardBriefingLandingPageClient = ({
         params.set("slot", slotId);
       }
       const query = params.toString();
-      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      const basePath =
+        typeof window !== "undefined"
+          ? window.location.pathname
+          : `/b/${data.briefingId}`;
+      const nextUrl = query ? `${basePath}?${query}` : basePath;
       router.push(nextUrl);
       if (typeof window !== "undefined") {
         const scrollToTop = () =>
@@ -2262,7 +2261,7 @@ const StandardBriefingLandingPageClient = ({
       activeEmailSlot,
       normalizedDateForLogging,
       normalizedPhone,
-      pathname,
+      data.briefingId,
       routeSearchParams,
       router,
       showToast,
@@ -2521,7 +2520,6 @@ const StandardBriefingLandingPageClient = ({
     return map;
   };
 
-
   const SLOT_DETECTED_LABELS: Record<string, string> = {
     slot_0730: "07:30 선정",
     slot_0830: "08:30 갱신",
@@ -2610,7 +2608,8 @@ const StandardBriefingLandingPageClient = ({
       return { slotBar: null, node: null };
     }
     const injectedActiveSlotId = options?.overrideActiveSlotId;
-    const activeSlotId = injectedActiveSlotId ?? activeSlotBySection[section.id];
+    const activeSlotId =
+      injectedActiveSlotId ?? activeSlotBySection[section.id];
     const activeSlot =
       slotPool.find((slot) => slot.id === activeSlotId) ?? slotPool[0];
     let activeSlotTabs = options?.overrideSlotTabs
@@ -3045,8 +3044,8 @@ const StandardBriefingLandingPageClient = ({
                   )
                 ) : (
                   <SummaryNotice>
-                    카카오톡 브리핑은 해당 슬롯에서는 아직 준비 중이에요. 오픈되면
-                    바로 신청 안내 드릴게요!
+                    카카오톡 브리핑은 해당 슬롯에서는 아직 준비 중이에요.
+                    오픈되면 바로 신청 안내 드릴게요!
                   </SummaryNotice>
                 )
               ) : (
@@ -3351,7 +3350,8 @@ const StandardBriefingLandingPageClient = ({
     const activeMeta = resolveEmailSlotCopy(section.title, activeSlot);
     const emailSlotCacheKey = `${section.id}::${activeSlot}`;
     const isEmailSlotLoading =
-      activeSlot !== "baseline" && Boolean(emailSlotLoadingMap[emailSlotCacheKey]);
+      activeSlot !== "baseline" &&
+      Boolean(emailSlotLoadingMap[emailSlotCacheKey]);
     const slotBar =
       layoutKey === "money" ? (
         <SectionSlotBar $withShadow>
@@ -3378,73 +3378,99 @@ const StandardBriefingLandingPageClient = ({
     const shouldShowSlotFallback =
       layoutKey === "money" && activeSlot !== "baseline" && !hasOverride;
 
-    const emailBody = hasOverride
-      ? (() => {
-          const isCrypto =
-            section.sourceKey?.includes("crypto") ||
-            section.title.includes("가상자산");
-          const syntheticSection: MoneyRecapSection = {
-            id: section.id,
-            type: isCrypto ? "crypto" : "stocks",
-            title: section.title,
-            anchor: section.anchor,
-            summaryBullets: section.summaryBullets,
-            summaryBriefing: undefined,
-            slotPackages: [
-              {
-                id: activeSlot,
-                label: activeMeta?.title ?? section.title,
-                displayTime: activeMeta?.description ?? "",
-                description: activeMeta?.description ?? "",
-                tabs: overrideTabs,
-              },
-            ],
-            defaultSlotId: activeSlot,
-            sourceKey: section.sourceKey,
-          };
-          const { node } = renderMoneySection(syntheticSection, {
-            overrideActiveSlotId: activeSlot,
-            overrideSlotTabs: overrideTabs,
-            hideSlotSelector: true,
-            hideSummaryCard: true,
-          });
-          return node;
-        })()
-      : shouldShowSlotFallback ? (
-          <EmailSlotLoadingCard>
-            <VideoLoadingRow>
-              {isEmailSlotLoading ? (
-                <>
-                  <InlineSpinner aria-hidden />
-                  <span>슬롯 데이터를 불러오고 있어요…</span>
-                </>
-              ) : (
-                <span>해당 슬롯 데이터를 불러오지 못했어요.</span>
-              )}
-            </VideoLoadingRow>
-          </EmailSlotLoadingCard>
-        ) : (
-          <EmailBriefingLanding
-            briefing={resolvedBriefing}
-            deliveryMeta={inlineMeta}
-            standalone={false}
-            keywords={data.keywordNav?.map((item) => item.label) ?? []}
-            hideSummary={layoutKey === "money" && activeSlot !== "baseline"}
-          />
-        );
-    const node = hasOverride
-      ? emailBody
-      : (
-          <SectionBlock key={section.id} id={section.anchor}>
-            <SectionAnchorMarker
-              data-anchor-id={section.anchor}
-              ref={(node) => {
-                sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
-              }}
-            />
-            {emailBody}
-          </SectionBlock>
-        );
+    const slotExplanation = (() => {
+      if (layoutKey !== "money") return null;
+      const slotTitle = activeMeta?.title ?? "베이스라인";
+      const timeText = activeMeta?.description ?? "07:30";
+      const isCryptoSlot =
+        section.sourceKey?.includes("crypto") ||
+        section.title.includes("가상자산");
+      const baselineLabel = isCryptoSlot
+        ? "새벽 코인 브리핑"
+        : "장초반 요약 브리핑";
+      if (activeSlot === "baseline") {
+        return `<strong>${slotTitle}</strong> 슬롯은 <strong>${timeText}</strong>에 업데이트된 ${baselineLabel} 요약 템플릿으로 제공됩니다.`;
+      }
+      const assetLabel = isCryptoSlot ? "가상자산" : "주식";
+      return `${slotTitle} 슬롯은 <strong>${timeText}</strong>에 갱신된 ${assetLabel}  <strong>실시간 데이터</strong>를 바탕으로  <strong>마켓/종목 인사이트를 강화</strong>하려고 운영하는 별도 템플릿입니다. ${baselineLabel}과 별도로 운영됩니다.`;
+    })();
+
+    const slotNote =
+      slotExplanation && activeSlot !== "baseline" ? (
+        <SlotInfoNote dangerouslySetInnerHTML={{ __html: slotExplanation }} />
+      ) : null;
+
+    const emailBody = hasOverride ? (
+      (() => {
+        const isCrypto =
+          section.sourceKey?.includes("crypto") ||
+          section.title.includes("가상자산");
+        const syntheticSection: MoneyRecapSection = {
+          id: section.id,
+          type: isCrypto ? "crypto" : "stocks",
+          title: section.title,
+          anchor: section.anchor,
+          summaryBullets: section.summaryBullets,
+          summaryBriefing: undefined,
+          slotPackages: [
+            {
+              id: activeSlot,
+              label: activeMeta?.title ?? section.title,
+              displayTime: activeMeta?.description ?? "",
+              description: activeMeta?.description ?? "",
+              tabs: overrideTabs,
+            },
+          ],
+          defaultSlotId: activeSlot,
+          sourceKey: section.sourceKey,
+        };
+        const { node } = renderMoneySection(syntheticSection, {
+          overrideActiveSlotId: activeSlot,
+          overrideSlotTabs: overrideTabs,
+          hideSlotSelector: true,
+          hideSummaryCard: true,
+        });
+        return node;
+      })()
+    ) : shouldShowSlotFallback ? (
+      <EmailSlotLoadingCard>
+        <VideoLoadingRow>
+          {isEmailSlotLoading ? (
+            <>
+              <InlineSpinner aria-hidden />
+              <span>슬롯 데이터를 불러오고 있어요…</span>
+            </>
+          ) : (
+            <span>해당 슬롯 데이터를 불러오지 못했어요.</span>
+          )}
+        </VideoLoadingRow>
+      </EmailSlotLoadingCard>
+    ) : (
+      <EmailBriefingLanding
+        briefing={resolvedBriefing}
+        deliveryMeta={inlineMeta}
+        standalone={false}
+        keywords={data.keywordNav?.map((item) => item.label) ?? []}
+        hideSummary={layoutKey === "money" && activeSlot !== "baseline"}
+      />
+    );
+    const node = hasOverride ? (
+      <>
+        {slotNote}
+        {emailBody}
+      </>
+    ) : (
+      <SectionBlock key={section.id} id={section.anchor}>
+        <SectionAnchorMarker
+          data-anchor-id={section.anchor}
+          ref={(node) => {
+            sectionRefs.current[section.anchor] = node as HTMLDivElement | null;
+          }}
+        />
+        {slotNote}
+        {emailBody}
+      </SectionBlock>
+    );
     return { slotBar, node };
   };
 
@@ -3485,9 +3511,7 @@ const StandardBriefingLandingPageClient = ({
         />
       </LogoHeaderDock>
       <TopAppBar>
-        <BackButton href="/">
-          {`< ${data.deliveryMeta.backLabel}`}
-        </BackButton>
+        <BackButton href="/">{`< ${data.deliveryMeta.backLabel}`}</BackButton>
         <TopMeta ref={topBarRef}>
           <TopTime>{topTimeLabel}</TopTime>
           {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
@@ -3659,22 +3683,27 @@ const StandardBriefingLandingPageClient = ({
 
       {!isEmailSource ? (
         <InfoPromoSection>
-          <InfoPromoGrid>
-            {LANDING_INFO_PROMOS.map((card) => (
-              <InfoPromoCard key={card.id}>
-                <InfoPromoBadge>{card.badge}</InfoPromoBadge>
-                <InfoPromoTitle>{card.title}</InfoPromoTitle>
-                <InfoPromoDescription>{card.description}</InfoPromoDescription>
-                <InfoPromoButton
-                  href={card.href}
-                  prefetch={false}
-                  onClick={() => handleInfoPromoClick(card.id)}
-                >
-                  {card.ctaLabel}
-                </InfoPromoButton>
-              </InfoPromoCard>
-            ))}
-          </InfoPromoGrid>
+          <InfoPromoCard>
+            <InfoPromoBadge>{INFO_PROMO_COPY.label}</InfoPromoBadge>
+            <InfoPromoKeywordList>
+              {INFO_PROMO_COPY.keywords.map((keyword) => (
+                <InfoPromoKeywordItem key={keyword}>
+                  {keyword}
+                </InfoPromoKeywordItem>
+              ))}
+            </InfoPromoKeywordList>
+            <InfoPromoDescription>
+              {INFO_PROMO_COPY.description}
+            </InfoPromoDescription>
+            <InfoPromoHelper>{INFO_PROMO_COPY.helper}</InfoPromoHelper>
+            <InfoPromoButton
+              href={INFO_PROMO_COPY.ctaHref}
+              prefetch={false}
+              onClick={() => handleInfoPromoClick(INFO_PROMO_COPY.ctaId)}
+            >
+              {INFO_PROMO_COPY.ctaLabel}
+            </InfoPromoButton>
+          </InfoPromoCard>
         </InfoPromoSection>
       ) : null}
 
@@ -3895,60 +3924,75 @@ const InfoPromoSection = styled.section`
   box-sizing: border-box;
 `;
 
-const InfoPromoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-`;
-
-const InfoPromoCard = styled.div`
-  border-radius: 20px;
-  padding: 20px;
-  background: linear-gradient(135deg, #ffffff, #f8fbff);
-  border: 1px solid rgba(50, 71, 255, 0.1);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+const InfoPromoCard = styled.section.attrs({
+  className: "BriefingLandingPageClient__InfoPromoCard",
+})`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
 `;
 
-const InfoPromoBadge = styled.span`
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(49, 46, 129, 0.12);
-  font-size: 11px;
-  font-weight: 700;
-  color: #312e81;
-  letter-spacing: 0.08em;
-`;
-
-const InfoPromoTitle = styled.h3`
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  color: #0f172a;
-`;
-
-const InfoPromoDescription = styled.p`
+const InfoPromoBadge = styled.p.attrs({
+  className: "BriefingLandingPageClient__InfoPromoBadge",
+})`
   margin: 0;
   font-size: 14px;
-  line-height: 1.55;
+  font-weight: 800;
+  color: #1d4ed8;
+`;
+
+const InfoPromoDescription = styled.p.attrs({
+  className: "BriefingLandingPageClient__InfoPromoDescription",
+})`
+  margin: 0;
   color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
   flex: 1;
+`;
+
+const InfoPromoHelper = styled.p`
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
+`;
+
+const InfoPromoKeywordList = styled.ul`
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const InfoPromoKeywordItem = styled.li`
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
 `;
 
 const InfoPromoButton = styled(Link)`
   align-self: flex-start;
   margin-top: 4px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-radius: 12px;
   background: #111827;
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   text-decoration: none;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+  width: 100%;
 `;
 
 const SurveyCtaSection = styled.section`
@@ -3963,7 +4007,7 @@ const SurveyCtaCard = styled.div`
   color: #fff;
   border-radius: 24px;
   padding: 28px 24px 32px;
-  text-align: center;
+  /* text-align: center; */
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
 `;
 
@@ -4361,6 +4405,23 @@ const EmailSlotLoadingCard = styled.div`
   font-weight: 700;
 `;
 
+const SlotInfoNote = styled.div`
+  margin: 12px 0 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  border-left: 3px solid #1d4ed8;
+  margin-bottom: -80px;
+  strong {
+    font-weight: 800;
+    color: #111827;
+  }
+`;
+
 const InsightBlock = styled.section`
   margin-top: 16px;
   border-radius: 16px;
@@ -4550,7 +4611,7 @@ const VideoLoadingRow = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 40px;
 `;
 
 const InlineSpinner = styled.div`
@@ -4583,7 +4644,8 @@ const VideoEmptyNoticeMessage = styled.p`
 
 const EmailConnectBanner = styled.section`
   position: relative;
-  margin: 16px;
+  margin: 16px auto;
+  width: 100%;
   padding: 20px 24px;
   padding-right: 60px;
   border-radius: 20px;
@@ -4593,7 +4655,7 @@ const EmailConnectBanner = styled.section`
   display: flex;
   gap: 18px;
   align-items: center;
-  max-width: 860px;
+  max-width: calc(100% - 32px);
   flex-wrap: wrap;
   justify-content: center;
 

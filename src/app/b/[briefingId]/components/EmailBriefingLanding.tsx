@@ -1093,9 +1093,20 @@ const EmailBriefingLanding = ({
   const renderActionItemsSection = () => {
     const section = briefing.actionItems;
     if (!section?.items?.length) return null;
+    const fallbackHeading = "실행 체크포인트";
+    const rawTitle = section.title?.trim();
+    const containsFollowUpLabel = Boolean(
+      rawTitle && /추가\s*질문/.test(rawTitle),
+    );
+    const headingCopy = containsFollowUpLabel
+      ? fallbackHeading
+      : rawTitle || fallbackHeading;
+    const helperCopy = containsFollowUpLabel ? rawTitle : null;
     return (
       <ContentCard>
-        <SectionHeading>🧭 {section.title || "실행 체크포인트"}</SectionHeading>
+        <SectionLabel>🛠 실행 과제</SectionLabel>
+        <SectionHeading>🧭 {headingCopy}</SectionHeading>
+        {helperCopy ? <ActionHelper>{helperCopy}</ActionHelper> : null}
         <ActionGrid>
           {section.items.map((item, idx) => (
             <ActionCard key={`${item.title}-${idx}`}>
@@ -2569,6 +2580,14 @@ const ChecklistGrid = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+`;
+
+const ActionHelper = styled.p`
+  margin: 6px 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.5;
 `;
 
 const ActionGrid = styled.div`

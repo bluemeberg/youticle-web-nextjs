@@ -1874,7 +1874,7 @@ export async function fetchBriefingLanding(
           } satisfies EmailRecapSection;
         }),
       )
-    ).filter(Boolean) as EmailRecapSection[];
+    ).filter((section): section is EmailRecapSection => section !== null);
 
     if (emailSections.length > 0) {
       const displayLabel =
