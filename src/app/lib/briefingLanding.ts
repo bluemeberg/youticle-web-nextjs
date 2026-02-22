@@ -35,8 +35,8 @@ const LANDING_ENDPOINT = `${API_BASE_URL}/briefing/landing`;
 const TOP_VIDEOS_V2_ENDPOINT = `${API_BASE_URL}/briefing_v2/top_videos/v2`;
 const SECTION_VIDEOS_ENDPOINT = `${API_BASE_URL}/briefing/top_videos/section`;
 const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
-const KAKAO_CACHE_ENDPOINT = `${API_STAGE_BASE_URL}/insights/kakao/cache`;
-const EMAIL_DIGEST_ENDPOINT = `${API_STAGE_BASE_URL}/emails/emails/digest/log`;
+const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
+const EMAIL_DIGEST_ENDPOINT = `${API_BASE_URL}/emails/emails/digest/log`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
 export type SlotPhase =
@@ -672,13 +672,10 @@ const buildSectionBriefingEntry = (
             const teaserRaw =
               bullet.teaser_question ?? bullet.teaserQuestion ?? "";
             const teaser = teaserRaw.trim();
-            const webDetailRaw =
-              bullet.web_detail ?? bullet.webDetail ?? "";
+            const webDetailRaw = bullet.web_detail ?? bullet.webDetail ?? "";
             const webDetail = webDetailRaw.trim();
             const base = webDetail ? { content, webDetail } : { content };
-            return teaser
-              ? { ...base, teaserQuestion: teaser }
-              : base;
+            return teaser ? { ...base, teaserQuestion: teaser } : base;
           }
           return null;
         })
@@ -726,7 +723,8 @@ const fetchIntegratedBriefing = async (
     let resolvedVariant: string | undefined;
     for (const variant of variantOrder) {
       const url = buildRequestUrl(variant);
-      payload = (await fetchJson<KakaoIntegratedResponse>(url.toString())) ?? {};
+      payload =
+        (await fetchJson<KakaoIntegratedResponse>(url.toString())) ?? {};
       if (payload.sections?.length) {
         resolvedVariant = variant;
         break;
@@ -2001,7 +1999,7 @@ export async function fetchBriefingLanding(
           } satisfies EmailRecapSection;
         }),
       )
-    ).filter(Boolean) as EmailRecapSection[];
+    ).filter((section): section is EmailRecapSection => section !== null);
 
     if (emailSections.length > 0) {
       const displayLabel =
