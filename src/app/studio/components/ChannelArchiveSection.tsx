@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import styled from "styled-components";
 import { useRouter } from "next/navigation";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -61,31 +61,30 @@ const ArchiveChannelPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const user = useRecoilValue(userState);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // 현재 구독 채널 API
-        const resCurrent = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/current/${user.id}`
-        );
-        const dataCurrent: CurrentResponse = await resCurrent.json();
-        console.log(dataCurrent);
-        // 이전 등록 채널 API
-        const resPrev = await fetch(
-          `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${user.id}`
-        );
-        const dataPrev: PreviousResponse = await resPrev.json();
+  const fetchArchiveData = useCallback(async () => {
+    if (!user.id) return;
+    try {
+      const resCurrent = await fetch(
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/current/${user.id}`
+      );
+      const dataCurrent: CurrentResponse = await resCurrent.json();
+      const resPrev = await fetch(
+        `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/archive/history/${user.id}`
+      );
+      const dataPrev: PreviousResponse = await resPrev.json();
 
-        setCurrentChannels(dataCurrent.current_channels || []);
-        setPreviousChannels(dataPrev.previous_channels || []);
-      } catch (err) {
-        console.error("Error fetching archive data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      setCurrentChannels(dataCurrent.current_channels || []);
+      setPreviousChannels(dataPrev.previous_channels || []);
+    } catch (err) {
+      console.error("Error fetching archive data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user.id]);
+
+  useEffect(() => {
+    fetchArchiveData();
+  }, [fetchArchiveData]);
 
   if (loading) return <LoadingMessage>로딩 중...</LoadingMessage>;
   console.log(currentChannels);

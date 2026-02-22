@@ -27,17 +27,27 @@ export interface BaseRecapSection {
   summaryBriefing?: SectionBriefingData;
 }
 
+export interface SectionBriefingBullet {
+  content: string;
+  teaserQuestion?: string;
+  webDetail?: string;
+}
+
 export interface SectionBriefingEntry {
   title: string;
   soWhat: string;
   references: string[];
   videoIds?: string[];
+  bullets?: SectionBriefingBullet[];
+  teaserQuestion?: string;
+  webDetail?: string;
 }
 
 export interface SectionBriefingData {
   keywords: string[];
   entries: SectionBriefingEntry[];
   updatedAt?: string;
+  variant?: string;
 }
 
 export interface MarketIndexCard {
@@ -135,7 +145,7 @@ export interface RealEstateRecapSection extends BaseRecapSection {
 export interface EmailRecapSection extends BaseRecapSection {
   type: "email";
   emailBriefing: EmailBriefingKeywordData;
-  sourceKey?: string;
+  sourceKey: string;
 }
 
 export type RecapSection =

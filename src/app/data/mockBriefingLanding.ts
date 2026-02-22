@@ -589,6 +589,7 @@ const mockBusinessEmailLanding: BriefingLandingData = {
       anchor: "email-business",
       summaryBullets: [],
       emailBriefing: businessEmailBriefing,
+      sourceKey: "business",
     },
   ],
   exploreTabs: [],

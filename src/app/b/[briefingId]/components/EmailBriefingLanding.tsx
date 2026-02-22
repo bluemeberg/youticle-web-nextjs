@@ -105,40 +105,40 @@ export const resolveEmailBriefingLayout = (
 ): EmailBriefingLayoutKey => {
   const hasMoneyLayout = Boolean(
     briefing.marketMood ||
-      (briefing.themes?.length ?? 0) > 0 ||
-      (briefing.tickerProfiles?.length ?? 0) > 0 ||
-      (briefing.checklist?.length ?? 0) > 0,
+    (briefing.themes?.length ?? 0) > 0 ||
+    (briefing.tickerProfiles?.length ?? 0) > 0 ||
+    (briefing.checklist?.length ?? 0) > 0,
   );
   const hasMacroLayout = Boolean(
     (briefing.macroDrivers?.length ?? 0) > 0 ||
-      (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
-      (briefing.macroSectorWatch?.length ?? 0) > 0 ||
-      briefing.macroSnapshot,
+    (briefing.macroPolicyWatch?.items?.length ?? 0) > 0 ||
+    (briefing.macroSectorWatch?.length ?? 0) > 0 ||
+    briefing.macroSnapshot,
   );
   const hasRealEstateLayout = Boolean(
     briefing.marketPulse ||
-      (briefing.demandSupply?.length ?? 0) > 0 ||
-      (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
-      (briefing.regionalSpotlight?.length ?? 0) > 0 ||
-      (briefing.riskFlags?.items?.length ?? 0) > 0 ||
-      (briefing.shortTermWatch?.items?.length ?? 0) > 0,
+    (briefing.demandSupply?.length ?? 0) > 0 ||
+    (briefing.policyFinanceWatch?.items?.length ?? 0) > 0 ||
+    (briefing.regionalSpotlight?.length ?? 0) > 0 ||
+    (briefing.riskFlags?.items?.length ?? 0) > 0 ||
+    (briefing.shortTermWatch?.items?.length ?? 0) > 0,
   );
   const hasInnovationLayout = Boolean(
     briefing.techSnapshot ||
-      briefing.innovationPulseSummary ||
-      (briefing.modelWatch?.length ?? 0) > 0 ||
-      (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
-      (briefing.innovationTracks?.length ?? 0) > 0 ||
-      (briefing.ecosystemWatch?.length ?? 0) > 0 ||
-      (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
-      (briefing.riskEthics?.items?.length ?? 0) > 0 ||
-      (briefing.nextSteps?.items?.length ?? 0) > 0,
+    briefing.innovationPulseSummary ||
+    (briefing.modelWatch?.length ?? 0) > 0 ||
+    (briefing.useCaseSpotlight?.length ?? 0) > 0 ||
+    (briefing.innovationTracks?.length ?? 0) > 0 ||
+    (briefing.ecosystemWatch?.length ?? 0) > 0 ||
+    (briefing.infraPolicyWatch?.items?.length ?? 0) > 0 ||
+    (briefing.riskEthics?.items?.length ?? 0) > 0 ||
+    (briefing.nextSteps?.items?.length ?? 0) > 0,
   );
   const hasBusinessLayout = Boolean(
     (briefing.strategicMoves?.length ?? 0) > 0 ||
-      (briefing.competitionWatch?.length ?? 0) > 0 ||
-      (briefing.executionRisks?.items?.length ?? 0) > 0 ||
-      (briefing.actionItems?.items?.length ?? 0) > 0,
+    (briefing.competitionWatch?.length ?? 0) > 0 ||
+    (briefing.executionRisks?.items?.length ?? 0) > 0 ||
+    (briefing.actionItems?.items?.length ?? 0) > 0,
   );
 
   if (hasMacroLayout) return "macro";
@@ -668,6 +668,33 @@ const EmailBriefingLanding = ({
     );
   };
 
+  const extractTeaserQuestions = (source?: unknown): string[] | undefined => {
+    if (!source || typeof source !== "object") return undefined;
+    const candidate =
+      (source as { teaserQuestions?: unknown }).teaserQuestions ??
+      (source as { teaser_questions?: unknown }).teaser_questions;
+    if (!Array.isArray(candidate)) return undefined;
+    return candidate.filter((item): item is string => typeof item === "string");
+  };
+
+  const renderTeaserQuestions = (questions?: string[]) => {
+    const normalized =
+      questions
+        ?.map((question) => question?.trim())
+        .filter((question): question is string => Boolean(question)) ?? [];
+    if (!normalized.length) return null;
+    return (
+      <TeaserBlock>
+        <TeaserTitle>핵심 질문</TeaserTitle>
+        <TeaserList>
+          {normalized.map((question, idx) => (
+            <li key={`teaser-${idx}`}>{renderMarked(question)}</li>
+          ))}
+        </TeaserList>
+      </TeaserBlock>
+    );
+  };
+
   const renderStrategicMovesSection = () => {
     if (!briefing.strategicMoves?.length) return null;
     return (
@@ -676,6 +703,7 @@ const EmailBriefingLanding = ({
         <SectionHeading>핵심 전략</SectionHeading>
         <DemandGrid>
           {briefing.strategicMoves.map((move, idx) => {
+            console.log(move);
             const moveVideoIds = Array.from(
               new Set(
                 move.narratives.flatMap(
@@ -686,6 +714,7 @@ const EmailBriefingLanding = ({
             return (
               <DemandCard key={`${move.name}-${idx}`}>
                 <MacroInfoTitle>{move.name}</MacroInfoTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(move))}
                 <SectionSubheading>무슨 일?</SectionSubheading>
                 <BusinessSectionParagraph>
                   {renderMarked(move.whatHappened)}
@@ -714,6 +743,7 @@ const EmailBriefingLanding = ({
 
   const renderMoneyStrategySection = () => {
     const themes = briefing.themes ?? [];
+    console.log(themes);
     if (!themes.length) return null;
     return (
       <ContentCard>
@@ -730,6 +760,7 @@ const EmailBriefingLanding = ({
             return (
               <DemandCard key={`${theme.name}-${idx}`}>
                 <MacroInfoTitle>{theme.name}</MacroInfoTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(theme))}
                 {narratives.length ? (
                   <>
                     <SectionSubheading>핵심 내러티브</SectionSubheading>
@@ -797,6 +828,7 @@ const EmailBriefingLanding = ({
           {briefing.competitionWatch.map((item, idx) => (
             <PolicyCard key={`${item.name}-${idx}`}>
               <MacroInfoTitle>{item.name}</MacroInfoTitle>
+              {renderTeaserQuestions(extractTeaserQuestions(item))}
               {item.detail ? (
                 <BusinessSectionParagraph>
                   {renderMarked(item.detail)}
@@ -869,6 +901,7 @@ const EmailBriefingLanding = ({
           <TickerLabel>{profile.companyName || profile.ticker}</TickerLabel>
           {profile.ticker ? <TickerBadge>{profile.ticker}</TickerBadge> : null}
         </TickerHeading>
+        {renderTeaserQuestions(extractTeaserQuestions(profile))}
         {profile.thesis?.length ? (
           <TickerSubheading>핵심 논지</TickerSubheading>
         ) : null}
@@ -1024,12 +1057,13 @@ const EmailBriefingLanding = ({
             return (
               <PolicyCard key={`${track.name}-${idx}`}>
                 <MacroInfoTitle>{track.name}</MacroInfoTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(track))}
                 {track.provider || track.focusArea ? (
                   <TrackMeta>
                     {track.provider ? <span>{track.provider}</span> : null}
-                    {track.focusArea ? (
+                    {/* {track.focusArea ? (
                       <TrackFocus>{renderMarked(track.focusArea)}</TrackFocus>
-                    ) : null}
+                    ) : null} */}
                   </TrackMeta>
                 ) : null}
                 {track.narratives.length ? (
@@ -1075,6 +1109,7 @@ const EmailBriefingLanding = ({
           {briefing.ecosystemWatch.map((item, idx) => (
             <EcosystemCard key={`${item.segment}-${idx}`}>
               <MacroInfoTitle>{item.segment}</MacroInfoTitle>
+              {renderTeaserQuestions(extractTeaserQuestions(item))}
               <BulletList>
                 {item.signals.map((signal, signalIdx) => (
                   <li key={`${item.segment}-signal-${signalIdx}`}>
@@ -1254,6 +1289,7 @@ const EmailBriefingLanding = ({
       {briefing.checklist?.length ? (
         <ContentCard>
           <SectionHeading>🔭 앞으로 2~3일 체크</SectionHeading>
+          {renderTeaserQuestions(briefing.checklistTeaserQuestions)}
           <ChecklistGrid>{renderChecklist()}</ChecklistGrid>
         </ContentCard>
       ) : null}
@@ -1364,6 +1400,7 @@ const EmailBriefingLanding = ({
               <SectionHeading>
                 {`#${idx + 1} · ${driver.name ?? "드라이버"}`}
               </SectionHeading>
+              {renderTeaserQuestions(extractTeaserQuestions(driver))}
               {driver.indicatorFocus ? (
                 <SectionParagraph>
                   {renderMarked(driver.indicatorFocus)}
@@ -1390,6 +1427,7 @@ const EmailBriefingLanding = ({
               {sectorWatch.map((sector, idx) => (
                 <MacroInfoCard key={`${sector.segment}-${idx}`}>
                   <MacroInfoTitle>{sector.segment}</MacroInfoTitle>
+                  {renderTeaserQuestions(extractTeaserQuestions(sector))}
                   <MacroList>
                     {sector.signals.map((signal, signalIdx) => (
                       <li key={`${sector.segment}-signal-${signalIdx}`}>
@@ -1458,10 +1496,12 @@ const EmailBriefingLanding = ({
           <ContentCard>
             <SectionLabel>📌 향후 체크포인트</SectionLabel>
             <SectionHeading>체크 리스트</SectionHeading>
+            {renderTeaserQuestions(extractTeaserQuestions(briefing.macroChecklist))}
             <ChecklistGrid>
               {checklistItems.map((item, idx) => (
                 <ChecklistCard key={`${item.title}-${idx}`}>
                   <ChecklistTitle>{item.title}</ChecklistTitle>
+                  {renderTeaserQuestions(extractTeaserQuestions(item))}
                   <ChecklistList>
                     {item.detail.map((line, lineIdx) => (
                       <li key={`${item.title}-check-${lineIdx}`}>
@@ -1523,6 +1563,7 @@ const EmailBriefingLanding = ({
           {briefing.demandSupply.map((item, idx) => (
             <DemandCard key={`${item.driver}-${idx}`}>
               <MacroInfoTitle>{item.driver}</MacroInfoTitle>
+              {renderTeaserQuestions(extractTeaserQuestions(item))}
               {(item.regions?.length ?? 0) > 0 ||
               (item.propertyTypes?.length ?? 0) > 0 ? (
                 <DemandMeta>
@@ -1561,6 +1602,7 @@ const EmailBriefingLanding = ({
           {briefing.policyFinanceWatch.items.map((item, idx) => (
             <PolicyCard key={`${item.title}-${idx}`}>
               <MacroInfoTitle>{item.title}</MacroInfoTitle>
+              {renderTeaserQuestions(extractTeaserQuestions(item))}
               <BulletList>
                 {item.detail.map((line, detailIdx) => (
                   <li key={`${item.title}-policy-${detailIdx}`}>
@@ -1586,6 +1628,7 @@ const EmailBriefingLanding = ({
           {briefing.regionalSpotlight.map((region, idx) => (
             <EcosystemCard key={`${region.region}-${idx}`}>
               <MacroInfoTitle>{region.region}</MacroInfoTitle>
+              {renderTeaserQuestions(extractTeaserQuestions(region))}
               <BulletList>
                 {region.story.map((line, storyIdx) => (
                   <li key={`${region.region}-story-${storyIdx}`}>
@@ -1617,6 +1660,7 @@ const EmailBriefingLanding = ({
                   <RiskBadge>{flag.probability}</RiskBadge>
                 ) : null}
               </RiskHeader>
+              {renderTeaserQuestions(extractTeaserQuestions(flag))}
               <RiskList>
                 <li>{renderMarked(flag.detail)}</li>
               </RiskList>
@@ -1636,6 +1680,7 @@ const EmailBriefingLanding = ({
         <SectionHeading>
           🔭 {section.title || "앞으로 2~3일 체크"}
         </SectionHeading>
+        {renderTeaserQuestions(extractTeaserQuestions(section))}
         <ChecklistGrid>
           {section.items.map((item, idx) => (
             <ChecklistCard key={`${item.title}-${idx}`}>
@@ -1695,6 +1740,7 @@ const EmailBriefingLanding = ({
                     <ProviderBadge>{item.provider}</ProviderBadge>
                   ) : null}
                 </ModelTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(item))}
                 <ModelFocus>{item.focusArea}</ModelFocus>
                 <BulletList>
                   {item.implication.map((line, impIdx) => (
@@ -1717,6 +1763,7 @@ const EmailBriefingLanding = ({
             {briefing.useCaseSpotlight.map((useCase, idx) => (
               <UseCaseCard key={`${useCase.industry}-${idx}`}>
                 <UseCaseTitle>{useCase.industry}</UseCaseTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(useCase))}
                 <UseCaseSubtitle>
                   {renderMarked(useCase.problemSolved)}
                 </UseCaseSubtitle>
@@ -1747,6 +1794,7 @@ const EmailBriefingLanding = ({
             {briefing.infraPolicyWatch?.items.map((policy, idx) => (
               <PolicyCard key={`${policy.topic}-${idx}`}>
                 <MacroInfoTitle>{policy.topic}</MacroInfoTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(policy))}
                 <SectionParagraph>
                   {renderMarked(policy.detail)}
                 </SectionParagraph>
@@ -1777,6 +1825,7 @@ const EmailBriefingLanding = ({
                     <RiskBadge>{item.severity}</RiskBadge>
                   ) : null}
                 </RiskHeader>
+                {renderTeaserQuestions(extractTeaserQuestions(item))}
                 <RiskList>
                   <li>{renderMarked(item.detail)}</li>
                 </RiskList>
@@ -1794,10 +1843,12 @@ const EmailBriefingLanding = ({
           <SectionHeading>
             🔭 {briefing.nextSteps?.title || "앞으로 2~3일 체크"}
           </SectionHeading>
+          {renderTeaserQuestions(extractTeaserQuestions(briefing.nextSteps))}
           <ChecklistGrid>
             {briefing.nextSteps?.items.map((item, idx) => (
               <ChecklistCard key={`${item.title}-${idx}`}>
                 <ChecklistTitle>{item.title}</ChecklistTitle>
+                {renderTeaserQuestions(extractTeaserQuestions(item))}
                 <ChecklistList>
                   {item.detail.map((line, detailIdx) => (
                     <li key={`${item.title}-detail-${detailIdx}`}>
@@ -1843,6 +1894,9 @@ const EmailBriefingLanding = ({
           ))}
         </HeroList>
       </HeroCard>
+
+      {renderStrategicMovesSection()}
+      {renderMoneyStrategySection()}
 
       {renderMarketPulseSection()}
       {renderDemandSupplySection()}
@@ -2123,6 +2177,7 @@ const MacroInfoTitle = styled.h3`
   font-size: 16px;
   font-weight: 900;
   color: #0f172a;
+  margin-bottom: 4px;
 `;
 
 const MacroInfoMeta = styled.p`
@@ -2727,6 +2782,34 @@ const DemandCard = styled.div`
   gap: 10px;
 `;
 
+const TeaserBlock = styled.div`
+  margin: 8px 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef2ff;
+  border: 1px solid rgba(79, 70, 229, 0.2);
+`;
+
+const TeaserTitle = styled.p`
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4338ca;
+  letter-spacing: 0.02em;
+`;
+
+const TeaserList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0f172a;
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
 const DemandMeta = styled.div`
   display: flex;
   gap: 8px;
@@ -2763,6 +2846,7 @@ const ModelTitle = styled.p`
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 12px;
 `;
 
 const ProviderBadge = styled.span`
@@ -2814,6 +2898,7 @@ const UseCaseTitle = styled.p`
   font-size: 15px;
   font-weight: 900;
   color: #0f172a;
+  margin-bottom: 12px;
 `;
 
 const UseCaseSubtitle = styled.p`

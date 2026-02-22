@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import ChannelFeedSection from "./ChannelFeedSection";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -341,7 +341,7 @@ export default function ChannelAutoArticleSection() {
   };
 
   // 등록된 채널 정보
-  const fetchRegisteredChannel = async () => {
+  const fetchRegisteredChannel = useCallback(async () => {
     try {
       const response = await fetch(
         `${NEXT_PUBLIC_API_BASE_URL}/editor/user_channels/by_user/${user.id}`
@@ -353,7 +353,7 @@ export default function ChannelAutoArticleSection() {
     } catch (err) {
       console.error("채널 조회 실패:", err);
     }
-  };
+  }, [user.id]);
 
   useEffect(() => {
     if (!user.id) {
@@ -366,7 +366,7 @@ export default function ChannelAutoArticleSection() {
     // 로그인 상태라면 데이터 가져오기
     fetchRegisteredChannel();
     fetchTodayArticles(user.id);
-  }, [user.id]);
+  }, [user.id, fetchRegisteredChannel]);
 
   // Overview가 없으면 description 160자만 표시
   const truncateOrOverview = () => {

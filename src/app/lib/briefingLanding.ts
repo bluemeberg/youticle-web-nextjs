@@ -11,6 +11,7 @@ import type {
   RecapSection,
   RecapVideoSummary,
   SectionBriefingData,
+  SectionBriefingEntry,
   SlotPackage,
 } from "@/types/briefingLanding";
 import type {
@@ -34,8 +35,8 @@ const LANDING_ENDPOINT = `${API_BASE_URL}/briefing/landing`;
 const TOP_VIDEOS_V2_ENDPOINT = `${API_BASE_URL}/briefing_v2/top_videos/v2`;
 const SECTION_VIDEOS_ENDPOINT = `${API_BASE_URL}/briefing/top_videos/section`;
 const INSIGHT_SECTIONS_ENDPOINT = `${API_BASE_URL}/insights/sections`;
-const KAKAO_CACHE_ENDPOINT = `${API_BASE_URL}/insights/kakao/cache`;
-const EMAIL_DIGEST_ENDPOINT = `${API_BASE_URL}/emails/emails/digest/log`;
+const KAKAO_CACHE_ENDPOINT = `${API_STAGE_BASE_URL}/insights/kakao/cache`;
+const EMAIL_DIGEST_ENDPOINT = `${API_STAGE_BASE_URL}/emails/emails/digest/log`;
 
 type BriefingLandingQuery = Record<string, string | undefined>;
 export type SlotPhase =
@@ -48,9 +49,22 @@ export type SlotPhase =
 export type MoneySectionKey = keyof typeof MONEY_SECTION_CONFIGS;
 type GeneralSectionKey = keyof typeof GENERAL_SECTION_CONFIGS;
 
+type KakaoSoWhatBullet =
+  | string
+  | {
+      content?: string;
+      teaser_question?: string;
+      teaserQuestion?: string;
+      web_detail?: string;
+      webDetail?: string;
+    };
+
 interface KakaoIntegratedBriefingItem {
   title?: string;
   so_what?: string;
+  so_what_bullets?: KakaoSoWhatBullet[];
+  teaser_question?: string;
+  web_detail?: string;
   references?: string[];
 }
 
@@ -81,6 +95,7 @@ interface EmailDigestMacroDriver {
   name?: string;
   indicator_focus?: string;
   narratives?: EmailDigestDriverNarrative[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestVideoDetail {
@@ -101,6 +116,7 @@ interface EmailDigestModelWatchItem {
   focus_area?: string;
   implication?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestUseCaseSpotlightItem {
@@ -108,6 +124,7 @@ interface EmailDigestUseCaseSpotlightItem {
   problem_solved?: string;
   result?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestCompetitionWatchItem {
@@ -115,6 +132,7 @@ interface EmailDigestCompetitionWatchItem {
   detail?: string;
   signals?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestTheme {
@@ -135,6 +153,7 @@ interface EmailDigestRiskItem {
   impact?: string;
   owner?: string;
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestRiskSection {
@@ -172,6 +191,7 @@ interface EmailDigestInfraPolicyWatchItem {
   detail?: string;
   impact?: string;
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestRiskEthicItem {
@@ -179,23 +199,27 @@ interface EmailDigestRiskEthicItem {
   detail?: string;
   severity?: string;
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestNextStepItem {
   title?: string;
   detail?: string[];
   related_entities?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestNextStepsSection {
   title?: string;
   items?: EmailDigestNextStepItem[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestEcosystemWatchItem {
   segment?: string;
   signals?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestInnovationTrack {
@@ -205,6 +229,7 @@ interface EmailDigestInnovationTrack {
   narratives?: EmailDigestNarrative[];
   impact_metrics?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestDemandSupplyItem {
@@ -213,12 +238,14 @@ interface EmailDigestDemandSupplyItem {
   regions?: string[];
   property_types?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestPolicyFinanceItem {
   title?: string;
   detail?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestPolicyWatchItem {
@@ -226,6 +253,7 @@ interface EmailDigestPolicyWatchItem {
   title?: string;
   detail?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestPolicyWatchSection {
@@ -238,12 +266,14 @@ interface EmailDigestRegionalSpotlightItem {
   story?: string[];
   metrics?: Record<string, string | number>;
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestSectorWatchItem {
   segment?: string;
   signals?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestMacroSnapshot {
@@ -269,16 +299,19 @@ interface EmailDigestShortTermWatchItem {
 interface EmailDigestShortTermWatch {
   title?: string;
   items?: EmailDigestShortTermWatchItem[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestChecklistItem {
   title?: string;
   detail?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestChecklistSection {
   title?: string;
   items?: EmailDigestChecklistItem[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestTickerProfile {
@@ -287,6 +320,7 @@ interface EmailDigestTickerProfile {
   thesis?: string[];
   signals?: string[];
   video_ids?: string[];
+  teaser_questions?: string[];
 }
 
 interface EmailDigestMarketMood {
@@ -623,7 +657,38 @@ const buildSectionBriefingEntry = (
   index: number,
 ) => {
   const title = (item.title ?? `브리핑 ${index + 1}`).trim();
-  const soWhat = (item.so_what ?? "").trim();
+  const normalizedBullets: SectionBriefingEntry["bullets"] = Array.isArray(
+    item.so_what_bullets,
+  )
+    ? item.so_what_bullets
+        .map((bullet) => {
+          if (typeof bullet === "string") {
+            const content = bullet.trim();
+            return content ? { content } : null;
+          }
+          if (bullet && typeof bullet === "object") {
+            const content = (bullet.content ?? "").trim();
+            if (!content) return null;
+            const teaserRaw =
+              bullet.teaser_question ?? bullet.teaserQuestion ?? "";
+            const teaser = teaserRaw.trim();
+            const webDetailRaw =
+              bullet.web_detail ?? bullet.webDetail ?? "";
+            const webDetail = webDetailRaw.trim();
+            const base = webDetail ? { content, webDetail } : { content };
+            return teaser
+              ? { ...base, teaserQuestion: teaser }
+              : base;
+          }
+          return null;
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    : [];
+  const soWhat = normalizedBullets.length
+    ? normalizedBullets.map((bullet) => bullet.content).join(" ")
+    : (item.so_what ?? "").trim();
+  const teaserQuestion = item.teaser_question?.trim();
+  const webDetail = item.web_detail?.trim();
   const references = Array.isArray(item.references)
     ? item.references.filter(
         (ref): ref is string =>
@@ -631,11 +696,20 @@ const buildSectionBriefingEntry = (
       )
     : [];
   const videoIds = references.filter((ref) => /[A-Za-z0-9_-]+/.test(ref));
-  return { title, soWhat, references, videoIds };
+  return {
+    title,
+    soWhat,
+    references,
+    videoIds,
+    bullets: normalizedBullets,
+    teaserQuestion,
+    webDetail,
+  };
 };
 
 const fetchIntegratedBriefing = async (
   sectionLabel: string,
+  options?: { preferLongVariant?: boolean },
 ): Promise<SectionBriefingData | undefined> => {
   try {
     const buildRequestUrl = (variant: string) => {
@@ -645,14 +719,18 @@ const fetchIntegratedBriefing = async (
       return url;
     };
 
-    const primaryUrl = buildRequestUrl("keyword_long");
-    let payload =
-      (await fetchJson<KakaoIntegratedResponse>(primaryUrl.toString())) ?? {};
-    if (!payload.sections?.length) {
-      const fallbackUrl = buildRequestUrl("integrated");
-      payload =
-        (await fetchJson<KakaoIntegratedResponse>(fallbackUrl.toString())) ??
-        {};
+    const variantOrder = options?.preferLongVariant
+      ? ["keyword_long_v2", "keyword_long", "integrated"]
+      : ["integrated", "keyword_long_v2", "keyword_long"];
+    let payload: KakaoIntegratedResponse = {};
+    let resolvedVariant: string | undefined;
+    for (const variant of variantOrder) {
+      const url = buildRequestUrl(variant);
+      payload = (await fetchJson<KakaoIntegratedResponse>(url.toString())) ?? {};
+      if (payload.sections?.length) {
+        resolvedVariant = variant;
+        break;
+      }
     }
     const target = payload.sections?.find(
       (entry) => entry.section === sectionLabel,
@@ -670,6 +748,7 @@ const fetchIntegratedBriefing = async (
       keywords,
       entries,
       updatedAt: target.updated_at,
+      variant: resolvedVariant,
     };
   } catch (error) {
     console.warn("fetchIntegratedBriefing failed", error);
@@ -731,6 +810,11 @@ const mapEmailDigestToBriefing = (
     .filter((id): id is string => Boolean(id));
   topVideoIds.forEach((id) => ensureVideoMeta(id));
 
+  const sanitizeQuestions = (items?: Array<string | null>) =>
+    (items ?? [])
+      .map((item) => item?.trim())
+      .filter((item): item is string => Boolean(item && item.length > 0));
+
   const mapThemeEntries = (
     entries: (EmailDigestTheme | EmailDigestStrategicMove)[],
   ) =>
@@ -749,11 +833,18 @@ const mapEmailDigestToBriefing = (
         (theme as EmailDigestStrategicMove).whyImportant ??
         narratives[1]?.text ??
         whatHappened;
+      const teaserRaw =
+        (theme as EmailDigestTheme & { teaser_questions?: string[] })
+          .teaser_questions ??
+        (theme as EmailDigestTheme & { teaserQuestions?: string[] })
+          .teaserQuestions ??
+        [];
       return {
         name: theme.name ?? sectionLabel,
         whatHappened,
         whyImportant,
         narratives,
+        teaserQuestions: sanitizeQuestions(teaserRaw),
       };
     });
 
@@ -790,12 +881,14 @@ const mapEmailDigestToBriefing = (
     focusArea: item.focus_area ?? "",
     implication: item.implication ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
   const useCaseSpotlight = (llm.use_case_spotlight ?? []).map((item) => ({
     industry: item.industry ?? "",
     problemSolved: item.problem_solved ?? "",
     result: item.result ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
   const infraPolicyWatch = {
     title: llm.infra_policy_watch?.title,
@@ -804,6 +897,7 @@ const mapEmailDigestToBriefing = (
       detail: item.detail ?? "",
       impact: item.impact,
       videoIds: item.video_ids ?? [],
+      teaserQuestions: sanitizeQuestions(item.teaser_questions),
     })),
   };
   const riskEthics = {
@@ -813,6 +907,7 @@ const mapEmailDigestToBriefing = (
       detail: item.detail ?? "",
       severity: item.severity,
       videoIds: item.video_ids ?? [],
+      teaserQuestions: sanitizeQuestions(item.teaser_questions),
     })),
   };
   const nextSteps = {
@@ -821,7 +916,9 @@ const mapEmailDigestToBriefing = (
       title: item.title ?? "",
       detail: item.detail ?? [],
       relatedEntities: item.related_entities ?? [],
+      teaserQuestions: sanitizeQuestions(item.teaser_questions),
     })),
+    teaserQuestions: sanitizeQuestions(llm.next_steps?.teaser_questions),
   };
 
   const innovationTracks = (llm.innovation_tracks ?? []).map((track) => {
@@ -836,6 +933,7 @@ const mapEmailDigestToBriefing = (
       narratives,
       impactMetrics: track.impact_metrics ?? [],
       videoIds: track.video_ids ?? [],
+      teaserQuestions: sanitizeQuestions(track.teaser_questions),
     };
   });
 
@@ -852,6 +950,7 @@ const mapEmailDigestToBriefing = (
     segment: item.segment ?? "",
     signals: item.signals ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
 
   const actionItems = llm.action_items
@@ -884,6 +983,7 @@ const mapEmailDigestToBriefing = (
     regions: item.regions ?? [],
     propertyTypes: item.property_types ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
 
   const policyFinanceWatch = llm.policy_finance_watch
@@ -897,21 +997,26 @@ const mapEmailDigestToBriefing = (
               ? [item.detail]
               : [],
           videoIds: item.video_ids ?? [],
+          teaserQuestions: sanitizeQuestions(item.teaser_questions),
         })),
       }
     : undefined;
 
   const competitionWatch = (llm.competition_watch ?? []).map((item) => ({
     name: item.name ?? sectionLabel,
-    detail: item.detail ?? "",
+    detail: Array.isArray(item.detail)
+      ? item.detail.join(" ")
+      : (item.detail ?? ""),
     signals: item.signals ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
 
   const regionalSpotlight = (llm.regional_spotlight ?? []).map((spot) => ({
     region: spot.region ?? sectionLabel,
     story: spot.story ?? [],
     videoIds: spot.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(spot.teaser_questions),
   }));
 
   const riskFlags = llm.risk_flags
@@ -933,6 +1038,9 @@ const mapEmailDigestToBriefing = (
           title: item.title ?? "",
           detail: item.detail ?? [],
         })),
+        teaserQuestions: sanitizeQuestions(
+          llm.next_3day_watch.teaser_questions,
+        ),
       }
     : undefined;
 
@@ -943,6 +1051,7 @@ const mapEmailDigestToBriefing = (
       text: narrative.text ?? "",
       videoIds: narrative.video_ids ?? [],
     })),
+    teaserQuestions: sanitizeQuestions(driver.teaser_questions),
   }));
 
   const macroPolicyWatch = llm.policy_watch
@@ -953,6 +1062,7 @@ const mapEmailDigestToBriefing = (
           detail: item.detail ?? [],
           when: item.when,
           videoIds: item.video_ids ?? [],
+          teaserQuestions: sanitizeQuestions(item.teaser_questions),
         })),
       }
     : undefined;
@@ -969,6 +1079,7 @@ const mapEmailDigestToBriefing = (
               : [],
           impact: item.impact,
           videoIds: item.video_ids ?? [],
+          teaserQuestions: sanitizeQuestions(item.teaser_questions),
         })),
       }
     : undefined;
@@ -977,6 +1088,7 @@ const mapEmailDigestToBriefing = (
     segment: item.segment ?? "",
     signals: item.signals ?? [],
     videoIds: item.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(item.teaser_questions),
   }));
 
   const macroSnapshot = llm.macro_snapshot
@@ -995,7 +1107,11 @@ const mapEmailDigestToBriefing = (
         items: (llm.checklist_section.items ?? []).map((item) => ({
           title: item.title ?? "",
           detail: item.detail ?? [],
+          teaserQuestions: sanitizeQuestions(item.teaser_questions),
         })),
+        teaserQuestions: sanitizeQuestions(
+          llm.checklist_section.teaser_questions,
+        ),
       }
     : undefined;
 
@@ -1070,6 +1186,7 @@ const mapEmailDigestToBriefing = (
     thesis: profile.thesis ?? [],
     signals: profile.signals ?? [],
     videoIds: profile.video_ids ?? [],
+    teaserQuestions: sanitizeQuestions(profile.teaser_questions),
   }));
   const checklist = (llm.checklist_section?.items ?? []).map((item) => ({
     title: item.title ?? "",
@@ -1103,6 +1220,9 @@ const mapEmailDigestToBriefing = (
     themes,
     tickerProfiles,
     checklist,
+    checklistTeaserQuestions: sanitizeQuestions(
+      llm.checklist_section?.teaser_questions,
+    ),
     modelWatch,
     useCaseSpotlight,
     infraPolicyWatch,
@@ -1733,7 +1853,7 @@ const buildMoneySection = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
   date?: string,
-  options?: { preloadAllSlots?: boolean },
+  options?: { preloadAllSlots?: boolean; preferLongVariant?: boolean },
 ): Promise<RecapSection> => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
   const targetPhases = options?.preloadAllSlots ? ALL_SLOT_PHASES : [slotPhase];
@@ -1768,7 +1888,9 @@ const buildMoneySection = async (
     slotPackages.find((pkg) => pkg.tabs) ??
     slotPackages[0];
 
-  const summaryBriefing = await fetchIntegratedBriefing(config.label);
+  const summaryBriefing = await fetchIntegratedBriefing(config.label, {
+    preferLongVariant: options?.preferLongVariant,
+  });
   return {
     id: `section-${sectionKey}`,
     type: config.type,
@@ -1796,11 +1918,14 @@ const fetchGeneralSection = async (
   generalKey: GeneralSectionKey,
   rawParam: string,
   date?: string,
+  options?: { preferLongVariant?: boolean },
 ): Promise<RecapSection> => {
   const config = GENERAL_SECTION_CONFIGS[generalKey];
   const sectionQuery = decodeURIComponent(rawParam);
   const videos = await fetchSectionTopVideos(sectionQuery, date);
-  const summaryBriefing = await fetchIntegratedBriefing(sectionQuery);
+  const summaryBriefing = await fetchIntegratedBriefing(sectionQuery, {
+    preferLongVariant: options?.preferLongVariant,
+  });
   const summaryBullets = summaryBriefing?.entries.length
     ? summaryBriefing.entries
         .map((entry) => entry.soWhat || entry.title)
@@ -1850,6 +1975,8 @@ export async function fetchBriefingLanding(
   const displayDate = toDisplayDate(dateParam);
   const emailGeneratedDate = toApiDate(generatedDateParam);
   const sourceParam = query?.source?.toLowerCase();
+  const tagParam = query?.tag?.toLowerCase();
+  const preferLongVariant = tagParam === "long";
 
   if (sourceParam === "email" && entries.length > 0) {
     const emailSections = (
@@ -1874,7 +2001,7 @@ export async function fetchBriefingLanding(
           } satisfies EmailRecapSection;
         }),
       )
-    ).filter((section): section is EmailRecapSection => section !== null);
+    ).filter(Boolean) as EmailRecapSection[];
 
     if (emailSections.length > 0) {
       const displayLabel =
@@ -1915,6 +2042,7 @@ export async function fetchBriefingLanding(
               entry.key as MoneySectionKey,
               slotPhase,
               apiDate,
+              { preferLongVariant },
             ),
           );
         } else if (entry.key in GENERAL_SECTION_CONFIGS) {
@@ -1923,6 +2051,7 @@ export async function fetchBriefingLanding(
               entry.key as GeneralSectionKey,
               entry.raw,
               apiDate,
+              { preferLongVariant },
             ),
           );
         }

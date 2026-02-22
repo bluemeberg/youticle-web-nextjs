@@ -13,6 +13,7 @@ export interface EmailBriefingStrategicMove {
   whatHappened: string;
   whyImportant: string;
   narratives: EmailBriefingNarrative[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingExecutionRiskItem {
@@ -34,6 +35,7 @@ export interface EmailBriefingModelWatchItem {
   focusArea: string;
   implication: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingUseCaseItem {
@@ -41,6 +43,7 @@ export interface EmailBriefingUseCaseItem {
   problemSolved: string;
   result: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingCompetitionWatchItem {
@@ -48,6 +51,7 @@ export interface EmailBriefingCompetitionWatchItem {
   detail?: string;
   signals?: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingInnovationTrack {
@@ -57,6 +61,7 @@ export interface EmailBriefingInnovationTrack {
   narratives: EmailBriefingNarrative[];
   impactMetrics?: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingInfraPolicyItem {
@@ -64,6 +69,7 @@ export interface EmailBriefingInfraPolicyItem {
   detail: string;
   impact?: string;
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingTechSnapshot {
@@ -77,6 +83,7 @@ export interface EmailBriefingEcosystemWatchItem {
   segment: string;
   signals: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingActionItem {
@@ -103,18 +110,21 @@ export interface EmailBriefingDemandSupplyItem {
   regions?: string[];
   propertyTypes?: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingPolicyFinanceItem {
   title: string;
   detail: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingRegionalSpotlightItem {
   region: string;
   story: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingRiskFlagItem {
@@ -132,6 +142,7 @@ export interface EmailBriefingShortTermWatchItem {
 export interface EmailBriefingShortTermWatch {
   title?: string;
   items: EmailBriefingShortTermWatchItem[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingRiskEthicsItem {
@@ -139,12 +150,14 @@ export interface EmailBriefingRiskEthicsItem {
   detail: string;
   severity?: string;
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingNextStepItem {
   title: string;
   detail: string[];
   relatedEntities?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingVideoMeta {
@@ -167,6 +180,7 @@ export interface EmailMacroDriver {
   name: string;
   indicatorFocus?: string;
   narratives: EmailMacroDriverNarrative[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailMacroPolicyWatchItem {
@@ -174,6 +188,7 @@ export interface EmailMacroPolicyWatchItem {
   detail: string[];
   when?: string;
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailMacroPolicyWatch {
@@ -186,6 +201,7 @@ export interface EmailMacroRiskItem {
   detail: string[];
   impact?: string;
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailMacroRiskSection {
@@ -197,6 +213,7 @@ export interface EmailMacroSectorWatchItem {
   segment: string;
   signals: string[];
   videoIds?: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailMacroSnapshot {
@@ -210,11 +227,13 @@ export interface EmailMacroSnapshot {
 export interface EmailMacroChecklistItem {
   title: string;
   detail: string[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailMacroChecklistSection {
   title?: string;
   items: EmailMacroChecklistItem[];
+  teaserQuestions?: string[];
 }
 
 export interface EmailBriefingOutro {
@@ -249,11 +268,13 @@ export interface EmailBriefingKeywordData {
     thesis?: string[];
     signals?: string[];
     videoIds?: string[];
+    teaserQuestions?: string[];
   }>;
   checklist?: Array<{
     title: string;
     detail: string[];
   }>;
+  checklistTeaserQuestions?: string[];
   innovationTracks?: EmailBriefingInnovationTrack[];
   modelWatch?: EmailBriefingModelWatchItem[];
   useCaseSpotlight?: EmailBriefingUseCaseItem[];
@@ -268,6 +289,7 @@ export interface EmailBriefingKeywordData {
   nextSteps?: {
     title?: string;
     items: EmailBriefingNextStepItem[];
+    teaserQuestions?: string[];
   };
   techSnapshot?: EmailBriefingTechSnapshot;
   ecosystemWatch?: EmailBriefingEcosystemWatchItem[];

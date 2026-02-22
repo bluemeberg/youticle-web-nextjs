@@ -126,17 +126,27 @@ export interface BriefingLandingData {
   exploreTabs: Array<{ id: string; label: string; href: string }>;
 }
 
+interface SummaryBriefingBullet {
+  content: string;
+  teaserQuestion?: string;
+  webDetail?: string;
+}
+
 interface SummaryBriefingEntry {
   title: string;
   soWhat: string;
   references?: string[];
   videoIds?: string[];
+  bullets?: SummaryBriefingBullet[];
+  teaserQuestion?: string;
+  webDetail?: string;
 }
 
 interface SummaryBriefingData {
   keywords: string[];
   entries: SummaryBriefingEntry[];
   updatedAt?: string | null;
+  variant?: string | null;
 }
 
 export type RecapSection =
@@ -307,6 +317,9 @@ const renderSummaryContent = (
   ) => string | undefined,
 ) => {
   if (briefing && briefing.entries.length > 0) {
+    const preferLongFormat = Boolean(
+      briefing.variant?.startsWith("keyword_long"),
+    );
     return (
       <>
         {briefing.keywords.length ? (
@@ -328,16 +341,107 @@ const renderSummaryContent = (
                   {stripMarkTags(entry.title)}
                 </SummaryBriefingTitle>
               ) : null}
-              {entry.soWhat ? (
-                <SummaryBriefingBody>
-                  {splitSoWhatLines(entry.soWhat).map((line, index) => (
-                    <SummaryBriefingParagraph
-                      key={safeKey(line, index)}
-                      dangerouslySetInnerHTML={createMarkedHtml(line)}
-                    />
-                  ))}
-                </SummaryBriefingBody>
-              ) : null}
+              {(() => {
+                const bulletList: SummaryBriefingBullet[] = (() => {
+                  if (entry.bullets && entry.bullets.length > 0) {
+                    return entry.bullets;
+                  }
+                  if (
+                    (entry.teaserQuestion && entry.teaserQuestion.trim()) ||
+                    (entry.webDetail && entry.webDetail.trim())
+                  ) {
+                    return [
+                      {
+                        content: entry.soWhat,
+                        teaserQuestion: entry.teaserQuestion,
+                        webDetail: entry.webDetail,
+                      },
+                    ];
+                  }
+                  if (entry.soWhat) {
+                    return splitSoWhatLines(entry.soWhat).map((line) => ({
+                      content: line,
+                    }));
+                  }
+                  return [];
+                })();
+                const filteredBullets = bulletList.filter((bullet) =>
+                  Boolean(
+                    (bullet.teaserQuestion && bullet.teaserQuestion.trim()) ||
+                    (bullet.webDetail && bullet.webDetail.trim()) ||
+                    (bullet.content && bullet.content.trim()),
+                  ),
+                );
+                const shouldRenderQA =
+                  preferLongFormat ||
+                  entry.teaserQuestion?.trim() ||
+                  entry.webDetail?.trim() ||
+                  filteredBullets.some((bullet) =>
+                    Boolean(
+                      (bullet.teaserQuestion && bullet.teaserQuestion.trim()) ||
+                      (bullet.webDetail && bullet.webDetail.trim()),
+                    ),
+                  );
+                if (shouldRenderQA && filteredBullets.length) {
+                  return (
+                    <SummaryBriefingBody>
+                      {filteredBullets.map((bullet, index) => {
+                        const rawQuestion = (
+                          bullet.teaserQuestion || ""
+                        ).trim();
+                        const fallbackContent = (bullet.content || "").trim();
+                        const rawAnswer = (bullet.webDetail || "").trim();
+                        const question = rawQuestion || fallbackContent;
+                        const answer = rawAnswer || fallbackContent;
+                        const answerLines = splitSoWhatLines(answer);
+                        const hasAnswer = answer && answerLines.length > 0;
+                        return (
+                          <SummaryBriefingBullet
+                            key={safeKey(
+                              question || answer || `bullet-${index}`,
+                              index,
+                            )}
+                          >
+                            {question ? (
+                              <SummaryBulletQuestion
+                                dangerouslySetInnerHTML={createMarkedHtml(
+                                  question,
+                                )}
+                              />
+                            ) : null}
+                            {hasAnswer ? (
+                              <SummaryBulletAnswer>
+                                {answerLines.map((line, lineIdx) => (
+                                  <SummaryBulletAnswerText
+                                    key={safeKey(line, lineIdx)}
+                                    dangerouslySetInnerHTML={createMarkedHtml(
+                                      line,
+                                    )}
+                                  />
+                                ))}
+                              </SummaryBulletAnswer>
+                            ) : null}
+                          </SummaryBriefingBullet>
+                        );
+                      })}
+                    </SummaryBriefingBody>
+                  );
+                }
+                if (entry.soWhat) {
+                  return (
+                    <SummaryBriefingBody as="ul">
+                      {splitSoWhatLines(entry.soWhat).map((line, index) => (
+                        <SummaryBriefingBullet
+                          as="li"
+                          key={safeKey(line, index)}
+                          dangerouslySetInnerHTML={createMarkedHtml(line)}
+                        />
+                      ))}
+                    </SummaryBriefingBody>
+                  );
+                }
+                return null;
+              })()}
               {(() => {
                 const referencedVideos = (entry.videoIds ?? [])
                   .map((videoId) => {
@@ -3985,7 +4089,7 @@ const InfoPromoButton = styled(Link)`
   align-self: flex-start;
   margin-top: 4px;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 999px;
   background: #111827;
   color: #fff;
   font-size: 15px;
@@ -3993,6 +4097,7 @@ const InfoPromoButton = styled(Link)`
   text-decoration: none;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
   width: 100%;
+  text-align: center;
 `;
 
 const SurveyCtaSection = styled.section`
@@ -4212,23 +4317,48 @@ const SummaryBriefingTitle = styled.p`
   line-height: 1.4;
 `;
 
-const SummaryBriefingBody = styled.div`
+const SummaryBriefingBody = styled.ul`
   margin: 0;
+  padding-left: 20px;
   font-size: 15px;
-  line-height: 1.55;
   color: #1f2a4a;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 `;
 
-const SummaryBriefingParagraph = styled.span`
+const SummaryBriefingBullet = styled.li`
+  list-style: disc;
+  padding-left: 2px;
+`;
+
+const SummaryBulletQuestion = styled.span`
   display: block;
-  line-height: 1.6;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.5;
   strong {
-    font-weight: 700;
     color: #0f172a;
   }
+`;
+
+const SummaryBulletAnswer = styled.span`
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #475569;
+  strong {
+    font-weight: 600;
+    color: #0f172a;
+  }
+`;
+
+const SummaryBulletAnswerText = styled.span`
+  display: block;
+  line-height: 1.6;
+  color: #475569;
 `;
 
 const SummaryNotice = styled.p`
