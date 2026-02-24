@@ -1,6 +1,6 @@
 "use client";
 
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, createGlobalStyle } from "styled-components";
 import type { DefaultTheme } from "styled-components";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -265,8 +265,11 @@ const convertMarkToStrong = (text?: string | null) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   return escaped
-    .replace(new RegExp(placeholderOpen, "g"), "<strong>")
-    .replace(new RegExp(placeholderClose, "g"), "</strong>");
+    .replace(
+      new RegExp(placeholderOpen, "g"),
+      '<mark class="landing-mark">',
+    )
+    .replace(new RegExp(placeholderClose, "g"), "</mark>");
 };
 
 const createMarkedHtml = (text: string) => ({
@@ -3597,7 +3600,9 @@ const StandardBriefingLandingPageClient = ({
   });
 
   return (
-    <PageContainer
+    <>
+      <LandingMarkStyles />
+      <PageContainer
       style={
         {
           ["--topbar-h" as any]: `${topbarH}px`,
@@ -3605,7 +3610,7 @@ const StandardBriefingLandingPageClient = ({
           ["--sticky-offset" as any]: `${topbarH + keywordNavH + 16}px`,
         } as React.CSSProperties
       }
-    >
+      >
       <LogoHeaderDock>
         <LogoHeader
           showLogo
@@ -3877,6 +3882,7 @@ const StandardBriefingLandingPageClient = ({
       {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
       <Footer />
     </PageContainer>
+    </>
   );
 };
 
@@ -3903,6 +3909,15 @@ const PageContainer = styled.div`
   align-items: center;
   font-family: "Pretendard", sans-serif;
   /* padding: 0 16px 80px; */
+`;
+
+const LandingMarkStyles = createGlobalStyle`
+  .landing-mark {
+    background-color: #fff4cc;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
 `;
 
 const LogoHeaderDock = styled.div`
