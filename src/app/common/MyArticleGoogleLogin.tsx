@@ -39,7 +39,7 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ onLoginSuccess }) => {
   return (
     <StyledComponent onClick={signInGoogle}>
       <GoogleIcon />
-      <Text>구글 계정으로 로그인</Text> {/* 텍스트 고정 */}
+      <Text>구글 계정 연결하기</Text> {/* 텍스트 고정 */}
     </StyledComponent>
   );
 };

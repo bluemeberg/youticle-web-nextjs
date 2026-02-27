@@ -704,15 +704,45 @@ const buildSectionBriefingEntry = (
   };
 };
 
+const buildStaleSummaryNotice = (requestedDate?: string): SectionBriefingData => {
+  const dateCopy = requestedDate ? requestedDate.replace(/-/g, ".") : "요청한";
+  return {
+    keywords: [],
+    entries: [
+      {
+        title: "카카오 요약은 당일 데이터만 제공돼요",
+        soWhat: `${dateCopy} 데이터는 요약 카드 없이 근거 영상만 확인할 수 있어요.`,
+        references: [],
+        videoIds: [],
+        bullets: [
+          {
+            content:
+              "카카오톡 브리핑 요약은 매일 아침 발행된 당일판을 기준으로 제공됩니다.",
+          },
+          {
+            content:
+              "과거 날짜는 근거 영상/섹션 본문만 확인 가능하며, 요약 카드는 최신 데이터로 확인해 주세요.",
+          },
+        ],
+      },
+    ],
+    variant: "stale_notice",
+    updatedAt: requestedDate ?? undefined,
+  };
+};
+
 const fetchIntegratedBriefing = async (
   sectionLabel: string,
-  options?: { preferLongVariant?: boolean },
+  options?: { preferLongVariant?: boolean; date?: string },
 ): Promise<SectionBriefingData | undefined> => {
   try {
     const buildRequestUrl = (variant: string) => {
       const url = new URL(KAKAO_CACHE_ENDPOINT);
       url.searchParams.set("sections", sectionLabel);
       url.searchParams.set("variant", variant);
+      if (options?.date) {
+        url.searchParams.set("date", options.date);
+      }
       return url;
     };
 
@@ -1851,7 +1881,12 @@ const buildMoneySection = async (
   sectionKey: MoneySectionKey,
   slotPhase: SlotPhase,
   date?: string,
-  options?: { preloadAllSlots?: boolean; preferLongVariant?: boolean },
+  options?: {
+    preloadAllSlots?: boolean;
+    preferLongVariant?: boolean;
+    allowSummary?: boolean;
+    summaryDate?: string;
+  },
 ): Promise<RecapSection> => {
   const config = MONEY_SECTION_CONFIGS[sectionKey];
   const targetPhases = options?.preloadAllSlots ? ALL_SLOT_PHASES : [slotPhase];
@@ -1886,9 +1921,19 @@ const buildMoneySection = async (
     slotPackages.find((pkg) => pkg.tabs) ??
     slotPackages[0];
 
-  const summaryBriefing = await fetchIntegratedBriefing(config.label, {
-    preferLongVariant: options?.preferLongVariant,
-  });
+  const summaryDateParam = options?.summaryDate ?? date;
+  let summaryBriefing: SectionBriefingData | undefined;
+  if (options?.allowSummary === false && !summaryDateParam) {
+    summaryBriefing = buildStaleSummaryNotice(options?.summaryDate);
+  } else {
+    summaryBriefing = await fetchIntegratedBriefing(config.label, {
+      preferLongVariant: options?.preferLongVariant,
+      date: summaryDateParam,
+    });
+    if (!summaryBriefing && options?.allowSummary === false) {
+      summaryBriefing = buildStaleSummaryNotice(options?.summaryDate);
+    }
+  }
   return {
     id: `section-${sectionKey}`,
     type: config.type,
@@ -1916,14 +1961,28 @@ const fetchGeneralSection = async (
   generalKey: GeneralSectionKey,
   rawParam: string,
   date?: string,
-  options?: { preferLongVariant?: boolean },
+  options?: {
+    preferLongVariant?: boolean;
+    allowSummary?: boolean;
+    summaryDate?: string;
+  },
 ): Promise<RecapSection> => {
   const config = GENERAL_SECTION_CONFIGS[generalKey];
   const sectionQuery = decodeURIComponent(rawParam);
   const videos = await fetchSectionTopVideos(sectionQuery, date);
-  const summaryBriefing = await fetchIntegratedBriefing(sectionQuery, {
-    preferLongVariant: options?.preferLongVariant,
-  });
+  const summaryDateParam = options?.summaryDate ?? date;
+  let summaryBriefing: SectionBriefingData | undefined;
+  if (options?.allowSummary === false && !summaryDateParam) {
+    summaryBriefing = buildStaleSummaryNotice(options?.summaryDate);
+  } else {
+    summaryBriefing = await fetchIntegratedBriefing(sectionQuery, {
+      preferLongVariant: options?.preferLongVariant,
+      date: summaryDateParam,
+    });
+    if (!summaryBriefing && options?.allowSummary === false) {
+      summaryBriefing = buildStaleSummaryNotice(options?.summaryDate);
+    }
+  }
   const summaryBullets = summaryBriefing?.entries.length
     ? summaryBriefing.entries
         .map((entry) => entry.soWhat || entry.title)
@@ -1975,6 +2034,8 @@ export async function fetchBriefingLanding(
   const sourceParam = query?.source?.toLowerCase();
   const tagParam = query?.tag?.toLowerCase();
   const preferLongVariant = tagParam === "long";
+  const todayToken = new Date().toISOString().slice(0, 10);
+  const isCurrentDate = !apiDate || apiDate === todayToken;
 
   if (sourceParam === "email" && entries.length > 0) {
     const emailSections = (
@@ -2040,7 +2101,11 @@ export async function fetchBriefingLanding(
               entry.key as MoneySectionKey,
               slotPhase,
               apiDate,
-              { preferLongVariant },
+              {
+                preferLongVariant,
+                allowSummary: isCurrentDate,
+                summaryDate: apiDate,
+              },
             ),
           );
         } else if (entry.key in GENERAL_SECTION_CONFIGS) {
@@ -2049,7 +2114,11 @@ export async function fetchBriefingLanding(
               entry.key as GeneralSectionKey,
               entry.raw,
               apiDate,
-              { preferLongVariant },
+              {
+                preferLongVariant,
+                allowSummary: isCurrentDate,
+                summaryDate: apiDate,
+              },
             ),
           );
         }

@@ -4,7 +4,7 @@ import { ChannelDetails } from "@/types/dataProps";
 
 const API_BASE_URL = "https://youticle.shop";
 // 유저 정보 최초 등록
-// const API_BASE_URL = "http://0.0.0.0:8001";
+const API_STAGE_BASE_URL = "http://0.0.0.0:8001";
 
 export const createOrFetchUser = async (email: string, name: string) => {
   try {
@@ -31,7 +31,7 @@ export const createOrFetchUser = async (email: string, name: string) => {
 // 유저 정보 가져오기
 export const getUserByEmail = async (
   email: string | null,
-  name: string | null
+  name: string | null,
 ): Promise<{ id: number; phone: string | null }> => {
   const safeEmail = email ?? "";
   const safeName = name ?? "익명 사용자";
@@ -68,18 +68,18 @@ export const getUserByEmail = async (
 // 구독 주제 가져오는 API
 export const fetchSubscribedSubjects = async (
   email: string,
-  name: string
+  name: string,
 ): Promise<string[]> => {
   try {
     // user_id 정보 가져오기
     const userData = await getUserByEmail(email, name);
     const response = await fetch(
-      `${API_BASE_URL}/users/subjects/${userData.id}`
+      `${API_BASE_URL}/users/subjects/${userData.id}`,
     );
     if (response.ok) {
       const data = await response.json();
       const subjectNames = data.map(
-        (item: { subject_name: string }) => item.subject_name
+        (item: { subject_name: string }) => item.subject_name,
       );
       return subjectNames;
     } else {
@@ -95,10 +95,10 @@ export const fetchSubscribedSubjects = async (
 export const updateUserSubject = async (
   userId: number,
   oldSubjectName: string,
-  newSubjectName: string
+  newSubjectName: string,
 ) => {
   const url = `${API_BASE_URL}/users/subject/?user_id=${userId}&old_subject_name=${encodeURIComponent(
-    oldSubjectName
+    oldSubjectName,
   )}&new_subject_name=${encodeURIComponent(newSubjectName)}`;
 
   try {
@@ -127,14 +127,14 @@ export async function fetchTopVideosBySection(section: string) {
   try {
     const response = await fetch(
       `${API_BASE_URL}/briefing/top_videos/section?section=${encodeURIComponent(
-        section
+        section,
       )}`,
       {
         method: "GET",
         headers: {
           Accept: "application/json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -215,12 +215,12 @@ export interface ChannelDetailResponse {
 }
 
 export async function fetchChannelDetail(
-  channel_handle: string
+  channel_handle: string,
 ): Promise<ChannelDetailResponse> {
   const res = await fetch(
     `${API_BASE_URL}/editor/user_channels/detail?channel_handle=${encodeURIComponent(
-      channel_handle
-    )}`
+      channel_handle,
+    )}`,
   );
   if (!res.ok) throw new Error("채널 상세 조회 실패");
   return res.json();
@@ -231,7 +231,7 @@ export async function logCtaClick(
   userId?: number,
   userEmail?: string,
   anonId?: string,
-  context: Record<string, string> = {}
+  context: Record<string, string> = {},
 ) {
   const params = new URLSearchParams();
   params.set("action", action);
@@ -251,7 +251,7 @@ export async function logCtaClick(
       `https://youticle.shop/emails/cta-click?${params}`,
       {
         method: "GET",
-      }
+      },
     );
     // (필요하다면 resp.json()으로 결과 확인)
   } catch (err) {
@@ -281,7 +281,7 @@ export interface NotificationRequest {
 }
 
 export async function upsertNotificationRequest(
-  data: NotificationRequestPayload
+  data: NotificationRequestPayload,
 ) {
   const res = await fetch(`${API_BASE_URL}/users/notification-requests`, {
     method: "POST",
@@ -291,7 +291,7 @@ export async function upsertNotificationRequest(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `upsertNotificationRequest failed (${res.status}): ${text}`
+      `upsertNotificationRequest failed (${res.status}): ${text}`,
     );
   }
   return (await res.json()) as {

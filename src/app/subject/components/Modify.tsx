@@ -17,9 +17,11 @@ import { getOrCreateAnonId } from "@/utils/formatter";
 
 /* ----------------------------- topics ----------------------------- */
 const topics = [
-  { name: "주식", icon: "📈" },
+  { name: "국내 주식", icon: "📈" },
+  { name: "해외 주식", icon: "🌍" },
+  { name: "국내 가상자산", icon: "🪙" },
+  { name: "해외 가상자산", icon: "🌐" },
   { name: "부동산", icon: "🏢" },
-  { name: "가상자산", icon: "💰" },
   { name: "경제", icon: "💵" },
   { name: "정치", icon: "🏛️" },
   { name: "비즈니스/사업", icon: "💼" },

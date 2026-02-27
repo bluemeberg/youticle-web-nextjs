@@ -12,8 +12,11 @@ import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/firebase";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { userState } from "@/store/user";
-import { getUserByEmail } from "@/api/apiClient"; // (이메일로 유저 조회/생성)
-import { logCtaClick } from "@/api/apiClient";
+import {
+  fetchSubscribedSubjects,
+  getUserByEmail,
+  logCtaClick,
+} from "@/api/apiClient"; // (이메일로 유저 조회/생성)
 import { getOrCreateAnonId } from "@/utils/formatter";
 
 interface ServiceIntroduceProps {
@@ -30,6 +33,7 @@ const KEYWORD_EXPANSION_MAP: Record<string, string[]> = {
   해외주식: ["국내 주식", "해외 주식"],
   stocks: ["국내 주식", "해외 주식"],
 };
+const DEFAULT_KEYWORDS = ["비즈니스/사업", "국내 주식", "부동산"];
 const getCurrentDateWithDay = () => {
   const today = new Date();
   const year = today.getFullYear().toString().slice(-2); // 뒤 두 자리만 추출
@@ -107,47 +111,76 @@ const ServiceIntroduce = ({ subjects }: ServiceIntroduceProps) => {
   const handleGoToMyBriefing = async () => {
     if (isNavigatingToBriefing) return;
     setIsNavigatingToBriefing(true);
-    const keywordList = subjects.length
-      ? subjects
-      : ["비즈니스/사업", "국내 주식", "부동산"];
-    const params = new URLSearchParams();
-    const generatedDate = formatDateKST(new Date()).replace(/-/g, "");
-    if (generatedDate) {
-      params.set("generated_date", generatedDate);
-    }
-    params.set("source", "email");
-    const expandedSet = new Set<string>();
-    keywordList.forEach((keyword) => {
-      const trimmed = keyword.trim();
-      if (!trimmed) return;
-      const normalized = trimmed.replace(/\s+/g, "");
-      const expansion = KEYWORD_EXPANSION_MAP[normalized] ?? [trimmed];
-      expansion.forEach((entry) => {
-        if (entry && entry.trim().length > 0) {
-          expandedSet.add(entry.trim());
-        }
-      });
-    });
-    if (expandedSet.size) {
-      params.set("section", Array.from(expandedSet).join(", "));
-    }
-    const targetPath = `/briefing/landing?${params.toString()}`;
-    logCtaClick(
-      "home_go_to_briefing",
-      user?.id ?? null,
-      user?.email ?? null,
-      getOrCreateAnonId(),
-      { origin: "home_service_intro" },
-    );
     try {
-      if (user?.email) {
-        router.push(targetPath);
+      let resolvedUser = user;
+      let resolvedSubjects = subjects;
+
+      if (!resolvedUser?.email) {
+        const loggedIn = await handleGoogleLogin();
+        if (!loggedIn?.email) {
+          return;
+        }
+        resolvedUser = loggedIn;
+        try {
+          resolvedSubjects = await fetchSubscribedSubjects(
+            loggedIn.email,
+            loggedIn.name,
+          );
+        } catch (error) {
+          console.warn("failed to fetch subjects after login", error);
+          resolvedSubjects = [];
+        }
+      } else if (resolvedSubjects.length === 0 && resolvedUser.email) {
+        try {
+          resolvedSubjects = await fetchSubscribedSubjects(
+            resolvedUser.email,
+            resolvedUser.name,
+          );
+        } catch (error) {
+          console.warn("failed to refresh subjects", error);
+          resolvedSubjects = [];
+        }
+      }
+
+      if (resolvedUser?.email && resolvedSubjects.length === 0) {
+        alert("내 키워드 브리핑을 보려면 먼저 구독 키워드를 선택해 주세요.");
+        router.push("/subject");
         return;
       }
-      const loggedIn = await handleGoogleLogin();
-      if (loggedIn?.email) {
-        router.push(targetPath);
+
+      const keywordList = resolvedSubjects.length
+        ? resolvedSubjects
+        : DEFAULT_KEYWORDS;
+      const params = new URLSearchParams();
+      const generatedDate = formatDateKST(new Date()).replace(/-/g, "");
+      if (generatedDate) {
+        params.set("generated_date", generatedDate);
       }
+      params.set("source", "email");
+      const expandedSet = new Set<string>();
+      keywordList.forEach((keyword) => {
+        const trimmed = keyword.trim();
+        if (!trimmed) return;
+        const normalized = trimmed.replace(/\s+/g, "");
+        const expansion = KEYWORD_EXPANSION_MAP[normalized] ?? [trimmed];
+        expansion.forEach((entry) => {
+          if (entry && entry.trim().length > 0) {
+            expandedSet.add(entry.trim());
+          }
+        });
+      });
+      if (expandedSet.size) {
+        params.set("section", Array.from(expandedSet).join(", "));
+      }
+      const targetPath = `/briefing/landing?${params.toString()}`;
+      logCtaClick(
+        "home_go_to_briefing",
+        resolvedUser?.id ?? null,
+        resolvedUser?.email ?? null,
+        getOrCreateAnonId(),
+        { origin: "home_service_intro" },
+      );
+      router.push(targetPath);
     } finally {
       setIsNavigatingToBriefing(false);
     }
