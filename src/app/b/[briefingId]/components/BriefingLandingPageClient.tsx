@@ -3,7 +3,7 @@
 import styled, { keyframes, createGlobalStyle } from "styled-components";
 import type { DefaultTheme } from "styled-components";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, FormEvent } from "react";
 import React, {
   useCallback,
   useEffect,
@@ -63,6 +63,16 @@ import type {
 import type { DeliveryMeta } from "@/types/briefingLanding";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+const RAG_QUERY_VIDEO_LIMIT = 20;
+const RAG_QUERY_TOPK = 12;
+const RAG_QUERY_TOPK_PER_VIDEO = 1;
+const RAG_QUERY_ENDPOINT =
+  process.env.NEXT_PUBLIC_RAG_QUERY_ENDPOINT ||
+  "https://youticle.shop/rag/query/multi";
+const RAG_REFERENCE_VIDEO_ENDPOINT =
+  process.env.NEXT_PUBLIC_BRIEFING_VIDEO_ENDPOINT ||
+  "https://youticle.shop/briefing/top_videos";
+const ANSWER_REFERENCE_TOKEN_PATTERN = /(`?\{[^{}]+\}`?|`?\[[^\[\]]+\]`?)/g;
 
 const LANDING_FEEDBACK_SURVEY = {
   title: "브리핑에 대한 의견을 남겨주세요!",
@@ -252,6 +262,48 @@ export interface VideoCardData {
   isNew?: boolean | null;
 }
 
+interface RagReferenceItem {
+  video_id: string;
+  chunk_id?: string;
+  ts_start?: number;
+  lang?: string;
+  text?: string;
+  score?: number;
+}
+
+interface RagQueryResponse {
+  answer?: string;
+  items?: RagReferenceItem[];
+  used_video_ids?: string[];
+}
+
+interface VideoReferenceMeta {
+  videoId: string;
+  title: string;
+  thumbnail?: string;
+  channelName?: string;
+  channelThumbnail?: string;
+}
+
+interface AnswerLineReferenceToken {
+  videoId: string;
+  timestampLabel?: string;
+  timestampSeconds?: number;
+  raw: string;
+}
+
+interface ParsedAnswerLine {
+  raw: string;
+  text: string;
+  tokens: AnswerLineReferenceToken[];
+}
+
+interface EvidenceAssistantContext {
+  sectionTitle: string;
+  videoItems: VideoCardData[];
+  signature: string;
+}
+
 const convertMarkToStrong = (text?: string | null) => {
   if (text == null) return "";
   const source = typeof text === "string" ? text : String(text);
@@ -265,10 +317,7 @@ const convertMarkToStrong = (text?: string | null) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   return escaped
-    .replace(
-      new RegExp(placeholderOpen, "g"),
-      '<mark class="landing-mark">',
-    )
+    .replace(new RegExp(placeholderOpen, "g"), '<mark class="landing-mark">')
     .replace(new RegExp(placeholderClose, "g"), "</mark>");
 };
 
@@ -281,6 +330,20 @@ const stripMarkTags = (text?: string | null) => {
   return text.replace(/<mark[^>]*>/gi, "").replace(/<\/mark>/gi, "");
 };
 
+const convertEmailVideoMetaToVideoCard = (
+  meta: EmailBriefingVideoMeta,
+): VideoCardData => ({
+  id: meta.id,
+  thumbnail: meta.thumbnail,
+  title: meta.title,
+  channel: meta.channelName ?? "",
+  duration: "",
+  summary: meta.summary ?? [],
+  href: meta.href,
+  channelThumbnail: meta.channelThumbnail,
+  subscriberText: meta.subscriberText,
+});
+
 const splitSoWhatLines = (text?: string | null) => {
   if (!text) return [];
   return text
@@ -288,6 +351,96 @@ const splitSoWhatLines = (text?: string | null) => {
     .map((segment) => segment.trim())
     .filter(Boolean)
     .map((segment) => (segment.endsWith(".") ? segment : `${segment}.`));
+};
+
+const extractChunkPlainText = (raw?: string | null) => {
+  if (!raw) return "";
+  const match = raw.match(/text='([^']+)'/);
+  if (match && match[1]) {
+    return match[1].replace(/\\n/g, " ").replace(/\s+/g, " ").trim();
+  }
+  return raw.replace(/\\n/g, " ").trim();
+};
+
+const formatTimestampLabel = (seconds?: number) => {
+  if (seconds == null || Number.isNaN(seconds)) return null;
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remaining = safeSeconds % 60;
+  return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+};
+
+const parseTimestampSecondsFromToken = (value?: string) => {
+  if (!value) return undefined;
+  const normalized = value.replace(/[^0-9:.]/g, "").trim();
+  if (!normalized) return undefined;
+  if (normalized.includes(":")) {
+    const parts = normalized.split(":").map((part) => Number(part));
+    if (parts.some((part) => Number.isNaN(part))) return undefined;
+    return parts.reduce((total, part) => total * 60 + part, 0);
+  }
+  const numeric = parseFloat(normalized);
+  if (Number.isNaN(numeric)) return undefined;
+  return Math.max(0, Math.floor(numeric));
+};
+
+const parseAnswerLineReferenceToken = (
+  raw: string,
+): AnswerLineReferenceToken | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const [videoSection, timeSection] = trimmed.split("@");
+  const videoId = videoSection?.trim();
+  if (!videoId) return null;
+  if (!timeSection) {
+    return { videoId, raw: trimmed };
+  }
+  const startSegment = timeSection.split(/[~]/)[0]?.trim();
+  const seconds = parseTimestampSecondsFromToken(startSegment);
+  const timestampLabel =
+    seconds != null
+      ? (formatTimestampLabel(seconds) ?? startSegment)
+      : startSegment;
+  return {
+    videoId,
+    timestampLabel,
+    timestampSeconds: seconds,
+    raw: trimmed,
+  };
+};
+
+const fetchVideoReferenceMeta = async (
+  videoId: string,
+): Promise<VideoReferenceMeta | null> => {
+  if (!videoId) return null;
+  const url = `${RAG_REFERENCE_VIDEO_ENDPOINT}/${encodeURIComponent(videoId)}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { accept: "application/json" },
+    cache: "force-cache",
+  });
+  if (!response.ok) {
+    throw new Error(`reference video fetch failed: ${response.status}`);
+  }
+  const payload = await response.json();
+  const entry = Array.isArray(payload) ? payload[0] : payload;
+  if (!entry) return null;
+  const channelDetails = entry.channel_details ?? entry.channelDetails ?? {};
+  return {
+    videoId,
+    title: entry.title ?? videoId,
+    thumbnail: entry.thumbnail ?? entry.channel_thumbnail,
+    channelName:
+      channelDetails.channel_name ??
+      channelDetails.channelName ??
+      entry.channel ??
+      undefined,
+    channelThumbnail:
+      channelDetails.channel_thumbnail ??
+      channelDetails.channelThumbnail ??
+      entry.channel_thumbnail ??
+      undefined,
+  };
 };
 
 const resolveVideoMetaInfo = (video: VideoCardData) => {
@@ -307,6 +460,412 @@ const resolveVideoMetaInfo = (video: VideoCardData) => {
     subscriberLabel,
     uploadLabel,
   };
+};
+
+interface EvidenceQueryAssistantProps {
+  sectionTitle: string;
+  videoItems: VideoCardData[];
+  variant?: "inline" | "floating";
+  onContextAvailable?: (context: EvidenceAssistantContext) => void;
+  onRequestClose?: () => void;
+  userEmail?: string;
+}
+
+const EvidenceQueryAssistant = ({
+  sectionTitle,
+  videoItems,
+  variant = "inline",
+  onContextAvailable,
+  onRequestClose,
+  userEmail,
+}: EvidenceQueryAssistantProps) => {
+  const [question, setQuestion] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [references, setReferences] = useState<RagReferenceItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [externalMeta, setExternalMeta] = useState<
+    Record<string, VideoReferenceMeta>
+  >({});
+  const [isMetaLoading, setIsMetaLoading] = useState(false);
+
+  const videoMetaMap = useMemo(() => {
+    const map = new Map<string, VideoCardData>();
+    (videoItems ?? []).forEach((video) => {
+      if (video?.id) {
+        map.set(video.id, video);
+      }
+    });
+    return map;
+  }, [videoItems]);
+
+  const videoSignature = useMemo(() => {
+    return videoItems.map((video) => video.id).join(",");
+  }, [videoItems]);
+
+  const uniqueVideoIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        (videoItems ?? [])
+          .map((video) => video?.id?.trim())
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+  }, [videoItems]);
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const text = question.trim();
+      if (!text || !uniqueVideoIds.length) return;
+      logCtaClick(
+        "floating_evidence_assistant_question",
+        undefined,
+        userEmail ?? undefined,
+        undefined,
+        {
+          question: text,
+          section: sectionTitle,
+          videos: uniqueVideoIds.join(","),
+          variant,
+        },
+      );
+      setIsLoading(true);
+      setError(null);
+      setAnswer(null);
+      setReferences([]);
+      try {
+        const payload = {
+          video_ids: uniqueVideoIds.slice(0, RAG_QUERY_VIDEO_LIMIT),
+          query: text,
+          topk: RAG_QUERY_TOPK,
+          topk_per_video: RAG_QUERY_TOPK_PER_VIDEO,
+          lang: "KR",
+          dedup: true,
+        };
+        const response = await fetch(RAG_QUERY_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(`rag query failed: ${response.status}`);
+        }
+        const data: RagQueryResponse = await response.json();
+        setAnswer(
+          data.answer?.trim() ||
+            "선택한 근거영상에서는 바로 연결되는 답을 찾지 못했어요.",
+        );
+        setReferences(data.items ?? []);
+      } catch (ragError) {
+        console.error("rag query request failed", ragError);
+        setError(
+          "근거 기반 답변을 불러오는 데 실패했어요. 잠시 후 다시 시도해 주세요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [question, sectionTitle, uniqueVideoIds, userEmail, variant],
+  );
+
+  const helperText = `${sectionTitle} 근거영상 ${uniqueVideoIds.length}개 기반`; // e.g., "부동산 근거영상 4개 기반"
+  const parsedAnswerLines = useMemo(() => {
+    if (!answer) return [] as ParsedAnswerLine[];
+    return answer
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((rawLine) => {
+        const tokens: AnswerLineReferenceToken[] = [];
+        const cleaned = rawLine.replace(
+          ANSWER_REFERENCE_TOKEN_PATTERN,
+          (match) => {
+            const normalizedMatch = match.replace(/`/g, "");
+            const inner = normalizedMatch.slice(1, -1);
+            const parsed = parseAnswerLineReferenceToken(inner);
+            if (parsed) tokens.push(parsed);
+            return "";
+          },
+        );
+        const normalized = cleaned.replace(/\s+/g, " ").trim();
+        return {
+          raw: rawLine,
+          text: normalized || rawLine,
+          tokens,
+        };
+      });
+  }, [answer]);
+
+  useEffect(() => {
+    if (!references.length) {
+      setIsMetaLoading(false);
+      return;
+    }
+    const missingVideoIds = references
+      .map((item) => item.video_id?.trim())
+      .filter((id): id is string => Boolean(id))
+      .filter(
+        (videoId) => !videoMetaMap.has(videoId) && !externalMeta[videoId],
+      );
+    if (!missingVideoIds.length) {
+      setIsMetaLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsMetaLoading(true);
+    (async () => {
+      const results = await Promise.all(
+        missingVideoIds.map(async (videoId) => {
+          try {
+            const meta = await fetchVideoReferenceMeta(videoId);
+            return meta ? [videoId, meta] : null;
+          } catch (metaError) {
+            console.warn(
+              `failed to fetch video reference meta for ${videoId}`,
+              metaError,
+            );
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      setExternalMeta((prev) => {
+        const next: Record<string, VideoReferenceMeta> = { ...prev };
+        results.forEach((entry) => {
+          if (!entry) return;
+          const [videoId, meta] = entry as [string, VideoReferenceMeta];
+          next[videoId] = meta;
+        });
+        return next;
+      });
+      setIsMetaLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [references, videoMetaMap, externalMeta]);
+
+  useEffect(() => {
+    if (!onContextAvailable) return;
+    if (!uniqueVideoIds.length) return;
+    onContextAvailable({
+      sectionTitle,
+      videoItems,
+      signature: `${sectionTitle}::${videoSignature}`,
+    });
+  }, [
+    onContextAvailable,
+    sectionTitle,
+    videoItems,
+    videoSignature,
+    uniqueVideoIds.length,
+  ]);
+
+  const resolveReferenceMeta = useCallback(
+    (videoId?: string | null): VideoReferenceMeta | null => {
+      if (!videoId) return null;
+      const local = videoMetaMap.get(videoId);
+      if (local) {
+        return {
+          videoId,
+          title: stripMarkTags(local.title),
+          thumbnail: local.thumbnail,
+          channelName: local.channel,
+          channelThumbnail: local.channelThumbnail,
+        };
+      }
+      return externalMeta[videoId] ?? null;
+    },
+    [videoMetaMap, externalMeta],
+  );
+
+  if (!uniqueVideoIds.length) {
+    return null;
+  }
+
+  return (
+    <EvidenceAssistantCard $variant={variant}>
+      <EvidenceAssistantHeader>
+        <div>
+          <EvidenceAssistantTitle>근거 기반 Q&A</EvidenceAssistantTitle>
+          <EvidenceAssistantHelper>{helperText}</EvidenceAssistantHelper>
+        </div>
+        {onRequestClose ? (
+          <AssistantCloseButton
+            type="button"
+            onClick={onRequestClose}
+            aria-label="근거 기반 Q&A 닫기"
+          >
+            닫기
+          </AssistantCloseButton>
+        ) : null}
+      </EvidenceAssistantHeader>
+      <EvidenceAssistantForm onSubmit={handleSubmit}>
+        <EvidenceAssistantInput
+          rows={2}
+          value={question}
+          maxLength={200}
+          placeholder={`${sectionTitle}에 대해 궁금한 점을 물어보세요`}
+          onChange={(event) => setQuestion(event.target.value)}
+        />
+        <EvidenceAssistantSubmit
+          type="submit"
+          disabled={isLoading || !question.trim()}
+        >
+          {isLoading ? "분석 중..." : "질문하기"}
+        </EvidenceAssistantSubmit>
+      </EvidenceAssistantForm>
+      {error ? <EvidenceAssistantError>{error}</EvidenceAssistantError> : null}
+      {parsedAnswerLines.length ? (
+        <EvidenceAssistantAnswer>
+          {parsedAnswerLines.map((line, index) => (
+            <EvidenceAnswerLine key={`answer-line-${index}`}>
+              <EvidenceAnswerLineText>{line.text}</EvidenceAnswerLineText>
+              {line.tokens.length ? (
+                <EvidenceAnswerLineReferenceGroup>
+                  {line.tokens.map((token, tokenIndex) => {
+                    const meta = resolveReferenceMeta(token.videoId);
+                    const label = meta?.title ?? token.videoId;
+                    const channelName = meta?.channelName;
+                    const timeQuery =
+                      typeof token.timestampSeconds === "number"
+                        ? Math.max(0, Math.floor(token.timestampSeconds))
+                        : undefined;
+                    const href = `https://www.youtube.com/watch?v=${token.videoId}${
+                      timeQuery ? `&t=${timeQuery}s` : ""
+                    }`;
+                    return (
+                      <EvidenceAnswerLineReference
+                        key={`${token.videoId}-${tokenIndex}`}
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${label} 근거 영상`}
+                      >
+                        {meta?.thumbnail ? (
+                          <EvidenceAnswerLineThumb
+                            src={meta.thumbnail}
+                            alt={label}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <EvidenceAnswerLineThumbFallback />
+                        )}
+                        <EvidenceAnswerLineReferenceContent>
+                          <EvidenceAnswerLineReferenceTitle>
+                            {label}
+                          </EvidenceAnswerLineReferenceTitle>
+                          <EvidenceAnswerLineReferenceMetaRow>
+                            {channelName ? (
+                              <EvidenceAnswerLineReferenceChannel>
+                                {meta?.channelThumbnail ? (
+                                  <EvidenceAnswerLineReferenceChannelAvatar
+                                    src={meta.channelThumbnail}
+                                    alt={channelName}
+                                    loading="lazy"
+                                  />
+                                ) : null}
+                                {channelName}
+                              </EvidenceAnswerLineReferenceChannel>
+                            ) : null}
+                            {token.timestampLabel ? (
+                              <EvidenceAnswerLineTimestamp>
+                                {token.timestampLabel}
+                              </EvidenceAnswerLineTimestamp>
+                            ) : null}
+                          </EvidenceAnswerLineReferenceMetaRow>
+                        </EvidenceAnswerLineReferenceContent>
+                      </EvidenceAnswerLineReference>
+                    );
+                  })}
+                </EvidenceAnswerLineReferenceGroup>
+              ) : null}
+            </EvidenceAnswerLine>
+          ))}
+        </EvidenceAssistantAnswer>
+      ) : (
+        <EvidenceAssistantHint>
+          예: &quot;{sectionTitle} 지금 사는 게 맞을까?&quot;
+        </EvidenceAssistantHint>
+      )}
+      {references.length ? (
+        <>
+          {isMetaLoading ? (
+            <EvidenceReferenceLoading>
+              근거 영상 정보를 불러오는 중이에요…
+            </EvidenceReferenceLoading>
+          ) : null}
+          <EvidenceReferenceList>
+            {references.map((item) => {
+              if (!item.video_id) return null;
+              const meta = resolveReferenceMeta(item.video_id);
+              const videoTitle = meta?.title ?? item.video_id;
+              const channelName = meta?.channelName;
+              const timestampLabel = formatTimestampLabel(item.ts_start);
+              const chunkText = extractChunkPlainText(item.text);
+              const timeQuery = Math.max(0, Math.floor(item.ts_start ?? 0));
+              const youtubeHref = `https://www.youtube.com/watch?v=${item.video_id}${
+                timeQuery ? `&t=${timeQuery}s` : ""
+              }`;
+              const linkLabel = timestampLabel ?? "영상 보기";
+              return (
+                <EvidenceReferenceItem
+                  key={`${item.video_id}-${item.chunk_id ?? item.ts_start ?? "ref"}`}
+                >
+                  <EvidenceReferenceFigure>
+                    {meta?.thumbnail ? (
+                      <EvidenceReferenceThumb
+                        src={meta.thumbnail}
+                        alt={videoTitle}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <EvidenceReferenceThumbFallback />
+                    )}
+                  </EvidenceReferenceFigure>
+                  <EvidenceReferenceBody>
+                    <EvidenceReferenceTitle>
+                      <EvidenceReferenceTitleText>
+                        {videoTitle}
+                      </EvidenceReferenceTitleText>
+                      <EvidenceReferenceLink
+                        href={youtubeHref}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {linkLabel}
+                      </EvidenceReferenceLink>
+                    </EvidenceReferenceTitle>
+                    {channelName ? (
+                      <EvidenceReferenceChannel>
+                        {meta?.channelThumbnail ? (
+                          <EvidenceReferenceChannelAvatar
+                            src={meta.channelThumbnail}
+                            alt={channelName}
+                            loading="lazy"
+                          />
+                        ) : null}
+                        {channelName}
+                      </EvidenceReferenceChannel>
+                    ) : null}
+                    {chunkText ? (
+                      <EvidenceReferenceSnippet>
+                        {chunkText}
+                      </EvidenceReferenceSnippet>
+                    ) : null}
+                  </EvidenceReferenceBody>
+                </EvidenceReferenceItem>
+              );
+            })}
+          </EvidenceReferenceList>
+        </>
+      ) : null}
+    </EvidenceAssistantCard>
+  );
 };
 
 const renderSummaryContent = (
@@ -1536,6 +2095,12 @@ const StandardBriefingLandingPageClient = ({
   }, [routeSearchParams]);
   const rawUserIdParam =
     routeSearchParams?.get("user_id") ?? queryParams?.user_id;
+  const normalizedQueryEmail = useMemo(() => {
+    const fromSearch = routeSearchParams?.get("user_email")?.trim();
+    if (fromSearch) return fromSearch;
+    const fromProp = queryParams?.user_email?.trim();
+    return fromProp && fromProp.length > 0 ? fromProp : null;
+  }, [routeSearchParams, queryParams]);
   const parsedUserId = rawUserIdParam ? Number(rawUserIdParam) : NaN;
   const userIdForLogging = useMemo(() => {
     if (user?.id) return user.id;
@@ -1759,6 +2324,21 @@ const StandardBriefingLandingPageClient = ({
     if (typeof window === "undefined") return;
     setLandingPath(window.location.pathname + window.location.search);
   }, []);
+  const [floatingAssistantVisible, setFloatingAssistantVisible] =
+    useState(false);
+  const [floatingAssistantContext, setFloatingAssistantContext] =
+    useState<EvidenceAssistantContext | null>(null);
+  const handleRegisterAssistantContext = useCallback(
+    (context: EvidenceAssistantContext) => {
+      setFloatingAssistantContext((prev) => {
+        if (prev?.signature === context.signature) {
+          return prev;
+        }
+        return context;
+      });
+    },
+    [],
+  );
 
   const buildBriefingDetailHref = useCallback(
     (videoId?: string | null, customHref?: string | null) => {
@@ -1807,6 +2387,32 @@ const StandardBriefingLandingPageClient = ({
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const pendingNavAnchorRef = useRef<string | null>(null);
 
+  const fallbackEmailAssistantContext = useMemo(() => {
+    for (const section of data.sections) {
+      if (!isEmailSection(section)) continue;
+      const videoMap = section.emailBriefing.videos;
+      if (!videoMap) continue;
+      const videoOrder = section.emailBriefing.topVideoIds?.length
+        ? section.emailBriefing.topVideoIds
+        : Object.keys(videoMap);
+      const videoItems = videoOrder
+        .map((id) => videoMap[id])
+        .filter((meta): meta is EmailBriefingVideoMeta => Boolean(meta?.id))
+        .map((meta) => convertEmailVideoMetaToVideoCard(meta));
+      if (videoItems.length) {
+        return {
+          sectionTitle: section.title,
+          videoItems,
+          signature: `email::${section.id}`,
+        } satisfies EvidenceAssistantContext;
+      }
+    }
+    return null;
+  }, [data.sections]);
+
+  const resolvedAssistantContext =
+    floatingAssistantContext ?? fallbackEmailAssistantContext;
+
   const visibleSections = useMemo(() => {
     if (!activeAnchor) return data.sections.slice(0, 1);
     const filtered = data.sections.filter(
@@ -1846,6 +2452,52 @@ const StandardBriefingLandingPageClient = ({
       setActiveAnchor(navItems[0]?.anchor ?? "");
     }
   }, [navItems, activeAnchor]);
+
+  const canonicalUserEmail = useMemo(() => {
+    const trimmed = user?.email?.trim();
+    if (trimmed) return trimmed;
+    return normalizedQueryEmail ?? undefined;
+  }, [normalizedQueryEmail, user?.email]);
+
+  const handleFloatingAssistantToggle = useCallback(() => {
+    const currentSection = activeAnchor
+      ? data.sections.find((section) => section.anchor === activeAnchor)
+      : null;
+    const sectionLabel = currentSection?.title?.replace(/\s+/g, "") || "";
+    const derivedSignature =
+      normalizedDateForLogging && normalizedPhone && sectionLabel
+        ? `${normalizedDateForLogging}-${sectionLabel}-${normalizedPhone}`
+        : undefined;
+    const derivedUserEmail =
+      canonicalUserEmail ?? derivedSignature ?? normalizedPhone ?? undefined;
+    const referralLabel = canonicalUserEmail
+      ? `referral:${canonicalUserEmail}`
+      : normalizedPhone
+        ? `referral:${normalizedPhone}`
+        : undefined;
+    logCtaClick(
+      "floating_evidence_assistant_toggle",
+      userIdForLogging,
+      derivedUserEmail,
+      referralLabel,
+      {
+        phone: normalizedPhone ?? "",
+        date: normalizedDateForLogging ?? "",
+        section: sectionLabel,
+        signature: derivedSignature ?? "",
+        action: floatingAssistantVisible ? "close" : "open",
+      },
+    );
+    setFloatingAssistantVisible((prev) => !prev);
+  }, [
+    activeAnchor,
+    canonicalUserEmail,
+    data.sections,
+    floatingAssistantVisible,
+    normalizedDateForLogging,
+    normalizedPhone,
+    userIdForLogging,
+  ]);
 
   /**
    * 초기 상태 구성
@@ -3280,6 +3932,14 @@ const StandardBriefingLandingPageClient = ({
                     : renderVideoEmptyNotice(isFutureSlot ? "future" : "empty")
                   : null}
               </VideoBlock>
+              {slotVideos.length ? (
+                <EvidenceQueryAssistant
+                  sectionTitle={section.title}
+                  videoItems={slotVideos}
+                  userEmail={canonicalUserEmail}
+                  onContextAvailable={handleRegisterAssistantContext}
+                />
+              ) : null}
             </>
           ) : null}
         </SectionBlock>
@@ -3349,51 +4009,65 @@ const StandardBriefingLandingPageClient = ({
 
         <TabPanel>
           {activeTab === "topVideos" ? (
-            <VideoList>
-              {section.tabs.topVideos.map((video) => {
-                const videoTitle = stripMarkTags(video.title);
-                const meta = resolveVideoMetaInfo(video);
-                return (
-                  <VideoCard key={video.id}>
-                    <VideoThumb src={video.thumbnail} alt={video.title} />
-                    <VideoContent>
-                      <VideoTitleRow>
-                        <VideoTitle title={videoTitle}>{videoTitle}</VideoTitle>
-                      </VideoTitleRow>
-                      <VideoMetaRow>
-                        {video.channelThumbnail ? (
-                          <ChannelAvatarImage
-                            src={video.channelThumbnail}
-                            alt={video.channel || "채널"}
-                            width={40}
-                            height={40}
-                            style={{ width: 40, height: 40 }}
-                          />
-                        ) : null}
-                        <VideoMetaRowContainer>
-                          {video.channel ? <span>{video.channel}</span> : null}
-                          {meta.subscriberLabel || meta.uploadLabel ? (
-                            <VideoMetaRowSubContainer>
-                              {meta.subscriberLabel ?? ""}
-                              {meta.uploadLabel ? (
-                                <strong>{meta.uploadLabel}</strong>
-                              ) : null}
-                            </VideoMetaRowSubContainer>
+            <>
+              <VideoList>
+                {section.tabs.topVideos.map((video) => {
+                  const videoTitle = stripMarkTags(video.title);
+                  const meta = resolveVideoMetaInfo(video);
+                  return (
+                    <VideoCard key={video.id}>
+                      <VideoThumb src={video.thumbnail} alt={video.title} />
+                      <VideoContent>
+                        <VideoTitleRow>
+                          <VideoTitle title={videoTitle}>
+                            {videoTitle}
+                          </VideoTitle>
+                        </VideoTitleRow>
+                        <VideoMetaRow>
+                          {video.channelThumbnail ? (
+                            <ChannelAvatarImage
+                              src={video.channelThumbnail}
+                              alt={video.channel || "채널"}
+                              width={40}
+                              height={40}
+                              style={{ width: 40, height: 40 }}
+                            />
                           ) : null}
-                        </VideoMetaRowContainer>
-                      </VideoMetaRow>
-                      {/* <BulletList>
+                          <VideoMetaRowContainer>
+                            {video.channel ? (
+                              <span>{video.channel}</span>
+                            ) : null}
+                            {meta.subscriberLabel || meta.uploadLabel ? (
+                              <VideoMetaRowSubContainer>
+                                {meta.subscriberLabel ?? ""}
+                                {meta.uploadLabel ? (
+                                  <strong>{meta.uploadLabel}</strong>
+                                ) : null}
+                              </VideoMetaRowSubContainer>
+                            ) : null}
+                          </VideoMetaRowContainer>
+                        </VideoMetaRow>
+                        {/* <BulletList>
                         {video.summary.map((line, idx) => (
                           <li key={safeKey(line, idx)}>
                             {stripMarkTags(line)}
                           </li>
                         ))}
                       </BulletList> */}
-                    </VideoContent>
-                  </VideoCard>
-                );
-              })}
-            </VideoList>
+                      </VideoContent>
+                    </VideoCard>
+                  );
+                })}
+              </VideoList>
+              {section.tabs.topVideos.length ? (
+                <EvidenceQueryAssistant
+                  sectionTitle={section.title}
+                  videoItems={section.tabs.topVideos}
+                  userEmail={canonicalUserEmail}
+                  onContextAvailable={handleRegisterAssistantContext}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {activeTab === "rankingUpdates" ? (
@@ -3603,114 +4277,114 @@ const StandardBriefingLandingPageClient = ({
     <>
       <LandingMarkStyles />
       <PageContainer
-      style={
-        {
-          ["--topbar-h" as any]: `${topbarH}px`,
-          ["--keywordnav-h" as any]: `${keywordNavH}px`,
-          ["--sticky-offset" as any]: `${topbarH + keywordNavH + 16}px`,
-        } as React.CSSProperties
-      }
+        style={
+          {
+            ["--topbar-h" as any]: `${topbarH}px`,
+            ["--keywordnav-h" as any]: `${keywordNavH}px`,
+            ["--sticky-offset" as any]: `${topbarH + keywordNavH + 16}px`,
+          } as React.CSSProperties
+        }
       >
-      <LogoHeaderDock>
-        <LogoHeader
-          showLogo
-          onBack={handleLogoBack}
-          onBackHome={handleLogoHome}
-          forceLightTheme
-        />
-      </LogoHeaderDock>
-      <TopAppBar>
-        <BackButton href="/">{`< ${data.deliveryMeta.backLabel}`}</BackButton>
-        <TopMeta ref={topBarRef}>
-          <TopTime>{topTimeLabel}</TopTime>
-          {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
+        <LogoHeaderDock>
+          <LogoHeader
+            showLogo
+            onBack={handleLogoBack}
+            onBackHome={handleLogoHome}
+            forceLightTheme
+          />
+        </LogoHeaderDock>
+        <TopAppBar>
+          <BackButton href="/">{`< ${data.deliveryMeta.backLabel}`}</BackButton>
+          <TopMeta ref={topBarRef}>
+            <TopTime>{topTimeLabel}</TopTime>
+            {/* <TopDescription>{data.deliveryMeta.description}</TopDescription>
           <TopTagline>{data.deliveryMeta.tagline}</TopTagline> */}
-          <TopDescription>구독 키워드 브리핑 통합 페이지</TopDescription>
-        </TopMeta>
-      </TopAppBar>
+            <TopDescription>구독 키워드 브리핑 통합 페이지</TopDescription>
+          </TopMeta>
+        </TopAppBar>
 
-      <StickyControlDock ref={keywordNavRef}>
-        <StickyKeywordNav role="tablist" aria-label="섹션 이동">
-          {navItems.map((item) => (
-            <KeywordChip
-              key={item.id}
+        <StickyControlDock ref={keywordNavRef}>
+          <StickyKeywordNav role="tablist" aria-label="섹션 이동">
+            {navItems.map((item) => (
+              <KeywordChip
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={activeAnchor === item.anchor}
+                $active={activeAnchor === item.anchor}
+                onClick={() => handleNavClick(item.anchor, item.label)}
+              >
+                {item.label}
+              </KeywordChip>
+            ))}
+          </StickyKeywordNav>
+
+          {activeSectionSlotBar ? (
+            <SlotBarDock>{activeSectionSlotBar}</SlotBarDock>
+          ) : null}
+        </StickyControlDock>
+        {shouldShowPrimaryEmailBanner ? (
+          <EmailConnectBanner>
+            <EmailConnectCloseButton
               type="button"
-              role="tab"
-              aria-selected={activeAnchor === item.anchor}
-              $active={activeAnchor === item.anchor}
-              onClick={() => handleNavClick(item.anchor, item.label)}
+              onClick={() => setPrimaryEmailBannerDismissed(true)}
+              aria-label="이 배너 닫기"
             >
-              {item.label}
-            </KeywordChip>
-          ))}
-        </StickyKeywordNav>
-
-        {activeSectionSlotBar ? (
-          <SlotBarDock>{activeSectionSlotBar}</SlotBarDock>
-        ) : null}
-      </StickyControlDock>
-      {shouldShowPrimaryEmailBanner ? (
-        <EmailConnectBanner>
-          <EmailConnectCloseButton
-            type="button"
-            onClick={() => setPrimaryEmailBannerDismissed(true)}
-            aria-label="이 배너 닫기"
-          >
-            {"\u00d7"}
-          </EmailConnectCloseButton>
-          <EmailConnectBody>
-            {resolvedLinkedEmail ? (
-              <>
-                <EmailConnectSavedEmail>
-                  📬 {resolvedLinkedEmail}
-                </EmailConnectSavedEmail>
-                <EmailConnectSavedDescription>
-                  이 주소로 이 브리핑이 저장되었습니다.
-                </EmailConnectSavedDescription>
-                <EmailConnectArchiveButton
-                  type="button"
-                  onClick={() => void handleArchiveCTA("primary_saved")}
-                >
-                  내 브리핑 아카이브 보기
-                </EmailConnectArchiveButton>
-              </>
-            ) : (
-              <>
-                <EmailConnectTitle>
-                  🔔 이 브리핑을 이메일로 저장하세요
-                </EmailConnectTitle>
-                {/* <EmailConnectDescription>
+              {"\u00d7"}
+            </EmailConnectCloseButton>
+            <EmailConnectBody>
+              {resolvedLinkedEmail ? (
+                <>
+                  <EmailConnectSavedEmail>
+                    📬 {resolvedLinkedEmail}
+                  </EmailConnectSavedEmail>
+                  <EmailConnectSavedDescription>
+                    이 주소로 이 브리핑이 저장되었습니다.
+                  </EmailConnectSavedDescription>
+                  <EmailConnectArchiveButton
+                    type="button"
+                    onClick={() => void handleArchiveCTA("primary_saved")}
+                  >
+                    내 브리핑 아카이브 보기
+                  </EmailConnectArchiveButton>
+                </>
+              ) : (
+                <>
+                  <EmailConnectTitle>
+                    🔔 이 브리핑을 이메일로 저장하세요
+                  </EmailConnectTitle>
+                  {/* <EmailConnectDescription>
               지금 이 브리핑을 이메일로 저장해 드려요. 같은 계정으로 언제든 다시
               들어와 이어볼 수 있고, 내일 나오는 브리핑도 같은 주소로 받아보실 수
               있어요.
             </EmailConnectDescription> */}
-                <EmailBenefitList>
-                  <li>키워드 분석을 내 이메일함에 바로 저장</li>
-                  <li>내일 브리핑도 같은 주소로 자동 전송</li>
-                  <li>언제든 복귀해 이어보기</li>
-                </EmailBenefitList>
-                <EmailConnectAction
-                  type="button"
-                  onClick={handleSave}
-                  aria-label="Google로 이 브리핑 저장하기"
-                >
-                  Google로 이 브리핑 저장하기
-                </EmailConnectAction>
-                <EmailConnectSubtext>
-                  이미 이메일로 받고 계신가요?
-                  <EmailConnectSubLink
+                  <EmailBenefitList>
+                    <li>키워드 분석을 내 이메일함에 바로 저장</li>
+                    <li>내일 브리핑도 같은 주소로 자동 전송</li>
+                    <li>언제든 복귀해 이어보기</li>
+                  </EmailBenefitList>
+                  <EmailConnectAction
                     type="button"
-                    onClick={() => void handleArchiveCTA("primary_sub")}
+                    onClick={handleSave}
+                    aria-label="Google로 이 브리핑 저장하기"
                   >
-                    내 브리핑 아카이브 보기 →
-                  </EmailConnectSubLink>
-                </EmailConnectSubtext>
-              </>
-            )}
-          </EmailConnectBody>
-        </EmailConnectBanner>
-      ) : null}
-      {/* {shouldShowFallbackEmailBanner ? (
+                    Google로 이 브리핑 저장하기
+                  </EmailConnectAction>
+                  <EmailConnectSubtext>
+                    이미 이메일로 받고 계신가요?
+                    <EmailConnectSubLink
+                      type="button"
+                      onClick={() => void handleArchiveCTA("primary_sub")}
+                    >
+                      내 브리핑 아카이브 보기 →
+                    </EmailConnectSubLink>
+                  </EmailConnectSubtext>
+                </>
+              )}
+            </EmailConnectBody>
+          </EmailConnectBanner>
+        ) : null}
+        {/* {shouldShowFallbackEmailBanner ? (
         <EmailConnectBanner>
           <EmailConnectCloseButton
             type="button"
@@ -3779,87 +4453,87 @@ const StandardBriefingLandingPageClient = ({
         </EmailConnectBanner>
       )} */}
 
-      {(showInitialLoading || isNavigating) && (
-        <LoadingCurtain aria-live="polite" role="status">
-          <LoadingSpinner />
-          <LoadingMessage>
-            {isNavigating ? "페이지 이동 중이에요" : "콘텐츠 불러오는 중"}
-          </LoadingMessage>
-        </LoadingCurtain>
-      )}
+        {(showInitialLoading || isNavigating) && (
+          <LoadingCurtain aria-live="polite" role="status">
+            <LoadingSpinner />
+            <LoadingMessage>
+              {isNavigating ? "페이지 이동 중이에요" : "콘텐츠 불러오는 중"}
+            </LoadingMessage>
+          </LoadingCurtain>
+        )}
 
-      <SectionsContainer>{renderedSections}</SectionsContainer>
+        <SectionsContainer>{renderedSections}</SectionsContainer>
 
-      {!isEmailSource ? (
-        <InfoPromoSection>
-          <InfoPromoCard>
-            <InfoPromoBadge>{INFO_PROMO_COPY.label}</InfoPromoBadge>
-            <InfoPromoKeywordList>
-              {INFO_PROMO_COPY.keywords.map((keyword) => (
-                <InfoPromoKeywordItem key={keyword}>
-                  {keyword}
-                </InfoPromoKeywordItem>
-              ))}
-            </InfoPromoKeywordList>
-            <InfoPromoDescription>
-              {INFO_PROMO_COPY.description}
-            </InfoPromoDescription>
-            <InfoPromoHelper>{INFO_PROMO_COPY.helper}</InfoPromoHelper>
-            <InfoPromoButton
-              href={INFO_PROMO_COPY.ctaHref}
-              prefetch={false}
-              onClick={() => handleInfoPromoClick(INFO_PROMO_COPY.ctaId)}
-            >
-              {INFO_PROMO_COPY.ctaLabel}
-            </InfoPromoButton>
-          </InfoPromoCard>
-        </InfoPromoSection>
-      ) : null}
-
-      {!isEmailSource ? (
-        <SurveyCtaSection>
-          <SurveyCtaCard>
-            <SurveyCtaBadge>FEEDBACK</SurveyCtaBadge>
-            <SurveyCtaTitle>{LANDING_FEEDBACK_SURVEY.title}</SurveyCtaTitle>
-            <SurveyCtaDescription>
-              {LANDING_FEEDBACK_SURVEY.description}
-            </SurveyCtaDescription>
-            <SurveyCtaButton
-              href={LANDING_FEEDBACK_SURVEY.ctaHref}
-              target="_blank"
-              rel="noreferrer"
-              prefetch={false}
-              onClick={handleFeedbackSurveyClick}
-            >
-              {LANDING_FEEDBACK_SURVEY.ctaLabel}
-            </SurveyCtaButton>
-            <SurveyCtaFootnote>
-              {LANDING_FEEDBACK_SURVEY.footnote}
-            </SurveyCtaFootnote>
-          </SurveyCtaCard>
-        </SurveyCtaSection>
-      ) : null}
-
-      {showArchiveNotice ? (
-        <ArchiveNoticeOverlay role="dialog" aria-modal="true">
-          <ArchiveNoticeCard>
-            <ArchiveNoticeTitle>아직 준비 중이에요</ArchiveNoticeTitle>
-            <ArchiveNoticeMessage>
-              내 브리핑 아카이브 기능을 준비하고 있어요. 곧 안내드릴게요.
-            </ArchiveNoticeMessage>
-            <ArchiveNoticeActions>
-              <ArchiveNoticeButton
-                type="button"
-                onClick={() => setShowArchiveNotice(false)}
+        {!isEmailSource ? (
+          <InfoPromoSection>
+            <InfoPromoCard>
+              <InfoPromoBadge>{INFO_PROMO_COPY.label}</InfoPromoBadge>
+              <InfoPromoKeywordList>
+                {INFO_PROMO_COPY.keywords.map((keyword) => (
+                  <InfoPromoKeywordItem key={keyword}>
+                    {keyword}
+                  </InfoPromoKeywordItem>
+                ))}
+              </InfoPromoKeywordList>
+              <InfoPromoDescription>
+                {INFO_PROMO_COPY.description}
+              </InfoPromoDescription>
+              <InfoPromoHelper>{INFO_PROMO_COPY.helper}</InfoPromoHelper>
+              <InfoPromoButton
+                href={INFO_PROMO_COPY.ctaHref}
+                prefetch={false}
+                onClick={() => handleInfoPromoClick(INFO_PROMO_COPY.ctaId)}
               >
-                알겠어요
-              </ArchiveNoticeButton>
-            </ArchiveNoticeActions>
-          </ArchiveNoticeCard>
-        </ArchiveNoticeOverlay>
-      ) : null}
+                {INFO_PROMO_COPY.ctaLabel}
+              </InfoPromoButton>
+            </InfoPromoCard>
+          </InfoPromoSection>
+        ) : null}
 
-      {/* <FooterExplore>
+        {!isEmailSource ? (
+          <SurveyCtaSection>
+            <SurveyCtaCard>
+              <SurveyCtaBadge>FEEDBACK</SurveyCtaBadge>
+              <SurveyCtaTitle>{LANDING_FEEDBACK_SURVEY.title}</SurveyCtaTitle>
+              <SurveyCtaDescription>
+                {LANDING_FEEDBACK_SURVEY.description}
+              </SurveyCtaDescription>
+              <SurveyCtaButton
+                href={LANDING_FEEDBACK_SURVEY.ctaHref}
+                target="_blank"
+                rel="noreferrer"
+                prefetch={false}
+                onClick={handleFeedbackSurveyClick}
+              >
+                {LANDING_FEEDBACK_SURVEY.ctaLabel}
+              </SurveyCtaButton>
+              <SurveyCtaFootnote>
+                {LANDING_FEEDBACK_SURVEY.footnote}
+              </SurveyCtaFootnote>
+            </SurveyCtaCard>
+          </SurveyCtaSection>
+        ) : null}
+
+        {showArchiveNotice ? (
+          <ArchiveNoticeOverlay role="dialog" aria-modal="true">
+            <ArchiveNoticeCard>
+              <ArchiveNoticeTitle>아직 준비 중이에요</ArchiveNoticeTitle>
+              <ArchiveNoticeMessage>
+                내 브리핑 아카이브 기능을 준비하고 있어요. 곧 안내드릴게요.
+              </ArchiveNoticeMessage>
+              <ArchiveNoticeActions>
+                <ArchiveNoticeButton
+                  type="button"
+                  onClick={() => setShowArchiveNotice(false)}
+                >
+                  알겠어요
+                </ArchiveNoticeButton>
+              </ArchiveNoticeActions>
+            </ArchiveNoticeCard>
+          </ArchiveNoticeOverlay>
+        ) : null}
+
+        {/* <FooterExplore>
         <FooterTitle>더 탐색하기</FooterTitle>
         <ExploreGrid>
           {data.exploreTabs.map((tab) => (
@@ -3879,9 +4553,31 @@ const StandardBriefingLandingPageClient = ({
         </FooterActions>
       </FooterExplore> */}
 
-      {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
-      <Footer />
-    </PageContainer>
+        {toastMessage ? <Toast role="status">{toastMessage}</Toast> : null}
+        <Footer />
+      </PageContainer>
+      <FloatingAssistantToggle
+        type="button"
+        onClick={handleFloatingAssistantToggle}
+        disabled={!resolvedAssistantContext}
+        aria-expanded={floatingAssistantVisible}
+        aria-controls="floating-evidence-assistant"
+      >
+        {floatingAssistantVisible ? "Q&A 닫기" : "근거 질문하기"}
+      </FloatingAssistantToggle>
+      {floatingAssistantVisible && resolvedAssistantContext ? (
+        <FloatingAssistantDrawer id="floating-evidence-assistant">
+          <FloatingAssistantPanel>
+          <EvidenceQueryAssistant
+            sectionTitle={resolvedAssistantContext.sectionTitle}
+            videoItems={resolvedAssistantContext.videoItems}
+            variant="floating"
+            userEmail={canonicalUserEmail}
+            onRequestClose={() => setFloatingAssistantVisible(false)}
+          />
+          </FloatingAssistantPanel>
+        </FloatingAssistantDrawer>
+      ) : null}
     </>
   );
 };
@@ -4584,6 +5280,386 @@ const VideoBlock = styled.section`
   display: flex;
   flex-direction: column;
   gap: 16px;
+`;
+
+const EvidenceAssistantCard = styled.section<{
+  $variant?: "inline" | "floating";
+}>`
+  margin-top: ${({ $variant }) => ($variant === "floating" ? "0" : "24px")};
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid #dce3ff;
+  background: linear-gradient(180deg, #ffffff 0%, #f6f8ff 100%);
+  box-shadow: ${({ $variant }) =>
+    $variant === "floating"
+      ? "0 20px 40px rgba(15, 23, 42, 0.18)"
+      : "0 12px 30px rgba(15, 23, 42, 0.08)"};
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: ${({ $variant }) => ($variant === "floating" ? "100%" : "auto")};
+`;
+
+const EvidenceAssistantHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const AssistantCloseButton = styled.button`
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  &:hover {
+    background: rgba(71, 85, 105, 0.12);
+  }
+`;
+
+const EvidenceAssistantTitle = styled.h4`
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111c4e;
+`;
+
+const EvidenceAssistantHelper = styled.span`
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+`;
+
+const EvidenceAssistantForm = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const EvidenceAssistantInput = styled.textarea`
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #cdd6f5;
+  padding: 12px;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.4;
+  font-family: inherit;
+  &:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    border-color: rgba(59, 130, 246, 0.6);
+  }
+`;
+
+const EvidenceAssistantSubmit = styled.button`
+  align-self: flex-end;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #111c4e, #3730a3);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const EvidenceAssistantHint = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+`;
+
+const EvidenceAssistantAnswer = styled.div`
+  border-radius: 12px;
+  background: #f1f5ff;
+  border: 1px solid #d4ddff;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #111c4e;
+  line-height: 1.6;
+  p {
+    margin: 0;
+    & + p {
+      margin-top: 8px;
+    }
+  }
+`;
+
+const EvidenceAssistantError = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 600;
+`;
+
+const EvidenceAnswerLine = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+  & + & {
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+    margin-top: 8px;
+    padding-top: 12px;
+  }
+`;
+
+const EvidenceAnswerLineText = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+  line-height: 1.6;
+`;
+
+const EvidenceAnswerLineReferenceGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const EvidenceAnswerLineReference = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid #dbe2ff;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+`;
+
+const EvidenceAnswerLineThumb = styled.img`
+  width: 44px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+`;
+
+const EvidenceAnswerLineThumbFallback = styled.div`
+  width: 44px;
+  height: 28px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  &::after {
+    content: "영상";
+  }
+`;
+
+const EvidenceAnswerLineReferenceContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+`;
+
+const EvidenceAnswerLineReferenceTitle = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const EvidenceAnswerLineReferenceMetaRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #475569;
+`;
+
+const EvidenceAnswerLineReferenceChannel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const EvidenceAnswerLineReferenceChannelAvatar = styled.img`
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  object-fit: cover;
+`;
+
+const EvidenceAnswerLineTimestamp = styled.span`
+  font-weight: 700;
+  color: #1d4ed8;
+`;
+
+const FloatingAssistantToggle = styled.button`
+  position: fixed;
+  right: 20px;
+  bottom: 24px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #1f2a4a, #3730a3);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  z-index: 140;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const FloatingAssistantDrawer = styled.div`
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 150;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 12px 4px;
+`;
+
+const FloatingAssistantPanel = styled.div`
+  pointer-events: auto;
+  width: min(540px, 100%);
+  max-height: min(35vh, 600px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 24px 24px 12px 12px;
+  background: transparent;
+`;
+
+const EvidenceReferenceList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const EvidenceReferenceItem = styled.li`
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+`;
+
+const EvidenceReferenceFigure = styled.div`
+  flex: 0 0 96px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #eef2ff;
+`;
+
+const EvidenceReferenceThumb = styled.img`
+  width: 96px;
+  height: 60px;
+  object-fit: cover;
+  display: block;
+`;
+
+const EvidenceReferenceThumbFallback = styled.div`
+  width: 96px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #94a3b8;
+  background: #e2e8f0;
+  border-radius: 10px;
+  &::after {
+    content: "영상";
+  }
+`;
+
+const EvidenceReferenceBody = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const EvidenceReferenceTitle = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const EvidenceReferenceTitleText = styled.strong`
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+`;
+
+const EvidenceReferenceChannel = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+`;
+
+const EvidenceReferenceChannelAvatar = styled.img`
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+`;
+
+const EvidenceReferenceSnippet = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.55;
+`;
+
+const EvidenceReferenceLink = styled.a`
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: none;
+  &:after {
+    content: "↗";
+    font-size: 11px;
+  }
+`;
+
+const EvidenceReferenceLoading = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
 `;
 
 const BlockHeader = styled.div`
