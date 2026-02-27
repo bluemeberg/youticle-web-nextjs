@@ -496,7 +496,7 @@ const App = () => {
                 >
                   {isRedirecting ? (
                     <LoadingSpinner>
-                      <Loading />
+                      {/* <Loading /> */}
                       <LoadingLabel>이동 중...</LoadingLabel>
                     </LoadingSpinner>
                   ) : (

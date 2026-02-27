@@ -25,12 +25,8 @@ interface ServiceIntroduceProps {
 
 const KEYWORD_EXPANSION_MAP: Record<string, string[]> = {
   가상자산: ["국내 가상자산", "해외 가상자산"],
-  국내가상자산: ["국내 가상자산", "해외 가상자산"],
-  해외가상자산: ["국내 가상자산", "해외 가상자산"],
   crypto: ["국내 가상자산", "해외 가상자산"],
   주식: ["국내 주식", "해외 주식"],
-  국내주식: ["국내 주식", "해외 주식"],
-  해외주식: ["국내 주식", "해외 주식"],
   stocks: ["국내 주식", "해외 주식"],
 };
 const DEFAULT_KEYWORDS = ["비즈니스/사업", "국내 주식", "부동산"];
