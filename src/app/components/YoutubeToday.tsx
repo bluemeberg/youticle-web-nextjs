@@ -131,8 +131,8 @@ const MARKET_INSIGHT_TOPIC_GROUPS: Record<string, string[]> = {
 const INTEGRATED_SECTION_MAP: Record<string, string> = {
   "국내 주식": "domestic_stock",
   "해외 주식": "overseas_stock",
-  "국내 가상자산": "domestic_crypto",
-  "해외 가상자산": "overseas_crypto",
+  "국내 가상자산": "crypto",
+  "해외 가상자산": "crypto",
 };
 
 const SLOT_DISPLAY_CONFIGS: Array<{

@@ -66,8 +66,7 @@ export default function LandingPage() {
         const sectionKeys = [
           "domestic_stock",
           "overseas_stock",
-          "domestic_crypto",
-          "overseas_crypto",
+          "crypto",
         ] as const;
 
         const [response1, stockPayloads, sectionPayloads] = await Promise.all([
@@ -101,9 +100,10 @@ export default function LandingPage() {
                 cache: "no-store",
               });
               if (!res.ok) {
-                throw new Error(
+                console.warn(
                   `Insight section ${key} request failed (${res.status})`
                 );
+                return null;
               }
               return res.json() as Promise<InsightSectionsResponse>;
             })
@@ -121,11 +121,17 @@ export default function LandingPage() {
         setApiData(combinedData);
         setStockSlotSections(slotSectionsPayload);
 
+        const validSectionPayloads = sectionPayloads.filter(
+          (payload): payload is InsightSectionsResponse => Boolean(payload)
+        );
+
         const sectionsJson: InsightSectionsResponse = {
-          sections: sectionPayloads
+          sections: validSectionPayloads
             .flatMap((payload) => payload.sections ?? [])
             .filter(Boolean),
-          missing: [],
+          missing: validSectionPayloads.flatMap(
+            (payload) => payload.missing ?? []
+          ),
         };
 
         setIntegratedSections(sectionsJson);

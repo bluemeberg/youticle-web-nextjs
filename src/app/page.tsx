@@ -76,12 +76,7 @@ export default async function LandingPage(props: LandingPageProps) {
   const initialTopic = initialTopicRaw?.trim();
 
   try {
-    const sectionKeys = [
-      "domestic_stock",
-      "overseas_stock",
-      "domestic_crypto",
-      "overseas_crypto",
-    ] as const;
+    const sectionKeys = ["domestic_stock", "overseas_stock", "crypto"] as const;
 
     const [response1, stockPayloads, sectionResponses] = await Promise.all([
       fetch(EXCEPT_STOCK_API_URL, { method: "GET", cache: "no-store" }),
@@ -109,9 +104,10 @@ export default async function LandingPage(props: LandingPageProps) {
             cache: "no-store",
           });
           if (!res.ok) {
-            throw new Error(
+            console.warn(
               `Insight section ${key} request failed (${res.status})`
             );
+            return null;
           }
           return res.json() as Promise<InsightSectionsResponse>;
         })
@@ -127,10 +123,16 @@ export default async function LandingPage(props: LandingPageProps) {
     const stockSlotSections = buildStockSlotSections(stockPayloads);
     const combinedData = [...data1, ...stockData];
 
-    const sections: InsightSection[] = sectionResponses
+    const validSectionResponses = sectionResponses.filter(
+      (payload): payload is InsightSectionsResponse => Boolean(payload)
+    );
+    const sections: InsightSection[] = validSectionResponses
       .flatMap((payload) => payload.sections ?? [])
       .filter(Boolean);
-    integratedSections = { sections, missing: [] };
+    integratedSections = {
+      sections,
+      missing: validSectionResponses.flatMap((payload) => payload.missing ?? []),
+    };
 
     return (
       <>
