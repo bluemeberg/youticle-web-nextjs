@@ -123,6 +123,98 @@ export const updateUserSubject = async (
   }
 };
 
+// v7 키워드 이전 — 분류 미리보기 + 일괄 교체
+export interface KeywordMigrationPreview {
+  user_id: number;
+  email: string;
+  current_subjects: string[];
+  kept: string[];
+  renamed: { from: string; to: string[] }[];
+  dropped: string[];
+  auto_selected: string[];
+  supported: string[];
+  user_state: "all_kept" | "has_renamed" | "partial_dropped" | "all_dropped";
+}
+
+/**
+ * 키워드 이전 — 운영 기존 엔드포인트(PUT /users/subject/, POST /users/subject/) 조합으로 일괄 교체.
+ *
+ * 운영에 SubscribeSubject DELETE 엔드포인트가 없어 다음 한계가 있다:
+ *  - 감소 케이스(current.length > target.length): 짝지을 수 있는 만큼 PUT으로 교체하고
+ *    남은 current 라벨은 운영 DB에 잔여로 남는다. 폐지 키워드라면 브리핑에 영향 없음.
+ */
+export const applyKeywordMigration = async (
+  email: string,
+  subjects: string[],
+  opts?: { userId?: number; currentSubjects?: string[]; name?: string },
+): Promise<{ user_id: number; email: string; subjects: string[]; leftover: string[] }> => {
+  const userId =
+    opts?.userId ?? (await getUserByEmail(email, opts?.name ?? null)).id;
+  const current =
+    opts?.currentSubjects ?? (await fetchSubscribedSubjects(email, opts?.name ?? ""));
+
+  const targetSet = new Set(subjects);
+  const currentSet = new Set(current);
+  const toRemove = current.filter((s) => !targetSet.has(s));
+  const toAdd = subjects.filter((s) => !currentSet.has(s));
+
+  // 1) 짝지어 PUT 교체 (old → new)
+  const pairCount = Math.min(toRemove.length, toAdd.length);
+  for (let i = 0; i < pairCount; i++) {
+    await updateUserSubject(userId, toRemove[i], toAdd[i]);
+  }
+  // 2) 남는 toAdd → 신규 POST
+  for (let i = pairCount; i < toAdd.length; i++) {
+    await subscribeSubject({ userId, subjectName: toAdd[i] });
+  }
+  // 3) 남는 toRemove → DELETE 엔드포인트 부재로 처리 불가. 잔여 보고만.
+  const leftover = toRemove.slice(pairCount);
+  if (leftover.length > 0) {
+    console.warn(
+      `[migration] 운영 DELETE 미지원으로 잔여 키워드: ${leftover.join(", ")}`,
+    );
+  }
+  return { user_id: userId, email, subjects, leftover };
+};
+
+export const subscribeSubject = async ({
+  userId,
+  subjectName,
+  articleId,
+}: {
+  userId: number;
+  subjectName: string;
+  articleId?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/subject/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        subject_name: subjectName,
+        article_id: articleId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      const detail =
+        typeof errorBody?.detail === "string"
+          ? errorBody.detail
+          : `키워드 구독에 실패했습니다: ${response.status}`;
+      throw new Error(detail);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error subscribing subject:", error);
+    throw error;
+  }
+};
+
 export async function fetchTopVideosBySection(section: string) {
   try {
     const response = await fetch(
